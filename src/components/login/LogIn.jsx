@@ -36,8 +36,8 @@ export default function LogInPage() {
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-2 bg-gradient-to-r from-lime-400 to-green-950 bg-clip-text text-transparent">
             KALINGA
           </h1>
-          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-md">
-            ALISTO sa bawat sakuna, TATAG sa bawat pagbangon.
+          <p className="text-base sm:text-lg md:text-lg text-muted-foreground max-w-md">
+            ALISTO sa bawat sakuna <br /> TATAG sa bawat pagbangon
           </p>
         </div>
 
