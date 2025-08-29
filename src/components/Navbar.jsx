@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HashLink } from "react-router-hash-link";
-import { Link } from "react-router-dom"; // ✅ Added this
+import { Link } from "react-router-dom"; 
 import logo from "../assets/kalinga-logo.png";
 
 const navItems = [

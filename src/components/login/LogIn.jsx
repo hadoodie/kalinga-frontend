@@ -1,6 +1,7 @@
 import { useState } from "react";
 import logo from "../../assets/kalinga-logo.png";
 import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
 
 export default function LogInPage() {
   const { toast } = useToast();
@@ -58,7 +59,7 @@ export default function LogInPage() {
                 id="email"
                 required
                 className="w-full px-4 py-3 rounded-md border border-input bg-background focus:ring-2 focus:ring-primary"
-                placeholder="you@example.com"
+                placeholder="juan.delacruz@example.com"
               />
             </div>
 
@@ -104,9 +105,11 @@ export default function LogInPage() {
           </div>
 
           {/* Create Account */}
-          <button className="w-full button bg-secondary text-secondary-foreground hover:bg-secondary/80">
+          <Link 
+          to="/createacc" 
+          className="w-full button bg-secondary text-secondary-foreground hover:bg-secondary/80">
             Create an Account
-          </button>
+          </Link>
         </div>
       </div>
     </div>
