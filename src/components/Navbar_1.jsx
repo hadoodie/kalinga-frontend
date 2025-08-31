@@ -12,7 +12,7 @@ const navItems = [
   { name: "Mission", href: "#mission" },
 ];
 
-export const Navbar = () => {
+export const NavbarA = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 

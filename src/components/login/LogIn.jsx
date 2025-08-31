@@ -107,7 +107,7 @@ export default function LogInPage() {
           {/* Create Account */}
           <Link 
           to="/createacc" 
-          className="w-full button bg-secondary text-secondary-foreground hover:bg-secondary/80">
+          className="w-full bg-secondary text-primary hover:bg-secondary/80 font-bold">
             Create an Account
           </Link>
         </div>
