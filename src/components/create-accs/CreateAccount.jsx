@@ -14,7 +14,6 @@ export default function CreateAcc() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ✅ password strength (8+ chars, letters + numbers)
   const isPasswordStrong = (pwd) => {
     const minLength = /.{8,}/;
     const hasLetters = /[A-Za-z]/;
@@ -38,7 +37,6 @@ export default function CreateAcc() {
     setIsSubmitting(true);
     setError("");
 
-    // Simulate API/signup call
     setTimeout(() => {
       toast({
         title: "Account created!",
@@ -47,7 +45,6 @@ export default function CreateAcc() {
       });
       setIsSubmitting(false);
 
-      // ✅ Navigate to Verify ID step
       navigate("/verify-id");
     }, 1500);
   };
@@ -63,9 +60,8 @@ export default function CreateAcc() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 px-4 sm:px-6 lg:px-8 pt-18 pb-2">
-      <div className="min-h-[calc(100svh-5rem)] overflow-y-auto flex justify-center">
-        <div className="w-full max-w-md my-auto bg-card shadow-lg rounded-xl p-6 sm:p-8">
+    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex flex-col items-center pt-35 px-4 pb-20">
+      <div className="w-full max-w-md bg-card shadow-lg rounded-2xl p-6 sm:p-8 flex flex-col">
           <h2 className="text-xl sm:text-2xl font-bold mb-6 text-center">
             Create a new account
           </h2>
@@ -183,7 +179,6 @@ export default function CreateAcc() {
               {isSubmitting ? "Creating..." : "Create Account"}
             </button>
 
-            {/* Link */}
             <p className="text-sm text-center mt-4">
               Already have an account?{" "}
               <Link to="/login" className="text-primary hover:underline font-medium">
@@ -191,7 +186,6 @@ export default function CreateAcc() {
               </Link>
             </p>
           </form>
-        </div>
       </div>
     </div>
   );

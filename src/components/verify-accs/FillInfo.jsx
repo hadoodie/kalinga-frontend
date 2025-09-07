@@ -1,7 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-export default function ConfirmationForm() {
+export default function FillInfo() {
   const [step, setStep] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [error, setError] = useState(""); 
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     idNumber: "",
     firstName: "",
@@ -19,7 +24,7 @@ export default function ConfirmationForm() {
   });
 
   const months = [
-    "January", "February", "March", "April", "May", "June", 
+    "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
 
@@ -27,31 +32,73 @@ export default function ConfirmationForm() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === "contactNumber") {
+      const numericValue = value.replace(/\D/g, "").slice(0, 10);
+      setFormData((prev) => ({ ...prev, [name]: numericValue }));
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleNext = (e) => {
     e.preventDefault();
+
+    if (
+      !formData.idNumber ||
+      !formData.firstName ||
+      !formData.lastName ||
+      !formData.contactNumber ||
+      !formData.birthMonth ||
+      !formData.birthDay ||
+      !formData.birthYear
+    ) {
+      setError("Please fill out all required fields before proceeding.");
+      return;
+    }
+
+    setError(""); 
     setStep(2);
   };
 
   const handleBack = (e) => {
     e.preventDefault();
-    setStep(1);
+    if (step === 2) {
+      setStep(1);
+    } else {
+      setShowModal(true); 
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    if (
+      !formData.province ||
+      !formData.city ||
+      !formData.barangay ||
+      !formData.zipCode ||
+      !formData.houseStreet
+    ) {
+      setError("Please fill out all required fields before proceeding.");
+      return;
+    }
+
+    setError("");
     console.log("Submitted:", formData);
+    navigate("/dashboard");
+  };
+
+  const confirmBack = () => {
+    setShowModal(false);
+    navigate("/upload-id");
   };
 
   return (
-    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex justify-center items-start pt-30 px-2">
+    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex justify-center items-start pt-35 px-4 pb-10">
       <div className="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-6 sm:p-8">
         {/* Header */}
-        <h2 className="text-2xl font-bold mb-2 text-center">
-          Verify your account
-        </h2>
+        <h2 className="text-2xl font-bold mb-2 text-center">Verify your account</h2>
 
         <div className="flex justify-center items-center gap-2 mb-4">
           <div className="h-1 w-8 bg-green-700 rounded"></div>
@@ -60,7 +107,7 @@ export default function ConfirmationForm() {
         </div>
 
         <h3 className="mb-3 font-semibold">Fill your information</h3>
-        <h3 className="font-bold text-left mb-2">ID Information </h3>
+        <h3 className="font-bold text-left mb-2">ID Information</h3>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {step === 1 && (
@@ -73,6 +120,7 @@ export default function ConfirmationForm() {
                   name="idNumber"
                   value={formData.idNumber}
                   onChange={handleChange}
+                  placeholder="100119980101"
                   className="w-full border rounded-lg px-3 py-2"
                 />
               </div>
@@ -86,6 +134,7 @@ export default function ConfirmationForm() {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
+                    placeholder="Juan"
                     className="w-full border rounded-lg px-3 py-2"
                   />
                 </div>
@@ -96,6 +145,7 @@ export default function ConfirmationForm() {
                     name="middleName"
                     value={formData.middleName}
                     onChange={handleChange}
+                    placeholder="Francisco"
                     className="w-full border rounded-lg px-3 py-2"
                   />
                 </div>
@@ -106,6 +156,7 @@ export default function ConfirmationForm() {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
+                    placeholder="Dela Cruz"
                     className="w-full border rounded-lg px-3 py-2"
                   />
                 </div>
@@ -115,17 +166,15 @@ export default function ConfirmationForm() {
               <div>
                 <label className="text-left block text-sm font-medium mb-1">Contact Number</label>
                 <div className="flex items-center border rounded-lg overflow-hidden">
-                  <span className="bg-gray-200 px-3 py-2 text-sm font-medium">
-                    PH +63
-                  </span>
+                  <span className="bg-gray-200 px-3 py-2 text-sm font-medium">PH +63</span>
                   <input
                     type="tel"
                     name="contactNumber"
                     value={formData.contactNumber}
                     onChange={handleChange}
-                    pattern="[0-9]{10}"
                     placeholder="9123456789"
                     className="flex-1 px-3 py-2 outline-none"
+                    maxLength={10}
                   />
                 </div>
               </div>
@@ -170,8 +219,21 @@ export default function ConfirmationForm() {
                 </div>
               </div>
 
-              {/* Next Button */}
-              <div className="flex justify-end">
+              {/* Error message */}
+              {error && (
+                <div className="p-3 text-sm text-red-700 bg-red-100 border border-red-300 rounded">
+                  {error}
+                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between">
+                <button
+                  onClick={handleBack}
+                  className="px-6 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                >
+                  Back
+                </button>
                 <button
                   onClick={handleNext}
                   className="px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
@@ -246,6 +308,13 @@ export default function ConfirmationForm() {
                 />
               </div>
 
+              {/* Error message */}
+              {error && (
+                <div className="p-3 text-sm text-red-700 bg-red-100 border border-red-300 rounded">
+                  {error}
+                </div>
+              )}
+
               {/* Navigation Buttons */}
               <div className="flex justify-between">
                 <button
@@ -265,6 +334,32 @@ export default function ConfirmationForm() {
           )}
         </form>
       </div>
+
+      {/* Confirmation Modal */}
+      {showModal && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-2xl shadow-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Leave this page?</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              If you go back, the information you entered will be lost.
+            </p>
+            <div className="flex justify-center gap-3">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmBack}
+                className="px-4 py-2 bg-green-800 text-white rounded-lg hover:bg-green-950"
+              >
+                Yes, Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

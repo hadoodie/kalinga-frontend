@@ -15,7 +15,7 @@ function App() {
         <Routes>
           <Route index element={<Home />}/>
           <Route path="/login" element={<LogIn />}/>
-          <Route path="/createacc" element={<CreateAccount />}/>
+          <Route path="/create-acc" element={<CreateAccount />}/>
           <Route path="/verify-id" element={<VerifyIDs />}/>
           <Route path="/upload-id" element={<UploadIDs />}/>
           <Route path="/fill-info" element={<FillInformation />}/>

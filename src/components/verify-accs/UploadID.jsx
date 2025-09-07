@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { X } from "lucide-react"; // for the "X" icon
+import { X } from "lucide-react"; 
 
 export default function UploadID() {
   const location = useLocation();
@@ -25,11 +25,10 @@ export default function UploadID() {
   const handleRemoveFile = () => {
     setFile(null);
     setPreview(null);
-    document.getElementById("file-upload").value = ""; // reset input
+    document.getElementById("file-upload").value = ""; 
   };
 
   const handleScanClick = () => {
-    // Example: Use native camera capture for mobile
     document.getElementById("file-scan").click();
   };
 
@@ -40,7 +39,7 @@ export default function UploadID() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex flex-col items-center pt-25 pb-2 px-4">
+    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex flex-col items-center pt-35 px-4 pb-10">
       <div className="w-full max-w-md bg-card shadow-lg rounded-2xl p-6 sm:p-8 flex flex-col">
         {/* Header */}
         <h2 className="text-2xl font-bold mb-2 text-center">
@@ -55,10 +54,10 @@ export default function UploadID() {
 
         <h2 className="text-2xl font-bold mb-2 text-center">{selectedID}</h2>
 
-        <p className="text-sm font-medium mb-6">Make sure to follow these tips!</p>
+        <p className="text-sm font-medium mb-4">Make sure to follow these tips!</p>
 
         {/* Tips List */}
-        <ul className="list-none text-left w-full space-y-4 mb-8">
+        <ul className="list-none text-left w-full space-y-4 mb-4">
           <li className="flex items-start gap-3">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
               1
@@ -85,8 +84,8 @@ export default function UploadID() {
           </li>
         </ul>
 
-        <p className="text-muted-foreground text-sm mb-6 text-center">
-          Please upload a clear photo or scanned copy of your{" "}
+        <p className="text-muted-foreground text-sm mb-4 text-center">
+          Upload a clear photo or scanned copy of your{" "}
           <span className="font-medium">{selectedID}</span>.
         </p>
 
@@ -117,10 +116,9 @@ export default function UploadID() {
             >
               Upload File
             </button>
-            {/* Show "Scan your ID" only for mobile */}
             <button
               onClick={handleScanClick}
-              className="w-full py-3 rounded-lg font-semibold bg-[#70B85C] text-white hover:bg-green-700 transition sm:hidden"
+              className="w-full py-3 rounded-lg font-semibold bg-primary text-white transition sm:hidden"
             >
               Scan your ID
             </button>
@@ -144,7 +142,7 @@ export default function UploadID() {
           </div>
         )}
 
-        <div className="flex gap-3 mt-4">
+        <div className="flex gap-3">
           <button
             type="button"
             onClick={() => navigate(-1)}

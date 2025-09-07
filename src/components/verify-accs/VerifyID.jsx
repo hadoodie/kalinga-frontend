@@ -25,7 +25,7 @@ export default function VerifyID() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex flex-col items-center pt-30 px-4">
+    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex flex-col items-center pt-35 px-4 pb-20">
       <div className="w-full max-w-md bg-card shadow-lg rounded-2xl p-6 sm:p-8 flex flex-col">
         {/* Header */}
         <h2 className="text-2xl font-bold mb-2 text-center">

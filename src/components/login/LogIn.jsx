@@ -1,11 +1,12 @@
 import { useState } from "react";
 import logo from "../../assets/kalinga-logo.png";
 import { useToast } from "@/hooks/use-toast";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function LogInPage() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -18,16 +19,17 @@ export default function LogInPage() {
         className:
           "flex flex-col items-center text-center justify-center w-full",
       });
+
       setIsSubmitting(false);
+      navigate("/dashboard");
     }, 1500);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 sm:px-6 lg:px-8">
-      {/* Container */}
       <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
         
-        {/* Left Column (Logo + Branding) - hidden on mobile */}
+        {/* Left Column (Logo + Branding) */}
         <div className="hidden md:flex flex-col items-center text-center px-4">
           <img
             src={logo}
@@ -44,7 +46,7 @@ export default function LogInPage() {
 
         {/* Right Column (Sign In Form in Card) */}
         <div className="w-full max-w-md mx-auto bg-card shadow-lg rounded-xl p-6 sm:p-8">
-          <h2 className="text-xl sm:text-2xl font-semibold mb-6">Sign In</h2>
+          <h2 className="text-xl sm:text-2xl font-bold mb-6">Log In</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Email */}
             <div>
@@ -86,7 +88,33 @@ export default function LogInPage() {
               disabled={isSubmitting}
               className="w-full button flex items-center justify-center gap-2"
             >
-              {isSubmitting ? "Signing in..." : "Sign In"}
+              {isSubmitting ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
+                    ></path>
+                  </svg>
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </button>
           </form>
 
@@ -106,8 +134,9 @@ export default function LogInPage() {
 
           {/* Create Account */}
           <Link 
-          to="/createacc" 
-          className="w-full bg-secondary text-primary hover:bg-secondary/80 font-bold">
+            to="/create-acc" 
+            className="w-full bg-secondary text-primary hover:bg-secondary/80 font-bold block text-center py-3 rounded-md"
+          >
             Create an Account
           </Link>
         </div>
