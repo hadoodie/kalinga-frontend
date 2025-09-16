@@ -1,4 +1,5 @@
-import { NavbarB } from "../components/Navbar_2";
+import { Footer } from "../components/Footer";
+import { NavbarA } from "../components/Navbar_1";
 import UploadID from "../components/verify-accs/UploadID";
 
 export const UploadIDs = () => {
@@ -6,10 +7,13 @@ export const UploadIDs = () => {
     <div>
         <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
             {/* Navbar */}
-            <NavbarB />
+            <NavbarA />
             
             {/* Upload ID */}
             <UploadID />
+
+            {/* Footer */}
+            <Footer />
         </div>
     </div>
     );

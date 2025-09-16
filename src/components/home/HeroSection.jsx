@@ -1,37 +1,46 @@
-import { ArrowDown } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export const HeroSection = () => {
   return (
     <section
       id="hero"
-      className="relative min-h-screen flex flex-col items-center justify-center px-4"
+      className="relative min-h-screen flex items-center justify-center md:justify-start px-6 md:px-16 overflow-hidden"
     >
-      <div className="container max-w-4xl mx-auto text-center z-10">
-        <div className="space-y-6">
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
-            <span className="opacity-0 animate-fade-in"> Mabilis at maaasahang emergency response system para sa bawat Pilipino.</span>
-          </h1>
+      {/* Video Background */}
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+      >
+        <source src="/videos/hero-bg.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+      </video>
 
-          <p className="text-lg md:text-xl text-muted-foreground max-2-2xl mx-auto opacity-0 animate-fade-in-delay-3">
-            Teknolohiya para sa kaligtasan.
-          </p>
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/40"></div>
 
-          <div className="pt-4 opacity-0 animate-fade-in-delay-4">
-            <Link
-              to="/login"
-              className="button ml-4 px-4 py-2 rounded-lg bg-primary text-white font-medium 
-                        hover:bg-primary hover:shadow-[0_0_10px_rgba(255,223,100,0.5)] transition-all duration-300">
-              Report Emergency
-            </Link>
-          </div>
-        </div>
+      {/* Content */}
+      <div className="relative z-10 max-w-2xl text-center md:text-left">
+        <h1 className="text-3xl md:text-6xl font-bold tracking-tight mb-6 opacity-0 animate-fade-in text-white">
+          Mabilis at maaasahang emergency response system para sa bawat Pilipino.
+        </h1>
+
+        <p className="text-base md:text-xl text-gray-200 mb-8 max-w-lg mx-auto md:mx-0 opacity-0 animate-fade-in-delay-3">
+          Teknolohiya para sa kaligtasan.
+        </p>
+
+        <Link
+          to="/report-emergency"
+          className="px-8 py-3 rounded-lg bg-white text-primary font-lg font-bold 
+                     hover:bg-white/90 hover:shadow-[0_0_10px_rgba(255,223,100,0.5)] 
+                     transition-all duration-300 opacity-0 animate-fade-in-delay-4"
+        >
+          Report Emergency
+        </Link>
       </div>
 
-      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center animate-bounce">
-        <span className="text-sm text-muted-foreground mb-2"> Scroll </span>
-        <ArrowDown className="h-5 w-5 text-primary" />
-      </div>
     </section>
   );
 };

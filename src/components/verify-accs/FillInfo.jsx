@@ -86,7 +86,7 @@ export default function FillInfo() {
 
     setError("");
     console.log("Submitted:", formData);
-    navigate("/dashboard");
+    navigate("/#hero");
   };
 
   const confirmBack = () => {

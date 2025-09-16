@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
 const doctors = [
   // Physicians
@@ -30,16 +31,42 @@ export const DoctorsSection = () => {
   return (
     <section id="doctors" className="py-24 px-4 relative bg-secondary/30">
       <div className="container mx-auto max-w-5xl">
-        <h2 className="text-3xl md:text-4xl font-bold mb-5 text-center">
-          Mga <span className="text-highlight">Doktor</span> na Handa Kayong <span className="text-highlight">Tulungan</span>
-        </h2>
-        <p className="mb-10 text-center">
-          <span className="font-bold">Iba’t ibang espesyalista, iisang layunin, ang kaligtasan ng lahat</span>
-          <br></br>Kilalanin sila at alamin ang kanilang mga tungkulin, designasyon, at lokasyon
-        </p>
+        {/* Heading */}
+        <motion.h2
+          className="text-3xl md:text-4xl font-bold mb-5 text-center"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          viewport={{ once: true }}
+        >
+          Mga <span className="text-highlight">Doktor</span> na Handa Kayong{" "}
+          <span className="text-highlight">Tulungan</span>
+        </motion.h2>
+
+        {/* Subtext */}
+        <motion.p
+          className="mb-10 text-center"
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          viewport={{ once: true }}
+        >
+          <span className="font-bold">
+            Iba’t ibang espesyalista, iisang layunin, ang kaligtasan ng lahat
+          </span>
+          <br />
+          Kilalanin sila at alamin ang kanilang mga tungkulin, designasyon, at
+          lokasyon
+        </motion.p>
 
         {/* Category buttons */}
-        <div className="flex flex-wrap justify-center gap-4 mb-12">
+        <motion.div
+          className="flex flex-wrap justify-center gap-4 mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          viewport={{ once: true }}
+        >
           {categories.map((category, key) => (
             <button
               key={key}
@@ -54,14 +81,18 @@ export const DoctorsSection = () => {
               {category}
             </button>
           ))}
-        </div>
+        </motion.div>
 
         {/* Doctors list */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredDoctors.map((doc, key) => (
-            <div
+            <motion.div
               key={key}
               className="bg-card p-6 rounded-lg shadow-xs card-hover flex flex-col items-center text-center"
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: key * 0.1 }}
+              viewport={{ once: true }}
             >
               {/* Photo */}
               <img
@@ -73,7 +104,7 @@ export const DoctorsSection = () => {
               {/* Name + Type */}
               <h3 className="font-semibold text-lg">{doc.name}</h3>
               <p className="text-muted-foreground">{doc.type}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

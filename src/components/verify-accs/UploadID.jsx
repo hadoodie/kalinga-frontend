@@ -145,7 +145,7 @@ export default function UploadID() {
         <div className="flex gap-3">
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/verify-id")}
             className="flex-1 py-3 rounded-lg font-medium bg-gray-300 text-gray-700 hover:bg-gray-400"
           >
             Back

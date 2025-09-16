@@ -1,15 +1,19 @@
+import { Footer } from "../components/Footer";
 import LogInPage from "../components/login/LogIn";
-import { NavbarB } from "../components/Navbar_2";
+import { NavbarA } from "../components/Navbar_1";
 
 export const LogIn = () => {
     return (
     <div>
         <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
             {/* Navbar */}
-            <NavbarB />
+            <NavbarA />
             
             {/* Log In */}
             <LogInPage />
+
+            {/* Footer */}
+            <Footer />
         </div>
     </div>
     );

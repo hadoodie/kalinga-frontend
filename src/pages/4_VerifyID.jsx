@@ -1,15 +1,19 @@
-import { NavbarB } from "../components/Navbar_2";
+import { NavbarA } from "../components/Navbar_1";
 import VerifyID from "../components/verify-accs/VerifyID";
+import { Footer } from "../components/Footer";
 
 export const VerifyIDs = () => {
     return (
     <div>
         <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
             {/* Navbar */}
-            <NavbarB />
+            <NavbarA />
             
             {/* ID to verify your account */}
             <VerifyID />
+
+            {/* Footer */}
+            <Footer />
         </div>
     </div>
     );

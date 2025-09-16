@@ -21,7 +21,7 @@ export default function LogInPage() {
       });
 
       setIsSubmitting(false);
-      navigate("/dashboard");
+      navigate("/report-emergency");
     }, 1500);
   };
 

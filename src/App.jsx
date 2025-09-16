@@ -6,6 +6,12 @@ import { Toaster } from "./components/ui/toaster";
 import { VerifyIDs } from "./pages/4_VerifyID";
 import { UploadIDs } from "./pages/5_UploadID";
 import { FillInformation } from "./pages/6_FillInformation";
+import { ReportEmergencies } from "./pages/7_Report";
+import { VehicleSelection } from "./pages/8_Vehicle";
+import { OtherVehicles } from "./pages/9_OtherVehicle";
+import { EmergencyChat } from "./pages/10_Chat";
+{/*import { Dashboard } from "./pages/7_Dashboard";*/}
+
 
 function App() {
   return (
@@ -19,6 +25,11 @@ function App() {
           <Route path="/verify-id" element={<VerifyIDs />}/>
           <Route path="/upload-id" element={<UploadIDs />}/>
           <Route path="/fill-info" element={<FillInformation />}/>
+          <Route path="/report-emergency" element={<ReportEmergencies />}/>
+          <Route path="/vehicle" element={<VehicleSelection />}/>
+          <Route path="/specify-vehicle" element={<OtherVehicles />}/>
+          <Route path="/emergency-chat" element={<EmergencyChat />}/>
+          {/*<Route path="/dashboard" element={<Dashboard />}/>*/}
           <Route path="*" element={<h1>404 Not Found</h1>} />
         </Routes>
       </BrowserRouter>

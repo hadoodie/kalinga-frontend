@@ -120,9 +120,13 @@ export default function CreateAcc() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Must be <span className="font-semibold">8+ characters</span> long and contain both 
+                <span className="font-semibold"> letters</span> and <span className="font-semibold">numbers</span>.
+              </p>
               {password && !isPasswordStrong(password) && (
                 <p className="text-red-500 text-xs mt-1">
-                  Must be 8+ characters with letters & numbers
+                  Password does not meet the requirements
                 </p>
               )}
             </div>
@@ -158,7 +162,7 @@ export default function CreateAcc() {
             </div>
 
             {/* Error */}
-            {error && <p className="text-red-500 text-sm">{error}</p>}
+            {error && <p className="text-red-500 text-xs">{error}</p>}
 
             {/* Submit */}
             <button

@@ -1,15 +1,19 @@
 import CreateAcc from "../components/create-accs/CreateAccount";
-import { NavbarB } from "../components/Navbar_2";
+import { Footer } from "../components/Footer";
+import { NavbarA } from "../components/Navbar_1";
 
 export const CreateAccount = () => {
     return (
     <div>
         <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
             {/* Navbar */}
-            <NavbarB />
+            <NavbarA />
             
             {/* Create an Account */}
             <CreateAcc />
+
+            {/* Footer */}
+            <Footer />
         </div>
     </div>
     );
