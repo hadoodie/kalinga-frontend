@@ -54,17 +54,16 @@ export const ContactSection = () => {
     >
       <div className="container mx-auto max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
         {/* LEFT COLUMN */}
-        <div className="flex flex-col items-center text-center md:text-left space-y-4">
+        <div className="flex flex-col items-center text-center space-y-4">
           <img src={logo} alt="Logo" className="w-60 mb-4" />
           <h3 className="text-2xl font-extrabold">We Value Your Feedback!</h3>
           <h4 className="text-lg font-semibold mb-2">
             Let us know how we can improve our services
           </h4>
           <p className="text-sm text-muted-foreground text-center leading-relaxed">
-            You'll receive an email confirming your submission after sending your form. <br />
+            You'll receive an email confirming your submission after sending your form.
             Our representative will contact you within{" "}
-            <span className="font-bold">24–72 hours</span>, <br />
-            depending on the complexity of your request.
+            <span className="font-bold">24–72 hours</span>.
           </p>
         </div>
 

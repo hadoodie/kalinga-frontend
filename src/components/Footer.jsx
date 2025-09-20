@@ -2,7 +2,6 @@ import {
   Mail,
   Smartphone,
   Phone,
-  ArrowUp,
   Facebook,
   Linkedin,
   Twitter,
@@ -10,16 +9,16 @@ import {
 
 export const Footer = () => {
   return (
-    <footer className="py-10 px-6 hex-#f5fbf7">
+    <footer className="py-10 px-6 bg-[#f5fbf7]">
       <div className="container mx-auto max-w-6xl">
-        <div className="flex flex-col md:flex-row md:justify-between gap-10 text-left">
-          
-          <div className="flex flex-col md:flex-row gap-10">
+        <div className="flex flex-col md:flex-row md:justify-between gap-10">
+          {/* Columns 1 & 2 Wrapper */}
+          <div className="flex flex-row gap-10 justify-center text-center md:justify-start md:text-left w-full md:w-auto">
             {/* Column 1: Contact Us */}
             <div>
               <h3 className="text-xl font-extrabold mb-3">Contact Us</h3>
               <div className="flex flex-col space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-xs">
                   <Smartphone className="h-4 w-4 text-primary" />
                   <a
                     href="tel:+639196013527"
@@ -28,7 +27,7 @@ export const Footer = () => {
                     (+63) 919 601 3527
                   </a>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-xs">
                   <Phone className="h-4 w-4 text-primary" />
                   <a
                     href="tel:+829876543"
@@ -37,7 +36,7 @@ export const Footer = () => {
                     (82) 876-543
                   </a>
                 </div>
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-xs">
                   <Mail className="h-4 w-4 text-primary" />
                   <a
                     href="mailto:hihello@gmail.com"
@@ -107,7 +106,7 @@ export const Footer = () => {
         </div>
 
         {/* Footer Bottom */}
-        <div className="mt-8 flex flex-wrap justify-between items-center border-t border-border pt-4">
+        <div className="mt-8 flex flex-wrap justify-center md:justify-between items-center border-t border-border pt-4 text-center md:text-left">
           <p className="text-xs text-muted-foreground">
             &copy; {new Date().getFullYear()} Kalinga. All rights reserved.
           </p>

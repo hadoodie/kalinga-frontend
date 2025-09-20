@@ -21,7 +21,7 @@ export default function LogInPage() {
       });
 
       setIsSubmitting(false);
-      navigate("/report-emergency");
+      navigate("/dashboard");
     }, 1500);
   };
 
@@ -29,13 +29,15 @@ export default function LogInPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
         
-        {/* Left Column (Logo + Branding) */}
+        {/* Left Column */}
         <div className="hidden md:flex flex-col items-center text-center px-4">
-          <img
-            src={logo}
-            alt="Kalinga Logo"
-            className="w-28 sm:w-36 md:w-40 lg:w-48 h-auto mb-6"
-          />
+          <Link to="/#hero">
+            <img
+              src={logo}
+              alt="Kalinga Logo"
+              className="w-28 sm:w-36 md:w-40 lg:w-48 h-auto mb-6 cursor-pointer"
+            />
+          </Link>
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-2 bg-gradient-to-r from-lime-400 to-green-950 bg-clip-text text-transparent">
             KALINGA
           </h1>
@@ -44,7 +46,7 @@ export default function LogInPage() {
           </p>
         </div>
 
-        {/* Right Column (Sign In Form in Card) */}
+        {/* Right Column */}
         <div className="w-full max-w-md mx-auto bg-card shadow-lg rounded-xl p-6 sm:p-8">
           <h2 className="text-xl sm:text-2xl font-bold mb-6">Log In</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -120,7 +122,7 @@ export default function LogInPage() {
 
           {/* Forgot Password */}
           <div className="mt-3 text-center">
-            <a href="#" className="text-sm text-primary hover:underline">
+            <a href="/forgot-password" className="text-sm text-primary hover:underline">
               Forgot password?
             </a>
           </div>
