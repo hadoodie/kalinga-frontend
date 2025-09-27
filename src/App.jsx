@@ -14,28 +14,29 @@ import { ForgotPassword } from "./pages/2_ForgotPassword";
 import { Dashboard } from "./pages/11_Dashboard";
 import { Weather } from "./pages/12_Weather";
 import { EvacuationCenter } from "./pages/13_EvacuationCenter";
-
+import { AdminPortal } from "./pages/Admin";
 
 function App() {
   return (
     <>
-    <Toaster />
+      <Toaster />
       <BrowserRouter>
         <Routes>
-          <Route index element={<Home />}/>
-          <Route path="/login" element={<LogIn />}/>
-          <Route path="/forgot-password" element={<ForgotPassword />}/>
-          <Route path="/create-acc" element={<CreateAccount />}/>
-          <Route path="/verify-id" element={<VerifyIDs />}/>
-          <Route path="/upload-id" element={<UploadIDs />}/>
-          <Route path="/fill-info" element={<FillInformation />}/>
-          <Route path="/report-emergency" element={<ReportEmergencies />}/>
-          <Route path="/vehicle" element={<VehicleSelection />}/>
-          <Route path="/specify-vehicle" element={<OtherVehicles />}/>
-          <Route path="/emergency-chat" element={<EmergencyChat />}/>
-          <Route path="/dashboard" element={<Dashboard />}/>
-          <Route path="/weather" element={<Weather />}/>
-          <Route path="/evacuation-center" element={<EvacuationCenter />}/>
+          <Route index element={<Home />} />
+          <Route path="/login" element={<LogIn />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/create-acc" element={<CreateAccount />} />
+          <Route path="/verify-id" element={<VerifyIDs />} />
+          <Route path="/upload-id" element={<UploadIDs />} />
+          <Route path="/fill-info" element={<FillInformation />} />
+          <Route path="/report-emergency" element={<ReportEmergencies />} />
+          <Route path="/vehicle" element={<VehicleSelection />} />
+          <Route path="/specify-vehicle" element={<OtherVehicles />} />
+          <Route path="/emergency-chat" element={<EmergencyChat />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/weather" element={<Weather />} />
+          <Route path="/evacuation-center" element={<EvacuationCenter />} />
+          <Route path="/admin" element={<AdminPortal />} />
           <Route path="*" element={<h1>404 Not Found</h1>} />
         </Routes>
       </BrowserRouter>
@@ -43,4 +44,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;
