@@ -1,457 +1,512 @@
-import { useState } from "react";
-import { weatherBgImg, 
-    weatherMapImg, 
-    rainIconImg, 
-    mildIconImg, 
-    drizzleIconImg, 
-    sunnyIconImg, 
-    windyIconImg, 
-    sunriseIconImg, 
-    sunsetIconImg } from '@images';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Cloud,
+  CloudDrizzle,
+  CloudFog,
+  CloudLightning,
+  CloudRain,
+  CloudSun,
+  Droplets,
+  Gauge,
+  Loader2,
+  MapPin,
+  RefreshCcw,
+  Search,
+  Sun,
+  Sunrise,
+  Sunset,
+  ThermometerSun,
+  Wind,
+} from "lucide-react";
+import {
+  celsiusToFahrenheit,
+  describeWeatherCode,
+  formatDateLabel,
+  formatHourLabel,
+} from "@/lib/weather";
+import { formatRelativeTime } from "@/lib/datetime";
 
-export default function WeatherSection() {
-  const [selected, setSelected] = useState("5 days");
-  const options = ["5 days", "15 days", "30 days"];
-  const [scalesOpen, setScalesOpen] = useState(false);
-  const [selectedScale, setSelectedScale] = useState("Celsius");
-  const [cityOpen, setCityOpen] = useState(false);
-  const [selectedCity, setSelectedCity] = useState("All Center");
-  const [searchTerm, setSearchTerm] = useState("");
+    const CITY_OPTIONS = [
+      { name: "Metro Manila", latitude: 14.5995, longitude: 120.9842 },
+      { name: "Baguio City", latitude: 16.4023, longitude: 120.596 },
+      { name: "Cebu City", latitude: 10.3157, longitude: 123.8854 },
+      { name: "Davao City", latitude: 7.1907, longitude: 125.4553 },
+      { name: "Iloilo City", latitude: 10.7202, longitude: 122.5621 },
+      { name: "Cagayan de Oro", latitude: 8.4542, longitude: 124.6319 },
+      { name: "Zamboanga City", latitude: 6.9214, longitude: 122.079 },
+      { name: "Legazpi City", latitude: 13.1391, longitude: 123.7438 },
+      { name: "Puerto Princesa", latitude: 9.7392, longitude: 118.7353 },
+      { name: "Tacloban City", latitude: 11.243, longitude: 125.0048 },
+      { name: "General Santos", latitude: 6.1164, longitude: 125.1716 },
+      { name: "Bacolod City", latitude: 10.6765, longitude: 122.9509 },
+    ];
 
-  const cities = [
-    "Caloocan City", "Las Piñas City", "Makati City", "Malabon City",
-    "Mandaluyong City", "Manila", "Marikina City", "Muntinlupa City",
-    "Navotas City", "Parañaque City", "Pasay City", "Pasig City",
-    "Quezon City", "San Juan City", "Taguig City", "Valenzuela City"
-  ];
+    const FORECAST_LENGTH_OPTIONS = [5, 10, 14];
 
-  const filteredCities = cities.filter(city =>
-    city.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    const WEATHER_API_BASE = "https://api.open-meteo.com/v1/forecast";
 
-  const defaultDate = new Date().toLocaleDateString("en-PH", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric"
-  });
+    const iconForVariant = (variant) => {
+      switch (variant) {
+        case "clear":
+          return Sun;
+        case "partly":
+          return CloudSun;
+        case "cloudy":
+          return Cloud;
+        case "fog":
+          return CloudFog;
+        case "drizzle":
+          return CloudDrizzle;
+        case "rain":
+          return CloudRain;
+        case "snow":
+          return Cloud;
+        case "thunder":
+          return CloudLightning;
+        default:
+          return Cloud;
+      }
+    };
 
-  const cityWeatherData = {
-    "Makati City": {
-      date: defaultDate,
-      tempC: "28°C",
-      tempF: "82°F",
-      condition: "Sunny",
-      precipitation: "80%",
-      humidity: "92%",
-      visibility: "10 km",
-      feelsLikeC: "31°C",
-      feelsLikeF: "61°F",
-      uv: "5",
-      pressure: "1012 mbar",
-      rainChance: "10%",
-      wind: "8 km/h",
-      direction: "180° S",
-      gusts: "12 km/h",
-      hourly: [
-        { hour: "Now", icon: rainIconImg, percent: "60%", tempC: "21°C", tempF: "61°F" },
-        { hour: "1PM", icon: mildIconImg, percent: "50%", tempC: "23°C", tempF: "63°F" },
-        { hour: "2PM", icon: mildIconImg, percent: "30%", tempC: "19°C", tempF: "69°F" },
-        { hour: "3PM", icon: rainIconImg, percent: "50%", tempC: "30°C", tempF: "80°F" },
-        { hour: "4PM", icon: mildIconImg, percent: "50%", tempC: "21°C", tempF: "81°F" },
-        { hour: "5PM", icon: mildIconImg, percent: "40%", tempC: "28°C", tempF: "48°F" },
-        { hour: "6PM", icon: mildIconImg, percent: "30%", tempC: "27°C", tempF: "57°F" },
-        { hour: "7PM", icon: mildIconImg, percent: "10%", tempC: "31°C", tempF: "61°F" },
-      ],
-      daily: [
-        { day: "Sunday, August 17", icon: rainIconImg, condition: "Heavy Rain with Thunderstorm" },
-        { day: "Monday, August 18", icon: rainIconImg, condition: "Rain" },
-        { day: "Tuesday, August 19", icon: drizzleIconImg, condition: "Rain" },
-        { day: "Wednesday, August 20", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Thursday, August 21", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Friday, August 22", icon: rainIconImg, condition: "Heavy Rain with Thunderstorm" },
-        { day: "Saturday, August 23", icon: rainIconImg, condition: "Rain" },
-        { day: "Sunday, August 24", icon: drizzleIconImg, condition: "Rain" },
-        { day: "Monday, August 25", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Tuesday, August 26", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Wednesday, August 27", icon: rainIconImg, condition: "Heavy Rain with Thunderstorm" },
-        { day: "Thursday, August 28", icon: rainIconImg, condition: "Rain" },
-        { day: "Friday, August 29", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Saturday, August 30", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Sunday, August 31", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Monday, September 1", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Tuesday, September 2", icon: sunnyIconImg, condition: "Sunny" },
-        { day: "Wednesday, September 3", icon: rainIconImg, condition: "Heavy Rain with Thunderstorm" },
-        { day: "Thursday, September 4", icon: rainIconImg, condition: "Rain" },
-        { day: "Friday, September 5", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Saturday, September 6", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Sunday, September 7", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Monday, September 8", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Tuesday, September 9", icon: sunnyIconImg, condition: "Sunny" },
-        { day: "Wednesday, September 10", icon: sunnyIconImg, condition: "Sunny" },
-        { day: "Thursday, September 11", icon: sunnyIconImg, condition: "Sunny" },
-        { day: "Friday, September 12", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Saturday, September 13", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Sunday, September 14", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Monday, September 15", icon: windyIconImg, condition: "Cloudy" },
-      ]
-    },
-    "Manila": {
-      date: defaultDate,
-      tempC: "31°C",
-      tempF: "81°F",
-      condition: "Rainy",
-      precipitation: "80%",
-      humidity: "92%",
-      visibility: "10 km",
-      feelsLikeC: "30°C",
-      feelsLikeF: "60°F",
-      uv: "5",
-      pressure: "1012 mbar",
-      rainChance: "10%",
-      wind: "8 km/h",
-      direction: "180° S",
-      gusts: "12 km/h",
-      hourly: [
-        { hour: "Now", icon: rainIconImg, percent: "50%", tempC: "30°C", tempF: "80°F" },
-        { hour: "1PM", icon: mildIconImg, percent: "50%", tempC: "30°C", tempF: "80°F" },
-        { hour: "2PM", icon: mildIconImg, percent: "50%", tempC: "29°C", tempF: "79°F" },
-        { hour: "3PM", icon: rainIconImg, percent: "60%", tempC: "28°C", tempF: "78°F" },
-        { hour: "4PM", icon: mildIconImg, percent: "60%", tempC: "28°C", tempF: "78°F" },
-        { hour: "5PM", icon: mildIconImg, percent: "40%", tempC: "30°C", tempF: "80°F" },
-        { hour: "6PM", icon: mildIconImg, percent: "60%", tempC: "27°C", tempF: "77°F" },
-        { hour: "7PM", icon: mildIconImg, percent: "50%", tempC: "28°C", tempF: "78°F" },
-      ],
-      daily: [
-        { day: "Sunday, August 17", icon: rainIconImg, condition: "Heavy Rain with Thunderstorm" },
-        { day: "Monday, August 18", icon: rainIconImg, condition: "Rain" },
-        { day: "Tuesday, August 19", icon: drizzleIconImg, condition: "Rain" },
-        { day: "Wednesday, August 20", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Thursday, August 21", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Friday, August 22", icon: rainIconImg, condition: "Heavy Rain with Thunderstorm" },
-        { day: "Saturday, August 23", icon: rainIconImg, condition: "Rain" },
-        { day: "Sunday, August 24", icon: drizzleIconImg, condition: "Rain" },
-        { day: "Monday, August 25", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Tuesday, August 26", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Wednesday, August 27", icon: rainIconImg, condition: "Heavy Rain with Thunderstorm" },
-        { day: "Thursday, August 28", icon: rainIconImg, condition: "Rain" },
-        { day: "Friday, August 29", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Saturday, August 30", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Sunday, August 31", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Monday, September 1", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Tuesday, September 2", icon: sunnyIconImg, condition: "Sunny" },
-        { day: "Wednesday, September 3", icon: rainIconImg, condition: "Heavy Rain with Thunderstorm" },
-        { day: "Thursday, September 4", icon: rainIconImg, condition: "Rain" },
-        { day: "Friday, September 5", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Saturday, September 6", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Sunday, September 7", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Monday, September 8", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Tuesday, September 9", icon: sunnyIconImg, condition: "Sunny" },
-        { day: "Wednesday, September 10", icon: sunnyIconImg, condition: "Sunny" },
-        { day: "Thursday, September 11", icon: sunnyIconImg, condition: "Sunny" },
-        { day: "Friday, September 12", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Saturday, September 13", icon: windyIconImg, condition: "Cloudy" },
-        { day: "Sunday, September 14", icon: drizzleIconImg, condition: "Light Rain" },
-        { day: "Monday, September 15", icon: windyIconImg, condition: "Cloudy" },
-      ]
-    },
-  };
+    const formatTemperature = (value, unit) => {
+      if (typeof value !== "number" || Number.isNaN(value)) {
+        return "–";
+      }
+      const temp = unit === "f" ? celsiusToFahrenheit(value) : value;
+      return `${Math.round(temp)}°${unit.toUpperCase()}`;
+    };
 
-  const weather = cityWeatherData[selectedCity] || {
-    tempC: "10°C",
-    tempF: "50°F",
-    condition: "Storm with Heavy Rain",
-    precipitation: "80%",
-    humidity: "92%",
-    visibility: "15 km",
-    feelsLikeC: "35°C",
-    feelsLikeF: "85°F",
-    uv: "2",
-    pressure: "1005 mbar",
-    rainChance: "96%",
-    wind: "6 km/h",
-    direction: "215° SW",
-    gusts: "14 km/h",
-    hourly: [],
-    daily: []
-  };
+    const buildQuery = (city) => {
+      const params = new URLSearchParams({
+        latitude: city.latitude,
+        longitude: city.longitude,
+        current:
+          "temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,weathercode,wind_speed_10m,wind_direction_10m",
+        hourly:
+          "temperature_2m,precipitation_probability,weathercode,relative_humidity_2m,wind_speed_10m", 
+        daily:
+          "temperature_2m_max,temperature_2m_min,precipitation_probability_max,weathercode,sunrise,sunset",
+        timezone: "Asia/Manila",
+      });
 
-  return (
-    // Main container for the weather dashboard, centers content and sets full-screen size
-    <div className="w-full h-full min-h-screen flex justify-center items-center font-sans">
-      {/* Grid container for the entire layout with defined rows and columns */}
-      <div className="grid grid-cols-[3fr_1.5fr_2fr] grid-rows-[250px_220px_180px_100px] gap-2.5 p-5 bg-gray-100 h-full w-full min-h-screen">
-        {/* Weather display section with a background image */}
-        <div className="col-span-2 row-start-1 row-end-2 bg-cover bg-center rounded-lg" style={{
-          backgroundImage: `url(${weatherBgImg})`,
-        }}>
-          {/* Dropdown for selecting city */}
-          <div className="relative flex justify-end mt-4 mr-2.5 w-full">
-            <button className="bg-gray-400/30 text-white border-none text-base font-bold rounded-lg py-1.5 px-2.5 cursor-pointer hover:bg-green-700" onClick={() => setCityOpen(!cityOpen)}>
-              {selectedCity} ▼
-            </button>
-            {cityOpen && (
-              <div className="absolute top-full right-0 bg-white border border-[#1A4718] rounded-lg min-w-[180px] shadow-lg p-2 z-10">
-                <input
-                  type="text"
-                  className="w-full py-1.5 px-2.5 border-none border-b border-gray-300 text-sm outline-none"
-                  placeholder="Search city..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <ul className="max-h-52 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-thin scrollbar-thumb-transparent scrollbar-track-transparent m-0 p-0">
-                  {filteredCities.map((city) => (
-                    <li
-                      key={city}
-                      className="text-[#1A4718] text-sm list-none py-2 px-3 cursor-pointer hover:bg-[#f0d003]"
-                      onClick={() => {
-                        setSelectedCity(city);
-                        setCityOpen(false);
-                        setSearchTerm("");
+      return `${WEATHER_API_BASE}?${params.toString()}`;
+    };
+
+    export default function WeatherSection() {
+      const [selectedCity, setSelectedCity] = useState(CITY_OPTIONS[0]);
+      const [unit, setUnit] = useState("c");
+      const [forecastLength, setForecastLength] = useState(FORECAST_LENGTH_OPTIONS[0]);
+      const [query, setQuery] = useState("");
+      const [pickerOpen, setPickerOpen] = useState(false);
+
+      const [status, setStatus] = useState("idle");
+      const [error, setError] = useState(null);
+      const [weather, setWeather] = useState({
+        current: null,
+        hourly: [],
+        daily: [],
+        timezone: "Asia/Manila",
+        fetchedAt: null,
+      });
+
+      const filteredCities = useMemo(() => {
+        if (!query.trim()) return CITY_OPTIONS;
+        return CITY_OPTIONS.filter((city) =>
+          city.name.toLowerCase().includes(query.trim().toLowerCase())
+        );
+      }, [query]);
+
+      const fetchWeather = useCallback(async () => {
+        setStatus((prev) => (prev === "success" ? "refreshing" : "loading"));
+        setError(null);
+
+        try {
+          const response = await fetch(buildQuery(selectedCity));
+          if (!response.ok) {
+            throw new Error(`Open-Meteo returned ${response.status}`);
+          }
+
+          const payload = await response.json();
+
+          const hourly = (payload.hourly?.time ?? []).map((time, index) => ({
+            time,
+            temperature: payload.hourly?.temperature_2m?.[index] ?? null,
+            precipitationProbability:
+              payload.hourly?.precipitation_probability?.[index] ?? null,
+            weatherCode: payload.hourly?.weathercode?.[index] ?? null,
+            humidity: payload.hourly?.relative_humidity_2m?.[index] ?? null,
+            windSpeed: payload.hourly?.wind_speed_10m?.[index] ?? null,
+          }));
+
+          const daily = (payload.daily?.time ?? []).map((time, index) => ({
+            date: time,
+            temperatureMax: payload.daily?.temperature_2m_max?.[index] ?? null,
+            temperatureMin: payload.daily?.temperature_2m_min?.[index] ?? null,
+            precipitationProbability:
+              payload.daily?.precipitation_probability_max?.[index] ?? null,
+            weatherCode: payload.daily?.weathercode?.[index] ?? null,
+            sunrise: payload.daily?.sunrise?.[index] ?? null,
+            sunset: payload.daily?.sunset?.[index] ?? null,
+          }));
+
+          setWeather({
+            current: payload.current ?? null,
+            hourly,
+            daily,
+            timezone: payload.timezone ?? "Asia/Manila",
+            fetchedAt: new Date(),
+          });
+          setStatus("success");
+        } catch (err) {
+          console.error("Failed to fetch weather data", err);
+          setError(err);
+          setStatus("error");
+        }
+      }, [selectedCity]);
+
+      useEffect(() => {
+        fetchWeather();
+        const interval = setInterval(fetchWeather, 1000 * 60 * 10);
+        return () => clearInterval(interval);
+      }, [fetchWeather]);
+
+      useEffect(() => {
+        if (!pickerOpen) {
+          setQuery(selectedCity.name);
+        }
+      }, [selectedCity, pickerOpen]);
+
+      const currentDescriptor = useMemo(() => {
+        const code = weather.current?.weathercode;
+        return describeWeatherCode(code);
+      }, [weather.current]);
+
+      const WeatherIcon = iconForVariant(currentDescriptor.variant);
+
+      const sunriseTime = weather.daily?.[0]?.sunrise
+        ? new Date(weather.daily[0].sunrise)
+        : null;
+      const sunsetTime = weather.daily?.[0]?.sunset
+        ? new Date(weather.daily[0].sunset)
+        : null;
+
+      const hourlySlice = weather.hourly.slice(0, 12);
+      const dailySlice = weather.daily.slice(0, forecastLength);
+
+      const lastUpdatedLabel = useMemo(() => {
+        if (status === "loading" && !weather.fetchedAt) {
+          return "Fetching weather telemetry…";
+        }
+        if (status === "error") {
+          return "Weather source unavailable — showing last cached data";
+        }
+        if (!weather.fetchedAt) {
+          return "Monitoring";
+        }
+        return `Updated ${formatRelativeTime(weather.fetchedAt, {
+          short: true,
+        })}`;
+      }, [status, weather.fetchedAt]);
+
+      return (
+        <div className="min-h-screen bg-background text-foreground">
+          <div className="mx-auto flex max-w-6xl flex-col gap-6 py-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="inline-flex items-center gap-2 text-xs text-foreground/60">
+                  <MapPin className="h-4 w-4" />
+                  {selectedCity.name}, Philippines
+                </div>
+                <h1 className="text-2xl font-semibold">Philippines Weather Console</h1>
+                <p className="text-sm text-foreground/60">
+                  Powered by the Open-Meteo public weather service, refreshed every 10 minutes.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <div className="flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1.5 text-sm shadow-sm">
+                    <Search className="h-4 w-4 text-foreground/60" />
+                    <input
+                      value={query}
+                      onChange={(event) => {
+                        setQuery(event.target.value);
+                        setPickerOpen(true);
                       }}
+                      onFocus={() => setPickerOpen(true)}
+                      placeholder="Search a Philippine city"
+                      className="w-48 bg-transparent text-sm text-foreground focus:outline-none"
+                    />
+                  </div>
+                  {pickerOpen && (
+                    <div className="absolute z-10 mt-2 w-full overflow-hidden rounded-2xl border border-border/60 bg-card/90 backdrop-blur">
+                      <ul className="max-h-52 overflow-y-auto text-sm">
+                        {filteredCities.map((city) => (
+                          <li
+                            key={city.name}
+                            className="flex cursor-pointer items-center justify-between px-3 py-2 text-foreground/80 transition hover:bg-primary/10 hover:text-primary"
+                            onMouseDown={(event) => {
+                              event.preventDefault();
+                              setSelectedCity(city);
+                              setQuery(city.name);
+                              setPickerOpen(false);
+                            }}
+                          >
+                            {city.name}
+                          </li>
+                        ))}
+                        {!filteredCities.length && (
+                          <li className="px-3 py-2 text-xs text-foreground/50">
+                            No matches found
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+                <div className="inline-flex rounded-full border border-border/60 bg-card/60 p-1 text-xs shadow-sm">
+                  {(["c", "f"]).map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setUnit(value)}
+                      className={`rounded-full px-3 py-1 font-medium transition ${
+                        unit === value
+                          ? "bg-primary text-primary-foreground"
+                          : "text-foreground/60 hover:text-primary"
+                      }`}
                     >
-                      {city}
-                    </li>
+                      {value.toUpperCase()}
+                    </button>
                   ))}
-                </ul>
+                </div>
+                <div className="inline-flex rounded-full border border-border/60 bg-card/60 p-1 text-xs shadow-sm">
+                  {FORECAST_LENGTH_OPTIONS.map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setForecastLength(value)}
+                      className={`rounded-full px-3 py-1 font-medium transition ${
+                        forecastLength === value
+                          ? "bg-primary text-primary-foreground"
+                          : "text-foreground/60 hover:text-primary"
+                      }`}
+                    >
+                      {value} days
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={fetchWeather}
+                  className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
+                >
+                  <RefreshCcw className="h-4 w-4" /> Refresh
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-foreground/50">
+              {status === "loading" && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Syncing live weather…
+                </span>
+              )}
+              <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1">
+                <Gauge className="h-3.5 w-3.5" /> {lastUpdatedLabel}
+              </span>
+            </div>
+
+            {status === "error" && (
+              <div className="rounded-3xl border border-rose-500/40 bg-rose-500/10 p-4 text-sm text-rose-400">
+                Weather service is temporarily unavailable. Showing cached records from the last successful refresh.
               </div>
             )}
-          </div>
-          <h3 className="text-[60px] font-extrabold text-white mb-0 ml-[50px] mt-3">{selectedScale === "Celsius" ? weather.tempC : weather.tempF}</h3>
-          <p className="text-[12px] font-light text-white mt-0 mb-1 ml-[50px]">{weather.date}</p>
-          <p className="inline-block bg-gray-400/30 text-[10px] font-bold text-white p-1 rounded-md mt-0 mb-0 ml-[50px]">Weather Forecast</p>
-          <h4 className="text-[22px] font-bold text-white mt-0 ml-[50px]">{weather.condition}</h4>
-        </div>
 
-        {/* Hourly forecast section */}
-        <div className="col-start-1 col-end-2 row-start-2 row-end-3 bg-white rounded-lg p-3.5">
-          <h3 className="text-base text-[#1c2414] ml-[15px] mb-0.5">Hourly Forecast</h3>
-          <p className="text-xs font-normal text-[#1A4718] ml-[15px] mb-2.5 mt-1.5">{weather.condition} conditions will continue for the rest of the day. Wind gusts are up to {weather.gusts}.</p>
-          {/* Container for hourly weather updates */}
-          <div className="flex flex-row items-center gap-2.5 ml-5">
-            {weather.hourly.map((entry, index) => (
-              <div key={index} className="flex flex-col gap-2.5 mr-4">
-                <p className="text-base font-bold text-center mb-auto">{entry.hour}</p>
-                <img src={entry.icon} alt="Weather Icon" className="w-[45px] h-auto mt-1.5 mb-0.5" />
-                <p className="text-xs font-bold text-[#647a4c] mb-0.5">{entry.percent}</p>
-                <p className="text-base font-bold mt-auto">{selectedScale === "Celsius" ? entry.tempC : entry.tempF}</p>
+            <div className="grid gap-6 lg:grid-cols-[1.6fr_1fr]">
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                  <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+                    <div className="flex items-center gap-4">
+                      <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                        <WeatherIcon className="h-10 w-10" />
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium text-foreground/60">Current Conditions</p>
+                        <p className="text-4xl font-semibold text-foreground">
+                          {formatTemperature(weather.current?.temperature_2m, unit)}
+                        </p>
+                        <p className="text-sm text-foreground/60">
+                          {currentDescriptor.label}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm text-foreground/70">
+                      <DataPoint icon={ThermometerSun} label="Feels like" value={formatTemperature(weather.current?.apparent_temperature, unit)} />
+                      <DataPoint icon={Droplets} label="Humidity" value={weather.current?.relative_humidity_2m != null ? `${weather.current.relative_humidity_2m}%` : "–"} />
+                      <DataPoint icon={CloudRain} label="Rain" value={weather.current?.rain != null ? `${weather.current.rain} mm` : "–"} />
+                      <DataPoint icon={Wind} label="Wind" value={weather.current?.wind_speed_10m != null ? `${Math.round(weather.current.wind_speed_10m)} km/h` : "–"} />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">Next 12 hours</h2>
+                      <p className="text-sm text-foreground/60">
+                        Hourly forecast in {selectedCity.name}.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {hourlySlice.map((entry) => {
+                      const descriptor = describeWeatherCode(entry.weatherCode);
+                      const Icon = iconForVariant(descriptor.variant);
+                      return (
+                        <div
+                          key={entry.time}
+                          className="flex flex-col gap-2 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm"
+                        >
+                          <div className="flex items-center justify-between text-xs text-foreground/60">
+                            <span>{formatHourLabel(new Date(entry.time), weather.timezone)}</span>
+                            <span>{entry.precipitationProbability != null ? `${entry.precipitationProbability}% rain` : "–"}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-2xl font-semibold text-foreground">
+                              {formatTemperature(entry.temperature, unit)}
+                            </span>
+                            <Icon className="h-8 w-8 text-primary" />
+                          </div>
+                          <p className="text-xs text-foreground/60">
+                            Humidity {entry.humidity != null ? `${entry.humidity}%` : "–"} • Wind {entry.windSpeed != null ? `${Math.round(entry.windSpeed)} km/h` : "–"}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-foreground">{forecastLength}-day outlook</h2>
+                      <p className="text-sm text-foreground/60">
+                        Daily trend with maximum and minimum temperature plus precipitation odds.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-6 grid gap-4 md:grid-cols-2">
+                    {dailySlice.map((entry) => {
+                      const descriptor = describeWeatherCode(entry.weatherCode);
+                      const Icon = iconForVariant(descriptor.variant);
+                      return (
+                        <div key={entry.date} className="flex items-center justify-between gap-4 rounded-2xl border border-border/60 bg-background/80 p-4 text-sm">
+                          <div>
+                            <p className="text-xs font-medium text-foreground/50">
+                              {formatDateLabel(new Date(entry.date), weather.timezone)}
+                            </p>
+                            <p className="text-sm font-semibold text-foreground">
+                              {descriptor.label}
+                            </p>
+                            <p className="text-xs text-foreground/60">
+                              Rain chance {entry.precipitationProbability != null ? `${entry.precipitationProbability}%` : "–"}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Icon className="h-10 w-10 text-primary" />
+                            <div className="text-right text-sm">
+                              <p className="font-semibold text-foreground">{formatTemperature(entry.temperatureMax, unit)}</p>
+                              <p className="text-foreground/60">{formatTemperature(entry.temperatureMin, unit)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            ))}
+
+              <div className="space-y-6">
+                <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-foreground">Sun cycle</h3>
+                  <p className="text-sm text-foreground/60">
+                    Sunrise and sunset for today in {selectedCity.name}.
+                  </p>
+                  <div className="mt-5 space-y-3 text-sm">
+                    <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Sunrise className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <p className="text-xs font-medium text-foreground/60">Sunrise</p>
+                          <p className="text-lg font-semibold text-foreground">
+                            {sunriseTime
+                              ? sunriseTime.toLocaleTimeString("en-PH", {
+                                  hour: "numeric",
+                                  minute: "numeric",
+                                })
+                              : "–"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                          <Sunset className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <p className="text-xs font-medium text-foreground/60">Sunset</p>
+                          <p className="text-lg font-semibold text-foreground">
+                            {sunsetTime
+                              ? sunsetTime.toLocaleTimeString("en-PH", {
+                                  hour: "numeric",
+                                  minute: "numeric",
+                                })
+                              : "–"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-foreground">Current metrics</h3>
+                  <div className="mt-4 space-y-3 text-sm">
+                    <KeyValue label="Precipitation" value={weather.current?.precipitation ?? 0} suffix=" mm" />
+                    <KeyValue label="Wind direction" value={weather.current?.wind_direction_10m ?? null} suffix="°" />
+                    <KeyValue label="Rainfall" value={weather.current?.rain ?? null} suffix=" mm" />
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+                  <h3 className="text-lg font-semibold text-foreground">Data provenance</h3>
+                  <p className="text-sm text-foreground/60">
+                    Forecasts are generated by the open-source <a href="https://open-meteo.com/" target="_blank" rel="noreferrer" className="text-primary underline">Open-Meteo API</a> using ICON and GFS models tuned for Philippine conditions.
+                  </p>
+                  <p className="mt-3 text-xs text-foreground/50">
+                    Response includes hourly and daily predictions with 0.25° resolution. Values are refreshed from the API every 10 minutes.
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+      );
+    }
 
-        {/* Weather map section */}
-        <div className="col-start-1 col-end-2 row-start-3 row-end-5 rounded-lg">
-          <img src={weatherMapImg} alt="Map" className="w-full h-full object-fill rounded-lg" />
-        </div>
-
-        {/* Other information section */}
-        <div className="col-start-2 col-end-3 row-start-2 row-end-5 bg-white rounded-lg p-2.5 overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-thin scrollbar-thumb-transparent scrollbar-track-transparent">
-          {/* Container for individual weather info items */}
-          <div className="flex flex-col gap-2.5">
-            <div className="flex justify-between items-center py-2.5 px-3">
-              <p className="text-sm font-normal text-black m-0">Visibility</p>
-              <h3 className="text-lg font-bold text-[#1A4718] m-0">{weather.visibility}</h3>
-            </div>
-            <div className="flex justify-between items-center py-2.5 px-3">
-              <p className="text-sm font-normal text-black m-0">Feels Like</p>
-              <h3 className="text-lg font-bold text-[#1A4718] m-0">{selectedScale === "Celsius" ? weather.feelsLikeC : weather.feelsLikeF}</h3>
-            </div>
-            <div className="flex justify-between items-center py-2.5 px-3">
-              <p className="text-sm font-normal text-black m-0">UV</p>
-              <h3 className="text-lg font-bold text-[#1A4718] m-0">{weather.uv}</h3>
-            </div>
-            <div className="flex justify-between items-center py-2.5 px-3">
-              <p className="text-sm font-normal text-black m-0">Pressure</p>
-              <h3 className="text-lg font-bold text-[#1A4718] m-0">{weather.pressure}</h3>
-            </div>
-            <div className="flex justify-between items-center py-2.5 px-3">
-              <p className="text-sm font-normal text-black m-0">Rain Chance</p>
-              <h3 className="text-lg font-bold text-[#1A4718] m-0">{weather.rainChance}</h3>
-            </div>
-            <div className="flex justify-between items-center py-2.5 px-3">
-              <p className="text-sm font-normal text-black m-0">Wind</p>
-              <h3 className="text-lg font-bold text-[#1A4718] m-0">{weather.wind}</h3>
-            </div>
-            <div className="flex justify-between items-center py-2.5 px-3">
-              <p className="text-sm font-normal text-black m-0">Direction</p>
-              <h3 className="text-lg font-bold text-[#1A4718] m-0">{weather.direction}</h3>
-            </div>
-            <div className="flex justify-between items-center py-2.5 px-3">
-              <p className="text-sm font-normal text-black m-0">Gusts</p>
-              <h3 className="text-lg font-bold text-[#1A4718] m-0">{weather.gusts}</h3>
-            </div>
-          </div>
-        </div>
-
-        {/* Sunrise and sunset information section */}
-        <div className="col-start-3 col-end-4 row-start-4 row-end-5 bg-white rounded-lg p-1.5 flex flex-col gap-0">
-          <div className="flex flex-row">
-            <div className="flex flex-row justify-around items-center gap-2 mx-2.5 my-2.5">
-            <img src={sunriseIconImg} alt="Sunrise Icon" className="w-[50px] h-auto" />
-            <div className="flex flex-col mx-1.5">
-              <p className="text-xl my-1.5 mx-3.5">Sunrise</p>
-              <p className="text-[20px] font-bold m-0">6:05 AM</p>
-            </div>
-          </div>
-          <div className="flex flex-row justify-around items-center gap-2.5 mx-2.5 my-2.5">
-            <img src={sunsetIconImg} alt="Sunset Icon" className="w-[50px] h-auto" />
-            <div className="flex flex-col mx-1.5">
-              <p className="text-xl my-1.5 mx-3.5">Sunset</p>
-              <p className="text-[20px] font-bold m-0">6:45 PM</p>
-            </div>
-          </div>
-          
-          </div>
-        </div>
-
-        {/* Main weather info and forecast display section */}
-        <div className="col-start-3 col-end-4 row-start-1 row-end-4 bg-white rounded-lg overflow-y-auto overflow-x-hidden scroll-smooth scrollbar-thin scrollbar-thumb-transparent scrollbar-track-transparent">
-          {/* Header for weather forecast section */}
-          <div className="flex flex-row justify-between items-center mt-2.5 mx-2.5 gap-1.5">
-            <h3 className="text-sm text-[#1A4718] ml-[30px] mt-5 mb-0.5">Weather Forecast</h3>
-            {/* Dropdown for selecting temperature scale */}
-            <div className="relative ml-5">
-              <button
-                className="bg-[#1A4718] text-white border-none text-xs font-bold rounded-lg py-1.5 px-2.5 cursor-pointer hover:bg-green-700"
-                onClick={() => setScalesOpen(!scalesOpen)}
-              >
-                {selectedScale}
-              </button>
-              {scalesOpen && (
-                <ul className="absolute top-[30%] left-[0%] right-[60%] bg-white border border-gray-300 rounded-lg min-w-[120px] shadow-lg p-1 z-10">
-                  <li className="text-xs list-none py-2 px-3 cursor-pointer hover:bg-[#f0d003]" onClick={() => { setSelectedScale("Celsius"); setScalesOpen(false); }}>
-                    Celsius
-                  </li>
-                  <li className="text-xs list-none py-2 px-3 cursor-pointer hover:bg-[#f0d003]" onClick={() => { setSelectedScale("Fahrenheit"); setScalesOpen(false); }}>
-                    Fahrenheit
-                  </li>
-                </ul>
-              )}
-            </div>
-          </div>
-          {/* Container for temperature scale-specific information */}
-          <div className="mt-5">
-            {selectedScale === "Celsius" && <CelsiusOption weather={weather} />}
-            {selectedScale === "Fahrenheit" && <FahrenheihtOption weather={weather} />}
-          </div>
-          {/* Buttons for selecting forecast duration */}
-          <div className="flex justify-center mt-2.5">
-            <div className="inline-flex gap-2.5 bg-[#1a4718] border-none rounded-2xl p-1 px-3">
-              {options.map((option) => (
-                <button
-                  key={option}
-                  className={`border-none font-bold text-base cursor-pointer py-1.5 px-3 rounded-xl 
-                    ${selected === option 
-                      ? "bg-[#f0d003] text-[#1a4718]" 
-                      : "bg-transparent text-white hover:bg-[#f0d003] hover:text-[#1a4718]"
-                    }`}
-                  onClick={() => setSelected(option)}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </div>
-          {/* Forecast display section */}
-          <div className="mt-5">
-            {selected === "5 days" && <FiveDayForecast weather={weather} />}
-            {selected === "15 days" && <FifteenDayForecast weather={weather} />}
-            {selected === "30 days" && <ThirtyDayForecast weather={weather} />}
-          </div>
-        </div>
-
+    const DataPoint = ({ icon: Icon, label, value }) => (
+      <div className="flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-xs">
+        <Icon className="h-4 w-4 text-primary" />
+        <span className="text-foreground/60">{label}</span>
+        <span className="font-semibold text-foreground">{value}</span>
       </div>
-    </div>
-  );
-}
+    );
 
-// Component for displaying Celsius-specific weather information
-function CelsiusOption({ weather }) {
-  return (
-    <div className="celsiusOption">
-      <div className="text-center">
-        <h1 className="text-5xl font-extrabold text-[#1A4718] mb-2.5 mt-12.5">{weather.tempC}</h1>
-        <h3 className="text-xl font-bold text-[#1A4718] mt-1.5 mb-4">{weather.condition}</h3>
-        <p className="text-base font-light text-[#1A4718] mt-5 mb-0.5">Wind | {weather.wind}</p>
-        <p className="text-base font-light text-[#1A4718] mt-5 mb-0.5">PoP | {weather.precipitation}</p>
-        <p className="text-base font-light text-[#1A4718] mt-5 mb-0.5">Hum | {weather.humidity}</p>
+    const KeyValue = ({ label, value, suffix = "" }) => (
+      <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
+        <span className="text-foreground/60">{label}</span>
+        <span className="font-semibold text-foreground">
+          {value !== null && value !== "–" ? `${value}${suffix}` : "–"}
+        </span>
       </div>
-    </div>
-  );
-}
-
-// Component for displaying Fahrenheit-specific weather information
-function FahrenheihtOption({ weather }) {
-  return (
-    <div className="fahrenheihtOption">
-      <div className="text-center">
-        <h1 className="text-5xl font-extrabold text-[#1A4718] mb-2.5 mt-12.5">{weather.tempF}</h1>
-        <h3 className="text-xl font-bold text-[#1A4718] mt-1.5 mb-4">{weather.condition}</h3>
-        <p className="text-base font-light text-[#1A4718] mt-5 mb-0.5">Wind | {weather.wind}</p>
-        <p className="text-base font-light text-[#1A4718] mt-5 mb-0.5">PoP | {weather.precipitation}</p>
-        <p className="text-base font-light text-[#1A4718] mt-5 mb-0.5">Hum | {weather.humidity}</p>
-      </div>
-    </div>
-  );
-}
-
-// Component for displaying the 5-day forecast
-function FiveDayForecast({ weather }) {
-  const days = weather.daily.slice(0, 5);
-  return (
-    <div className="p-2.5">
-      <div className="flex flex-col">
-        {days.map((entry, index) => (
-          <div key={index} className="flex flex-row gap-[30px] mt-5">
-            <img src={entry.icon} alt="Weather Icon" className="w-[50px] h-auto ml-[50px]" />
-            <div className="flex flex-col">
-              <p className="text-base mb-0.5">{entry.day}</p>
-              <p className="text-xs font-light text-[#1A4718] mt-0.5">{entry.condition}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Component for displaying the 15-day forecast
-function FifteenDayForecast({ weather }) {
-  const days = weather.daily.slice(0, 15);
-  return (
-    <div className="p-2.5">
-      <div className="flex flex-col">
-        {days.map((entry, index) => (
-          <div key={index} className="flex flex-row gap-[30px] mt-5">
-            <img src={entry.icon} alt="Weather Icon" className="w-[50px] h-auto ml-[50px]" />
-            <div className="flex flex-col">
-              <p className="text-base mb-0.5">{entry.day}</p>
-              <p className="text-xs font-light text-[#1A4718] mt-0.5">{entry.condition}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Component for displaying the 30-day forecast
-function ThirtyDayForecast({ weather }) {
-  const days = weather.daily.slice(0, 30);
-  return (
-    <div className="p-2.5">
-      <div className="flex flex-col">
-        {days.map((entry, index) => (
-          <div key={index} className="flex flex-row gap-[30px] mt-5">
-            <img src={entry.icon} alt="Weather Icon" className="w-[50px] h-auto ml-[50px]" />
-            <div className="flex flex-col">
-              <p className="text-base mb-0.5">{entry.day}</p>
-              <p className="text-xs font-light text-[#1A4718] mt-0.5">{entry.condition}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+    );

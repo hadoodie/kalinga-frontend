@@ -7,7 +7,6 @@ export const MissionSection = () => {
       className="py-20 px-6 md:py-28 md:px-8 relative bg-green-950 text-white"
     >
       <div className="container mx-auto max-w-5xl text-left">
-
         <motion.h3
           className="text-lg sm:text-xl md:text-3xl text-white mb-3 font-medium"
           initial={{ opacity: 0, y: 40 }}
@@ -18,7 +17,6 @@ export const MissionSection = () => {
           Our
         </motion.h3>
 
-
         <motion.h1
           className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-extrabold mb-6 md:mb-8 leading-tight"
           initial={{ opacity: 0, y: 60 }}
@@ -28,7 +26,6 @@ export const MissionSection = () => {
         >
           MISSION
         </motion.h1>
-
 
         <motion.p
           className="text-base sm:text-lg md:text-xl text-justify leading-relaxed text-gray-200 max-w-3xl"
@@ -48,7 +45,6 @@ export const MissionSection = () => {
         </motion.p>
 
         <br />
-
 
         <motion.p
           className="text-base sm:text-lg md:text-xl text-justify leading-relaxed text-gray-200 max-w-3xl"

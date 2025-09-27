@@ -4,7 +4,7 @@ import { HashLink } from "react-router-hash-link";
 import { Search } from "lucide-react";
 import logo from "../assets/kalinga-logo.png";
 
-export const NavbarB = ({collapsed}) => {
+export const NavbarB = ({ collapsed }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -20,7 +20,9 @@ export const NavbarB = ({collapsed}) => {
     <nav
       className={cn(
         "fixed w-full z-40 transition-all duration-300 border-b border-gray-200",
-        isScrolled ? "py-3 bg-background backdrop-blur-md shadow-xs" : "py-5 bg-background",
+        isScrolled
+          ? "py-3 bg-background backdrop-blur-md shadow-xs"
+          : "py-5 bg-background",
         collapsed ? "pl-0" : "pl--0"
       )}
     >

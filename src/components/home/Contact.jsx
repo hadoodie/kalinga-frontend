@@ -20,7 +20,7 @@ export const ContactSection = () => {
           }
         });
       },
-      { threshold: 0.2 } 
+      { threshold: 0.2 }
     );
 
     if (sectionRef.current) {
@@ -38,7 +38,8 @@ export const ContactSection = () => {
       setIsSubmitting(false);
       toast({
         title: "✅ Message Sent!",
-        description: "We’ve received your message. Check your email for confirmation.",
+        description:
+          "We’ve received your message. Check your email for confirmation.",
       });
     }, 1500);
   };
@@ -61,8 +62,8 @@ export const ContactSection = () => {
             Let us know how we can improve our services
           </h4>
           <p className="text-sm text-muted-foreground text-center leading-relaxed">
-            You'll receive an email confirming your submission after sending your form.
-            Our representative will contact you within{" "}
+            You'll receive an email confirming your submission after sending
+            your form. Our representative will contact you within{" "}
             <span className="font-bold">24–72 hours</span>.
           </p>
         </div>

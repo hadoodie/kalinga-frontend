@@ -1,15 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
   Bell,
+  ChevronDown,
   ClipboardList,
   Menu,
   Moon,
   RefreshCcw,
   Search,
+  Settings,
   Send,
   Sun,
+  UserRound,
+  SlidersHorizontal,
+  LifeBuoy,
+  LogOut,
   X,
 } from "lucide-react";
 import logo from "@/assets/kalinga-logo.png";
@@ -19,12 +25,16 @@ export const AdminLayout = ({
   sections,
   activeSectionId,
   onSectionChange,
+  onLogout,
   children,
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [timeRange, setTimeRange] = useState("6h");
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef(null);
+  const profileButtonRef = useRef(null);
 
   const activeSection = useMemo(
     () =>
@@ -58,6 +68,14 @@ export const AdminLayout = ({
     },
   ];
 
+  const profileOptions = [
+    { value: "profile", label: "View profile", icon: UserRound },
+    { value: "settings", label: "Settings", icon: Settings },
+    { value: "preferences", label: "Command preferences", icon: SlidersHorizontal },
+    { value: "support", label: "Support", icon: LifeBuoy },
+    { value: "logout", label: "Sign out", icon: LogOut, tone: "text-rose-500" },
+  ];
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -74,6 +92,22 @@ export const AdminLayout = ({
       document.documentElement.classList.remove("dark");
       setIsDarkMode(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const handleClickAway = (event) => {
+      if (
+        profileMenuRef.current &&
+        !profileMenuRef.current.contains(event.target) &&
+        profileButtonRef.current &&
+        !profileButtonRef.current.contains(event.target)
+      ) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickAway);
+    return () => document.removeEventListener("mousedown", handleClickAway);
   }, []);
 
   const toggleTheme = () => {
@@ -93,6 +127,27 @@ export const AdminLayout = ({
   };
 
   const renderNavItem = (section) => {
+  const handleProfileAction = (value) => {
+    setIsProfileMenuOpen(false);
+    switch (value) {
+      case "logout":
+        onLogout?.();
+        break;
+      case "support":
+        window.open(
+          "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
+          "_blank"
+        );
+        break;
+      case "settings":
+      case "profile":
+      case "preferences":
+      default:
+        console.info(`Selected admin profile action: ${value}`);
+        break;
+    }
+  };
+
     const Icon = section.icon;
     const isActive = section.id === activeSection.id;
 
@@ -244,16 +299,64 @@ export const AdminLayout = ({
                   <button className="flex h-11 w-11 items-center justify-center rounded-full border border-border/60 bg-background/60 text-foreground/70 transition hover:border-primary/50 hover:text-primary">
                     <Bell className="h-5 w-5" />
                   </button>
-                  <div className="flex items-center gap-3 rounded-full border border-border/60 bg-background/60 px-3 py-2">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary">
-                      AD
-                    </div>
-                    <div className="hidden text-left text-sm lg:block">
-                      <p className="font-semibold text-foreground">
-                        Admin Duty
-                      </p>
-                      <p className="text-foreground/60">Operations Lead</p>
-                    </div>
+                  <div className="relative">
+                    <button
+                      ref={profileButtonRef}
+                      onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+                      className="flex items-center gap-3 rounded-full border border-border/60 bg-background/60 px-3 py-2 transition hover:border-primary/40 hover:text-primary"
+                      aria-expanded={isProfileMenuOpen}
+                      aria-haspopup="menu"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary">
+                        AD
+                      </div>
+                      <div className="hidden text-left text-sm lg:block">
+                        <p className="font-semibold text-foreground">Admin Duty</p>
+                        <p className="text-foreground/60">Operations Lead</p>
+                      </div>
+                      <ChevronDown className={cn("h-4 w-4 text-foreground/50 transition", isProfileMenuOpen && "rotate-180")}
+                      />
+                    </button>
+
+                    {isProfileMenuOpen && (
+                      <div
+                        ref={profileMenuRef}
+                        className="absolute right-0 z-50 mt-3 w-60 origin-top-right rounded-2xl border border-border/60 bg-background/95 p-2 text-sm shadow-xl backdrop-blur"
+                        role="menu"
+                      >
+                        <div className="border-b border-border/60 px-3 pb-3">
+                          <p className="text-xs uppercase tracking-[0.2em] text-foreground/50">
+                            Signed in as
+                          </p>
+                          <p className="mt-1 font-semibold text-foreground">
+                            admin.duty@kalinga.gov
+                          </p>
+                        </div>
+                        <div className="py-1">
+                          {profileOptions.map((option) => {
+                            const Icon = option.icon;
+                            return (
+                              <button
+                                key={option.value}
+                                onClick={() => handleProfileAction(option.value)}
+                                className={cn(
+                                  "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-primary/10",
+                                  option.tone ? option.tone : "text-foreground/80"
+                                )}
+                                role="menuitem"
+                              >
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                                  <Icon className="h-4 w-4" />
+                                </span>
+                                <span className="text-sm font-medium">
+                                  {option.label}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

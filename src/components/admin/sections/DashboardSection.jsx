@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -13,6 +14,10 @@ import {
 } from "lucide-react";
 import { SectionHeader } from "../SectionHeader";
 import { StatCard } from "../StatCard";
+import { formatRelativeTime } from "@/lib/datetime";
+
+const INCIDENT_FEED_ENDPOINT =
+  "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
 
 const trends = [
   { label: "Flood", value: 78 },
@@ -22,7 +27,7 @@ const trends = [
   { label: "Typhoon", value: 70 },
 ];
 
-const recentIncidents = [
+const fallbackIncidents = [
   {
     id: "INC-2045",
     type: "Flash Flood",
@@ -47,7 +52,7 @@ const recentIncidents = [
     barangay: "Sta. Maria",
     teams: 3,
     status: "Contained",
-    severity: "Medium",
+    severity: "Low",
     timeAgo: "1 hour ago",
   },
 ];
@@ -114,20 +119,190 @@ const dispatchQueue = [
 ];
 
 export const DashboardSection = () => {
+  const [incidentFeed, setIncidentFeed] = useState({
+    items: fallbackIncidents,
+    fetchedAt: null,
+    status: "idle",
+  });
+
+  useEffect(() => {
+    let ignore = false;
+
+    const fetchIncidents = async () => {
+      setIncidentFeed((prev) => ({
+        ...prev,
+        status: prev.status === "success" ? "refreshing" : "loading",
+      }));
+
+      try {
+        const response = await fetch(INCIDENT_FEED_ENDPOINT);
+        if (!response.ok) {
+          throw new Error(`USGS feed returned ${response.status}`);
+        }
+
+        const payload = await response.json();
+        const features = Array.isArray(payload?.features)
+          ? payload.features.slice(0, 5)
+          : [];
+
+        if (!ignore) {
+          if (features.length) {
+            const mapped = features.map((feature, idx) => {
+              const magnitude = feature?.properties?.mag ?? 0;
+              const place = feature?.properties?.place ?? "Unverified location";
+              const timestamp = feature?.properties?.time
+                ? new Date(feature.properties.time)
+                : new Date();
+
+              const severity =
+                magnitude >= 5.5
+                  ? "Severe"
+                  : magnitude >= 4.5
+                  ? "High"
+                  : magnitude >= 3.5
+                  ? "Moderate"
+                  : "Minor";
+
+              const status =
+                severity === "Severe" || severity === "High"
+                  ? "Mitigating"
+                  : severity === "Moderate"
+                  ? "Coordinating"
+                  : "Contained";
+
+              return {
+                id: feature?.id ?? `USGS-${idx}`,
+                type: feature?.properties?.title ?? "Seismic Activity",
+                barangay: place,
+                teams: Math.max(1, Math.round(magnitude * 1.5)) || 1,
+                status,
+                severity,
+                timeAgo: formatRelativeTime(timestamp),
+              };
+            });
+
+            setIncidentFeed({
+              items: mapped,
+              fetchedAt: new Date(),
+              status: "success",
+            });
+          } else {
+            setIncidentFeed({
+              items: fallbackIncidents,
+              fetchedAt: new Date(),
+              status: "success",
+            });
+          }
+        }
+      } catch (error) {
+        if (ignore) return;
+        console.error("Failed to fetch USGS incidents", error);
+        setIncidentFeed((prev) => ({
+          ...prev,
+          status: "error",
+        }));
+      }
+    };
+
+    fetchIncidents();
+    const interval = setInterval(fetchIncidents, 60_000);
+
+    return () => {
+      ignore = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const incidents = incidentFeed.items ?? [];
+  const incidentsLength = incidents.length;
+
+  const activeIncidents = useMemo(
+    () => incidents.filter((item) => item.status !== "Contained").length,
+    [incidents]
+  );
+
+  const incidentSummary = useMemo(() => {
+    if (incidentFeed.status === "loading" && !incidentFeed.fetchedAt) {
+      return {
+        change: undefined,
+        trend: "up",
+        tone: "neutral",
+      };
+    }
+
+    if (incidentFeed.status === "error") {
+      return {
+        change: "using cached data",
+        trend: "down",
+        tone: "warning",
+      };
+    }
+
+    const delta = incidentsLength - fallbackIncidents.length;
+
+    if (!incidentFeed.fetchedAt) {
+      return {
+        change: "monitoring feed",
+        trend: "up",
+        tone: "primary",
+      };
+    }
+
+    if (delta === 0) {
+      return {
+        change: "steady vs baseline",
+        trend: "up",
+        tone: "neutral",
+      };
+    }
+
+    return {
+      change: `${delta > 0 ? "+" : ""}${delta} vs baseline`,
+      trend: delta > 0 ? "up" : "down",
+      tone: delta > 0 ? "warning" : "success",
+    };
+  }, [incidentFeed.status, incidentFeed.fetchedAt, incidentsLength]);
+
+  const updatedLabel = useMemo(() => {
+    if (incidentFeed.status === "loading" && !incidentFeed.fetchedAt) {
+      return "Syncing live feed…";
+    }
+    if (incidentFeed.status === "error") {
+      return "Feed unavailable — showing cached data";
+    }
+    if (!incidentFeed.fetchedAt) {
+      return "Live monitoring";
+    }
+    return `Updated ${formatRelativeTime(incidentFeed.fetchedAt, {
+      short: true,
+    })}`;
+  }, [incidentFeed.status, incidentFeed.fetchedAt]);
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <SectionHeader
-        title="Command Center Overview"
-        description="Real-time situational awareness across the municipality. Monitor critical metrics, incident cadence, and response posture at a glance."
+        title="Command Center Dashboard"
+        description="Monitor live incidents, operational tempo, and resource readiness across the municipality."
+        actions={
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-foreground/60">
+            <Clock3 className="h-3.5 w-3.5" />
+            {updatedLabel}
+          </span>
+        }
       />
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Activity}
           label="Active Incidents"
-          value="18"
-          change="+12% vs yesterday"
-          tone="warning"
+          value={
+            incidentFeed.status === "loading" && !incidentFeed.fetchedAt
+              ? "…"
+              : String(activeIncidents)
+          }
+          change={incidentSummary.change}
+          trend={incidentSummary.trend}
+          tone={incidentSummary.tone}
         />
         <StatCard
           icon={Users}
@@ -141,7 +316,6 @@ export const DashboardSection = () => {
           label="Readiness Index"
           value="92%"
           change="steady"
-          trend="up"
           tone="success"
         />
         <StatCard
@@ -167,7 +341,7 @@ export const DashboardSection = () => {
               </p>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              <CircleDot className="h-3.5 w-3.5" /> Updated 3m ago
+              <CircleDot className="h-3.5 w-3.5" /> {updatedLabel}
             </span>
           </div>
 
@@ -264,45 +438,48 @@ export const DashboardSection = () => {
           </span>
         </div>
         <div className="mt-6 divide-y divide-border/60 text-sm">
-          {recentIncidents.map((incident) => (
-            <div
-              key={incident.id}
-              className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between"
-            >
-              <div>
-                <p className="font-semibold text-foreground">{incident.type}</p>
-                <p className="text-xs text-foreground/60">
-                  {incident.id} • {incident.barangay}
-                </p>
-              </div>
-              <div className="flex flex-col justify-between gap-2 text-xs text-foreground/60 md:flex-row md:items-center md:gap-6">
-                <div className="flex items-center gap-2">
-                  <Users className="h-3.5 w-3.5" /> {incident.teams} teams
-                  on-site
+          {incidents.map((incident) => {
+            const statusTone = statusPills[incident.status] ?? "bg-primary/10 text-primary";
+            return (
+              <div
+                key={incident.id}
+                className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between"
+              >
+                <div>
+                  <p className="font-semibold text-foreground">{incident.type}</p>
+                  <p className="text-xs text-foreground/60">
+                    {incident.id} • {incident.barangay}
+                  </p>
                 </div>
-                <span className="flex items-center gap-2">
-                  <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                  Severity:{" "}
-                  <span className="font-semibold text-foreground/80">
-                    {incident.severity}
+                <div className="flex flex-col justify-between gap-2 text-xs text-foreground/60 md:flex-row md:items-center md:gap-6">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-3.5 w-3.5" /> {incident.teams} teams on-site
+                  </div>
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                    Severity:{" "}
+                    <span className="font-semibold text-foreground/80">
+                      {incident.severity}
+                    </span>
                   </span>
-                </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusTone}`}
+                  >
+                    {incident.status}
+                  </span>
+                  <span className="text-xs text-foreground/50">
+                    {incident.timeAgo}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                    statusPills[incident.status]
-                  }`}
-                >
-                  {incident.status}
-                </span>
-                <span className="text-xs text-foreground/50">
-                  {incident.timeAgo}
-                </span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+        <p className="mt-4 text-xs text-foreground/50">
+          Data source: USGS Earthquake Hazards Program.
+        </p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.6fr_1fr]">

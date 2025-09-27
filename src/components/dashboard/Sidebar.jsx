@@ -31,10 +31,18 @@ export default function Sidebar() {
 
   const items = [
     { label: "Dashboard", path: "/dashboard", icon: <Home size={25} /> },
-    { label: "Evacuation Centers", path: "/evacuation-center", icon: <Building2 size={25} /> },
+    {
+      label: "Evacuation Centers",
+      path: "/evacuation-center",
+      icon: <Building2 size={25} />,
+    },
     { label: "Weather", path: "/weather", icon: <Cloud size={25} /> },
     { label: "Messages", path: "/messages", icon: <MessageSquare size={25} /> },
-    { label: "Notifications", path: "/notifications", icon: <Bell size={25} /> },
+    {
+      label: "Notifications",
+      path: "/notifications",
+      icon: <Bell size={25} />,
+    },
     { label: "Profile", path: "/profile", icon: <User size={25} /> },
     { label: "Settings", path: "/settings", icon: <Settings size={25} /> },
   ];
@@ -66,7 +74,9 @@ export default function Sidebar() {
           {!collapsed && (
             <span
               className={`font-bold text-xl transition-all duration-300 transform ${
-                collapsed ? "opacity-0 -translate-x-2" : "opacity-100 translate-x-0"
+                collapsed
+                  ? "opacity-0 -translate-x-2"
+                  : "opacity-100 translate-x-0"
               }`}
             >
               KALINGA
@@ -104,18 +114,28 @@ export default function Sidebar() {
               <div
                 className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
                   ${collapsed ? "justify-center" : "gap-2"}
-                  ${isActive(item.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"}
+                  ${
+                    isActive(item.path)
+                      ? "bg-white/20 font-bold"
+                      : "hover:bg-white/10"
+                  }
                 `}
                 onClick={() => handleNavigation(item)}
               >
                 {/* Collapsed → show only icon */}
-                {collapsed && <span className="transition-transform duration-300">{item.icon}</span>}
+                {collapsed && (
+                  <span className="transition-transform duration-300">
+                    {item.icon}
+                  </span>
+                )}
 
                 {/* Expanded → show only label */}
                 {!collapsed && (
                   <span
                     className={`transition-all duration-300 transform ${
-                      collapsed ? "opacity-0 -translate-x-2" : "opacity-100 translate-x-0"
+                      collapsed
+                        ? "opacity-0 -translate-x-2"
+                        : "opacity-100 translate-x-0"
                     }`}
                   >
                     {item.label}
@@ -175,7 +195,11 @@ export default function Sidebar() {
               <div
                 key={idx}
                 className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition
-                  ${isActive(item.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"}
+                  ${
+                    isActive(item.path)
+                      ? "bg-white/20 font-bold"
+                      : "hover:bg-white/10"
+                  }
                 `}
                 onClick={() => handleNavigation(item)}
               >

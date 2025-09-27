@@ -102,6 +102,13 @@ export const AdminPortal = () => {
     setHasAccess(true);
   };
 
+  const handleLogout = () => {
+    if (typeof window === "undefined") return;
+    localStorage.removeItem("userRole");
+    setHasAccess(false);
+    setActiveSection(adminSections[0].id);
+  };
+
   const ActiveComponent = useMemo(() => {
     const target =
       adminSections.find((section) => section.id === activeSection) ??
@@ -160,6 +167,7 @@ export const AdminPortal = () => {
       sections={adminSections}
       activeSectionId={activeSection}
       onSectionChange={setActiveSection}
+      onLogout={handleLogout}
     >
       <ActiveComponent />
     </AdminLayout>
