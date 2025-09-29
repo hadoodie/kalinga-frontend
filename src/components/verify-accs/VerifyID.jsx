@@ -6,16 +6,16 @@ export default function VerifyID() {
   const navigate = useNavigate();
 
   const ids = [
-    "Driver’s License", 
-    "UMID", 
-    "Postal ID", 
-    "Passport", 
-    "SSS", 
+    "Driver’s License",
+    "UMID",
+    "Postal ID",
+    "Passport",
+    "SSS",
     "PRC ID",
     "HDMF (Pag-IBIG ID)",
     "National ID",
     "ePHIL ID",
-    "Student ID"
+    "Student ID",
   ];
 
   const handleNext = (e) => {

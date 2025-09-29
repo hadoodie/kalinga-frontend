@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { X } from "lucide-react"; 
+import { X } from "lucide-react";
 
 export default function UploadID() {
   const location = useLocation();
@@ -25,7 +25,7 @@ export default function UploadID() {
   const handleRemoveFile = () => {
     setFile(null);
     setPreview(null);
-    document.getElementById("file-upload").value = ""; 
+    document.getElementById("file-upload").value = "";
   };
 
   const handleScanClick = () => {
@@ -54,7 +54,9 @@ export default function UploadID() {
 
         <h2 className="text-2xl font-bold mb-2 text-center">{selectedID}</h2>
 
-        <p className="text-sm font-medium mb-4">Make sure to follow these tips!</p>
+        <p className="text-sm font-medium mb-4">
+          Make sure to follow these tips!
+        </p>
 
         {/* Tips List */}
         <ul className="list-none text-left w-full space-y-4 mb-4">
@@ -62,7 +64,10 @@ export default function UploadID() {
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
               1
             </span>
-            <span>Malinaw at nababasa ang mga nakasulat sa ID (Full Name, Birthdate, at Address)</span>
+            <span>
+              Malinaw at nababasa ang mga nakasulat sa ID (Full Name, Birthdate,
+              at Address)
+            </span>
           </li>
           <li className="flex items-start gap-3">
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
@@ -80,7 +85,9 @@ export default function UploadID() {
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
               4
             </span>
-            <span>Kumpleto at tama ang lahat ng personal information na nasa ID</span>
+            <span>
+              Kumpleto at tama ang lahat ng personal information na nasa ID
+            </span>
           </li>
         </ul>
 
