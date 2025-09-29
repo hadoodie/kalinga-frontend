@@ -23,7 +23,7 @@ export const EvacuationCenter = () => {
         </div>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-4 mt-20 mb-5">
+        <main className="flex-1 overflow-y-auto p-4 mb-5">
           <EvacCenter />
         </main>
       </div>

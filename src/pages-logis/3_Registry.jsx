@@ -1,15 +1,15 @@
-import Dash from "../components/dashboard/Dashboard";
-import Sidebar from "../components/dashboard/Sidebar";
+import Registry from "../components/logis-dashboard/AssetRegis";
+import LogisticSidebar from "../components/logis-dashboard/LogiSide";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
 
-export const Dashboard = () => {
+export const AssetRegistry = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="h-screen flex bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <LogisticSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
       {/* Main content wrapper */}
       <div
@@ -23,8 +23,8 @@ export const Dashboard = () => {
         </div>
 
         {/* Content area */}
-        <main className="pt-5 flex-1 overflow-y-auto ">
-          <Dash />
+        <main className="flex-1 overflow-y-auto ">
+          <Registry />
         </main>
       </div>
     </div>
