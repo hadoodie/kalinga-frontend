@@ -302,7 +302,8 @@ export const IncidentHeatMap = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             {filteredIncidents.map((incident) => {
-              const severityStyle = severityStyles[incident.severity] ?? severityStyles.Minor;
+              const severityStyle =
+                severityStyles[incident.severity] ?? severityStyles.Minor;
               const radius = Math.max(8, incident.magnitude * 2.5);
               return (
                 <CircleMarker
@@ -316,15 +317,26 @@ export const IncidentHeatMap = () => {
                     weight: 1,
                   }}
                 >
-                  <Tooltip direction="top" offset={[0, -radius]} opacity={0.95} className="bg-background text-foreground">
+                  <Tooltip
+                    direction="top"
+                    offset={[0, -radius]}
+                    opacity={0.95}
+                    className="bg-background text-foreground"
+                  >
                     <div className="space-y-1 text-xs">
-                      <p className="font-semibold text-foreground">{incident.type}</p>
+                      <p className="font-semibold text-foreground">
+                        {incident.type}
+                      </p>
                       <p className="text-foreground/70">{incident.barangay}</p>
                       <p className="text-foreground/60">
-                        Magnitude {incident.magnitude.toFixed(1)} • {incident.teams} team(s)
+                        Magnitude {incident.magnitude.toFixed(1)} •{" "}
+                        {incident.teams} team(s)
                       </p>
                       <p className="text-foreground/50">
-                        Updated {formatRelativeTime(incident.updatedAt, { short: true })}
+                        Updated{" "}
+                        {formatRelativeTime(incident.updatedAt, {
+                          short: true,
+                        })}
                       </p>
                     </div>
                   </Tooltip>
@@ -344,13 +356,20 @@ export const IncidentHeatMap = () => {
             </p>
             <div className="mt-5 space-y-3 text-sm">
               {severityOrder.map((level) => (
-                <div key={level} className="flex items-center justify-between gap-3">
+                <div
+                  key={level}
+                  className="flex items-center justify-between gap-3"
+                >
                   <div className="flex items-center gap-2">
-                    <span className={`inline-flex h-2.5 w-2.5 rounded-full ${severityStyles[level].badge}`} />
+                    <span
+                      className={`inline-flex h-2.5 w-2.5 rounded-full ${severityStyles[level].badge}`}
+                    />
                     <span className="font-medium text-foreground">{level}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-foreground/60">{summary[level]} incidents</span>
+                    <span className="text-foreground/60">
+                      {summary[level]} incidents
+                    </span>
                   </div>
                 </div>
               ))}

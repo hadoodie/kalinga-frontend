@@ -2,7 +2,7 @@ import { Megaphone, MessageCircle, Mic, Send, Users } from "lucide-react";
 import { SectionHeader } from "../SectionHeader";
 
 const channels = [
-  { name: "SMS Advisory", reach: "18,240 recipients", status: "Armed" },
+  { name: "SMS Advisory", reach: "18,240 recipients", status: "Alerted" },
   { name: "Facebook Live", reach: "Municipal page", status: "Ready" },
   { name: "Community Radio 98.5", reach: "On standby", status: "Live" },
   { name: "Barangay Viber", reach: "42 barangays", status: "Scheduled" },

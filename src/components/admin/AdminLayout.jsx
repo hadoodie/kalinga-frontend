@@ -27,6 +27,19 @@ export const AdminLayout = ({
   onSectionChange,
   onLogout,
   children,
+  consoleLabel = "Admin Console",
+  consoleSubtitle = "Kalinga Command",
+  personaInitials = "AD",
+  personaName = "Admin Duty",
+  personaRole = "Operations Lead",
+  searchPlaceholder = "Search incidents, teams, or resources",
+  heroBanner,
+  quickActions: quickActionsProp,
+  supportCard,
+  timeWindowLabel = "Time window",
+  autoRefreshLabel = "Auto-refresh",
+  autoRefreshHint = "Every 60 seconds",
+  consoleBadgeLabel = "Current View",
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -50,7 +63,7 @@ export const AdminLayout = ({
     { value: "7d", label: "7 days" },
   ];
 
-  const quickActions = [
+  const defaultQuickActions = [
     {
       label: "Log incident",
       description: "Capture a new field report or escalation",
@@ -71,10 +84,16 @@ export const AdminLayout = ({
   const profileOptions = [
     { value: "profile", label: "View profile", icon: UserRound },
     { value: "settings", label: "Settings", icon: Settings },
-    { value: "preferences", label: "Command preferences", icon: SlidersHorizontal },
+    {
+      value: "preferences",
+      label: "Command preferences",
+      icon: SlidersHorizontal,
+    },
     { value: "support", label: "Support", icon: LifeBuoy },
     { value: "logout", label: "Sign out", icon: LogOut, tone: "text-rose-500" },
   ];
+
+  const quickActionItems = quickActionsProp ?? defaultQuickActions;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -127,26 +146,26 @@ export const AdminLayout = ({
   };
 
   const renderNavItem = (section) => {
-  const handleProfileAction = (value) => {
-    setIsProfileMenuOpen(false);
-    switch (value) {
-      case "logout":
-        onLogout?.();
-        break;
-      case "support":
-        window.open(
-          "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
-          "_blank"
-        );
-        break;
-      case "settings":
-      case "profile":
-      case "preferences":
-      default:
-        console.info(`Selected admin profile action: ${value}`);
-        break;
-    }
-  };
+    const handleProfileAction = (value) => {
+      setIsProfileMenuOpen(false);
+      switch (value) {
+        case "logout":
+          onLogout?.();
+          break;
+        case "support":
+          window.open(
+            "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
+            "_blank"
+          );
+          break;
+        case "settings":
+        case "profile":
+        case "preferences":
+        default:
+          console.info(`Selected admin profile action: ${value}`);
+          break;
+      }
+    };
 
     const Icon = section.icon;
     const isActive = section.id === activeSection.id;
@@ -197,10 +216,10 @@ export const AdminLayout = ({
             />
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                Admin Console
+                {consoleLabel}
               </p>
               <h1 className="text-lg font-semibold text-foreground">
-                Kalinga Command
+                {consoleSubtitle}
               </h1>
             </div>
           </div>
@@ -210,13 +229,15 @@ export const AdminLayout = ({
           </nav>
 
           <div className="px-6 py-5 border-t border-border/60">
-            <div className="rounded-2xl bg-primary/10 p-4 text-sm text-primary/80">
-              <p className="font-semibold text-primary">Need help?</p>
-              <p className="mt-1 leading-relaxed text-primary/80">
-                Reach out to the response coordination team for support or to
-                escalate incidents.
-              </p>
-            </div>
+            {supportCard ?? (
+              <div className="rounded-2xl bg-primary/10 p-4 text-sm text-primary/80">
+                <p className="font-semibold text-primary">Need help?</p>
+                <p className="mt-1 leading-relaxed text-primary/80">
+                  Reach out to the response coordination team for support or to
+                  escalate incidents.
+                </p>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -236,10 +257,10 @@ export const AdminLayout = ({
               />
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                  Admin Console
+                  {consoleLabel}
                 </p>
                 <h1 className="text-base font-semibold text-foreground">
-                  Kalinga Command
+                  {consoleSubtitle}
                 </h1>
               </div>
             </div>
@@ -268,7 +289,7 @@ export const AdminLayout = ({
                 </button>
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                    Current View
+                    {consoleBadgeLabel}
                   </p>
                   <h2 className="text-lg font-semibold text-foreground">
                     {activeSection.title}
@@ -280,7 +301,7 @@ export const AdminLayout = ({
                   <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/60" />
                   <input
                     type="search"
-                    placeholder="Search incidents, teams, or resources"
+                    placeholder={searchPlaceholder}
                     className="h-11 w-full rounded-full border border-border/60 bg-background/60 pl-12 pr-4 text-sm outline-none transition focus:border-primary/50 focus:ring focus:ring-primary/20"
                   />
                 </div>
@@ -308,13 +329,19 @@ export const AdminLayout = ({
                       aria-haspopup="menu"
                     >
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 font-semibold text-primary">
-                        AD
+                        {personaInitials}
                       </div>
                       <div className="hidden text-left text-sm lg:block">
-                        <p className="font-semibold text-foreground">Admin Duty</p>
-                        <p className="text-foreground/60">Operations Lead</p>
+                        <p className="font-semibold text-foreground">
+                          {personaName}
+                        </p>
+                        <p className="text-foreground/60">{personaRole}</p>
                       </div>
-                      <ChevronDown className={cn("h-4 w-4 text-foreground/50 transition", isProfileMenuOpen && "rotate-180")}
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 text-foreground/50 transition",
+                          isProfileMenuOpen && "rotate-180"
+                        )}
                       />
                     </button>
 
@@ -338,10 +365,14 @@ export const AdminLayout = ({
                             return (
                               <button
                                 key={option.value}
-                                onClick={() => handleProfileAction(option.value)}
+                                onClick={() =>
+                                  handleProfileAction(option.value)
+                                }
                                 className={cn(
                                   "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-primary/10",
-                                  option.tone ? option.tone : "text-foreground/80"
+                                  option.tone
+                                    ? option.tone
+                                    : "text-foreground/80"
                                 )}
                                 role="menuitem"
                               >
@@ -365,37 +396,39 @@ export const AdminLayout = ({
 
           <main className="flex-1 space-y-8 px-4 pb-12 pt-6 md:px-8 lg:px-10">
             <div className="space-y-6">
-              <div className="rounded-3xl border border-primary/30 bg-primary/10 p-5 text-sm text-primary/90 shadow-sm">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-                      <Activity className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-                        Critical Alert
-                      </p>
-                      <p className="mt-1 text-base font-semibold text-primary">
-                        River telemetry indicates surging levels in Barangays
-                        San Roque & Centro.
-                      </p>
-                      <p className="mt-1 text-xs text-primary/70">
-                        Water rise projected to reach threshold in 32 minutes.
-                        Evacuation triggers prepped.
-                      </p>
+              {heroBanner ?? (
+                <div className="rounded-3xl border border-primary/30 bg-primary/10 p-5 text-sm text-primary/90 shadow-sm">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                        <Activity className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
+                          Critical Alert
+                        </p>
+                        <p className="mt-1 text-base font-semibold text-primary">
+                          River telemetry indicates surging levels in Barangays
+                          San Roque & Centro.
+                        </p>
+                        <p className="mt-1 text-xs text-primary/70">
+                          Water rise projected to reach threshold in 32 minutes.
+                          Evacuation triggers prepped.
+                        </p>
+                      </div>
                     </div>
+                    <button className="inline-flex items-center gap-2 rounded-full border border-primary/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary">
+                      View playbook
+                      <RefreshCcw className="h-4 w-4" />
+                    </button>
                   </div>
-                  <button className="inline-flex items-center gap-2 rounded-full border border-primary/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary">
-                    View playbook
-                    <RefreshCcw className="h-4 w-4" />
-                  </button>
                 </div>
-              </div>
+              )}
 
               <div className="flex flex-col gap-4 rounded-3xl border border-border/60 bg-card/80 p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/50">
-                    Time window
+                    {timeWindowLabel}
                   </span>
                   <div className="flex flex-wrap items-center gap-2">
                     {timeRanges.map((range) => (
@@ -416,7 +449,7 @@ export const AdminLayout = ({
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className="text-xs uppercase tracking-[0.2em] text-foreground/60">
-                    Auto-refresh
+                    {autoRefreshLabel}
                   </span>
                   <button
                     onClick={() => setIsAutoRefresh((prev) => !prev)}
@@ -431,13 +464,13 @@ export const AdminLayout = ({
                     {isAutoRefresh ? "Enabled" : "Paused"}
                   </button>
                   <span className="text-xs text-foreground/50">
-                    Every 60 seconds
+                    {autoRefreshHint}
                   </span>
                 </div>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {quickActions.map((action) => {
+                {quickActionItems.map((action) => {
                   const Icon = action.icon;
                   return (
                     <button

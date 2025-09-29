@@ -23,7 +23,8 @@ import { RequestAllocation } from "./pages-logis/5_Request";
 import { AssetRegistry } from "./pages-logis/3_Registry";
 import { ResourceManagement } from "./pages-logis/2_ResourceMngmt";
 import { DashboardLogistics } from "./pages-logis/1_LogisDash";
-import { AdminPortal } from "./pages/Admin";
+import { AdminPortal } from "./pages/19_Admin";
+import { ResponderPortal } from "./pages/18_Responder";
 
 function App() {
   return (
@@ -55,6 +56,7 @@ function App() {
           <Route path="/supply-tracking" element={<SupplyTracking />} />
           <Route path="/requested-allocation" element={<RequestAllocation />} />
           <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/responder" element={<ResponderPortal />} />
           <Route path="*" element={<h1>404 Not Found</h1>} />
         </Routes>
       </BrowserRouter>
