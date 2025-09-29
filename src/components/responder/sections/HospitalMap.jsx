@@ -9,14 +9,15 @@ import {
 } from "react-leaflet";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { StatCard } from "@/components/admin/StatCard";
+import { useResponderData } from "@/components/responder/context/ResponderDataContext";
 
-const STAGING_HUB = {
+const FALLBACK_STAGING_HUB = {
   id: "STAGING-ALPHA",
   name: "Kalinga Forward Command",
   coordinates: [14.6532, 121.0345],
 };
 
-const HOSPITALS = [
+const FALLBACK_HOSPITALS = [
   {
     id: "HSP-QUEZONMED",
     name: "Quezon City General Hospital",
@@ -82,15 +83,30 @@ const statusTokens = {
     badge: "bg-rose-500/15 text-rose-600 border border-rose-500/20",
     tone: "danger",
   },
+  default: {
+    label: "Monitoring",
+    color: "#6366f1",
+    badge: "bg-primary/15 text-primary border border-primary/20",
+    tone: "neutral",
+  },
 };
 
 export const HospitalMap = () => {
+  const { data } = useResponderData();
+
+  const stagingHub = data?.stagingHub ?? FALLBACK_STAGING_HUB;
+  const hospitals = data?.hospitals?.length
+    ? data.hospitals
+    : FALLBACK_HOSPITALS;
+
   const totalCapacity = useMemo(
     () =>
-      HOSPITALS.reduce(
+      hospitals.reduce(
         (acc, item) => {
-          acc.available += item.availableBeds;
-          acc.total += item.totalBeds;
+          const available = Number(item.availableBeds) || 0;
+          const total = Number(item.totalBeds) || 0;
+          acc.available += available;
+          acc.total += total;
           if (item.status === "accepting") acc.accepting += 1;
           if (item.status === "busy") acc.busy += 1;
           if (item.status === "divert") acc.divert += 1;
@@ -98,8 +114,22 @@ export const HospitalMap = () => {
         },
         { available: 0, total: 0, accepting: 0, busy: 0, divert: 0 }
       ),
-    []
+    [hospitals]
   );
+
+  const ensureLatLng = (input) => {
+    if (Array.isArray(input) && input.length >= 2) {
+      return [Number(input[0]), Number(input[1])];
+    }
+    if (input && typeof input === "object") {
+      const lat = "lat" in input ? Number(input.lat) : undefined;
+      const lng = "lng" in input ? Number(input.lng) : undefined;
+      if (!Number.isNaN(lat) && !Number.isNaN(lng)) {
+        return [lat, lng];
+      }
+    }
+    return null;
+  };
 
   return (
     <section className="space-y-6">
@@ -112,28 +142,28 @@ export const HospitalMap = () => {
         <StatCard
           icon={Hospital}
           label="Facilities accepting"
-          value={totalCapacity.accepting}
-          change={`${HOSPITALS.length} total`}
+          value={`${totalCapacity.accepting}`}
+          change={`${hospitals.length} total`}
           tone="success"
         />
         <StatCard
           icon={Ambulance}
           label="Facilities on divert"
-          value={totalCapacity.divert}
+          value={`${totalCapacity.divert}`}
           change={`${totalCapacity.busy} busy`}
           tone="danger"
         />
         <StatCard
           icon={Stethoscope}
           label="Beds available"
-          value={totalCapacity.available}
+          value={`${totalCapacity.available}`}
           change={`${totalCapacity.total} capacity`}
           tone="primary"
         />
         <StatCard
           icon={Phone}
           label="Hotline & VHF"
-          value={HOSPITALS.length}
+          value={`${hospitals.length}`}
           change="Ready for escalation"
           tone="neutral"
         />
@@ -142,7 +172,7 @@ export const HospitalMap = () => {
       <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="h-[24rem] overflow-hidden rounded-3xl border border-border/60 bg-card/70 shadow-sm">
           <MapContainer
-            center={[14.6535, 121.037]}
+            center={ensureLatLng(stagingHub.coordinates) ?? [14.6535, 121.037]}
             zoom={13}
             scrollWheelZoom
             className="h-full w-full"
@@ -151,12 +181,17 @@ export const HospitalMap = () => {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {HOSPITALS.map((hospital) => {
-              const token = statusTokens[hospital.status];
+            {hospitals.map((hospital) => {
+              const token =
+                statusTokens[hospital.status] ?? statusTokens.default;
+              const coords = ensureLatLng(hospital.coordinates);
+              if (!coords) {
+                return null;
+              }
               return (
                 <Fragment key={hospital.id}>
                   <CircleMarker
-                    center={[hospital.coordinates[0], hospital.coordinates[1]]}
+                    center={coords}
                     radius={12}
                     pathOptions={{
                       color: token.color,
@@ -184,7 +219,12 @@ export const HospitalMap = () => {
                     </Tooltip>
                   </CircleMarker>
                   <Polyline
-                    positions={[STAGING_HUB.coordinates, hospital.coordinates]}
+                    positions={[
+                      ensureLatLng(stagingHub.coordinates) ?? [
+                        14.6532, 121.0345,
+                      ],
+                      coords,
+                    ]}
                     pathOptions={{
                       color: token.color,
                       weight: hospital.status === "divert" ? 1 : 2,
@@ -196,7 +236,9 @@ export const HospitalMap = () => {
               );
             })}
             <CircleMarker
-              center={[STAGING_HUB.coordinates[0], STAGING_HUB.coordinates[1]]}
+              center={
+                ensureLatLng(stagingHub.coordinates) ?? [14.6532, 121.0345]
+              }
               radius={14}
               pathOptions={{
                 color: "#2563eb",
@@ -208,7 +250,7 @@ export const HospitalMap = () => {
               <Tooltip className="bg-background text-foreground" opacity={0.95}>
                 <div className="space-y-1 text-xs">
                   <p className="font-semibold text-foreground">
-                    {STAGING_HUB.name}
+                    {stagingHub.name}
                   </p>
                   <p className="text-foreground/60">Forward staging hub</p>
                 </div>
@@ -218,8 +260,8 @@ export const HospitalMap = () => {
         </div>
 
         <div className="flex flex-col gap-4">
-          {HOSPITALS.map((hospital) => {
-            const token = statusTokens[hospital.status];
+          {hospitals.map((hospital) => {
+            const token = statusTokens[hospital.status] ?? statusTokens.default;
             return (
               <article
                 key={hospital.id}
@@ -250,10 +292,13 @@ export const HospitalMap = () => {
                     <p>
                       Beds: {hospital.availableBeds} / {hospital.totalBeds}
                     </p>
-                    <p>Specialties: {hospital.specialties.join(", ")}</p>
+                    <p>
+                      Specialties:{" "}
+                      {(hospital.specialties ?? []).join(", ") || "General"}
+                    </p>
                   </div>
                   <div className="space-y-1">
-                    <p>Contact: {hospital.contact}</p>
+                    <p>Contact: {hospital.contact ?? "Radio ops"}</p>
                     <p>Route status: {token.label}</p>
                   </div>
                 </div>

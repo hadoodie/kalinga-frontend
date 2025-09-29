@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Check,
   ClipboardCheck,
@@ -8,12 +8,19 @@ import {
 } from "lucide-react";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { cn } from "@/lib/utils";
+import { useResponderData } from "@/components/responder/context/ResponderDataContext";
 
-const CHECKLISTS = [
+const ICON_CATALOG = {
+  ClipboardCheck,
+  Shield,
+  PackageCheck,
+};
+
+const FALLBACK_CHECKLISTS = [
   {
     id: "med",
     title: "Medical kit",
-    icon: ClipboardCheck,
+    icon: "ClipboardCheck",
     items: [
       "ALS kit sealed",
       "Ventilator battery > 70%",
@@ -24,13 +31,13 @@ const CHECKLISTS = [
   {
     id: "gear",
     title: "Responder gear",
-    icon: Shield,
+    icon: "Shield",
     items: ["PPE level 3", "Rope harness", "Thermal blanket", "Floodlight"],
   },
   {
     id: "log",
     title: "Vehicle & logistics",
-    icon: PackageCheck,
+    icon: "PackageCheck",
     items: [
       "Fuel > 60%",
       "Generator loaded",
@@ -41,14 +48,46 @@ const CHECKLISTS = [
 ];
 
 export const ResourceChecklist = () => {
-  const [completed, setCompleted] = useState(
-    () => new Set(["med:ALS kit sealed"])
-  );
+  const { data } = useResponderData();
 
-  const toggleItem = (listId, item) => {
+  const lists = useMemo(() => {
+    const source = data?.resourceChecklists;
+    if (Array.isArray(source) && source.length) {
+      return source.map((entry) => ({
+        ...entry,
+        icon: entry.icon ?? "ClipboardCheck",
+      }));
+    }
+    return FALLBACK_CHECKLISTS;
+  }, [data?.resourceChecklists]);
+
+  const [completed, setCompleted] = useState(new Set());
+
+  useEffect(() => {
+    setCompleted((prev) => {
+      const validKeys = new Set();
+      lists.forEach((list) => {
+        (list.items ?? []).forEach((item) => {
+          const label = typeof item === "string" ? item : item?.label;
+          if (label) {
+            validKeys.add(`${list.id}:${label}`);
+          }
+        });
+      });
+      const next = new Set();
+      prev.forEach((key) => {
+        if (validKeys.has(key)) {
+          next.add(key);
+        }
+      });
+      return next;
+    });
+  }, [lists]);
+
+  const toggleItem = (listId, label) => {
     setCompleted((prev) => {
       const next = new Set(prev);
-      const key = `${listId}:${item}`;
+      const key = `${listId}:${label}`;
       if (next.has(key)) {
         next.delete(key);
       } else {
@@ -64,7 +103,10 @@ export const ResourceChecklist = () => {
         title="Resource Checklist"
         description="Before you roll out or switch assignments, confirm your kits are ready. Tick items as you verify or restock."
         actions={
-          <button className="inline-flex items-center gap-2 rounded-full border border-primary/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary">
+          <button
+            onClick={() => setCompleted(new Set())}
+            className="inline-flex items-center gap-2 rounded-full border border-primary/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary"
+          >
             <RefreshCcw className="h-3.5 w-3.5" />
             Reset lists
           </button>
@@ -72,8 +114,9 @@ export const ResourceChecklist = () => {
       />
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {CHECKLISTS.map((list) => {
-          const Icon = list.icon;
+        {lists.map((list) => {
+          const Icon = ICON_CATALOG[list.icon] ?? ClipboardCheck;
+          const items = Array.isArray(list.items) ? list.items : [];
           return (
             <article
               key={list.id}
@@ -94,13 +137,15 @@ export const ResourceChecklist = () => {
               </div>
 
               <ul className="mt-4 space-y-2 text-sm text-foreground/70">
-                {list.items.map((item) => {
-                  const key = `${list.id}:${item}`;
+                {items.map((item) => {
+                  const label = typeof item === "string" ? item : item?.label;
+                  if (!label) return null;
+                  const key = `${list.id}:${label}`;
                   const isDone = completed.has(key);
                   return (
-                    <li key={item}>
+                    <li key={key}>
                       <button
-                        onClick={() => toggleItem(list.id, item)}
+                        onClick={() => toggleItem(list.id, label)}
                         className={cn(
                           "flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left transition",
                           isDone
@@ -118,7 +163,7 @@ export const ResourceChecklist = () => {
                         >
                           {isDone && <Check className="h-3.5 w-3.5" />}
                         </span>
-                        <span>{item}</span>
+                        <span>{label}</span>
                       </button>
                     </li>
                   );

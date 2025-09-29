@@ -11,8 +11,9 @@ import { SectionHeader } from "@/components/admin/SectionHeader";
 import { StatCard } from "@/components/admin/StatCard";
 import { formatRelativeTime } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
+import { useResponderData } from "@/components/responder/context/ResponderDataContext";
 
-const INCIDENTS = [
+const FALLBACK_INCIDENTS = [
   {
     id: "INC-4821",
     label: "Flash flood",
@@ -22,44 +23,8 @@ const INCIDENTS = [
     status: "Evacuating families",
     assignedUnits: ["Medic 12", "Rescue 4"],
     reporters: "Team Bravo",
-    lastUpdate: new Date(Date.now() - 1000 * 60 * 2),
+    lastUpdate: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
     eta: "8 min",
-  },
-  {
-    id: "INC-4818",
-    label: "Landslide watch",
-    location: "Riverbank North Access",
-    coordinates: { lat: 14.6593, lng: 121.0417 },
-    severity: "high",
-    status: "Stabilizing slope",
-    assignedUnits: ["Scout Echo"],
-    reporters: "LGU quick response",
-    lastUpdate: new Date(Date.now() - 1000 * 60 * 5),
-    eta: "On scene",
-  },
-  {
-    id: "INC-4804",
-    label: "Heat exhaustion",
-    location: "Sta. Elena Covered Court",
-    coordinates: { lat: 14.6661, lng: 121.044 },
-    severity: "moderate",
-    status: "Treating patients",
-    assignedUnits: ["Medic 7"],
-    reporters: "Scout volunteers",
-    lastUpdate: new Date(Date.now() - 1000 * 60 * 14),
-    eta: "Handover",
-  },
-  {
-    id: "INC-4799",
-    label: "Minor injury",
-    location: "San Isidro Health Post",
-    coordinates: { lat: 14.6481, lng: 121.0252 },
-    severity: "low",
-    status: "Cleared",
-    assignedUnits: ["Nurse mobile"],
-    reporters: "Barangay desk",
-    lastUpdate: new Date(Date.now() - 1000 * 60 * 26),
-    eta: "Closed",
   },
 ];
 
@@ -99,31 +64,37 @@ const filterOptions = [
 ];
 
 export const IncidentMap = () => {
+  const { data } = useResponderData();
   const [selectedFilter, setSelectedFilter] = useState("all");
+
+  const incidents = useMemo(() => {
+    return data?.incidents?.length ? data.incidents : FALLBACK_INCIDENTS;
+  }, [data?.incidents]);
 
   const filteredIncidents = useMemo(() => {
     if (selectedFilter === "all") {
-      return INCIDENTS;
+      return incidents;
     }
-    return INCIDENTS.filter((incident) => incident.severity === selectedFilter);
-  }, [selectedFilter]);
+    return incidents.filter((incident) => incident.severity === selectedFilter);
+  }, [selectedFilter, incidents]);
 
   const severitySummary = useMemo(() => {
-    return INCIDENTS.reduce(
+    return incidents.reduce(
       (acc, item) => {
-        acc[item.severity] = (acc[item.severity] ?? 0) + 1;
+        const key = item.severity ?? "low";
+        acc[key] = (acc[key] ?? 0) + 1;
         return acc;
       },
       { critical: 0, high: 0, moderate: 0, low: 0 }
     );
-  }, []);
+  }, [incidents]);
 
   const activeTeams = useMemo(() => {
     const unique = new Set(
-      INCIDENTS.flatMap((incident) => incident.assignedUnits)
+      incidents.flatMap((incident) => incident.assignedUnits ?? [])
     );
     return unique.size;
-  }, []);
+  }, [incidents]);
 
   return (
     <section className="space-y-6">
@@ -145,13 +116,13 @@ export const IncidentMap = () => {
           icon={AlertTriangle}
           label="Active reports"
           value={filteredIncidents.length}
-          change={`${INCIDENTS.length} total`}
+          change={`${incidents.length} total`}
           tone="danger"
         />
         <StatCard
           icon={Map}
           label="Critical zones"
-          value={severitySummary.critical}
+          value={severitySummary.critical ?? 0}
           change="within city"
           tone="danger"
         />
@@ -165,7 +136,7 @@ export const IncidentMap = () => {
         <StatCard
           icon={MapPin}
           label="Standing by"
-          value={severitySummary.low}
+          value={severitySummary.low ?? 0}
           change="monitoring"
           tone="success"
         />
@@ -207,12 +178,19 @@ export const IncidentMap = () => {
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             {filteredIncidents.map((incident) => {
-              const token = severityTokens[incident.severity];
+              const token =
+                severityTokens[incident.severity ?? "low"] ??
+                severityTokens.low;
               const radius = incident.severity === "critical" ? 18 : 12;
+              const coordinates = incident.coordinates ?? { lat: 0, lng: 0 };
+              const lastUpdate = incident.lastUpdate
+                ? new Date(incident.lastUpdate)
+                : undefined;
+              const units = incident.assignedUnits ?? [];
               return (
                 <CircleMarker
                   key={incident.id}
-                  center={[incident.coordinates.lat, incident.coordinates.lng]}
+                  center={[coordinates.lat, coordinates.lng]}
                   radius={radius}
                   pathOptions={{
                     color: token.color,
@@ -231,13 +209,13 @@ export const IncidentMap = () => {
                       </p>
                       <p className="text-foreground/70">{incident.location}</p>
                       <p className="text-foreground/60">
-                        Units: {incident.assignedUnits.join(", ")}
+                        Units: {units.length ? units.join(", ") : "—"}
                       </p>
                       <p className="text-foreground/50">
                         Updated{" "}
-                        {formatRelativeTime(incident.lastUpdate, {
-                          short: true,
-                        })}
+                        {lastUpdate
+                          ? formatRelativeTime(lastUpdate, { short: true })
+                          : "—"}
                       </p>
                     </div>
                   </Tooltip>
@@ -249,7 +227,12 @@ export const IncidentMap = () => {
 
         <div className="flex flex-col gap-4">
           {filteredIncidents.map((incident) => {
-            const token = severityTokens[incident.severity];
+            const token =
+              severityTokens[incident.severity ?? "low"] ?? severityTokens.low;
+            const lastUpdate = incident.lastUpdate
+              ? formatRelativeTime(incident.lastUpdate)
+              : "—";
+            const units = incident.assignedUnits ?? [];
             return (
               <article
                 key={incident.id}
@@ -279,18 +262,16 @@ export const IncidentMap = () => {
                 </div>
                 <div className="mt-3 grid gap-3 text-xs text-foreground/70 md:grid-cols-2">
                   <div className="space-y-1">
-                    <p>
-                      Last update: {formatRelativeTime(incident.lastUpdate)}
-                    </p>
-                    <p>Status: {incident.status}</p>
+                    <p>Last update: {lastUpdate}</p>
+                    <p>Status: {incident.status ?? "—"}</p>
                   </div>
                   <div className="space-y-1">
-                    <p>Assigned: {incident.assignedUnits.join(", ")}</p>
+                    <p>Assigned: {units.length ? units.join(", ") : "—"}</p>
                     <p>ETA / State: {incident.eta}</p>
                   </div>
                 </div>
                 <p className="mt-3 text-xs text-foreground/50">
-                  Source: {incident.reporters}
+                  Source: {incident.reporters ?? "—"}
                 </p>
               </article>
             );

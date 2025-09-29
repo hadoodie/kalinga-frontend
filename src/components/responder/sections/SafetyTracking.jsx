@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { StatCard } from "@/components/admin/StatCard";
 import {
@@ -8,8 +9,9 @@ import {
   Waves,
   Zap,
 } from "lucide-react";
+import { useResponderData } from "@/components/responder/context/ResponderDataContext";
 
-const SAFETY_EVENTS = [
+const FALLBACK_SAFETY_EVENTS = [
   {
     id: "SAFE-129",
     type: "geo-fence",
@@ -33,7 +35,7 @@ const SAFETY_EVENTS = [
   },
 ];
 
-const TEAM_LOCATIONS = [
+const FALLBACK_TEAM_LOCATIONS = [
   {
     name: "Team Alpha",
     coordinate: "14.6563° N, 121.0430° E",
@@ -51,6 +53,11 @@ const TEAM_LOCATIONS = [
   },
 ];
 
+const FALLBACK_INFRASTRUCTURE = {
+  floodSensors: 6,
+  generatorStatus: "Nominal",
+};
+
 const severityBadge = {
   critical: "bg-rose-500/10 text-rose-600",
   warning: "bg-amber-500/10 text-amber-600",
@@ -64,6 +71,39 @@ const statusTone = {
 };
 
 export const SafetyTracking = () => {
+  const { data } = useResponderData();
+
+  const safetyEvents = data?.safetyEvents?.length
+    ? data.safetyEvents
+    : FALLBACK_SAFETY_EVENTS;
+  const teamLocations = data?.teamLocations?.length
+    ? data.teamLocations
+    : FALLBACK_TEAM_LOCATIONS;
+  const infrastructure = data?.infrastructure ?? FALLBACK_INFRASTRUCTURE;
+
+  const summary = useMemo(() => {
+    const safeTeams = teamLocations.filter((team) => {
+      const tone = (team.status ?? "").toString().toLowerCase();
+      return (
+        tone.includes("safe") ||
+        tone.includes("patrol") ||
+        tone.includes("staging")
+      );
+    }).length;
+    const hazardAlerts = safetyEvents.filter((event) =>
+      ["critical", "warning"].includes(event.severity)
+    ).length;
+    return {
+      safeTeams,
+      hazardAlerts,
+      floodSensors:
+        infrastructure.floodSensors ?? FALLBACK_INFRASTRUCTURE.floodSensors,
+      generatorStatus:
+        infrastructure.generatorStatus ??
+        FALLBACK_INFRASTRUCTURE.generatorStatus,
+    };
+  }, [infrastructure, safetyEvents, teamLocations]);
+
   return (
     <section className="space-y-6">
       <SectionHeader
@@ -75,28 +115,32 @@ export const SafetyTracking = () => {
         <StatCard
           icon={ShieldCheck}
           label="Teams in safe zone"
-          value="3"
-          change="+1 cleared"
+          value={`${summary.safeTeams}`}
+          change={
+            summary.safeTeams
+              ? `${summary.safeTeams} confirmed`
+              : "Awaiting check-in"
+          }
           tone="success"
         />
         <StatCard
           icon={TriangleAlert}
           label="Active hazard alerts"
-          value="2"
-          change="Monitor"
+          value={`${summary.hazardAlerts}`}
+          change={summary.hazardAlerts ? "Monitor" : "Clear"}
           tone="warning"
         />
         <StatCard
           icon={Waves}
           label="Flood sensors"
-          value="6"
-          change="Stable"
+          value={`${summary.floodSensors}`}
+          change="Network stable"
           tone="primary"
         />
         <StatCard
           icon={Zap}
           label="Generator status"
-          value="Nominal"
+          value={summary.generatorStatus}
           change="100% uptime"
           tone="neutral"
         />
@@ -106,30 +150,33 @@ export const SafetyTracking = () => {
         <article className="rounded-3xl border border-border/60 bg-card/70 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-foreground">Live alerts</h3>
           <ul className="mt-4 space-y-3 text-sm text-foreground/70">
-            {SAFETY_EVENTS.map((event) => (
-              <li
-                key={event.id}
-                className="flex flex-col gap-1 rounded-2xl border border-border/60 bg-background/60 p-3"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-foreground">
-                    {event.message}
-                  </span>
-                  <span
-                    className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium ${
-                      severityBadge[event.severity]
-                    }`}
-                  >
-                    <span className="h-2 w-2 rounded-full bg-current" />
-                    {event.severity}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-xs text-foreground/50">
-                  <span>{event.id}</span>
-                  <span>{event.timestamp}</span>
-                </div>
-              </li>
-            ))}
+            {safetyEvents.map((event, index) => {
+              const badge =
+                severityBadge[event.severity] ?? "bg-primary/10 text-primary";
+              const eventId = event.id ?? `${event.type ?? "alert"}-${index}`;
+              return (
+                <li
+                  key={eventId}
+                  className="flex flex-col gap-1 rounded-2xl border border-border/60 bg-background/60 p-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-foreground">
+                      {event.message ?? "Telemetry update"}
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium ${badge}`}
+                    >
+                      <span className="h-2 w-2 rounded-full bg-current" />
+                      {event.severity ?? "info"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-foreground/50">
+                    <span>{eventId}</span>
+                    <span>{event.timestamp ?? "moments ago"}</span>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </article>
 
@@ -138,26 +185,32 @@ export const SafetyTracking = () => {
             Team positions
           </h3>
           <ul className="mt-4 space-y-3 text-sm text-foreground/70">
-            {TEAM_LOCATIONS.map((team) => (
-              <li
-                key={team.name}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/60 px-3 py-2"
-              >
-                <div>
-                  <p className="font-semibold text-foreground">{team.name}</p>
-                  <p className="text-xs text-foreground/50 flex items-center gap-2">
-                    <MapPin className="h-3.5 w-3.5" /> {team.coordinate}
-                  </p>
-                </div>
-                <span
-                  className={`text-xs font-semibold uppercase ${
-                    statusTone[team.status]
-                  }`}
+            {teamLocations.map((team, index) => {
+              const palette = statusTone[team.status] ?? "text-primary";
+              const identifier =
+                team.name ?? `${team.coordinate ?? "team"}-${index}`;
+              return (
+                <li
+                  key={identifier}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/60 px-3 py-2"
                 >
-                  {team.status}
-                </span>
-              </li>
-            ))}
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {team.name ?? "Responder"}
+                    </p>
+                    <p className="flex items-center gap-2 text-xs text-foreground/50">
+                      <MapPin className="h-3.5 w-3.5" />{" "}
+                      {team.coordinate ?? "Awaiting ping"}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs font-semibold uppercase ${palette}`}
+                  >
+                    {team.status ?? "—"}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </article>
       </div>

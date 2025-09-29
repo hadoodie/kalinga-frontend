@@ -10,8 +10,9 @@ import {
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { StatCard } from "@/components/admin/StatCard";
 import { cn } from "@/lib/utils";
+import { useResponderData } from "@/components/responder/context/ResponderDataContext";
 
-const PATIENTS = [
+const FALLBACK_PATIENTS = [
   {
     id: "PT-209",
     name: "Ramon Villarin",
@@ -63,15 +64,24 @@ const triageStyles = {
 };
 
 export const PatientInformation = () => {
+  const { data } = useResponderData();
+  const patients = data?.patients?.length ? data.patients : FALLBACK_PATIENTS;
+
   const totals = useMemo(() => {
+    const source = Array.isArray(patients) ? patients : [];
     return {
-      total: PATIENTS.length,
-      critical: PATIENTS.filter((patient) => patient.triage === "red").length,
-      observed: PATIENTS.filter((patient) =>
-        patient.destination.includes("On-site")
-      ).length,
+      total: source.length,
+      critical: source.filter((patient) => patient.triage === "red").length,
+      observed: source.filter((patient) => {
+        const destination = (patient.destination ?? "")
+          .toString()
+          .toLowerCase();
+        return (
+          destination.includes("on-site") || destination.includes("monitor")
+        );
+      }).length,
     };
-  }, []);
+  }, [patients]);
 
   return (
     <section className="space-y-6">
@@ -116,66 +126,85 @@ export const PatientInformation = () => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border/60">
-            {PATIENTS.map((patient) => (
-              <tr key={patient.id} className="hover:bg-foreground/5">
-                <td className="px-4 py-4">
-                  <div className="flex flex-col">
-                    <span className="font-semibold text-foreground">
-                      {patient.name}
-                    </span>
-                    <span className="text-xs text-foreground/60">
-                      {patient.id} • {patient.age} yrs
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-4">
-                  <div className="space-y-1">
-                    <span className="text-foreground/80">
-                      {patient.condition}
-                    </span>
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium",
-                        triageStyles[patient.triage]
-                      )}
-                    >
-                      <span className="h-2 w-2 rounded-full bg-current" />
-                      {patient.triage.toUpperCase()} triage
-                    </span>
-                    <p className="text-xs text-foreground/50">
-                      {patient.notes}
-                    </p>
-                  </div>
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-foreground/70">
-                    <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-1">
-                      <HeartPulse className="h-3 w-3" /> {patient.vitals.hr} bpm
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-1">
-                      <Droplet className="h-3 w-3" /> {patient.vitals.bp}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-1">
-                      <Thermometer className="h-3 w-3" /> SpO₂{" "}
-                      {patient.vitals.spo2}%
-                    </span>
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-foreground/70">
-                  {patient.destination}
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button className="rounded-full border border-primary/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary">
-                      Update vitals
-                    </button>
-                    <button className="rounded-full border border-border/60 px-3 py-1.5 text-xs text-foreground/70 transition hover:border-primary/40 hover:text-primary">
-                      Mark transfer
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {patients.map((patient) => {
+              const vitals = patient.vitals ?? {};
+              const triageTone =
+                triageStyles[patient.triage] ?? "bg-primary/10 text-primary";
+              const heartRate =
+                typeof vitals.hr === "number"
+                  ? `${vitals.hr} bpm`
+                  : vitals.hr ?? "—";
+              const bloodPressure = vitals.bp ?? "—";
+              const spo2 =
+                typeof vitals.spo2 === "number"
+                  ? `${vitals.spo2}%`
+                  : vitals.spo2 ?? "—";
+              const patientId = patient.id ?? patient.name ?? "—";
+
+              return (
+                <tr key={patientId} className="hover:bg-foreground/5">
+                  <td className="px-4 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-foreground">
+                        {patient.name}
+                      </span>
+                      <span className="text-xs text-foreground/60">
+                        {patientId}
+                        {patient.age ? ` • ${patient.age} yrs` : ""}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="space-y-1">
+                      <span className="text-foreground/80">
+                        {patient.condition ?? "—"}
+                      </span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium",
+                          triageTone
+                        )}
+                      >
+                        <span className="h-2 w-2 rounded-full bg-current" />
+                        {(patient.triage ?? "green")
+                          .toString()
+                          .toUpperCase()}{" "}
+                        triage
+                      </span>
+                      <p className="text-xs text-foreground/50">
+                        {patient.notes ?? "No notes yet."}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-foreground/70">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-1">
+                        <HeartPulse className="h-3 w-3" /> {heartRate}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-1">
+                        <Droplet className="h-3 w-3" /> {bloodPressure}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border/60 px-2 py-1">
+                        <Thermometer className="h-3 w-3" /> SpO₂ {spo2}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-foreground/70">
+                    {patient.destination ?? "Pending assignment"}
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button className="rounded-full border border-primary/40 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary">
+                        Update vitals
+                      </button>
+                      <button className="rounded-full border border-border/60 px-3 py-1.5 text-xs text-foreground/70 transition hover:border-primary/40 hover:text-primary">
+                        Mark transfer
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

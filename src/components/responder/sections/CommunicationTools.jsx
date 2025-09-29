@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MessageCircle,
   PhoneCall,
@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { cn } from "@/lib/utils";
+import { useResponderData } from "@/components/responder/context/ResponderDataContext";
 
-const CHANNELS = [
+const FALLBACK_CHANNELS = [
   { id: "medical", label: "Medical", description: "Vitals, triage, transport" },
   {
     id: "logistics",
@@ -21,15 +22,39 @@ const CHANNELS = [
   { id: "command", label: "Command", description: "Field command briefings" },
 ];
 
-const PRESET_MESSAGES = [
+const FALLBACK_PRESET_MESSAGES = [
   "Arrived on scene, beginning assessment.",
   "Requesting additional medics for mass casualty.",
   "Transport ready, patient stabilized and en route.",
 ];
 
 export const CommunicationTools = () => {
-  const [activeChannel, setActiveChannel] = useState(CHANNELS[0].id);
+  const { data } = useResponderData();
+
+  const channels = data?.comms?.channels?.length
+    ? data.comms.channels
+    : FALLBACK_CHANNELS;
+  const presetMessages = data?.comms?.presetMessages?.length
+    ? data.comms.presetMessages
+    : FALLBACK_PRESET_MESSAGES;
+  const hotlines = data?.comms?.hotlines?.length
+    ? data.comms.hotlines
+    : [
+        { id: "command", label: "Command desk", value: "*201" },
+        { id: "medical", label: "Medical director", value: "*450" },
+        { id: "safety", label: "Safety & security", value: "*911" },
+      ];
+
+  const [activeChannel, setActiveChannel] = useState(
+    () => channels[0]?.id ?? "medical"
+  );
   const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    if (!channels.some((channel) => channel.id === activeChannel)) {
+      setActiveChannel(channels[0]?.id ?? "");
+    }
+  }, [channels, activeChannel]);
 
   return (
     <section className="space-y-6">
@@ -42,7 +67,7 @@ export const CommunicationTools = () => {
         <aside className="rounded-3xl border border-border/60 bg-card/70 p-4 shadow-sm">
           <h3 className="text-sm font-semibold text-foreground">Channels</h3>
           <div className="mt-4 space-y-2">
-            {CHANNELS.map((channel) => (
+            {channels.map((channel) => (
               <button
                 key={channel.id}
                 onClick={() => setActiveChannel(channel.id)}
@@ -63,9 +88,13 @@ export const CommunicationTools = () => {
 
           <div className="mt-4 rounded-2xl bg-primary/10 p-3 text-xs text-primary/80">
             <p className="font-semibold uppercase tracking-[0.2em]">Hotlines</p>
-            <p className="mt-2">• Command desk: *201</p>
-            <p>• Medical director: *450</p>
-            <p>• Safety & security: *911</p>
+            <div className="mt-2 space-y-1">
+              {hotlines.map((entry) => (
+                <p key={entry.id}>
+                  • {entry.label}: {entry.value}
+                </p>
+              ))}
+            </div>
           </div>
         </aside>
 
@@ -76,7 +105,8 @@ export const CommunicationTools = () => {
                 {activeChannel.toUpperCase()} CHANNEL
               </p>
               <h3 className="text-lg font-semibold text-foreground">
-                {CHANNELS.find((chan) => chan.id === activeChannel)?.label}
+                {channels.find((chan) => chan.id === activeChannel)?.label ??
+                  "Channel"}
               </h3>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -97,7 +127,7 @@ export const CommunicationTools = () => {
               timestamped and relayed to the command log automatically.
             </p>
             <div className="flex flex-wrap gap-2">
-              {PRESET_MESSAGES.map((preset) => (
+              {presetMessages.map((preset) => (
                 <button
                   key={preset}
                   onClick={() => setMessage(preset)}

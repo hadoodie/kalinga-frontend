@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Activity,
   ClipboardList,
+  CloudSun,
   FileText,
   HeartPulse,
   Hospital,
@@ -21,6 +22,8 @@ import { ResourceChecklist } from "@/components/responder/sections/ResourceCheck
 import { SafetyTracking } from "@/components/responder/sections/SafetyTracking";
 import { ResponderReporting } from "@/components/responder/sections/ResponderReporting";
 import { HospitalMap } from "@/components/responder/sections/HospitalMap";
+import { WeatherTelemetry } from "@/components/responder/sections/WeatherTelemetry";
+import { ResponderDataProvider } from "@/components/responder/context/ResponderDataContext";
 
 const responderSections = [
   {
@@ -36,6 +39,14 @@ const responderSections = [
     description: "Mapped view of live reports and committed responder teams.",
     icon: Map,
     component: IncidentMap,
+  },
+  {
+    id: "weather-telemetry",
+    title: "Weather & Telemetry",
+    description:
+      "Hyperlocal weather, rainfall, and air quality telemetry for field decisions.",
+    icon: CloudSun,
+    component: WeatherTelemetry,
   },
   {
     id: "status",
@@ -168,13 +179,15 @@ export const ResponderPortal = () => {
   }
 
   return (
-    <ResponderLayout
-      sections={responderSections}
-      activeSectionId={activeSection}
-      onSectionChange={setActiveSection}
-      onLogout={handleLogout}
-    >
-      <ActiveComponent />
-    </ResponderLayout>
+    <ResponderDataProvider>
+      <ResponderLayout
+        sections={responderSections}
+        activeSectionId={activeSection}
+        onSectionChange={setActiveSection}
+        onLogout={handleLogout}
+      >
+        <ActiveComponent />
+      </ResponderLayout>
+    </ResponderDataProvider>
   );
 };
