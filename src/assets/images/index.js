@@ -26,10 +26,12 @@ import cannedIconImg from './cannedIcon.png';
 import medkitIconImg from "./medkitIcon.png";
 import clockIconImg from "./clockIcon.png";
 import hospitalLogoImg from "./hospitalLogo.png";
+import stormImg from "./storm.png"
 
 export {
     emergencyButton,
     hospitalLogoImg,
+    stormImg,
     carIconImg,
     walkIconImg,
     alertImg, 

@@ -14,6 +14,13 @@ import { ForgotPassword } from "./pages/2_ForgotPassword";
 import { Dashboard } from "./pages/11_Dashboard";
 import { Weather } from "./pages/12_Weather";
 import { EvacuationCenter } from "./pages/13_EvacuationCenter";
+import { Notifications } from "./pages/14_Notification";
+import { ResidentSettings } from "./pages/15_Settings";
+import { Profile } from "./pages/16_Profile";
+import { MedicalFacilities } from "./pages/17_Hospital";
+import { SupplyTracking } from "./pages-logis/4_Supply";
+import { RequestAllocation } from "./pages-logis/5_Request";
+import { AssetRegistry } from "./pages-logis/3_Registry";
 
 
 function App() {
@@ -36,6 +43,13 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />}/>
           <Route path="/weather" element={<Weather />}/>
           <Route path="/evacuation-center" element={<EvacuationCenter />}/>
+          <Route path="/notifications" element={<Notifications />}/>
+          <Route path="/settings" element={<ResidentSettings />}/>
+          <Route path="/profile" element={<Profile />}/>
+          <Route path="/medical-facilities" element={<MedicalFacilities />}/>
+          <Route path="/asset-registry" element={<AssetRegistry />}/>
+          <Route path="/supply-tracking" element={<SupplyTracking />}/>
+          <Route path="/requested-allocation" element={<RequestAllocation />}/>
           <Route path="*" element={<h1>404 Not Found</h1>} />
         </Routes>
       </BrowserRouter>

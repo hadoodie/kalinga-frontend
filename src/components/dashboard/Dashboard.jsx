@@ -15,6 +15,9 @@ import { useNavigate } from "react-router-dom";
 
 export default function Dashboard() {
 
+  const [isOn, setIsOn] = useState(true);
+
+
   const navigate = useNavigate();
 
   const [selected, setSelected] = useState("All Centers");
@@ -177,20 +180,20 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="flex-1 font-sans w-full p-2 md:p-4 lg:w-[1200px] lg:p-0 mx-auto">
+    <div className="text-left flex-1 font-sans w-full p-2 md:p-4 lg:w-[1200px] lg:p-0 mx-auto">
       {/* Top header bar */}
       <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-[repeat(13,85px)] gap-4 bg-none">
-        <div className="col-span-1 lg:col-start-1 lg:col-end-7 items-center">
-          <h1 className="mb-0 text-left font-bold text-3xl md:text-4xl lg:text-[40px] ml-1 md:ml-4 lg:ml-[4px]">Need Help Now?</h1>
+        <div className="mb-0 col-span-1 lg:col-start-1 lg:col-end-7 items-center">
+          <h1 className="mb-0 text-left font-bold text-3xl md:text-4xl lg:text-[50px] ml-1 md:ml-4 lg:ml-[4px]">Need Help Now?</h1>
         </div>
         <div className="col-span-1 lg:col-start-7 lg:col-end-13 bg-white justify-center items-center text-center align-center p-2 rounded-xl md:rounded-3xl lg:rounded-none">
-          <span className="text-xl md:text-2xl lg:text-[35px] ml-0 font-bold text-red-700">ALERT: </span>
+          <span className="text-xl md:text-2xl lg:text-[35px] ml-0">ALERT: </span>
           <strong className="text-xl md:text-2xl lg:text-[35px]">{data.condition}</strong>
         </div>
       </div>
 
       {/* Contents */}
-      <section className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-[repeat(13,85px)] lg:grid-rows-[repeat(13,41px)] gap-4 mt-4">
+      <section className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-[repeat(13,85px)] lg:grid-rows-[repeat(13,41px)] gap-4">
         {/* Date and Day */}
         <div className="col-span-1 lg:row-start-3 lg:row-end-4 lg:col-start-1 lg:col-end-7 ml-2 md:ml-4 lg:ml-5 text-left rounded-xl">
           <span className="text-xl md:text-2xl lg:text-[35px] font-bold text-[#1A4718]">{data.date}</span>
@@ -198,9 +201,7 @@ export default function Dashboard() {
         </div>
 
         {/* Send Alert Button */}
-        <button 
-        onClick={() => navigate("/report-emergency")}
-        className="col-span-1 lg:row-start-1 lg:row-end-3 lg:col-start-1 lg:col-end-4 bg-[#1A4718] mt-2 md:mt-5 rounded-[50px] border-none shadow-none outline-none flex flex-col items-center justify-center gap-1 p-3 transition-all duration-200 ease-in-out hover:bg-[#f0f0f0] hover:shadow-inner hover:translate-y-1 md:hover:translate-y-3">
+        <button className="col-span-1 lg:row-start-1 lg:row-end-3 lg:col-start-1 lg:col-end-4 bg-[#1A4718] mt-2 md:mt-5 rounded-[50px] border-none shadow-none outline-none flex flex-col items-center justify-center gap-1 p-3 hover:bg-[#f0f0f0] hover:shadow-inner">
           <div className="flex flex-col items-center p-1 text-white hover:text-[#1A4718]">
             <h3 className="font-bold text-lg md:text-xl lg:text-[25px] mb-0">SEND ALERT</h3>
             <p className="font-light text-xs md:text-sm lg:text-[15px] mt-0">Call for Action</p>
@@ -208,7 +209,7 @@ export default function Dashboard() {
         </button>
 
         {/* Send Message Button */}
-        <button className="col-span-1 lg:row-start-1 lg:row-end-3 lg:col-start-4 lg:col-end-7 bg-[#1A4718] mt-2 md:mt-5 rounded-[50px] border-none shadow-none outline-none flex flex-col items-center justify-center gap-1 p-3 transition-all duration-200 ease-in-out hover:bg-[#f0f0f0] hover:shadow-inner hover:translate-y-1 md:hover:translate-y-3">
+        <button className="col-span-1 lg:row-start-1 lg:row-end-3 lg:col-start-4 lg:col-end-7 bg-[#1A4718] mt-2 md:mt-5 rounded-[50px] border-none shadow-none outline-none flex flex-col items-center justify-center gap-1 p-3 hover:bg-[#f0f0f0] hover:shadow-inner">
           <div className="flex flex-col items-center p-1 text-white hover:text-[#1A4718]">
             <h3 className="font-bold text-lg md:text-xl lg:text-[25px] mb-0">SEND MESSAGE</h3>
             <p className="font-light text-xs md:text-sm lg:text-[15px]">Communicate Immediately</p>
@@ -216,13 +217,18 @@ export default function Dashboard() {
         </button>
 
         {/* Mark Safe Card */}
-      <div className="col-span-1 lg:row-start-1 lg:row-end-3 lg:col-start-10 lg:col-end-13 bg-[#1A4718] text-white mb-0 mt-5 md:mt-5 rounded-xl flex flex-col items-start justify-center gap-0 p-4 text-left">
-        <div className="flex flex-row items-center justify-start gap-2">
-            <h3 className="text-lg md:text-xl lg:text-2xl mb-0 mt-0">Mark yourself </h3>
-            <button className="text-[#f0d003] border-none text-xl md:text-3xl lg:text-[25px] font-bold cursor-pointer w-[90px] transition-transform duration-200 hover:scale-125 md:hover:scale-145 ml-[-20px]"> SAFE</button>
+      <div className="col-span-1 lg:row-start-1 lg:row-end-3 lg:col-start-10 lg:col-end-13 bg-[#1A4718] text-white mb-0 mt-1  md:mt-5 rounded-xl rounded-[30px] flex flex-col gap-0 p-3 text-left">
+        <div className="flex flex-row items-center justify-between">
+          <div className="flex flex-col">
+            <h3 className="text-lg md:text-xl lg:text-[15px] mb-0 mt-0">Mark yourself</h3>
+            <p className="text-white text-xl md:text-3xl lg:text-[20px] font-bold">SAFE!</p>
+          </div>
+            <button onClick={() => setIsOn(!isOn)} className={`w-[80px] h-[40px] rounded-full flex items-center px-1 transition-colors duration-300 relative ${isOn ? "bg-[#f0d003]" : "bg-[#163a14]" }`}>
+              <div className={`w-[32px] h-[32px] bg-white rounded-full shadow-md transition-transform duration-300 ${ isOn ? "translate-x-[40px]" : "translate-x-0"  }`}></div>
+            </button>
         </div>
-        <p className="font-light text-sm md:text-base lg:text-[10px] mt-0 lg:mb-[10px]">Update your status so emergency teams can prioritize others in need.</p>
-    </div>
+        <p className="font-light text-sm md:text-base lg:text-[9px] mt-1 lg:mb-[10px]">Update your status so emergency teams can prioritize others in need.</p>
+      </div>
 
         {/* Evacuation/Medical Facilities Card */}
         <div className="col-span-1 lg:row-start-4 lg:row-end-13 lg:col-start-1 lg:col-end-7 bg-white rounded-xl p-4 md:p-6 lg:p-0">
@@ -344,16 +350,16 @@ export default function Dashboard() {
         </div>
 
         {/* Water Level Card */}
-        <div className="col-span-1 lg:row-start-6 lg:row-end-8 lg:col-start-10 lg:col-end-13 bg-white rounded-xl p-4 ">
+        <div className="col-span-1 lg:row-start-6 lg:row-end-8 lg:col-start-10 lg:col-end-13 bg-white rounded-xl p-3">
           <div className="flex flex-row justify-between">
-            <p className={`text-xs md:text-sm lg:text-[11px] font-bold ${levelColor}`}>{severityLabel} level</p>
+            <p className={`text-xs md:text-sm lg:text-[11px] mt-0 font-bold ${levelColor}`}>{severityLabel} level</p>
             <p className="text-xs md:text-sm lg:text-[11px] font-light">{waterLevel.time}</p>
           </div>
-          <h3 className="text-base md:text-lg lg:text-[17px] font-bold mb-1 text-left">Water Level</h3>
+          <h3 className="text-base md:text-lg lg:text-[17px] font-bold">Water Level</h3>
           <div className="flex flex-row items-center justify-center">
             <h1 className="text-3xl md:text-4xl lg:text-[33px] font-bold">{waterLevel.value}</h1>
             <div className="flex flex-col ml-2">
-              <p className="text-xs md:text-sm lg:text-[12px] mb-0.5 mt-[2px]">{waterLevel.pointlevel}</p>
+              <p className="text-xs md:text-sm lg:text-[12px] mb-0 mt-[2px]">{waterLevel.pointlevel}</p>
               <p className="font-bold text-sm md:text-base lg:text-[14px] mt-0"> {waterLevel.unit}</p>
             </div>
           </div>

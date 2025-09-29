@@ -2,18 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
-  Building2,
-  Cloud,
+  ListPlus,
+  PackageOpen,
   Menu,
-  MessageSquare,
   LogOut,
   Settings,
-  Hospital,
-  Siren,
+  FolderInput,
+  Archive,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
 
-export default function Sidebar() {
+export default function LogisticSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
@@ -32,30 +31,26 @@ export default function Sidebar() {
 
   const items = [
     { label: "Dashboard", 
-      path: "/dashboard", 
+      path: "/logistic-dashboard", 
       icon: <Home size={25} /> 
     },
-    { label: "Report Emergency", 
-      path: "/report-emergency", 
-      icon: <Siren size={25} /> 
+    { label: "Resource Management", 
+      path: "/resource-management", 
+      icon: <Archive size={25} /> 
     },
     {
-      label: "Medical Facilities",
-      path: "/medical-facilities",
-      icon: <Hospital size={25} />,
+      label: "Asset Registry",
+      path: "/asset-registry",
+      icon: <FolderInput size={25} />,
     },
     {
-      label: "Evacuation Centers",
-      path: "/evacuation-center",
-      icon: <Building2 size={25} />,
+      label: "Supply Tracking",
+      path: "/supply-tracking",
+      icon: <ListPlus size={25} />,
     },
-    { label: "Weather", 
-      path: "/weather", 
-      icon: <Cloud size={25} /> 
-    },
-    { label: "Messages", 
-      path: "/emergency-chat", 
-      icon: <MessageSquare size={25} /> 
+    { label: "Requested Allocation", 
+      path: "/requested-allocation", 
+      icon: <PackageOpen size={25} /> 
     },
   ];
 
