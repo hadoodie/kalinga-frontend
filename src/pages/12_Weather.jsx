@@ -1,7 +1,7 @@
 import Sidebar from "../components/dashboard/Sidebar";
-import WeatherSection from "../components/dashboard/Weather";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
+import WeatherSection from "../components/dashboard/Weather";
 
 export const Weather = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -18,12 +18,12 @@ export const Weather = () => {
         }`}
       >
         {/* Navbar */}
-        <div className="sticky top-0 z-10 bg-background">
+        <div className="sticky z-10 bg-background">
           <NavbarB />
         </div>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-4 mt-15 mb-5">
+        <main className="flex-1 overflow-y-auto p-4 mb-5">
           <WeatherSection />
         </main>
       </div>

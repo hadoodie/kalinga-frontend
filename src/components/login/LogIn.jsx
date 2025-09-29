@@ -21,7 +21,7 @@ export default function LogInPage() {
       });
 
       setIsSubmitting(false);
-      navigate("/dashboard");
+      navigate("/supply-tracking");
     }, 1500);
   };
 

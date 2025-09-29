@@ -18,7 +18,7 @@ export const EmergencyReport = () => {
 
   return (
     <div className="h-screen w-screen bg-background flex items-center justify-center">
-      <section className="flex items-center justify-center w-full h-full p-8 box-border">
+      <section className="flex items-center justify-center w-full h-full box-border">
         <div className="text-center max-w-3xl w-full text-primary">
           <h4 className="text-[1.3rem] font-bold m-0">REPORT</h4>
           <h1 className="text-5xl font-extrabold my-2">EMERGENCY</h1>
