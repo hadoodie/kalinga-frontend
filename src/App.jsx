@@ -21,6 +21,8 @@ import { MedicalFacilities } from "./pages/17_Hospital";
 import { SupplyTracking } from "./pages-logis/4_Supply";
 import { RequestAllocation } from "./pages-logis/5_Request";
 import { AssetRegistry } from "./pages-logis/3_Registry";
+import { ResourceManagement } from "./pages-logis/2_ResourceMngmt";
+import { DashboardLogistics } from "./pages-logis/1_LogisDash";
 
 
 function App() {
@@ -47,6 +49,8 @@ function App() {
           <Route path="/settings" element={<ResidentSettings />}/>
           <Route path="/profile" element={<Profile />}/>
           <Route path="/medical-facilities" element={<MedicalFacilities />}/>
+          <Route path="/logistic-dashboard" element={<DashboardLogistics />}/>
+          <Route path="/resource-management" element={<ResourceManagement />}/>
           <Route path="/asset-registry" element={<AssetRegistry />}/>
           <Route path="/supply-tracking" element={<SupplyTracking />}/>
           <Route path="/requested-allocation" element={<RequestAllocation />}/>
