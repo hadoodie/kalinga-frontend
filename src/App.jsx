@@ -23,8 +23,8 @@ import { RequestAllocation } from "./pages-logis/5_Request";
 import { AssetRegistry } from "./pages-logis/3_Registry";
 import { ResourceManagement } from "./pages-logis/2_ResourceMngmt";
 import { DashboardLogistics } from "./pages-logis/1_LogisDash";
-import { AdminPortal } from "./pages/15_Admin";
-import { ResponderPortal } from "./pages/14_Responder";
+import { AdminPortal } from "./pages/19_Admin";
+import { ResponderPortal } from "./pages/18_Responder";
 
 function App() {
   return (
