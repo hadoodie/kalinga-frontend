@@ -439,21 +439,25 @@ export const DashboardSection = () => {
         </div>
         <div className="mt-6 divide-y divide-border/60 text-sm">
           {incidents.map((incident) => {
-            const statusTone = statusPills[incident.status] ?? "bg-primary/10 text-primary";
+            const statusTone =
+              statusPills[incident.status] ?? "bg-primary/10 text-primary";
             return (
               <div
                 key={incident.id}
                 className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between"
               >
                 <div>
-                  <p className="font-semibold text-foreground">{incident.type}</p>
+                  <p className="font-semibold text-foreground">
+                    {incident.type}
+                  </p>
                   <p className="text-xs text-foreground/60">
                     {incident.id} • {incident.barangay}
                   </p>
                 </div>
                 <div className="flex flex-col justify-between gap-2 text-xs text-foreground/60 md:flex-row md:items-center md:gap-6">
                   <div className="flex items-center gap-2">
-                    <Users className="h-3.5 w-3.5" /> {incident.teams} teams on-site
+                    <Users className="h-3.5 w-3.5" /> {incident.teams} teams
+                    on-site
                   </div>
                   <span className="flex items-center gap-2">
                     <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />

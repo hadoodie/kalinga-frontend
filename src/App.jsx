@@ -14,7 +14,8 @@ import { ForgotPassword } from "./pages/2_ForgotPassword";
 import { Dashboard } from "./pages/11_Dashboard";
 import { Weather } from "./pages/12_Weather";
 import { EvacuationCenter } from "./pages/13_EvacuationCenter";
-import { AdminPortal } from "./pages/Admin";
+import { AdminPortal } from "./pages/15_Admin";
+import { ResponderPortal } from "./pages/14_Responder";
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
           <Route path="/weather" element={<Weather />} />
           <Route path="/evacuation-center" element={<EvacuationCenter />} />
           <Route path="/admin" element={<AdminPortal />} />
+          <Route path="/responder" element={<ResponderPortal />} />
           <Route path="*" element={<h1>404 Not Found</h1>} />
         </Routes>
       </BrowserRouter>
