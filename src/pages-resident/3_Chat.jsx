@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChatReport } from "../components/emergency-sos/Chat";
 import { NavbarB } from "../components/Navbar_2";
-import Sidebar from "../components/dashboard/Sidebar";
+import Sidebar from "../components/Sidebar";
 import ChatSidebar from "../components/emergency-sos/ChatSidebar";
 
 export const EmergencyChat = () => {

@@ -1,9 +1,9 @@
-import Dash from "../components/dashboard/Dashboard";
-import Sidebar from "../components/dashboard/Sidebar";
+import Sidebar from "../components/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
+import Notifs from "../components/Notifications";
 
-export const Dashboard = () => {
+export const Notifications = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -11,20 +11,20 @@ export const Dashboard = () => {
       {/* Sidebar */}
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      {/* Main content wrapper */}
+      {/* Main content */}
       <div
         className={`flex flex-col flex-1 transition-all duration-300 ${
           collapsed ? "wl-16" : "wl-64"
         }`}
       >
-        {/* Navbar*/}
-        <div className="sticky z-10 bg-background">
+        {/* Navbar */}
+        <div className="sticky top-0 z-10 bg-background">
           <NavbarB />
         </div>
 
         {/* Content area */}
-        <main className="pt-5 flex-1 overflow-y-auto ">
-          <Dash />
+        <main className="flex-1">
+          <Notifs />
         </main>
       </div>
     </div>

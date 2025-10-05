@@ -730,4 +730,4 @@ function Hospital3({ hospital }) {
       </div>
     </>
   );
-}
+} 

@@ -1,9 +1,9 @@
-import Hospital from "../components/dashboard/Hospitals";
-import Sidebar from "../components/dashboard/Sidebar";
+import Sidebar from "../components/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
+import ResidentProfile from "../components/Profile";
 
-export const MedicalFacilities = () => {
+export const Profile = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -23,8 +23,8 @@ export const MedicalFacilities = () => {
         </div>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-4 mb-5">
-          <Hospital />
+        <main className="flex-1 overflow-y-auto p-2">
+          <ResidentProfile />
         </main>
       </div>
     </div>

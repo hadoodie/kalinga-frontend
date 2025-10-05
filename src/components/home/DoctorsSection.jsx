@@ -4,19 +4,64 @@ import { motion } from "framer-motion";
 
 const doctors = [
   // Physicians
-  { name: "Dr. Maria Santos", type: "Physician", category: "physicians", photo: "/images/doctors/maria-santos.jpg" },
-  { name: "Dr. Juan Dela Cruz", type: "Physician", category: "physicians", photo: "/images/doctors/juan-dela-cruz.jpg" },
-  { name: "Dr. Sunshine Malibago", type: "Physician", category: "physicians", photo: "/images/doctors/sunshine-malibago.jpg" },
+  {
+    name: "Dr. Maria Santos",
+    type: "Physician",
+    category: "physicians",
+    photo: "/images/doctors/maria-santos.jpg",
+  },
+  {
+    name: "Dr. Juan Dela Cruz",
+    type: "Physician",
+    category: "physicians",
+    photo: "/images/doctors/juan-dela-cruz.jpg",
+  },
+  {
+    name: "Dr. Sunshine Malibago",
+    type: "Physician",
+    category: "physicians",
+    photo: "/images/doctors/sunshine-malibago.jpg",
+  },
 
   // Nurses
-  { name: "Nurse Ana Lopez", type: "Nurse", category: "nurses", photo: "/images/nurses/ana-lopez.jpg" },
-  { name: "Nurse Mark Reyes", type: "Nurse", category: "nurses", photo: "/images/nurses/mark-reyes.jpg" },
-  { name: "Nurse Elpidio Ramos", type: "Nurse", category: "nurses", photo: "/images/nurses/elpidio-ramos.jpg" },
+  {
+    name: "Nurse Ana Lopez",
+    type: "Nurse",
+    category: "nurses",
+    photo: "/images/nurses/ana-lopez.jpg",
+  },
+  {
+    name: "Nurse Mark Reyes",
+    type: "Nurse",
+    category: "nurses",
+    photo: "/images/nurses/mark-reyes.jpg",
+  },
+  {
+    name: "Nurse Elpidio Ramos",
+    type: "Nurse",
+    category: "nurses",
+    photo: "/images/nurses/elpidio-ramos.jpg",
+  },
 
   // EMTs
-  { name: "EMT Carlo Mendoza", type: "EMT", category: "EMTs", photo: "/images/emts/carlo-mendoza.jpg" },
-  { name: "EMT Sarah Lim", type: "EMT", category: "EMTs", photo: "/images/emts/sarah-lim.jpg" },
-  { name: "EMT Gen Ryv Cachero", type: "EMT", category: "EMTs", photo: "/images/emts/gen-ryv-cachero.jpg" },
+  {
+    name: "EMT Carlo Mendoza",
+    type: "EMT",
+    category: "EMTs",
+    photo: "/images/emts/carlo-mendoza.jpg",
+  },
+  {
+    name: "EMT Sarah Lim",
+    type: "EMT",
+    category: "EMTs",
+    photo: "/images/emts/sarah-lim.jpg",
+  },
+  {
+    name: "EMT Gen Ryv Cachero",
+    type: "EMT",
+    category: "EMTs",
+    photo: "/images/emts/gen-ryv-cachero.jpg",
+  },
 ];
 
 const categories = ["all", "physicians", "nurses", "EMTs"];

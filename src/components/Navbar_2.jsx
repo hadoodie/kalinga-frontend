@@ -141,7 +141,9 @@ export const NavbarB = ({
                     <p className="text-sm font-semibold text-gray-800">
                       {userName}
                     </p>
-                    <p className="text-left text-xs text-gray-500">{userRole}</p>
+                    <p className="text-left text-xs text-gray-500">
+                      {userRole}
+                    </p>
                   </div>
                 </div>
 
