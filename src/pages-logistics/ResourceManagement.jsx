@@ -1,9 +1,10 @@
-import Registry from "../components/logis-dashboard/AssetRegis";
-import LogisticSidebar from "../components/logis-dashboard/LogiSide";
+import { Footer } from "../components/Footer";
+import LogisticSidebar from "../components/logistics/LogiSide";
+import ResourceMngmt from "../components/logistics/ResourceMngmt";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
 
-export const AssetRegistry = () => {
+export const ResourceManagement = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -23,8 +24,9 @@ export const AssetRegistry = () => {
         </div>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto ">
-          <Registry />
+        <main className="flex-1 overflow-y-auto">
+          <ResourceMngmt />
+          <Footer />
         </main>
       </div>
     </div>

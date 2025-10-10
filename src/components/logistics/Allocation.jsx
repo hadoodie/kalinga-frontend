@@ -59,10 +59,10 @@ export function Allocation () {
   );
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 space-y-6 bg-gray-100 min-h-screen">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 bg-background min-h-screen">
       {/* HEADER */}
       <header className="flex flex-col md:flex-row justify-between items-center md:items-center p-4 bg-white rounded-xl shadow-lg">
-        <h1 className="text-3xl font-extrabold text-gray-800">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
           Requested Allocation Management
         </h1>
         <button className="mt-3 md:mt-0 bg-gray-200 text-gray-700 hover:bg-gray-300 font-semibold py-2 px-4 rounded-lg transition flex items-center">

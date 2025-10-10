@@ -1,15 +1,17 @@
-import LogisticsDashboard from "../components/logis-dashboard/LogisDash";
-import LogisticSidebar from "../components/logis-dashboard/LogiSide";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
+import PatientSidebar from "../components/patients/Sidebar";
+import { Footer } from "../components/Footer";
+import PatientDash from "../components/patients/Dashboard";
 
-export const DashboardLogistics = () => {
+
+export const PatientDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="h-screen flex bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <LogisticSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
       {/* Main content wrapper */}
       <div
@@ -24,7 +26,8 @@ export const DashboardLogistics = () => {
 
         {/* Content area */}
         <main className="flex-1 overflow-y-auto ">
-          <LogisticsDashboard />
+          <PatientDash />
+          <Footer />
         </main>
       </div>
     </div>

@@ -31,7 +31,7 @@ export default function LogisticSidebar() {
 
   const items = [
     { label: "Dashboard", 
-      path: "/logistic-dashboard", 
+      path: "/logistics-dashboard", 
       icon: <Home size={25} /> 
     },
     { label: "Resource Management", 
@@ -131,22 +131,33 @@ export default function LogisticSidebar() {
           ))}
         </ul>
 
-        {/* Logout pinned at bottom */}
-        <div className="p-2 grid grid-cols-2">
+
+        {/* Settings & Logout pinned at bottom */}
+        <div className="p-2 space-y-2">
+          {/* Settings */}
           <div
-            className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
+            className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
+              ${collapsed ? "justify-center" : "gap-2"}`}
+            onClick={() => navigate("/logistics-settings")}
+          >
+            {collapsed ? (
+              <Settings size={25} />
+            ) : (
+              <span>Settings</span>
+            )}
+          </div>
+
+          {/* Logout */}
+          <div
+            className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
               ${collapsed ? "justify-center" : "gap-2"}`}
             onClick={handleLogout}
           >
-            <LogOut />
-            {!collapsed && <span>Log Out</span>}
-          </div>
-          <div
-            className={`flex justify-end cursor-pointer px-2 py-2 rounded-md transition-all duration-300
-              ${collapsed ? "justify-center" : "gap-2"}`}
-            onClick={handleSettings}
-          >
-            <Settings size={25} />
+            {collapsed ? (
+              <LogOut size={25} />
+            ) : (
+              <span>Log Out</span>
+            )}
           </div>
         </div>
       </aside>
@@ -173,6 +184,22 @@ export default function LogisticSidebar() {
                 <span>{item.label}</span>
               </div>
             ))}
+            {/* Settings and Logout */}
+            <div
+              className="flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
+              onClick={() => navigate("/settings")}
+            >
+              <Settings size={20} />
+              <span>Settings</span>
+            </div>
+
+            <div
+              className="flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
+              onClick={handleLogout}
+            >
+              <LogOut size={20} />
+              <span>Log Out</span>
+            </div>
           </div>
         )}
       </div>

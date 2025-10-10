@@ -204,9 +204,9 @@ export default function LogisticsDashboard() {
     const [shipments] = useState(MOCK_SHIPMENTS);
 
     return (
-        <div className="min-h-screen bg-gray-50 font-sans p-4 md:p-8">
+        <div className="min-h-screen bg-background font-sans p-4 md:p-8">
             <header className="mb-6 p-4 bg-white rounded-xl shadow-md text-center md:text-left">
-                <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Logistics Dashboard</h1>
+                <h1 className="text-3xl md:text-4xl font-extrabold text-primary">Logistics Dashboard</h1>
                 <p className="text-gray-500 text-sm md:text-base mt-1">Real-time resource allocation & tracking</p>
             </header>
 

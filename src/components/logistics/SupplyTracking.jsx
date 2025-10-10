@@ -124,7 +124,7 @@ export default function Supply() {
     <div className="bg-background min-h-screen p-4 md:p-6 space-y-6 font-inter">
       {/* HEADER */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-white rounded-xl shadow-lg">
-        <h1 className="text-3xl font-extrabold text-gray-800">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
           Supply Tracking 
         </h1>
         <div className="flex items-center space-x-3 mt-3 md:mt-0">

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 const ASSET_DATA = [
   { id: "V-101", type: "SUV", category: "Vehicle", capacity: "6 Pax", status: "Active", location: "Sector 3 Base", personnel: "Jane Doe (Driver)" },
@@ -68,17 +69,18 @@ export default function Registry() {
   };
 
   return (
-    <div className="text-primary min-h-screen p-4 md:p-8 bg-gray-100 font-sans">
+    <div className="text-primary min-h-screen p-4 md:p-8 bg-background font-sans">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="mb-8 flex flex-wrap justify-between items-center gap-3 p-4 bg-white rounded-xl shadow-lg">
-          <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Asset Registry</h1>
+          <h1 className="text-3xl md:text-4xl font-extrabold text-primary">Asset Registry</h1>
           <button
-            onClick={refreshData}
-            className="px-4 py-2 bg-highlight hover:bg-yellow-500 text-white font-medium rounded-lg shadow-lg transition duration-200"
-          >
-            Refresh Data
-          </button>
+          onClick={() => console.log("Refreshing Data...")} // Placeholder for refresh action
+          className="flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-semibold rounded-lg shadow-md transition duration-200"
+        >
+          <RefreshCw className="h-4 w-4 mr-2"/>
+          Refresh Data
+        </button>
         </header>
 
         {/* Metrics */}
@@ -102,7 +104,7 @@ export default function Registry() {
         </section>
 
         {/* Table */}
-        <section className="bg-white p-6 rounded-xl shadow-2xl">
+        <section className="bg-white p-6 rounded-xl shadow-lg">
           <h2 className="text-xl font-bold text-primary mb-4 border-b border-gray-200 pb-3">Asset Deployment Status</h2>
 
           {/* Filters */}

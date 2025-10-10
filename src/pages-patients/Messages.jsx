@@ -1,15 +1,16 @@
-import { Allocation } from "../components/logis-dashboard/Allocation";
-import LogisticSidebar from "../components/logis-dashboard/LogiSide";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
+import PatientSidebar from "../components/patients/Sidebar";
+import { Footer } from "../components/Footer";
+import MessagesContact from "../components/patients/Messages";
 
-export const RequestAllocation = () => {
+export const PatientMessages = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="h-screen flex bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <LogisticSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
       {/* Main content wrapper */}
       <div
@@ -23,8 +24,9 @@ export const RequestAllocation = () => {
         </div>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto ">
-          <Allocation />
+        <main className="flex-1 overflow-y-auto">
+          <MessagesContact />
+          <Footer />
         </main>
       </div>
     </div>

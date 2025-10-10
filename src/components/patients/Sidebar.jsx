@@ -2,27 +2,27 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
-  Building2,
-  Cloud,
-  Settings,
+  ListPlus,
+  PackageOpen,
   Menu,
-  Bell,
-  MessageSquare,
-  User,
   LogOut,
+  Settings,
+  FolderInput,
+  Archive,
 } from "lucide-react";
-import logo from "../assets/kalinga-logo-white.PNG";
+import logo from "../../assets/kalinga-logo-white.PNG";
 
-export default function Sidebar() {
+export default function PatientSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
-  // persist collapsed state
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
-    if (stored !== null) setCollapsed(JSON.parse(stored));
+    if (stored !== null) {
+      setCollapsed(JSON.parse(stored));
+    }
   }, []);
 
   useEffect(() => {
@@ -30,12 +30,28 @@ export default function Sidebar() {
   }, [collapsed]);
 
   const items = [
-    { label: "Dashboard", path: "/dashboard", icon: <Home size={25} /> },
-    { label: "Evacuation Centers", path: "/evacuation-center", icon: <Building2 size={25} /> },
-    { label: "Weather", path: "/weather", icon: <Cloud size={25} /> },
-    { label: "Messages", path: "/messages", icon: <MessageSquare size={25} /> },
-    { label: "Notifications", path: "/notifications", icon: <Bell size={25} /> },
-    { label: "Profile", path: "/profile", icon: <User size={25} /> },
+    { label: "Dashboard", 
+      path: "/patient-dashboard", 
+      icon: <Home size={25} /> 
+    },
+    { label: "Emergency SOS", 
+      path: "/report-emergency", 
+      icon: <Archive size={25} /> 
+    },
+    {
+      label: "Appointments & Scheduling",
+      path: "/patient-appointments",
+      icon: <FolderInput size={25} />,
+    },
+    {
+      label: "My Health Records",
+      path: "/patient-health-records",
+      icon: <ListPlus size={25} />,
+    },
+    { label: "Messages & Contact", 
+      path: "/patient-messages", 
+      icon: <PackageOpen size={25} /> 
+    },
   ];
 
   const handleNavigation = (item) => {
@@ -50,28 +66,29 @@ export default function Sidebar() {
     setMobileOpen(false);
   };
 
+  const handleSettings = () => {
+    navigate("/settings");
+    setMobileOpen(false);
+  };
+
   return (
     <>
       {/* Desktop Sidebar */}
       <aside
-        className={`h-screen bg-gradient-to-b from-green-950 to-green-600 text-white flex flex-col font-sans transition-[width] duration-500 ease-in-out hidden lg:flex
+        className={`h-screen bg-gradient-to-b from-green-950 to-green-600 text-white flex-col font-sans transition-[width] duration-500 ease-in-out hidden lg:flex
         ${collapsed ? "w-20" : "w-64"}`}
       >
-        {/* Top Section */}
+        {/* Top Section with Logo + Hamburger */}
         <div
           className={`flex items-center transition-all duration-300
           ${collapsed ? "justify-center h-16" : "justify-between h-16 px-3"}`}
         >
           {!collapsed && (
-            <span
-              className={`font-bold text-xl transition-all duration-300 transform ${
-                collapsed
-                  ? "opacity-0 -translate-x-2"
-                  : "opacity-100 translate-x-0"
-              }`}
-            >
-              KALINGA
-            </span>
+            <img
+              src={logo}
+              alt="Kalinga Logo"
+              className="h-8 w-auto transition-all duration-300"
+            />
           )}
           <button
             onClick={() => setCollapsed((prev) => !prev)}
@@ -81,23 +98,6 @@ export default function Sidebar() {
           </button>
         </div>
 
-        {/* User Profile */}
-        <div className="flex flex-col items-center py-4">
-          <img
-            src="https://i.pravatar.cc/100"
-            alt="User Avatar"
-            className="w-14 h-14 rounded-full border-2 border-white shadow-md transition-all duration-300"
-          />
-          <div
-            className={`transition-all duration-300 overflow-hidden ${
-              collapsed ? "max-h-0 opacity-0" : "max-h-16 opacity-100"
-            }`}
-          >
-            <h2 className="mt-2 text-lg font-bold">Juan Dela Cruz</h2>
-            <p className="text-sm text-white/70">Resident</p>
-          </div>
-        </div>
-
         {/* Menu */}
         <ul className="list-none flex-1 p-2 space-y-1">
           {items.map((item, idx) => (
@@ -105,16 +105,20 @@ export default function Sidebar() {
               <div
                 className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
                   ${collapsed ? "justify-center" : "gap-2"}
-                  ${
-                    isActive(item.path)
-                      ? "bg-white/20 font-bold"
-                      : "hover:bg-white/10"
-                  }
+                  ${isActive(item.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"}
                 `}
                 onClick={() => handleNavigation(item)}
               >
-                {item.icon}
-                {!collapsed && <span>{item.label}</span>}
+                {collapsed && <span className="transition-transform duration-300">{item.icon}</span>}
+                {!collapsed && (
+                  <span
+                    className={`transition-all duration-300 transform ${
+                      collapsed ? "opacity-0 -translate-x-2" : "opacity-100 translate-x-0"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                )}
               </div>
 
               {/* Tooltip when collapsed */}
@@ -127,24 +131,33 @@ export default function Sidebar() {
           ))}
         </ul>
 
+
         {/* Settings & Logout pinned at bottom */}
         <div className="p-2 space-y-2">
+          {/* Settings */}
           <div
             className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
               ${collapsed ? "justify-center" : "gap-2"}`}
-            onClick={() => navigate("/settings")}
+            onClick={() => navigate("/patient-settings")}
           >
-            <Settings size={25} />
-            {!collapsed && <span>Settings</span>}
+            {collapsed ? (
+              <Settings size={25} />
+            ) : (
+              <span>Settings</span>
+            )}
           </div>
 
+          {/* Logout */}
           <div
             className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
               ${collapsed ? "justify-center" : "gap-2"}`}
             onClick={handleLogout}
           >
-            <LogOut size={25} />
-            {!collapsed && <span>Log Out</span>}
+            {collapsed ? (
+              <LogOut size={25} />
+            ) : (
+              <span>Log Out</span>
+            )}
           </div>
         </div>
       </aside>
@@ -160,37 +173,17 @@ export default function Sidebar() {
 
         {mobileOpen && (
           <div className="absolute right-0 mt-2 w-56 bg-green-900 text-white rounded-md shadow-lg p-4 space-y-3">
-            {/* User Profile */}
-            <div className="flex items-center gap-3 border-b border-white/20 pb-3 mb-2">
-              <img
-                src="https://i.pravatar.cc/100"
-                alt="User Avatar"
-                className="w-10 h-10 rounded-full border-2 border-white shadow-md"
-              />
-              <div>
-                <h2 className="text-sm font-bold">John Doe</h2>
-                <p className="text-xs text-white/70">Admin</p>
-              </div>
-            </div>
-
             {/* Menu Items */}
             {items.map((item, idx) => (
               <div
                 key={idx}
                 className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition
-                  ${
-                    isActive(item.path)
-                      ? "bg-white/20 font-bold"
-                      : "hover:bg-white/10"
-                  }
-                `}
+                  ${isActive(item.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"}`}
                 onClick={() => handleNavigation(item)}
               >
-                {item.icon}
                 <span>{item.label}</span>
               </div>
             ))}
-
             {/* Settings and Logout */}
             <div
               className="flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"

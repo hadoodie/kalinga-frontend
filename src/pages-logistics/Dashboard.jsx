@@ -1,9 +1,10 @@
-import LogisticSidebar from "../components/logis-dashboard/LogiSide";
-import ResourceMngmt from "../components/logis-dashboard/ResourceMngmt";
+import { Footer } from "../components/Footer";
+import LogisticsDashboard from "../components/logistics/LogisDash";
+import LogisticSidebar from "../components/logistics/LogiSide";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
 
-export const ResourceManagement = () => {
+export const DashboardLogistics = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -23,8 +24,9 @@ export const ResourceManagement = () => {
         </div>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto mb-5">
-          <ResourceMngmt />
+        <main className="flex-1 overflow-y-auto ">
+          <LogisticsDashboard />
+          <Footer />
         </main>
       </div>
     </div>
