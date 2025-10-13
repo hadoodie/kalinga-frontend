@@ -1,34 +1,75 @@
 import { useState } from "react";
 import logo from "../../assets/kalinga-logo.png";
 import { useToast } from "@/hooks/use-toast";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function LogInPage() {
   const { toast } = useToast();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      // Call backend API through AuthContext
+      const data = await login({ email, password });
+
+      // Show success toast
       toast({
         title: "Signed In",
-        description: "Welcome back to Kalinga!",
+        description: `Welcome back, ${data.user.name || data.user.email}!`,
         className:
           "flex flex-col items-center text-center justify-center w-full",
       });
 
+      // Redirect to the page they tried to visit or based on role
+      const from = location.state?.from?.pathname || null;
+      
+      if (from) {
+        navigate(from, { replace: true });
+      } else {
+        // Redirect based on user role
+        switch (data.user.role) {
+          case "logistics":
+            navigate("/logistic-dashboard");
+            break;
+          case "responder":
+            navigate("/responder");
+            break;
+          case "admin":
+            navigate("/admin");
+            break;
+          case "patient":
+          case "resident":
+          default:
+            navigate("/dashboard");
+            break;
+        }
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      // Show error toast
+      toast({
+        title: "Login Failed",
+        description:
+          error.response?.data?.message || "Invalid email or password",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-      navigate("/supply-tracking");
-    }, 1500);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4 sm:px-6 lg:px-8">
       <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-        
         {/* Left Column */}
         <div className="hidden md:flex flex-col items-center text-center px-4">
           <Link to="/#hero">
@@ -62,6 +103,8 @@ export default function LogInPage() {
                 type="email"
                 id="email"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-input bg-background focus:ring-2 focus:ring-primary"
                 placeholder="juan.delacruz@example.com"
               />
@@ -79,6 +122,8 @@ export default function LogInPage() {
                 type="password"
                 id="password"
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full px-4 py-3 rounded-md border border-input bg-background focus:ring-2 focus:ring-primary"
                 placeholder="••••••••"
               />
@@ -122,7 +167,10 @@ export default function LogInPage() {
 
           {/* Forgot Password */}
           <div className="mt-3 text-center">
-            <a href="/forgot-password" className="text-sm text-primary hover:underline">
+            <a
+              href="/forgot-password"
+              className="text-sm text-primary hover:underline"
+            >
               Forgot password?
             </a>
           </div>
@@ -135,8 +183,8 @@ export default function LogInPage() {
           </div>
 
           {/* Create Account */}
-          <Link 
-            to="/create-acc" 
+          <Link
+            to="/create-acc"
             className="w-full bg-secondary text-primary hover:bg-secondary/80 font-bold block text-center py-3 rounded-md"
           >
             Create an Account

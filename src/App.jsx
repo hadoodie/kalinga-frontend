@@ -23,6 +23,8 @@ import { RequestAllocation } from "./pages-logis/5_Request";
 import { AssetRegistry } from "./pages-logis/3_Registry";
 import { ResourceManagement } from "./pages-logis/2_ResourceMngmt";
 import { DashboardLogistics } from "./pages-logis/1_LogisDash";
+import { AuthProvider } from "./context/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 
 function App() {
@@ -30,32 +32,119 @@ function App() {
     <>
     <Toaster />
       <BrowserRouter>
-        <Routes>
-          <Route index element={<Home />}/>
-          <Route path="/login" element={<LogIn />}/>
-          <Route path="/forgot-password" element={<ForgotPassword />}/>
-          <Route path="/create-acc" element={<CreateAccount />}/>
-          <Route path="/verify-id" element={<VerifyIDs />}/>
-          <Route path="/upload-id" element={<UploadIDs />}/>
-          <Route path="/fill-info" element={<FillInformation />}/>
-          <Route path="/report-emergency" element={<ReportEmergencies />}/>
-          <Route path="/vehicle" element={<VehicleSelection />}/>
-          <Route path="/specify-vehicle" element={<OtherVehicles />}/>
-          <Route path="/emergency-chat" element={<EmergencyChat />}/>
-          <Route path="/dashboard" element={<Dashboard />}/>
-          <Route path="/weather" element={<Weather />}/>
-          <Route path="/evacuation-center" element={<EvacuationCenter />}/>
-          <Route path="/notifications" element={<Notifications />}/>
-          <Route path="/settings" element={<ResidentSettings />}/>
-          <Route path="/profile" element={<Profile />}/>
-          <Route path="/medical-facilities" element={<MedicalFacilities />}/>
-          <Route path="/logistic-dashboard" element={<DashboardLogistics />}/>
-          <Route path="/resource-management" element={<ResourceManagement />}/>
-          <Route path="/asset-registry" element={<AssetRegistry />}/>
-          <Route path="/supply-tracking" element={<SupplyTracking />}/>
-          <Route path="/requested-allocation" element={<RequestAllocation />}/>
-          <Route path="*" element={<h1>404 Not Found</h1>} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            {/* Public Routes */}
+            <Route index element={<Home />}/>
+            <Route path="/login" element={<LogIn />}/>
+            <Route path="/forgot-password" element={<ForgotPassword />}/>
+            <Route path="/create-acc" element={<CreateAccount />}/>
+            
+            {/* Account Creation Flow - Protected */}
+            <Route path="/verify-id" element={
+              <ProtectedRoute>
+                <VerifyIDs />
+              </ProtectedRoute>
+            }/>
+            <Route path="/upload-id" element={
+              <ProtectedRoute>
+                <UploadIDs />
+              </ProtectedRoute>
+            }/>
+            <Route path="/fill-info" element={
+              <ProtectedRoute>
+                <FillInformation />
+              </ProtectedRoute>
+            }/>
+            
+            {/* Resident/Patient Routes */}
+            <Route path="/report-emergency" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <ReportEmergencies />
+              </ProtectedRoute>
+            }/>
+            <Route path="/vehicle" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <VehicleSelection />
+              </ProtectedRoute>
+            }/>
+            <Route path="/specify-vehicle" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <OtherVehicles />
+              </ProtectedRoute>
+            }/>
+            <Route path="/emergency-chat" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <EmergencyChat />
+              </ProtectedRoute>
+            }/>
+            <Route path="/dashboard" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <Dashboard />
+              </ProtectedRoute>
+            }/>
+            <Route path="/weather" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <Weather />
+              </ProtectedRoute>
+            }/>
+            <Route path="/evacuation-center" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <EvacuationCenter />
+              </ProtectedRoute>
+            }/>
+            <Route path="/notifications" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <Notifications />
+              </ProtectedRoute>
+            }/>
+            <Route path="/settings" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <ResidentSettings />
+              </ProtectedRoute>
+            }/>
+            <Route path="/profile" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <Profile />
+              </ProtectedRoute>
+            }/>
+            <Route path="/medical-facilities" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <MedicalFacilities />
+              </ProtectedRoute>
+            }/>
+            
+            {/* Logistics Routes */}
+            <Route path="/logistic-dashboard" element={
+              <ProtectedRoute allowedRoles={["logistics", "admin"]}>
+                <DashboardLogistics />
+              </ProtectedRoute>
+            }/>
+            <Route path="/resource-management" element={
+              <ProtectedRoute allowedRoles={["logistics", "admin"]}>
+                <ResourceManagement />
+              </ProtectedRoute>
+            }/>
+            <Route path="/asset-registry" element={
+              <ProtectedRoute allowedRoles={["logistics", "admin"]}>
+                <AssetRegistry />
+              </ProtectedRoute>
+            }/>
+            <Route path="/supply-tracking" element={
+              <ProtectedRoute allowedRoles={["logistics", "admin"]}>
+                <SupplyTracking />
+              </ProtectedRoute>
+            }/>
+            <Route path="/requested-allocation" element={
+              <ProtectedRoute allowedRoles={["logistics", "admin"]}>
+                <RequestAllocation />
+              </ProtectedRoute>
+            }/>
+            
+            {/* 404 */}
+            <Route path="*" element={<h1>404 Not Found</h1>} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </>
   );

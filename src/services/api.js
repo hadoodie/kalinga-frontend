@@ -7,12 +7,12 @@ const api = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  withCredentials: true, // Important for Sanctum
+  withCredentials: false, // Use false for token-based auth (not cookie-based)
 });
 
 // Request interceptor for auth token
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("auth_token");
+  const token = localStorage.getItem("token"); // Changed from "auth_token" to match AuthContext
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -25,7 +25,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Redirect to login
-      localStorage.removeItem("auth_token");
+      localStorage.removeItem("token"); // Changed from "auth_token"
       localStorage.removeItem("user");
       window.location.href = "/login";
     }

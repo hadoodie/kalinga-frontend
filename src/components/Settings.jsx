@@ -6,9 +6,15 @@ import {
   Edit2, 
   Trash2, 
   Save } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("privacy");
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Load saved settings from localStorage
   const loadData = (key, fallback) => {
@@ -59,9 +65,23 @@ export default function Settings() {
     localStorage.setItem("location", JSON.stringify(location));
   }, [devices, contacts, alerts, location]);
 
-  const handleLogoutAll = () => {
-    alert("All devices have been logged out.");
-    setDevices([]);
+  const handleLogoutAll = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged Out",
+        description: "You have been logged out from all devices.",
+      });
+      setDevices([]);
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout Failed",
+        description: "An error occurred while logging out.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSave = (section) => {

@@ -12,12 +12,16 @@ import {
   Siren,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
@@ -66,9 +70,21 @@ export default function Sidebar() {
 
   const isActive = (path) => location.pathname === path;
 
-  const handleLogout = () => {
-    navigate("/login");
-    setMobileOpen(false);
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Navigate anyway
+      navigate("/login");
+    } finally {
+      setMobileOpen(false);
+    }
   };
 
   const handleSettings = () => {
