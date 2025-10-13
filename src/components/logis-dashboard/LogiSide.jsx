@@ -34,13 +34,15 @@ export default function LogisticSidebar() {
   }, [collapsed]);
 
   const items = [
-    { label: "Dashboard", 
-      path: "/logistic-dashboard", 
-      icon: <Home size={25} /> 
+    {
+      label: "Dashboard",
+      path: "/logistic-dashboard",
+      icon: <Home size={25} />,
     },
-    { label: "Resource Management", 
-      path: "/resource-management", 
-      icon: <Archive size={25} /> 
+    {
+      label: "Resource Management",
+      path: "/resource-management",
+      icon: <Archive size={25} />,
     },
     {
       label: "Asset Registry",
@@ -52,9 +54,10 @@ export default function LogisticSidebar() {
       path: "/supply-tracking",
       icon: <ListPlus size={25} />,
     },
-    { label: "Requested Allocation", 
-      path: "/requested-allocation", 
-      icon: <PackageOpen size={25} /> 
+    {
+      label: "Requested Allocation",
+      path: "/requested-allocation",
+      icon: <PackageOpen size={25} />,
     },
   ];
 
@@ -121,15 +124,25 @@ export default function LogisticSidebar() {
               <div
                 className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
                   ${collapsed ? "justify-center" : "gap-2"}
-                  ${isActive(item.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"}
+                  ${
+                    isActive(item.path)
+                      ? "bg-white/20 font-bold"
+                      : "hover:bg-white/10"
+                  }
                 `}
                 onClick={() => handleNavigation(item)}
               >
-                {collapsed && <span className="transition-transform duration-300">{item.icon}</span>}
+                {collapsed && (
+                  <span className="transition-transform duration-300">
+                    {item.icon}
+                  </span>
+                )}
                 {!collapsed && (
                   <span
                     className={`transition-all duration-300 transform ${
-                      collapsed ? "opacity-0 -translate-x-2" : "opacity-100 translate-x-0"
+                      collapsed
+                        ? "opacity-0 -translate-x-2"
+                        : "opacity-100 translate-x-0"
                     }`}
                   >
                     {item.label}
@@ -183,7 +196,11 @@ export default function LogisticSidebar() {
               <div
                 key={idx}
                 className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition
-                  ${isActive(item.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"}`}
+                  ${
+                    isActive(item.path)
+                      ? "bg-white/20 font-bold"
+                      : "hover:bg-white/10"
+                  }`}
                 onClick={() => handleNavigation(item)}
               >
                 <span>{item.label}</span>

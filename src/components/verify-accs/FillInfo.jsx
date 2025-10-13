@@ -7,12 +7,12 @@ import api from "../../services/api";
 export default function FillInfo() {
   const [step, setStep] = useState(1);
   const [showModal, setShowModal] = useState(false);
-  const [error, setError] = useState(""); 
+  const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useAuth();
-  
+
   // Get the selected ID type and file from previous page
   const { selectedID, file } = location.state || {};
 
@@ -33,11 +33,24 @@ export default function FillInfo() {
   });
 
   const months = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
 
-  const years = Array.from({ length: 100 }, (_, i) => new Date().getFullYear() - i);
+  const years = Array.from(
+    { length: 100 },
+    (_, i) => new Date().getFullYear() - i
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -66,7 +79,7 @@ export default function FillInfo() {
       return;
     }
 
-    setError(""); 
+    setError("");
     setStep(2);
   };
 
@@ -75,7 +88,7 @@ export default function FillInfo() {
     if (step === 2) {
       setStep(1);
     } else {
-      setShowModal(true); 
+      setShowModal(true);
     }
   };
 
@@ -100,51 +113,58 @@ export default function FillInfo() {
 
     setError("");
     setSubmitting(true);
-    
+
     try {
       // Create FormData for file upload
       const submitData = new FormData();
-      
+
       // Add form fields
-      submitData.append('first_name', formData.firstName);
-      submitData.append('last_name', formData.lastName);
-      submitData.append('middle_name', formData.middleName || '');
-      
+      submitData.append("first_name", formData.firstName);
+      submitData.append("last_name", formData.lastName);
+      submitData.append("middle_name", formData.middleName || "");
+
       // Format birthday as YYYY-MM-DD
-      const birthday = `${formData.birthYear}-${String(months.indexOf(formData.birthMonth) + 1).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
-      submitData.append('birthday', birthday);
-      
-      submitData.append('contact_number', formData.contactNumber);
-      
+      const birthday = `${formData.birthYear}-${String(
+        months.indexOf(formData.birthMonth) + 1
+      ).padStart(2, "0")}-${String(formData.birthDay).padStart(2, "0")}`;
+      submitData.append("birthday", birthday);
+
+      submitData.append("contact_number", formData.contactNumber);
+
       // Combine address fields
       const fullAddress = `${formData.houseStreet}, ${formData.barangay}, ${formData.city}, ${formData.province} ${formData.zipCode}`;
-      submitData.append('address', fullAddress);
-      
+      submitData.append("address", fullAddress);
+
       // Add ID information
-      submitData.append('id_type', selectedID);
-      submitData.append('id_image', file);
-      
+      submitData.append("id_type", selectedID);
+      submitData.append("id_image", file);
+
       // Submit to backend
-      const response = await api.post('/submit-verification', submitData, {
+      const response = await api.post("/submit-verification", submitData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
-      
+
       // Update user context with the returned user data
       const updatedUser = response.data.user;
       setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+
       // Show success message
-      alert(response.data.message || "Verification submitted successfully! Your account is pending admin approval.");
-      
+      alert(
+        response.data.message ||
+          "Verification submitted successfully! Your account is pending admin approval."
+      );
+
       // Navigate to verification pending page
       navigate("/verification-pending");
-      
     } catch (error) {
       console.error("Verification submission error:", error);
-      setError(error.response?.data?.message || "Failed to submit verification. Please try again.");
+      setError(
+        error.response?.data?.message ||
+          "Failed to submit verification. Please try again."
+      );
       setSubmitting(false);
     }
   };
@@ -158,7 +178,9 @@ export default function FillInfo() {
     <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex justify-center items-start pt-35 px-4 pb-10">
       <div className="w-full max-w-2xl bg-white shadow-lg rounded-2xl p-6 sm:p-8">
         {/* Header */}
-        <h2 className="text-2xl font-bold mb-2 text-center">Verify your account</h2>
+        <h2 className="text-2xl font-bold mb-2 text-center">
+          Verify your account
+        </h2>
 
         <div className="flex justify-center items-center gap-2 mb-4">
           <div className="h-1 w-8 bg-green-700 rounded"></div>
@@ -174,7 +196,9 @@ export default function FillInfo() {
             <>
               {/* ID Number */}
               <div>
-                <label className="text-left block text-sm font-medium mb-1">ID Number</label>
+                <label className="text-left block text-sm font-medium mb-1">
+                  ID Number
+                </label>
                 <input
                   type="text"
                   name="idNumber"
@@ -188,7 +212,9 @@ export default function FillInfo() {
               {/* Name */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-left block text-sm font-medium mb-1">First Name</label>
+                  <label className="text-left block text-sm font-medium mb-1">
+                    First Name
+                  </label>
                   <input
                     type="text"
                     name="firstName"
@@ -199,7 +225,9 @@ export default function FillInfo() {
                   />
                 </div>
                 <div>
-                  <label className="text-left block text-sm font-medium mb-1">Middle Name</label>
+                  <label className="text-left block text-sm font-medium mb-1">
+                    Middle Name
+                  </label>
                   <input
                     type="text"
                     name="middleName"
@@ -210,7 +238,9 @@ export default function FillInfo() {
                   />
                 </div>
                 <div>
-                  <label className="text-left block text-sm font-medium mb-1">Last Name</label>
+                  <label className="text-left block text-sm font-medium mb-1">
+                    Last Name
+                  </label>
                   <input
                     type="text"
                     name="lastName"
@@ -224,9 +254,13 @@ export default function FillInfo() {
 
               {/* Contact Number */}
               <div>
-                <label className="text-left block text-sm font-medium mb-1">Contact Number</label>
+                <label className="text-left block text-sm font-medium mb-1">
+                  Contact Number
+                </label>
                 <div className="flex items-center border rounded-lg overflow-hidden">
-                  <span className="bg-gray-200 px-3 py-2 text-sm font-medium">PH +63</span>
+                  <span className="bg-gray-200 px-3 py-2 text-sm font-medium">
+                    PH +63
+                  </span>
                   <input
                     type="tel"
                     name="contactNumber"
@@ -241,7 +275,9 @@ export default function FillInfo() {
 
               {/* Birthday */}
               <div>
-                <label className="text-left block text-sm font-medium mb-1">Date of Birth</label>
+                <label className="text-left block text-sm font-medium mb-1">
+                  Date of Birth
+                </label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <select
                     name="birthMonth"
@@ -251,7 +287,9 @@ export default function FillInfo() {
                   >
                     <option value="">Month</option>
                     {months.map((m, i) => (
-                      <option key={i} value={m}>{m}</option>
+                      <option key={i} value={m}>
+                        {m}
+                      </option>
                     ))}
                   </select>
                   <select
@@ -262,7 +300,9 @@ export default function FillInfo() {
                   >
                     <option value="">Day</option>
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                      <option key={d} value={d}>{d}</option>
+                      <option key={d} value={d}>
+                        {d}
+                      </option>
                     ))}
                   </select>
                   <select
@@ -273,7 +313,9 @@ export default function FillInfo() {
                   >
                     <option value="">Year</option>
                     {years.map((y) => (
-                      <option key={y} value={y}>{y}</option>
+                      <option key={y} value={y}>
+                        {y}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -309,7 +351,9 @@ export default function FillInfo() {
               {/* Address Row 1 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-left block text-sm font-medium mb-1">Province</label>
+                  <label className="text-left block text-sm font-medium mb-1">
+                    Province
+                  </label>
                   <input
                     type="text"
                     name="province"
@@ -319,7 +363,9 @@ export default function FillInfo() {
                   />
                 </div>
                 <div>
-                  <label className="text-left block text-sm font-medium mb-1">City / Municipality</label>
+                  <label className="text-left block text-sm font-medium mb-1">
+                    City / Municipality
+                  </label>
                   <input
                     type="text"
                     name="city"
@@ -333,7 +379,9 @@ export default function FillInfo() {
               {/* Address Row 2 */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-left block text-sm font-medium mb-1">Barangay</label>
+                  <label className="text-left block text-sm font-medium mb-1">
+                    Barangay
+                  </label>
                   <input
                     type="text"
                     name="barangay"
@@ -343,7 +391,9 @@ export default function FillInfo() {
                   />
                 </div>
                 <div>
-                  <label className="text-left block text-sm font-medium mb-1">Zip Code</label>
+                  <label className="text-left block text-sm font-medium mb-1">
+                    Zip Code
+                  </label>
                   <input
                     type="text"
                     name="zipCode"
@@ -387,7 +437,7 @@ export default function FillInfo() {
                   type="submit"
                   disabled={submitting}
                   className={`px-6 py-2 rounded-lg font-medium ${
-                    submitting 
+                    submitting
                       ? "bg-gray-400 text-gray-200 cursor-not-allowed"
                       : "bg-green-700 text-white hover:bg-green-800"
                   }`}

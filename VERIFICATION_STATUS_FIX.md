@@ -3,12 +3,15 @@
 ## What Was Fixed
 
 ### The Problem
+
 - When users registered, they automatically got `verification_status = 'pending'` (from database default)
 - Even if they exited the verification flow without submitting, status was still `'pending'`
 - This caused them to see the "Verification Pending" waiting screen instead of the verify-id form
 
 ### The Solution
+
 1. **Changed database default** from `'pending'` to `null`
+
    - Now new users have `verification_status = null` (not started)
    - Status only becomes `'pending'` when they **submit** the verification form
 
@@ -148,12 +151,12 @@ exit;
 
 ```javascript
 // Press F12, then paste:
-const user = JSON.parse(localStorage.getItem('user'));
+const user = JSON.parse(localStorage.getItem("user"));
 console.table({
   name: user.name,
   email: user.email,
   role: user.role,
-  verification_status: user.verification_status || 'null (not started)'
+  verification_status: user.verification_status || "null (not started)",
 });
 ```
 
@@ -197,26 +200,29 @@ exit;
 
 ## Expected Behavior Summary
 
-| User Status | Login Redirect | Can Access /dashboard? | Can Access /verify-id? |
-|------------|---------------|----------------------|---------------------|
-| `null` (not started) | `/verify-id` | ❌ Redirect to verify-id | ✅ Yes |
-| `'pending'` (submitted) | `/verification-pending` | ❌ Redirect to pending | ✅ Yes (can view) |
-| `'verified'` (approved) | `/dashboard` | ✅ Yes | ❌ Redirect to dashboard |
-| `'rejected'` (rejected) | `/verification-pending` | ❌ Redirect to pending | ✅ Yes (resubmit) |
+| User Status             | Login Redirect          | Can Access /dashboard?   | Can Access /verify-id?   |
+| ----------------------- | ----------------------- | ------------------------ | ------------------------ |
+| `null` (not started)    | `/verify-id`            | ❌ Redirect to verify-id | ✅ Yes                   |
+| `'pending'` (submitted) | `/verification-pending` | ❌ Redirect to pending   | ✅ Yes (can view)        |
+| `'verified'` (approved) | `/dashboard`            | ✅ Yes                   | ❌ Redirect to dashboard |
+| `'rejected'` (rejected) | `/verification-pending` | ❌ Redirect to pending   | ✅ Yes (resubmit)        |
 
 ## Important Notes
 
 ⚠️ **After changing migration:**
+
 - Database was reset with `php artisan migrate:fresh --seed`
 - All test data was recreated
 - Existing seeded users have `verification_status = 'verified'` (from UserSeeder.php)
 
 ⚠️ **Temporary Implementation:**
+
 - Verification form only updates localStorage (not backend)
 - Real backend API integration needed for production
 - Admin approval system not yet implemented
 
 ✅ **What Works Now:**
+
 - New users start with `null` status (not started)
 - Can exit and resume verification flow
 - Status changes to `'pending'` only after submission
@@ -226,21 +232,27 @@ exit;
 ## Troubleshooting
 
 ### Issue: User still sees "pending" after fresh registration
+
 **Solution:** Clear localStorage and try again
+
 ```javascript
 localStorage.clear();
 location.reload();
 ```
 
 ### Issue: After logout, login redirects to wrong page
+
 **Solution:** The user data in localStorage might be stale
+
 ```javascript
-localStorage.removeItem('user');
+localStorage.removeItem("user");
 location.reload();
 ```
 
 ### Issue: Database still has old default value
+
 **Solution:** Run migration refresh again
+
 ```bash
 cd backend
 php artisan migrate:fresh --seed

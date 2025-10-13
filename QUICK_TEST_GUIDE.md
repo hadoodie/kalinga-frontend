@@ -1,6 +1,7 @@
 # 🧪 Testing Guide - Authentication & Verification Flow
 
 ## Prerequisites
+
 ✅ Backend: `cd backend; php artisan serve` (http://127.0.0.1:8000)
 ✅ Frontend: `npm run dev` (http://localhost:5174)
 ✅ Database: `cd backend; php artisan migrate:fresh --seed`
@@ -10,6 +11,7 @@
 ## 🎯 Quick Test Scenarios
 
 ### Test 1: Complete Registration & Verification Flow
+
 ```bash
 1. Register: http://localhost:5174/create-acc
    - Email: testuser@example.com
@@ -41,6 +43,7 @@
 ```
 
 ### Test 2: Seeded Test Accounts
+
 ```bash
 # Admin
 Email: admin@kalinga.com
@@ -48,7 +51,7 @@ Password: password123
 Expected: /admin
 
 # Logistics (Verified)
-Email: logistics_verified@kalinga.com  
+Email: logistics_verified@kalinga.com
 Password: password123
 Expected: /logistic-dashboard
 
@@ -78,6 +81,7 @@ Expected: /responder
 ## 🔐 Security Tests
 
 ### URL Bypass Prevention
+
 ```bash
 # Test as unverified patient
 1. Login: patient_unverified@kalinga.com
@@ -86,6 +90,7 @@ Expected: /responder
 ```
 
 ### Already Verified Protection
+
 ```bash
 # Test as verified patient
 1. Login: patient_verified@kalinga.com
@@ -96,14 +101,15 @@ Expected: /responder
 ---
 
 ## 📊 Check Status via Browser Console
+
 ```javascript
 // Press F12, then paste:
-const user = JSON.parse(localStorage.getItem('user'));
+const user = JSON.parse(localStorage.getItem("user"));
 console.table({
   name: user.name,
   email: user.email,
   role: user.role,
-  verification_status: user.verification_status || 'null (not started)'
+  verification_status: user.verification_status || "null (not started)",
 });
 ```
 
@@ -112,6 +118,7 @@ console.table({
 ## 🛠️ Database Commands
 
 ### View All Users
+
 ```bash
 cd backend
 php artisan tinker
@@ -119,6 +126,7 @@ User::all(['id', 'name', 'email', 'role', 'verification_status'])->toArray();
 ```
 
 ### Count by Status
+
 ```php
 echo "Null: " . User::whereNull('verification_status')->count() . "\n";
 echo "Pending: " . User::where('verification_status', 'pending')->count() . "\n";
@@ -127,6 +135,7 @@ echo "Rejected: " . User::where('verification_status', 'rejected')->count() . "\
 ```
 
 ### Manually Change Status
+
 ```php
 $user = User::where('email', 'test@example.com')->first();
 $user->verification_status = 'verified'; // or 'pending', 'rejected', null
@@ -138,18 +147,19 @@ exit;
 
 ## ✅ Expected Behavior Matrix
 
-| User Status | Login Redirect | Can Access Dashboard? | Can Access Verify-ID? |
-|------------|---------------|---------------------|---------------------|
-| `null` (not started) | `/verify-id` | ❌ Redirect | ✅ Yes |
-| `'pending'` (submitted) | `/verification-pending` | ❌ Redirect | ❌ Redirect |
-| `'verified'` (approved) | `/dashboard` | ✅ Yes | ❌ Redirect |
-| `'rejected'` (rejected) | `/verify-id` | ❌ Redirect | ✅ Yes (resubmit) |
+| User Status             | Login Redirect          | Can Access Dashboard? | Can Access Verify-ID? |
+| ----------------------- | ----------------------- | --------------------- | --------------------- |
+| `null` (not started)    | `/verify-id`            | ❌ Redirect           | ✅ Yes                |
+| `'pending'` (submitted) | `/verification-pending` | ❌ Redirect           | ❌ Redirect           |
+| `'verified'` (approved) | `/dashboard`            | ✅ Yes                | ❌ Redirect           |
+| `'rejected'` (rejected) | `/verify-id`            | ❌ Redirect           | ✅ Yes (resubmit)     |
 
 ---
 
 ## 🐛 Troubleshooting
 
 ### Issue: "Network Error"
+
 ```bash
 # Check backend running
 cd backend; php artisan serve
@@ -159,6 +169,7 @@ cat backend/config/cors.php
 ```
 
 ### Issue: Stale User Data
+
 ```javascript
 // Clear localStorage
 localStorage.clear();
@@ -166,6 +177,7 @@ location.reload();
 ```
 
 ### Issue: Database Errors
+
 ```bash
 # Reset database
 cd backend
@@ -184,4 +196,3 @@ php artisan migrate:fresh --seed
 - ✅ File upload handling
 - ✅ Auto-login after registration
 - ✅ Logout functionality
-

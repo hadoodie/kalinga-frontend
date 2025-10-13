@@ -17,6 +17,8 @@ class Resource extends Model
         'description',
         'unit',
         'quantity',
+        'received',
+        'distributed',
         'minimum_stock',
         'status',
         'location',
@@ -29,8 +31,10 @@ class Resource extends Model
 
     protected $casts = [
         'quantity' => 'decimal:2',
+        'received' => 'decimal:2',
+        'distributed' => 'decimal:2',
         'minimum_stock' => 'decimal:2',
-          'is_critical' => 'boolean',
+        'is_critical' => 'boolean',
         'requires_refrigeration' => 'boolean',
         'expiry_date' => 'date',
     ];

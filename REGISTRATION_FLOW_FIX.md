@@ -3,16 +3,19 @@
 ## 🐛 Issues Identified
 
 ### 1. **Registration Not Connected to Backend**
+
 - Frontend CreateAccount component was using fake setTimeout instead of API call
 - No actual user creation in database
 - No authentication token generated
 
 ### 2. **Poor UX After Registration**
+
 - User redirected to home page after registration
 - Required to login again with new credentials
 - Broke the natural flow: Register → Verify ID → Fill Info
 
 ### 3. **Missing Form State Binding**
+
 - Form inputs not bound to React state
 - Data not captured for API submission
 - Phone field was missing
@@ -20,13 +23,16 @@
 ## ✅ Solutions Implemented
 
 ### 1. **Connected to Backend API** (`src/components/create-accs/CreateAccount.jsx`)
+
 **Changes:**
+
 - Imported `useAuth` hook from AuthContext
 - Added form state management for name, email, phone
 - Integrated with `register()` function from AuthContext
 - Proper error handling with backend validation messages
 
 **Registration Flow:**
+
 ```javascript
 // Before (Fake)
 setTimeout(() => {
@@ -40,14 +46,16 @@ const data = await register({
   password: password,
   password_confirmation: confirmPassword,
   role: "patient",
-  phone: formData.phone
+  phone: formData.phone,
 });
 // User is now logged in automatically!
 navigate("/verify-id");
 ```
 
 ### 2. **Automatic Login After Registration**
+
 **How it works:**
+
 1. User submits registration form
 2. Backend creates user account
 3. Backend returns user data + JWT token
@@ -57,13 +65,16 @@ navigate("/verify-id");
 7. Natural flow continues: Verify ID → Upload ID → Fill Info
 
 **Benefits:**
+
 - ✅ Seamless UX - no interruption
 - ✅ User stays in registration flow
 - ✅ No need to remember and re-enter credentials
 - ✅ Faster onboarding process
 
 ### 3. **Enhanced Form with State Management**
+
 **Added:**
+
 - Form state for all fields (name, email, phone)
 - Phone number field (optional)
 - Proper input binding with `value` and `onChange`
@@ -71,13 +82,16 @@ navigate("/verify-id");
 - Better error messages from backend
 
 ### 4. **Default Role Assignment**
+
 New users registering through the public form are assigned:
+
 - **Role**: `patient` (default for self-registration)
 - Can be changed by admin later if needed
 
 ## 🧪 Testing
 
 ### Test Registration Flow:
+
 1. **Go to**: http://localhost:5174/create-acc
 2. **Fill in form**:
    - Name: "Test User"
@@ -95,26 +109,32 @@ New users registering through the public form are assigned:
    - ✅ Can access protected routes
 
 ### Test Registration Validation:
+
 **Test 1: Weak Password**
+
 - Password: "test123" (too short)
 - Expected: Error message shown, form not submitted
 
 **Test 2: Password Mismatch**
+
 - Password: "password123"
 - Confirm: "password124"
 - Expected: "Passwords do not match!" error
 
 **Test 3: Duplicate Email**
+
 - Email: "logistics@kalinga.com" (existing)
 - Expected: Backend validation error displayed
 
 **Test 4: Missing Required Fields**
+
 - Leave name or email empty
 - Expected: Browser validation prevents submission
 
 ## 📊 Registration Flow Comparison
 
 ### Before Fix:
+
 ```
 User fills form
     ↓
@@ -130,6 +150,7 @@ User must login manually ❌
 ```
 
 ### After Fix:
+
 ```
 User fills form
     ↓
@@ -149,7 +170,9 @@ Continue to verification flow
 ## 🔧 Technical Details
 
 ### Backend Endpoint: `POST /api/register`
+
 **Request Body:**
+
 ```json
 {
   "name": "string (required)",
@@ -162,6 +185,7 @@ Continue to verification flow
 ```
 
 **Response (Success - 201):**
+
 ```json
 {
   "message": "User registered successfully",
@@ -178,6 +202,7 @@ Continue to verification flow
 ```
 
 **Response (Error - 422):**
+
 ```json
 {
   "message": "Validation error",
@@ -189,7 +214,9 @@ Continue to verification flow
 ```
 
 ### AuthContext Integration
+
 The `register()` function in AuthContext:
+
 1. Calls `authService.register()` with user data
 2. Receives token and user from backend
 3. Saves token to localStorage (key: "token")
@@ -210,12 +237,14 @@ The `register()` function in AuthContext:
 ## 🎯 User Experience Improvements
 
 ### Before:
+
 - ❌ Confusing: register then asked to login
 - ❌ Extra steps: remember credentials, type again
 - ❌ Interruption in flow
 - ❌ No backend validation feedback
 
 ### After:
+
 - ✅ Seamless: register and automatically proceed
 - ✅ No extra steps: stay authenticated
 - ✅ Continuous flow: Register → Verify → Complete
@@ -225,6 +254,7 @@ The `register()` function in AuthContext:
 ## 🚀 Next Steps
 
 After registration, users can now proceed with:
+
 1. **Verify ID** (`/verify-id`) - Upload government ID
 2. **Upload ID** (`/upload-id`) - Confirm ID upload
 3. **Fill Information** (`/fill-info`) - Complete profile

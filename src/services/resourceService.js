@@ -5,8 +5,13 @@ const resourceService = {
   // Get all resources with filters
   getAll: async (params = {}) => {
     try {
-      // For now, use test endpoint (no auth required)
-      const response = await api.get("/test/resources", { params });
+      // Use authenticated endpoint with filters
+      const response = await api.get("/resources", { 
+        params: {
+          ...params,
+          all: true  // Get all resources without pagination
+        }
+      });
       return response.data;
     } catch (error) {
       console.error("Error fetching resources:", error);

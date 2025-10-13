@@ -6,7 +6,11 @@ export default function AuthStatus() {
   const navigate = useNavigate();
 
   if (loading) {
-    return <div className="p-4 bg-yellow-100 rounded">Checking authentication...</div>;
+    return (
+      <div className="p-4 bg-yellow-100 rounded">
+        Checking authentication...
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -27,10 +31,18 @@ export default function AuthStatus() {
     <div className="p-4 bg-green-100 rounded">
       <p className="font-bold">✅ Authenticated</p>
       <div className="mt-2 space-y-1">
-        <p><strong>Email:</strong> {user?.email}</p>
-        <p><strong>Role:</strong> {user?.role}</p>
-        <p><strong>Name:</strong> {user?.name || "Not set"}</p>
-        <p><strong>Status:</strong> {user?.account_status || "active"}</p>
+        <p>
+          <strong>Email:</strong> {user?.email}
+        </p>
+        <p>
+          <strong>Role:</strong> {user?.role}
+        </p>
+        <p>
+          <strong>Name:</strong> {user?.name || "Not set"}
+        </p>
+        <p>
+          <strong>Status:</strong> {user?.account_status || "active"}
+        </p>
       </div>
       <button
         onClick={logout}

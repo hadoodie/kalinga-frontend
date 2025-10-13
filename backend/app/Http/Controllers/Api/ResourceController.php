@@ -15,14 +15,30 @@ class ResourceController extends Controller
     {
         $query = Resource::with('hospital');
 
+        // Filter by facility type (Evacuation Center or Medical Facility)
+        if ($request->has('facility')) {
+            $facility = $request->facility;
+            if ($facility === 'Evacuation Center') {
+                $query->where('location', 'LIKE', '%Evacuation%');
+            } elseif ($facility === 'Medical Facility') {
+                $query->where('location', 'LIKE', '%Medical%')
+                      ->orWhere('location', 'LIKE', '%Hospital%')
+                      ->orWhere('location', 'LIKE', '%Clinic%');
+            }
+        }
+
         // Filter by category
-        if ($request->has('category')) {
+        if ($request->has('category') && $request->category !== 'All') {
             $query->byCategory($request->category);
         }
 
         // Filter by status
         if ($request->has('status')) {
-            $query->where('status', $request->status);
+            if ($request->status === 'Critical') {
+                $query->where('status', 'Critical');
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         // Filter low stock
@@ -50,6 +66,12 @@ class ResourceController extends Controller
         $sortOrder = $request->get('sort_order', 'asc');
         $query->orderBy($sortBy, $sortOrder);
 
+        // Check if pagination is disabled
+        if ($request->boolean('all')) {
+            $resources = $query->get();
+            return response()->json($resources);
+        }
+
         $resources = $query->paginate($request->get('per_page', 15));
 
         return response()->json($resources);
@@ -65,6 +87,8 @@ class ResourceController extends Controller
             'category' => 'required|string',
             'unit' => 'required|string',
             'quantity' => 'required|numeric|min:0',
+            'received' => 'nullable|numeric|min:0',
+            'distributed' => 'nullable|numeric|min:0',
             'minimum_stock' => 'nullable|numeric|min:0',
             'location' => 'required|string',
             'hospital_id' => 'nullable|exists:hospitals,id',
@@ -76,18 +100,17 @@ class ResourceController extends Controller
             'requires_refrigeration' => 'boolean',
         ]);
 
+        // Auto-calculate quantity if received and distributed are provided
+        if (isset($validated['received']) && isset($validated['distributed'])) {
+            $validated['quantity'] = $validated['received'] - $validated['distributed'];
+        }
+
         $resource = Resource::create($validated);
         $resource->updateStatus();
 
-        // Log activity
-        activity()
-            ->performedOn($resource)
-            ->causedBy(auth()->user())
-            ->log('Created resource: ' . $resource->name);
-
         return response()->json([
             'message' => 'Resource created successfully',
-            'resource' => $resource->load('warehouse'),
+            'resource' => $resource->load('hospital'),
         ], 201);
     }
 
@@ -111,6 +134,8 @@ class ResourceController extends Controller
             'category' => 'string',
             'unit' => 'string',
             'quantity' => 'numeric|min:0',
+            'received' => 'nullable|numeric|min:0',
+            'distributed' => 'nullable|numeric|min:0',
             'minimum_stock' => 'nullable|numeric|min:0',
             'location' => 'string',
             'hospital_id' => 'nullable|exists:hospitals,id',
@@ -122,12 +147,17 @@ class ResourceController extends Controller
             'requires_refrigeration' => 'boolean',
         ]);
 
+        // Auto-calculate quantity if received and distributed are provided
+        if (isset($validated['received']) && isset($validated['distributed'])) {
+            $validated['quantity'] = $validated['received'] - $validated['distributed'];
+        }
+
         $resource->update($validated);
         $resource->updateStatus();
 
         return response()->json([
             'message' => 'Resource updated successfully',
-            'resource' => $resource->load('warehouse'),
+            'resource' => $resource->load('hospital'),
         ]);
     }
 

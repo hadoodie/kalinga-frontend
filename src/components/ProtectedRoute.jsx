@@ -2,7 +2,11 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { needsVerification } from "../utils/roleRouting";
 
-export const ProtectedRoute = ({ children, allowedRoles = [], requireVerification = false }) => {
+export const ProtectedRoute = ({
+  children,
+  allowedRoles = [],
+  requireVerification = false,
+}) => {
   const { user, loading, isAuthenticated } = useAuth();
   const location = useLocation();
 
@@ -55,13 +59,18 @@ export const ProtectedRoute = ({ children, allowedRoles = [], requireVerificatio
   }
 
   // Check if patient/resident needs verification (but allow access to verification pages)
-  const verificationPages = ["/verify-id", "/upload-id", "/fill-info", "/verification-pending"];
+  const verificationPages = [
+    "/verify-id",
+    "/upload-id",
+    "/fill-info",
+    "/verification-pending",
+  ];
   const isVerificationPage = verificationPages.includes(location.pathname);
-  
+
   if (!isVerificationPage && needsVerification(user)) {
     // User needs verification and is trying to access a protected page
     console.log("User needs verification, redirecting to appropriate page");
-    
+
     // Determine where to send them based on their verification status
     if (user.verification_status === "pending") {
       return <Navigate to="/verification-pending" replace />;

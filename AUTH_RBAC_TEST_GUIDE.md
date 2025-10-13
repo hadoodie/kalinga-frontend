@@ -3,15 +3,16 @@
 ## ✅ Setup Complete
 
 ### Test Users Created
+
 All users have password: `password123`
 
-| Email | Role | Access Level |
-|-------|------|--------------|
-| admin@kalinga.com | admin | Full access to all features |
+| Email                 | Role      | Access Level                   |
+| --------------------- | --------- | ------------------------------ |
+| admin@kalinga.com     | admin     | Full access to all features    |
 | logistics@kalinga.com | logistics | Resource & hospital management |
-| responder@kalinga.com | responder | Emergency response features |
-| resident@kalinga.com | patient | Basic resident features |
-| patient@kalinga.com | patient | Patient/resident features |
+| responder@kalinga.com | responder | Emergency response features    |
+| resident@kalinga.com  | patient   | Basic resident features        |
+| patient@kalinga.com   | patient   | Patient/resident features      |
 
 ---
 
@@ -20,6 +21,7 @@ All users have password: `password123`
 ### 1. Test Login Endpoint
 
 **Login as Admin:**
+
 ```bash
 curl -X POST http://127.0.0.1:8000/api/login \
   -H "Content-Type: application/json" \
@@ -27,6 +29,7 @@ curl -X POST http://127.0.0.1:8000/api/login \
 ```
 
 **Expected Response:**
+
 ```json
 {
   "message": "Login successful",
@@ -48,12 +51,14 @@ curl -X POST http://127.0.0.1:8000/api/login \
 ### 2. Test Protected Routes (With Auth)
 
 **Get Current User:**
+
 ```bash
 curl http://127.0.0.1:8000/api/me \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
 
 **Get Resources (Admin/Logistics only):**
+
 ```bash
 curl http://127.0.0.1:8000/api/resources \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
@@ -66,6 +71,7 @@ curl http://127.0.0.1:8000/api/resources \
 **Login as Different Roles and Test Access:**
 
 #### Test 1: Admin Access (Should Work ✅)
+
 ```bash
 # 1. Login as admin
 TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/login \
@@ -83,6 +89,7 @@ curl http://127.0.0.1:8000/api/admin/users \
 ```
 
 #### Test 2: Logistics Access (Should Work for Resources ✅)
+
 ```bash
 # 1. Login as logistics
 TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/login \
@@ -100,6 +107,7 @@ curl http://127.0.0.1:8000/api/admin/users \
 ```
 
 **Expected 403 Response:**
+
 ```json
 {
   "message": "Forbidden. You do not have permission to access this resource.",
@@ -109,6 +117,7 @@ curl http://127.0.0.1:8000/api/admin/users \
 ```
 
 #### Test 3: Patient Access (Should FAIL ❌)
+
 ```bash
 # 1. Login as patient
 TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/login \
@@ -122,6 +131,7 @@ curl http://127.0.0.1:8000/api/resources \
 ```
 
 **Expected 403 Response:**
+
 ```json
 {
   "message": "Forbidden. You do not have permission to access this resource.",
@@ -135,6 +145,7 @@ curl http://127.0.0.1:8000/api/resources \
 ## 🎯 PowerShell Test Commands
 
 ### Test 1: Login as Admin
+
 ```powershell
 $response = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/login" `
   -Method POST `
@@ -147,6 +158,7 @@ Write-Host "User: $($response.user.name) - Role: $($response.user.role)"
 ```
 
 ### Test 2: Access Protected Resource
+
 ```powershell
 $headers = @{
     "Authorization" = "Bearer $token"
@@ -159,6 +171,7 @@ Write-Host "Found $($resources.Count) resources"
 ```
 
 ### Test 3: Test Admin-Only Endpoint
+
 ```powershell
 $users = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/admin/users" `
   -Headers $headers
@@ -167,6 +180,7 @@ Write-Host "Found $($users.data.Count) users"
 ```
 
 ### Test 4: Login as Patient and Try to Access Resources (Should Fail)
+
 ```powershell
 $patientResponse = Invoke-RestMethod -Uri "http://127.0.0.1:8000/api/login" `
   -Method POST `
@@ -191,19 +205,19 @@ try {
 
 ## 📊 Role Permission Matrix
 
-| Endpoint | Admin | Logistics | Responder | Patient |
-|----------|-------|-----------|-----------|---------|
-| `POST /api/login` | ✅ | ✅ | ✅ | ✅ |
-| `POST /api/register` | ✅ | ✅ | ✅ | ✅ |
-| `GET /api/me` | ✅ | ✅ | ✅ | ✅ |
-| `POST /api/logout` | ✅ | ✅ | ✅ | ✅ |
-| `GET /api/resources` | ✅ | ✅ | ❌ | ❌ |
-| `POST /api/resources` | ✅ | ✅ | ❌ | ❌ |
-| `PUT /api/resources/{id}` | ✅ | ✅ | ❌ | ❌ |
-| `DELETE /api/resources/{id}` | ✅ | ✅ | ❌ | ❌ |
-| `GET /api/hospitals` | ✅ | ✅ | ❌ | ❌ |
-| `GET /api/admin/users` | ✅ | ❌ | ❌ | ❌ |
-| `PUT /api/admin/users/{id}/activate` | ✅ | ❌ | ❌ | ❌ |
+| Endpoint                             | Admin | Logistics | Responder | Patient |
+| ------------------------------------ | ----- | --------- | --------- | ------- |
+| `POST /api/login`                    | ✅    | ✅        | ✅        | ✅      |
+| `POST /api/register`                 | ✅    | ✅        | ✅        | ✅      |
+| `GET /api/me`                        | ✅    | ✅        | ✅        | ✅      |
+| `POST /api/logout`                   | ✅    | ✅        | ✅        | ✅      |
+| `GET /api/resources`                 | ✅    | ✅        | ❌        | ❌      |
+| `POST /api/resources`                | ✅    | ✅        | ❌        | ❌      |
+| `PUT /api/resources/{id}`            | ✅    | ✅        | ❌        | ❌      |
+| `DELETE /api/resources/{id}`         | ✅    | ✅        | ❌        | ❌      |
+| `GET /api/hospitals`                 | ✅    | ✅        | ❌        | ❌      |
+| `GET /api/admin/users`               | ✅    | ❌        | ❌        | ❌      |
+| `PUT /api/admin/users/{id}/activate` | ✅    | ❌        | ❌        | ❌      |
 
 ---
 
@@ -212,44 +226,44 @@ try {
 ### Update Login Component
 
 ```javascript
-import { useState } from 'react';
-import { authService } from '../services/authService';
-import { useNavigate } from 'react-router-dom';
+import { useState } from "react";
+import { authService } from "../services/authService";
+import { useNavigate } from "react-router-dom";
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const response = await authService.login({ email, password });
-      
+
       // Save user and token
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.user));
+
       // Redirect based on role
       switch (response.user.role) {
-        case 'admin':
-          navigate('/admin/dashboard');
+        case "admin":
+          navigate("/admin/dashboard");
           break;
-        case 'logistics':
-          navigate('/logistics/dashboard');
+        case "logistics":
+          navigate("/logistics/dashboard");
           break;
-        case 'responder':
-          navigate('/responder/dashboard');
+        case "responder":
+          navigate("/responder/dashboard");
           break;
-        case 'patient':
-          navigate('/patient/dashboard');
+        case "patient":
+          navigate("/patient/dashboard");
           break;
         default:
-          navigate('/dashboard');
+          navigate("/dashboard");
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Login failed');
+      setError(err.response?.data?.message || "Login failed");
     }
   };
 
@@ -284,28 +298,28 @@ function QuickLoginButtons() {
     try {
       const response = await authService.login({
         email,
-        password: 'password123'
+        password: "password123",
       });
-      console.log('Logged in as:', response.user.role);
+      console.log("Logged in as:", response.user.role);
       // Redirect as needed
     } catch (err) {
-      console.error('Login failed:', err);
+      console.error("Login failed:", err);
     }
   };
 
   return (
     <div>
       <h3>Quick Login (For Testing)</h3>
-      <button onClick={() => handleQuickLogin('admin@kalinga.com')}>
+      <button onClick={() => handleQuickLogin("admin@kalinga.com")}>
         Login as Admin
       </button>
-      <button onClick={() => handleQuickLogin('logistics@kalinga.com')}>
+      <button onClick={() => handleQuickLogin("logistics@kalinga.com")}>
         Login as Logistics
       </button>
-      <button onClick={() => handleQuickLogin('responder@kalinga.com')}>
+      <button onClick={() => handleQuickLogin("responder@kalinga.com")}>
         Login as Responder
       </button>
-      <button onClick={() => handleQuickLogin('patient@kalinga.com')}>
+      <button onClick={() => handleQuickLogin("patient@kalinga.com")}>
         Login as Patient
       </button>
     </div>
@@ -341,16 +355,19 @@ function QuickLoginButtons() {
 ## 🐛 Troubleshooting
 
 ### Token not working?
+
 - Check if token is in `Authorization: Bearer TOKEN` format
 - Verify token hasn't expired
 - Check if user is active (`is_active = true`)
 
 ### 403 Forbidden?
+
 - Check user role matches route requirements
 - Verify middleware is applied correctly
 - Check route definition in `routes/api.php`
 
 ### 401 Unauthorized?
+
 - Token might be missing or invalid
 - User might not be logged in
 - Token might be expired

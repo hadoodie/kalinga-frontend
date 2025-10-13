@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       const savedToken = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
-      
+
       if (savedToken) {
         try {
           // First try to use cached user data
@@ -29,7 +29,7 @@ export const AuthProvider = ({ children }) => {
             setUser(JSON.parse(savedUser));
             setToken(savedToken);
             setLoading(false);
-            
+
             // Then fetch fresh data in background
             try {
               const userData = await authService.getCurrentUser();

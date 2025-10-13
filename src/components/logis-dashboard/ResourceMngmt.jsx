@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArchiveRestore, Package, Truck, CircleAlert, ChevronDown } from "lucide-react";
+import resourceService from "../../services/resourceService";
 
 export default function ResourceMngmt() {
   const [filter, setFilter] = useState("All");
@@ -9,29 +10,58 @@ export default function ResourceMngmt() {
   const [facility, setFacility] = useState("Evacuation Center");
   const categories = facility === "Evacuation Center" ? evacCategories : medicalCategories;
   const [open, setOpen] = useState(false);
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const inventory = [
-    { resource: "Rice", category: "Food & Water", received: 50, unit: "kg", distributed: 20, remaining: 30, status: "Critical", facility: "Evacuation Center" },
-    { resource: "Canned Goods", category: "Food & Water", received: 100, unit: "cans", distributed: 10, remaining: 90, status: "High", facility: "Evacuation Center" },
-    { resource: "Soap", category: "Hygiene", received: 150, unit: "boxes", distributed: 75, remaining: 75, status: "Moderate", facility: "Evacuation Center" },
-    { resource: "Bottled Water", category: "Food & Water", received: 500, unit: "bottles", distributed: 200, remaining: 300, status: "High", facility: "Evacuation Center"  },
-    { resource: "Shampoo", category: "Hygiene", received: 100, unit: "sachets", distributed: 50, remaining: 50, status: "Moderate", facility: "Evacuation Center"  },
-    { resource: "Conditioner", category: "Hygiene", received: 100, unit: "sachets", distributed: 50, remaining: 50, status: "Moderate", facility: "Evacuation Center"  },
-    { resource: "Toothpaste", category: "Hygiene", received: 100, unit: "sachets", distributed: 60, remaining: 40, status: "Moderate", facility: "Evacuation Center"  },
-    { resource: "Toothbrush", category: "Hygiene", received: 300, unit: "packs", distributed: 60, remaining: 240, status: "High", facility: "Evacuation Center"  },
-    { resource: "Tylenol", category: "Medicine", received: 100, unit: "bottles", distributed: 90, remaining: 10, status: "Critical", facility: "Medical Facility"},
-    { resource: "Ibuprofen", category: "Medicine", received: 50, unit: "bottles", distributed: 40, remaining: 10, status: "Critical", facility: "Medical Facility"},
-    { resource: "Tempra", category: "Medicine", received: 150, unit: "bottles", distributed: 100, remaining: 50, status: "Moderate", facility: "Medical Facility" },
-    { resource: "Bioflu", category: "Medicine", received: 100, unit: "bottles", distributed: 95, remaining: 5, status: "Critical", facility: "Medical Facility"},
-    { resource: "Neozep", category: "Medicine", received: 100, unit: "bottles", distributed: 100, remaining: 0, status: "Critical", facility: "Medical Facility" },
-    { resource: "Antibiotic", category: "Medicine", received: 100, unit: "bottles", distributed: 40, remaining: 60, status: "Moderate", facility: "Medical Facility" },
-    { resource: "Tweezers", category: "First Aid Kit", received: 20, unit: "pieces", distributed: 0, remaining: 20, status: "High", facility: "Medical Facility" },
-    { resource: "Triangular Bandage", category: "First Aid Kit", received: 20, unit: "pieces", distributed: 0, remaining: 20, status: "High", facility: "Medical Facility" },
-    { resource: "Adhesive Bandage", category: "First Aid Kit", received: 20, unit: "pieces", distributed: 10, remaining: 10, status: "Moderate", facility: "Medical Facility" },
-    { resource: "Roller Bandage", category: "First Aid Kit", received: 20, unit: "pieces", distributed: 0, remaining: 20, status: "High", facility: "Medical Facility" },
-    { resource: "Betadine", category: "First Aid Kit", received: 50, unit: "bottles", distributed: 50, remaining: 0, status: "Critical", facility: "Medical Facility" },
-    { resource: "Band Aid", category: "First Aid Kit", received: 100, unit: "packs", distributed: 65, remaining: 45, status: "Moderate", facility: "Medical Facility" },
-  ];
+  // Fetch resources from backend
+  const fetchResources = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const params = {
+        facility: facility,
+      };
+      
+      // Add category filter if not "All"
+      if (filter !== "All" && filter !== "Critical") {
+        params.category = filter;
+      }
+      
+      // Add status filter for Critical
+      if (filter === "Critical") {
+        params.status = "Critical";
+      }
+
+      const data = await resourceService.getAll(params);
+      
+      // Map backend data to frontend format
+      const mappedData = data.map(item => ({
+        resource: item.name,
+        category: item.category,
+        received: parseFloat(item.received || 0),
+        unit: item.unit,
+        distributed: parseFloat(item.distributed || 0),
+        remaining: parseFloat(item.quantity || 0),
+        status: item.status,
+        facility: item.location,
+        id: item.id,
+      }));
+      
+      setInventory(mappedData);
+    } catch (err) {
+      console.error("Error fetching resources:", err);
+      setError("Failed to load resources. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch resources on component mount and when filters change
+  useEffect(() => {
+    fetchResources();
+  }, [facility, filter]);
 
 
   const filteredInventory = inventory.filter(item => {
@@ -42,7 +72,7 @@ export default function ResourceMngmt() {
         ? item.status === "Critical"
         : item.category === filter;
 
-  const facilityMatch = item.facility === facility;
+  const facilityMatch = item.facility === facility || item.facility.includes(facility);
     return categoryMatch && facilityMatch;
     });
 
@@ -59,14 +89,42 @@ export default function ResourceMngmt() {
         <header className="flex flex-wrap justify-between items-center gap-3 p-4 bg-white rounded-xl shadow-lg">
           <h1 className="text-2xl md:text-3xl font-extrabold text-primary">Resource Management</h1>
           <button
-            ///onClick={refreshData}
+            onClick={fetchResources}
             className="px-4 py-2 bg-highlight hover:bg-yellow-500 text-white font-medium rounded-lg shadow-lg transition duration-200"
           >
             Refresh Data
           </button>
         </header>
 
-      {!seeAll && (
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center p-8 bg-white rounded-xl shadow-lg">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+            <p className="text-gray-600 font-medium">Loading resources...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-lg">
+          <div className="flex items-center">
+            <CircleAlert className="text-red-500 mr-3" size={24} />
+            <div>
+              <p className="text-red-800 font-medium">{error}</p>
+              <button
+                onClick={fetchResources}
+                className="mt-2 text-red-600 hover:text-red-800 underline text-sm"
+              >
+                Try again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!seeAll && !loading && !error && (
         <div className="bg-[#1A4718] rounded-xl p-4 flex flex-col gap-5 shadow-xl border border-gray-100 hover:shadow-2xl transition duration-300">
           <h2 className="text-white text-xl font-bold">Overview</h2>
           <div className="grid grid-cols-4 gap-5 md:gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4">
@@ -110,6 +168,7 @@ export default function ResourceMngmt() {
         </div>
       )}
 
+      {!loading && !error && (
       <div className={`bg-white rounded-xl shadow-xl border border-gray-100 hover:shadow-2xl transition duration-300 p-4 sm:p-6 flex flex-col ${seeAll ? "row-span-full" : ""}`}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 md:flex-row md:items-center md:mb-2 gap-4">
           <div className="flex lg:flex-row sm:flex-col md:flex-row gap-x-4 gap-y-2">
@@ -264,6 +323,7 @@ export default function ResourceMngmt() {
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }

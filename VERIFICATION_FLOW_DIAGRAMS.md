@@ -180,6 +180,7 @@
 ## State Transitions
 
 ### Before (Buggy)
+
 ```
 ┌─────────┐
 │ pending │────────┐
@@ -195,6 +196,7 @@
 ```
 
 ### After (Fixed)
+
 ```
 ┌─────────┐
 │ pending │────────▶ /verification-pending (wait for admin)
@@ -218,23 +220,25 @@
 ## Access Control Matrix
 
 ### Before
-| Route                   | Unverified Patient | Verified Patient | Admin | Logistics |
-|------------------------|-------------------|------------------|-------|-----------|
-| `/dashboard`           | ❌ ALLOWED (BUG!) | ✅ Allowed       | ❌    | ❌        |
-| `/verify-id`           | ✅ Allowed        | ❌ ALLOWED (BUG!)| ❌    | ❌        |
-| `/emergency-chat`      | ❌ ALLOWED (BUG!) | ✅ Allowed       | ❌    | ❌        |
-| `/admin`               | ❌                | ❌               | ✅    | ❌        |
-| `/logistic-dashboard`  | ❌                | ❌               | ❌    | ✅        |
+
+| Route                 | Unverified Patient | Verified Patient  | Admin | Logistics |
+| --------------------- | ------------------ | ----------------- | ----- | --------- |
+| `/dashboard`          | ❌ ALLOWED (BUG!)  | ✅ Allowed        | ❌    | ❌        |
+| `/verify-id`          | ✅ Allowed         | ❌ ALLOWED (BUG!) | ❌    | ❌        |
+| `/emergency-chat`     | ❌ ALLOWED (BUG!)  | ✅ Allowed        | ❌    | ❌        |
+| `/admin`              | ❌                 | ❌                | ✅    | ❌        |
+| `/logistic-dashboard` | ❌                 | ❌                | ❌    | ✅        |
 
 ### After (Fixed)
-| Route                     | Unverified Patient         | Verified Patient | Admin | Logistics |
-|--------------------------|---------------------------|------------------|-------|-----------|
-| `/dashboard`             | ❌ Redirect /verify-id    | ✅ Allowed       | ❌    | ❌        |
-| `/verify-id`             | ✅ Allowed                | ❌ Redirect /dash| ❌    | ❌        |
-| `/verification-pending`  | ✅ Allowed (if pending)   | ❌ Redirect /dash| ❌    | ❌        |
-| `/emergency-chat`        | ❌ Redirect /verify-id    | ✅ Allowed       | ❌    | ❌        |
-| `/admin`                 | ❌                        | ❌               | ✅    | ❌        |
-| `/logistic-dashboard`    | ❌                        | ❌               | ❌    | ✅        |
+
+| Route                   | Unverified Patient      | Verified Patient  | Admin | Logistics |
+| ----------------------- | ----------------------- | ----------------- | ----- | --------- |
+| `/dashboard`            | ❌ Redirect /verify-id  | ✅ Allowed        | ❌    | ❌        |
+| `/verify-id`            | ✅ Allowed              | ❌ Redirect /dash | ❌    | ❌        |
+| `/verification-pending` | ✅ Allowed (if pending) | ❌ Redirect /dash | ❌    | ❌        |
+| `/emergency-chat`       | ❌ Redirect /verify-id  | ✅ Allowed        | ❌    | ❌        |
+| `/admin`                | ❌                      | ❌                | ✅    | ❌        |
+| `/logistic-dashboard`   | ❌                      | ❌                | ❌    | ✅        |
 
 ---
 
@@ -309,22 +313,26 @@
 ## Security Improvements Summary
 
 ### 1. URL Bypass Prevention ✅
+
 - **Before:** Type `/dashboard` → Access granted
 - **After:** Type `/dashboard` → Redirected to verification
 
 ### 2. Re-Verification Prevention ✅
+
 - **Before:** Verified user sees verify page
 - **After:** Auto-redirect to dashboard
 
 ### 3. State-Based Routing ✅
+
 - **Before:** Only 2 states (verified/not verified)
 - **After:** 4 states (verified/pending/rejected/null)
 
 ### 4. Route-Level Enforcement ✅
+
 - **Before:** Only component-level checks
 - **After:** ProtectedRoute enforces at route level
 
 ### 5. Clear User Communication ✅
+
 - **Before:** No feedback after submission
 - **After:** Dedicated pending page with status
-

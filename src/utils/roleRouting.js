@@ -13,19 +13,19 @@ export const getDefaultRouteForRole = (role, user = null) => {
   switch (role) {
     case "admin":
       return "/admin";
-    
+
     case "logistics":
       return "/logistic-dashboard";
-    
+
     case "responder":
       return "/responder";
-    
+
     case "patient":
     case "resident":
       // For patients/residents, check verification status
       if (user) {
         const status = user.verification_status;
-        
+
         if (status === "verified") {
           // Verified users go to dashboard
           return "/dashboard";
@@ -41,7 +41,7 @@ export const getDefaultRouteForRole = (role, user = null) => {
         }
       }
       return "/verify-id";
-    
+
     default:
       return "/dashboard";
   }
@@ -83,12 +83,12 @@ export const navigateToRoleBasedRoute = (user, navigate, options = {}) => {
  */
 export const needsVerification = (user) => {
   if (!user) return false;
-  
+
   // Only patients and residents need verification
   if (user.role !== "patient" && user.role !== "resident") {
     return false;
   }
-  
+
   // User needs verification if they are NOT verified
   // Status can be: 'pending' (waiting approval), 'rejected' (need to resubmit), or null/undefined (never submitted)
   return user.verification_status !== "verified";
@@ -104,20 +104,20 @@ export const getPostAuthDescription = (role, user = null) => {
   switch (role) {
     case "admin":
       return "Redirecting to admin panel...";
-    
+
     case "logistics":
       return "Redirecting to logistics dashboard...";
-    
+
     case "responder":
       return "Redirecting to responder dashboard...";
-    
+
     case "patient":
     case "resident":
       if (needsVerification(user)) {
         return "Please verify your ID to continue.";
       }
       return "Redirecting to your dashboard...";
-    
+
     default:
       return "Redirecting...";
   }
