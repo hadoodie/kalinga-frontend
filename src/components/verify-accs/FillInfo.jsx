@@ -1,11 +1,20 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { getDefaultRouteForRole } from "../../utils/roleRouting";
+import api from "../../services/api";
 
 export default function FillInfo() {
   const [step, setStep] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState(""); 
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user, setUser } = useAuth();
+  
+  // Get the selected ID type and file from previous page
+  const { selectedID, file } = location.state || {};
 
   const [formData, setFormData] = useState({
     idNumber: "",
@@ -70,7 +79,7 @@ export default function FillInfo() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (
@@ -84,9 +93,60 @@ export default function FillInfo() {
       return;
     }
 
+    if (!selectedID || !file) {
+      setError("Missing ID type or file. Please go back and upload your ID.");
+      return;
+    }
+
     setError("");
-    console.log("Submitted:", formData);
-    navigate("/#hero");
+    setSubmitting(true);
+    
+    try {
+      // Create FormData for file upload
+      const submitData = new FormData();
+      
+      // Add form fields
+      submitData.append('first_name', formData.firstName);
+      submitData.append('last_name', formData.lastName);
+      submitData.append('middle_name', formData.middleName || '');
+      
+      // Format birthday as YYYY-MM-DD
+      const birthday = `${formData.birthYear}-${String(months.indexOf(formData.birthMonth) + 1).padStart(2, '0')}-${String(formData.birthDay).padStart(2, '0')}`;
+      submitData.append('birthday', birthday);
+      
+      submitData.append('contact_number', formData.contactNumber);
+      
+      // Combine address fields
+      const fullAddress = `${formData.houseStreet}, ${formData.barangay}, ${formData.city}, ${formData.province} ${formData.zipCode}`;
+      submitData.append('address', fullAddress);
+      
+      // Add ID information
+      submitData.append('id_type', selectedID);
+      submitData.append('id_image', file);
+      
+      // Submit to backend
+      const response = await api.post('/submit-verification', submitData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      // Update user context with the returned user data
+      const updatedUser = response.data.user;
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
+      // Show success message
+      alert(response.data.message || "Verification submitted successfully! Your account is pending admin approval.");
+      
+      // Navigate to verification pending page
+      navigate("/verification-pending");
+      
+    } catch (error) {
+      console.error("Verification submission error:", error);
+      setError(error.response?.data?.message || "Failed to submit verification. Please try again.");
+      setSubmitting(false);
+    }
   };
 
   const confirmBack = () => {
@@ -325,9 +385,14 @@ export default function FillInfo() {
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800"
+                  disabled={submitting}
+                  className={`px-6 py-2 rounded-lg font-medium ${
+                    submitting 
+                      ? "bg-gray-400 text-gray-200 cursor-not-allowed"
+                      : "bg-green-700 text-white hover:bg-green-800"
+                  }`}
                 >
-                  Submit
+                  {submitting ? "Submitting..." : "Submit"}
                 </button>
               </div>
             </>

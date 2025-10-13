@@ -33,14 +33,15 @@ export default function LogInPage() {
       // Redirect using centralized role-based routing
       const from = location.state?.from?.pathname || null;
       navigateToRoleBasedRoute(data.user, navigate, { from });
-      
     } catch (error) {
       console.error("Login error:", error);
       // Show error toast
       toast({
         title: "Login Failed",
         description:
-          error.response?.data?.message || "Invalid email or password",
+          error.response?.data?.message +
+            " Try using test credentials: patient@kalinga.com | password123" ||
+          "Invalid email or password",
         variant: "destructive",
       });
     } finally {

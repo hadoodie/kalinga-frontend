@@ -3,6 +3,7 @@ import { HashLink } from "react-router-hash-link";
 import { Search, Bell, UserCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
+import { useAuth } from "../context/AuthContext";
 
 export const NavbarB = ({
   userName = "Juan Dela Cruz",
@@ -14,11 +15,18 @@ export const NavbarB = ({
     "Responder team dispatched nearby",
   ],
 }) => {
+  const { user, logout } = useAuth();
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const profileRef = useRef(null);
   const notifRef = useRef(null);
   const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -141,7 +149,9 @@ export const NavbarB = ({
                     <p className="text-sm font-semibold text-gray-800">
                       {userName}
                     </p>
-                    <p className="text-left text-xs text-gray-500">{userRole}</p>
+                    <p className="text-left text-xs text-gray-500">
+                      {userRole}
+                    </p>
                   </div>
                 </div>
 
@@ -165,7 +175,7 @@ export const NavbarB = ({
                   </li>
                   <li>
                     <button
-                      onClick={() => navigate("/login")}
+                      onClick={() => handleLogout()}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
                     >
                       Log out

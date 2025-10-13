@@ -148,6 +148,49 @@ class AuthController extends Controller
     }
 
     /**
+     * Submit complete verification information
+     */
+    public function submitVerification(Request $request)
+    {
+        $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'birthday' => 'required|date',
+            'contact_number' => 'required|string|max:20',
+            'address' => 'required|string|max:500',
+            'id_type' => 'required|string|max:50',
+            'id_image' => 'required|image|mimes:jpeg,png,jpg|max:2048', // 2MB max
+        ]);
+
+        $user = $request->user();
+
+        // Store ID image
+        $idImagePath = null;
+        if ($request->hasFile('id_image')) {
+            $idImagePath = $request->file('id_image')->store('id_uploads', 'public');
+        }
+
+        // Update user with all verification information
+        $user->update([
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'middle_name' => $request->middle_name,
+            'birthday' => $request->birthday,
+            'contact_number' => $request->contact_number,
+            'address' => $request->address,
+            'id_type' => $request->id_type,
+            'id_image_path' => $idImagePath,
+            'verification_status' => 'pending',
+        ]);
+
+        return response()->json([
+            'message' => 'Verification information submitted successfully. Awaiting admin approval.',
+            'user' => $user->fresh(),
+        ]);
+    }
+
+    /**
      * Forgot password (send reset link)
      */
     public function forgotPassword(Request $request)

@@ -33,6 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/verify-id', [AuthController::class, 'verifyId']);
+    Route::post('/submit-verification', [AuthController::class, 'submitVerification']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {

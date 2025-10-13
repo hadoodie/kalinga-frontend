@@ -23,8 +23,18 @@ class UserSeeder extends Seeder
 
         // Logistics User
         User::create([
-            'name' => 'Logistics Manager',
-            'email' => 'logistics@kalinga.com',
+            'name' => 'Logistics Unverified',
+            'email' => 'logistics_unverified@kalinga.com',
+            'password' => Hash::make('password123'),
+            'role' => 'logistics',
+            'phone' => '09171234568',
+            'is_active' => true,
+            'verification_status' => null,
+        ]);
+
+        User::create([
+            'name' => 'Logistics Verified',
+            'email' => 'logistics_verified@kalinga.com',
             'password' => Hash::make('password123'),
             'role' => 'logistics',
             'phone' => '09171234568',
@@ -34,8 +44,18 @@ class UserSeeder extends Seeder
 
         // Responder User
         User::create([
-            'name' => 'Emergency Responder',
-            'email' => 'responder@kalinga.com',
+            'name' => 'Responder Unverified',
+            'email' => 'responder_unverified@kalinga.com',
+            'password' => Hash::make('password123'),
+            'role' => 'responder',
+            'phone' => '09171234569',
+            'is_active' => true,
+            'verification_status' => null,
+        ]);
+
+                User::create([
+            'name' => 'Responder Verified',
+            'email' => 'responder_verified@kalinga.com',
             'password' => Hash::make('password123'),
             'role' => 'responder',
             'phone' => '09171234569',
@@ -43,21 +63,21 @@ class UserSeeder extends Seeder
             'verification_status' => 'verified',
         ]);
 
-        // Resident User (using patient role as closest match)
+
+        // Patient User
         User::create([
-            'name' => 'Resident User',
-            'email' => 'resident@kalinga.com',
+            'name' => 'Patient Unverified',
+            'email' => 'patient_unverified@kalinga.com',
             'password' => Hash::make('password123'),
-            'role' => 'patient', // Using patient as resident equivalent
+            'role' => 'patient', 
             'phone' => '09171234570',
             'is_active' => true,
-            'verification_status' => 'verified',
+            'verification_status' => null,
         ]);
 
-        // Patient User (from existing migration)
         User::create([
-            'name' => 'Patient User',
-            'email' => 'patient@kalinga.com',
+            'name' => 'Patient Verified',
+            'email' => 'patient_verified@kalinga.com',
             'password' => Hash::make('password123'),
             'role' => 'patient',
             'phone' => '09171234571',

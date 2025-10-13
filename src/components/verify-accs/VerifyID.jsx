@@ -1,21 +1,31 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 export default function VerifyID() {
   const [selectedID, setSelectedID] = useState("");
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  // Guard: If user is already verified, redirect to dashboard
+  useEffect(() => {
+    if (user && user.verification_status === "verified") {
+      console.log("User already verified, redirecting to dashboard");
+      navigate("/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   const ids = [
-    "Driver’s License", 
-    "UMID", 
-    "Postal ID", 
-    "Passport", 
-    "SSS", 
+    "Driver’s License",
+    "UMID",
+    "Postal ID",
+    "Passport",
+    "SSS",
     "PRC ID",
     "HDMF (Pag-IBIG ID)",
     "National ID",
     "ePHIL ID",
-    "Student ID"
+    "Student ID",
   ];
 
   const handleNext = (e) => {

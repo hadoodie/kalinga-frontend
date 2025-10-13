@@ -1,15 +1,19 @@
 import { useAuth } from "../context/AuthContext";
 
 export default function AdminDashboard() {
-  const { user } = useAuth();
-
+  const { user, logout } = useAuth();
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
   return (
     <div className="min-h-screen bg-background p-8">
       <div className="max-w-7xl mx-auto">
         <div className="bg-card rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold mb-4">Admin Dashboard</h1>
           <p className="text-muted-foreground mb-8">
-            Welcome, {user?.name}! You have full administrative access to the Kalinga system.
+            Welcome, {user?.name}! You have full administrative access to the
+            Kalinga system.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -84,26 +88,43 @@ export default function AdminDashboard() {
           <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-background border border-border rounded-lg p-4 text-center">
               <div className="text-3xl font-bold text-primary">--</div>
-              <div className="text-sm text-muted-foreground mt-1">Total Users</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Total Users
+              </div>
             </div>
             <div className="bg-background border border-border rounded-lg p-4 text-center">
               <div className="text-3xl font-bold text-primary">--</div>
-              <div className="text-sm text-muted-foreground mt-1">Active Emergencies</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Active Emergencies
+              </div>
             </div>
             <div className="bg-background border border-border rounded-lg p-4 text-center">
               <div className="text-3xl font-bold text-primary">--</div>
-              <div className="text-sm text-muted-foreground mt-1">Resources</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Resources
+              </div>
             </div>
             <div className="bg-background border border-border rounded-lg p-4 text-center">
               <div className="text-3xl font-bold text-primary">--</div>
-              <div className="text-sm text-muted-foreground mt-1">Hospitals</div>
+              <div className="text-sm text-muted-foreground mt-1">
+                Hospitals
+              </div>
             </div>
           </div>
 
           <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-800">
-              <strong>Note:</strong> This is a placeholder admin dashboard. Full admin features will be implemented in future updates.
+              <strong>Note:</strong> This is a placeholder admin dashboard. Full
+              admin features will be implemented in future updates.
             </p>
+          </div>
+          <div className="Logout">
+            <button
+              onClick={() => handleLogout()}
+              className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>

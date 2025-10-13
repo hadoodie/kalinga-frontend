@@ -25,6 +25,7 @@ import { ResourceManagement } from "./pages-logis/2_ResourceMngmt";
 import { DashboardLogistics } from "./pages-logis/1_LogisDash";
 import AdminDashboard from "./pages/18_Admin";
 import ResponderDashboard from "./pages/19_Responder";
+import VerificationPending from "./pages/20_VerificationPending";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -56,6 +57,11 @@ function App() {
             <Route path="/fill-info" element={
               <ProtectedRoute>
                 <FillInformation />
+              </ProtectedRoute>
+            }/>
+            <Route path="/verification-pending" element={
+              <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <VerificationPending />
               </ProtectedRoute>
             }/>
             

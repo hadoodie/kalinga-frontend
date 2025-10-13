@@ -22,18 +22,25 @@ export const getDefaultRouteForRole = (role, user = null) => {
     
     case "patient":
     case "resident":
-      // For patients/residents, check if they need ID verification
+      // For patients/residents, check verification status
       if (user) {
-        const needsVerification = 
-          user.verification_status === "pending" || 
-          user.verification_status === "unverified" ||
-          !user.id_image_path;
+        const status = user.verification_status;
         
-        if (needsVerification) {
+        if (status === "verified") {
+          // Verified users go to dashboard
+          return "/dashboard";
+        } else if (status === "pending") {
+          // Pending users see waiting screen
+          return "/verification-pending";
+        } else if (status === "rejected") {
+          // Rejected users need to resubmit
+          return "/verify-id";
+        } else {
+          // No verification submitted yet (null, undefined, or any other value)
           return "/verify-id";
         }
       }
-      return "/dashboard";
+      return "/verify-id";
     
     default:
       return "/dashboard";
@@ -82,11 +89,9 @@ export const needsVerification = (user) => {
     return false;
   }
   
-  return (
-    user.verification_status === "pending" ||
-    user.verification_status === "unverified" ||
-    !user.id_image_path
-  );
+  // User needs verification if they are NOT verified
+  // Status can be: 'pending' (waiting approval), 'rejected' (need to resubmit), or null/undefined (never submitted)
+  return user.verification_status !== "verified";
 };
 
 /**
