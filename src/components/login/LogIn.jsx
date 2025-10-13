@@ -3,6 +3,7 @@ import logo from "../../assets/kalinga-logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import { navigateToRoleBasedRoute } from "../../utils/roleRouting";
 
 export default function LogInPage() {
   const { toast } = useToast();
@@ -29,30 +30,10 @@ export default function LogInPage() {
           "flex flex-col items-center text-center justify-center w-full",
       });
 
-      // Redirect to the page they tried to visit or based on role
+      // Redirect using centralized role-based routing
       const from = location.state?.from?.pathname || null;
+      navigateToRoleBasedRoute(data.user, navigate, { from });
       
-      if (from) {
-        navigate(from, { replace: true });
-      } else {
-        // Redirect based on user role
-        switch (data.user.role) {
-          case "logistics":
-            navigate("/logistic-dashboard");
-            break;
-          case "responder":
-            navigate("/responder");
-            break;
-          case "admin":
-            navigate("/admin");
-            break;
-          case "patient":
-          case "resident":
-          default:
-            navigate("/dashboard");
-            break;
-        }
-      }
     } catch (error) {
       console.error("Login error:", error);
       // Show error toast

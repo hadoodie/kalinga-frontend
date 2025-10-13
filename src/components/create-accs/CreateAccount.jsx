@@ -2,12 +2,20 @@ import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { navigateToRoleBasedRoute, getPostAuthDescription } from "../../utils/roleRouting";
 
 export default function CreateAcc() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,7 +29,15 @@ export default function CreateAcc() {
     return minLength.test(pwd) && hasLetters.test(pwd) && hasNumbers.test(pwd);
   };
 
-  const handleSubmit = (e) => {
+  const handleInputChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!isPasswordStrong(password)) {
@@ -37,16 +53,54 @@ export default function CreateAcc() {
     setIsSubmitting(true);
     setError("");
 
-    setTimeout(() => {
+    try {
+      // Register user with backend API
+      const data = await register({
+        name: formData.name,
+        email: formData.email,
+        password: password,
+        password_confirmation: confirmPassword,
+        role: "patient", // Default role for self-registration
+        phone: formData.phone || null,
+      });
+
+      // Show success toast
+      const description = getPostAuthDescription(data.user.role, data.user);
       toast({
         title: "Account created!",
-        description: "Proceed to verify your ID.",
+        description: `Welcome, ${data.user.name}! ${description}`,
         className: "flex flex-col items-center text-center justify-center w-full",
       });
-      setIsSubmitting(false);
 
-      navigate("/verify-id");
-    }, 1500);
+      // User is now automatically logged in (AuthContext handles this)
+      // Redirect based on role using centralized routing
+      navigateToRoleBasedRoute(data.user, navigate, { delay: 1500 });
+
+    } catch (error) {
+      console.error("Registration error:", error);
+      
+      // Handle specific error messages
+      let errorMessage = "Registration failed. Please try again.";
+      
+      if (error.response?.data?.errors) {
+        // Laravel validation errors
+        const errors = error.response.data.errors;
+        errorMessage = Object.values(errors).flat().join(" ");
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setError(errorMessage);
+      toast({
+        title: "Registration Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleConfirmPasswordChange = (e) => {
@@ -75,6 +129,8 @@ export default function CreateAcc() {
               <input
                 type="text"
                 id="name"
+                value={formData.name}
+                onChange={handleInputChange}
                 required
                 className="w-full px-4 py-3 rounded-md border border-input bg-background focus:ring-2 focus:ring-primary"
                 placeholder="Juan Dela Cruz"
@@ -89,9 +145,26 @@ export default function CreateAcc() {
               <input
                 type="email"
                 id="email"
+                value={formData.email}
+                onChange={handleInputChange}
                 required
                 className="w-full px-4 py-3 rounded-md border border-input bg-background focus:ring-2 focus:ring-primary"
                 placeholder="juan.delacruz@example.com"
+              />
+            </div>
+
+            {/* Phone (Optional) */}
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium mb-1 text-left">
+                Phone Number <span className="text-gray-500 text-xs">(Optional)</span>
+              </label>
+              <input
+                type="tel"
+                id="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 rounded-md border border-input bg-background focus:ring-2 focus:ring-primary"
+                placeholder="09171234567"
               />
             </div>
 

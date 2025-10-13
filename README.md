@@ -1,6 +1,31 @@
 # Kalinga Emergency Response System
 
-A comprehensive emergency response and logistics management system built with React (Frontend) and Laravel (Backend).
+A comprehensive emergency response and logistics management system built with React (Fronten## 📋 Recent Updates
+
+### October 13, 2025 - Registration Flow Fix
+- ✅ **Connected Registration to Backend API**
+  - Registration now creates real user accounts in database
+  - Generates authentication tokens automatically
+  - Validates all user input with backend rules
+
+- ✅ **Automatic Login After Registration**
+  - Users are automatically logged in upon successful registration
+  - Seamlessly proceed to ID verification without re-entering credentials
+  - Natural flow: Register → Verify ID → Upload ID → Complete Profile
+
+- ✅ **Enhanced Registration Form**
+  - Added phone number field (optional)
+  - All form inputs bound to React state
+  - Real-time validation with clear error messages
+  - Backend validation errors displayed to user
+
+- ✅ **Improved User Experience**
+  - No interruption after registration
+  - No need to login again with new credentials
+  - Faster onboarding process
+  - Default role: "patient" for self-registered users
+
+### October 13, 2025 - Authentication Integration Completeand Laravel (Backend).
 
 ## 🚀 Project Status
 

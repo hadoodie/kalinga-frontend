@@ -23,6 +23,8 @@ import { RequestAllocation } from "./pages-logis/5_Request";
 import { AssetRegistry } from "./pages-logis/3_Registry";
 import { ResourceManagement } from "./pages-logis/2_ResourceMngmt";
 import { DashboardLogistics } from "./pages-logis/1_LogisDash";
+import AdminDashboard from "./pages/18_Admin";
+import ResponderDashboard from "./pages/19_Responder";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -111,6 +113,20 @@ function App() {
             <Route path="/medical-facilities" element={
               <ProtectedRoute allowedRoles={["patient", "resident"]}>
                 <MedicalFacilities />
+              </ProtectedRoute>
+            }/>
+            
+            {/* Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }/>
+            
+            {/* Responder Routes */}
+            <Route path="/responder" element={
+              <ProtectedRoute allowedRoles={["responder"]}>
+                <ResponderDashboard />
               </ProtectedRoute>
             }/>
             
