@@ -48,6 +48,7 @@ export const AdminLayout = ({
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const profileButtonRef = useRef(null);
+  const adminContainerRef = useRef(null); // Reference to admin container
 
   const activeSection = useMemo(
     () =>
@@ -95,22 +96,29 @@ export const AdminLayout = ({
 
   const quickActionItems = quickActionsProp ?? defaultQuickActions;
 
+  // Initialize admin-specific theme
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !adminContainerRef.current) return;
 
-    const storedTheme = localStorage.getItem("theme");
+    // Use separate localStorage key for admin theme
+    const storedAdminTheme = localStorage.getItem("adminTheme");
     const prefersDark = window.matchMedia(
       "(prefers-color-scheme: dark)"
     ).matches;
-    const shouldUseDark = storedTheme ? storedTheme === "dark" : prefersDark;
+    const shouldUseDark = storedAdminTheme ? storedAdminTheme === "dark" : prefersDark;
 
     if (shouldUseDark) {
-      document.documentElement.classList.add("dark");
+      adminContainerRef.current.classList.add("dark");
       setIsDarkMode(true);
     } else {
-      document.documentElement.classList.remove("dark");
+      adminContainerRef.current.classList.remove("dark");
       setIsDarkMode(false);
     }
+
+    // Cleanup: ensure global dark class is removed when admin panel unmounts
+    return () => {
+      document.documentElement.classList.remove("dark");
+    };
   }, []);
 
   useEffect(() => {
@@ -130,16 +138,16 @@ export const AdminLayout = ({
   }, []);
 
   const toggleTheme = () => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !adminContainerRef.current) return;
 
     setIsDarkMode((prev) => {
       const next = !prev;
       if (next) {
-        document.documentElement.classList.add("dark");
-        localStorage.setItem("theme", "dark");
+        adminContainerRef.current.classList.add("dark");
+        localStorage.setItem("adminTheme", "dark");
       } else {
-        document.documentElement.classList.remove("dark");
-        localStorage.setItem("theme", "light");
+        adminContainerRef.current.classList.remove("dark");
+        localStorage.setItem("adminTheme", "light");
       }
       return next;
     });
@@ -204,7 +212,7 @@ export const AdminLayout = ({
   };
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div ref={adminContainerRef} className="relative min-h-screen bg-background text-foreground">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         {/* Desktop Sidebar */}
         <aside className="hidden border-r border-border/60 bg-card/80 lg:flex lg:flex-col">
