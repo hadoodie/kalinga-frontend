@@ -3,22 +3,34 @@ import { HashLink } from "react-router-hash-link";
 import { Search, Bell, UserCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
+import { useAuth } from "../context/AuthContext";
 
 export const NavbarB = ({
-  userName = "Juan Dela Cruz",
-  userRole = "Resident",
-  userPic = "https://i.pravatar.cc/100",
   notifications = [
     "Typhoon warning in your area",
     "Relief goods distribution at Barangay Hall",
     "Responder team dispatched nearby",
   ],
 }) => {
+  const { user, logout } = useAuth();
+  const capitalizeFirstLetter = (str) => {
+    if (!str) return str; // Handles null, undefined, or empty string
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const profileRef = useRef(null);
   const notifRef = useRef(null);
   const navigate = useNavigate();
+  const userName = user?.name || null;
+  const userRole = user?.role ? capitalizeFirstLetter(user.role) : null;
+  const userPic = user?.profilePicture || "https://i.pravatar.cc/100";
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -167,7 +179,7 @@ export const NavbarB = ({
                   </li>
                   <li>
                     <button
-                      onClick={() => navigate("/login")}
+                      onClick={() => handleLogout()}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
                     >
                       Log out

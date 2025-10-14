@@ -32,6 +32,7 @@ export const AdminLayout = ({
   personaInitials = "AD",
   personaName = "Admin Duty",
   personaRole = "Operations Lead",
+  personaEmail = "admin.duty@kalinga.gov",
   searchPlaceholder = "Search incidents, teams, or resources",
   heroBanner,
   quickActions: quickActionsProp,
@@ -42,7 +43,11 @@ export const AdminLayout = ({
   consoleBadgeLabel = "Current View",
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check localStorage for theme preference
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme === "dark";
+  });
   const [timeRange, setTimeRange] = useState("6h");
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
@@ -95,23 +100,14 @@ export const AdminLayout = ({
 
   const quickActionItems = quickActionsProp ?? defaultQuickActions;
 
+  // Apply theme to document element on mount and when it changes
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const storedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    const shouldUseDark = storedTheme ? storedTheme === "dark" : prefersDark;
-
-    if (shouldUseDark) {
+    if (isDarkMode) {
       document.documentElement.classList.add("dark");
-      setIsDarkMode(true);
     } else {
       document.documentElement.classList.remove("dark");
-      setIsDarkMode(false);
     }
-  }, []);
+  }, [isDarkMode]);
 
   useEffect(() => {
     const handleClickAway = (event) => {
@@ -130,10 +126,9 @@ export const AdminLayout = ({
   }, []);
 
   const toggleTheme = () => {
-    if (typeof window === "undefined") return;
-
     setIsDarkMode((prev) => {
       const next = !prev;
+      
       if (next) {
         document.documentElement.classList.add("dark");
         localStorage.setItem("theme", "dark");
@@ -145,28 +140,28 @@ export const AdminLayout = ({
     });
   };
 
-  const renderNavItem = (section) => {
-    const handleProfileAction = (value) => {
-      setIsProfileMenuOpen(false);
-      switch (value) {
-        case "logout":
-          onLogout?.();
-          break;
-        case "support":
-          window.open(
-            "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
-            "_blank"
-          );
-          break;
-        case "settings":
-        case "profile":
-        case "preferences":
-        default:
-          console.info(`Selected admin profile action: ${value}`);
-          break;
-      }
-    };
+  const handleProfileAction = (value) => {
+    setIsProfileMenuOpen(false);
+    switch (value) {
+      case "logout":
+        onLogout?.();
+        break;
+      case "support":
+        window.open(
+          "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
+          "_blank"
+        );
+        break;
+      case "settings":
+      case "profile":
+      case "preferences":
+      default:
+        console.info(`Selected admin profile action: ${value}`);
+        break;
+    }
+  };
 
+  const renderNavItem = (section) => {
     const Icon = section.icon;
     const isActive = section.id === activeSection.id;
 
@@ -356,7 +351,7 @@ export const AdminLayout = ({
                             Signed in as
                           </p>
                           <p className="mt-1 font-semibold text-foreground">
-                            admin.duty@kalinga.gov
+                            {personaEmail}
                           </p>
                         </div>
                         <div className="py-1">

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   GraduationCap,
   LayoutDashboard,
@@ -19,6 +19,7 @@ import { TrainingSection } from "@/components/admin/sections/TrainingSection";
 import { ConnectivityMonitoring } from "@/components/admin/sections/ConnectivityMonitoring";
 import { MonitoringSecurity } from "@/components/admin/sections/MonitoringSecurity";
 import { BroadcastControl } from "@/components/admin/sections/BroadcastControl";
+import { useAuth } from "@/context/AuthContext";
 
 const adminSections = [
   {
@@ -88,25 +89,32 @@ const adminSections = [
 
 export const AdminPortal = () => {
   const [activeSection, setActiveSection] = useState(adminSections[0].id);
-  const [hasAccess, setHasAccess] = useState(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const role = localStorage.getItem("userRole");
-    setHasAccess(role === "admin");
-  }, []);
-
-  const handleGrantAccess = () => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem("userRole", "admin");
-    setHasAccess(true);
+  // Helper function to get user initials
+  const getInitials = (name) => {
+    if (!name) return "AD";
+    const parts = name.trim().split(" ");
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   };
 
-  const handleLogout = () => {
-    if (typeof window === "undefined") return;
-    localStorage.removeItem("userRole");
-    setHasAccess(false);
-    setActiveSection(adminSections[0].id);
+  // Helper function to format role for display
+  const formatRole = (role) => {
+    if (!role) return "Administrator";
+    return role.charAt(0).toUpperCase() + role.slice(1);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout failed:", error);
+      // Force navigation even if logout API fails
+      navigate("/login");
+    }
   };
 
   const ActiveComponent = useMemo(() => {
@@ -116,7 +124,8 @@ export const AdminPortal = () => {
     return target.component;
   }, [activeSection]);
 
-  if (hasAccess === null) {
+  // Show loading state while checking authentication
+  if (!user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <div className="rounded-3xl border border-border/60 bg-card/80 p-10 text-center shadow-sm">
@@ -128,7 +137,8 @@ export const AdminPortal = () => {
     );
   }
 
-  if (!hasAccess) {
+  // Check if user has admin role
+  if (user.role !== "admin") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <div className="max-w-lg rounded-3xl border border-border/60 bg-card/80 p-10 text-left shadow-lg">
@@ -137,25 +147,23 @@ export const AdminPortal = () => {
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-foreground/70">
             This console is reserved for authorized administrators of Kalinga
-            Command. Please sign in with an admin account or contact the
-            operations lead to elevate your access.
+            Command. You are currently logged in as <strong>{user.name}</strong>{" "}
+            with role <strong>{formatRole(user.role)}</strong>. Please contact
+            the operations lead to elevate your access.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
             <Link
-              to="/login"
+              to="/"
               className="inline-flex items-center justify-center rounded-full bg-primary px-5 py-2 font-semibold text-primary-foreground shadow-sm transition hover:shadow-md"
             >
-              Go to login
+              Go to home
             </Link>
             <button
-              onClick={handleGrantAccess}
+              onClick={() => handleLogout()}
               className="inline-flex items-center justify-center rounded-full border border-border/60 px-5 py-2 font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
             >
-              Demo as admin
+              Sign out
             </button>
-            <span className="text-xs text-foreground/40">
-              (Adds <code>userRole="admin"</code> to localStorage)
-            </span>
           </div>
         </div>
       </div>
@@ -168,6 +176,10 @@ export const AdminPortal = () => {
       activeSectionId={activeSection}
       onSectionChange={setActiveSection}
       onLogout={handleLogout}
+      personaInitials={getInitials(user.name)}
+      personaName={user.name}
+      personaRole={formatRole(user.role)}
+      personaEmail={user.email}
     >
       <ActiveComponent />
     </AdminLayout>

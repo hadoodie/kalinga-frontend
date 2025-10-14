@@ -1,311 +1,422 @@
-import { useState } from "react";
-import { 
-  ArchiveRestore, 
-  Package, 
-  Truck, 
-  CircleAlert, 
-  ChevronDown, 
-  RefreshCw 
+import { useState, useEffect } from "react";
+import {
+  ArchiveRestore,
+  Package,
+  Truck,
+  CircleAlert,
+  ChevronDown,
 } from "lucide-react";
-
-// --- Configuration & Helpers ---
-
-// Map user's colors to clear Tailwind utilities for consistency
-const COLORS = {
-  primary: "text-gray-800", // Dark text
-  highlight: "text-yellow-500", // Accent color
-  darkBg: "bg-green-800", // Header background
-  darkText: "text-white", // Text on dark background
-};
-
-// Helper to get status badge colors
-const getStatusClasses = (status) => {
-  switch (status) {
-    case "Critical":
-      return "bg-red-100 text-red-600 border-red-300";
-    case "High":
-      return "bg-amber-100 text-amber-600 border-amber-300";
-    case "Moderate":
-    default:
-      return "bg-green-100 text-green-600 border-green-300";
-  }
-};
-
-// --- MOCK DATA ---
-
-// Combine 'All', categories, AND 'Critical Only' into one filter array for better UX
-const evacCategories = ["All", "Food & Water", "Hygiene", "Critical Only"];
-const medicalCategories = ["All", "Medicine", "First Aid Kit", "Critical Only"];
-
-const inventoryData = [
-  { resource: "Rice", category: "Food & Water", received: 50, unit: "kg", distributed: 20, remaining: 30, status: "Critical", facility: "Evacuation Center" },
-  { resource: "Canned Goods", category: "Food & Water", received: 100, unit: "cans", distributed: 10, remaining: 90, status: "High", facility: "Evacuation Center" },
-  { resource: "Soap", category: "Hygiene", received: 150, unit: "boxes", distributed: 75, remaining: 75, status: "Moderate", facility: "Evacuation Center" },
-  { resource: "Bottled Water", category: "Food & Water", received: 500, unit: "bottles", distributed: 200, remaining: 300, status: "High", facility: "Evacuation Center" },
-  { resource: "Shampoo", category: "Hygiene", received: 100, unit: "sachets", distributed: 50, remaining: 50, status: "Moderate", facility: "Evacuation Center" },
-  { resource: "Conditioner", category: "Hygiene", received: 100, unit: "sachets", distributed: 50, remaining: 50, status: "Moderate", facility: "Evacuation Center" },
-  { resource: "Toothpaste", category: "Hygiene", received: 100, unit: "sachets", distributed: 60, remaining: 40, status: "Moderate", facility: "Evacuation Center" },
-  { resource: "Toothbrush", category: "Hygiene", received: 300, unit: "packs", distributed: 60, remaining: 240, status: "High", facility: "Evacuation Center" },
-  { resource: "Tylenol", category: "Medicine", received: 100, unit: "bottles", distributed: 90, remaining: 10, status: "Critical", facility: "Medical Facility" },
-  { resource: "Ibuprofen", category: "Medicine", received: 50, unit: "bottles", distributed: 40, remaining: 10, status: "Critical", facility: "Medical Facility" },
-  { resource: "Tempra", category: "Medicine", received: 150, unit: "bottles", distributed: 100, remaining: 50, status: "Moderate", facility: "Medical Facility" },
-  { resource: "Bioflu", category: "Medicine", received: 100, unit: "bottles", distributed: 95, remaining: 5, status: "Critical", facility: "Medical Facility" },
-  { resource: "Neozep", category: "Medicine", received: 100, unit: "bottles", distributed: 100, remaining: 0, status: "Critical", facility: "Medical Facility" },
-  { resource: "Antibiotic", category: "Medicine", received: 100, unit: "bottles", distributed: 40, remaining: 60, status: "Moderate", facility: "Medical Facility" },
-  { resource: "Tweezers", category: "First Aid Kit", received: 20, unit: "pieces", distributed: 0, remaining: 20, status: "High", facility: "Medical Facility" },
-  { resource: "Triangular Bandage", category: "First Aid Kit", received: 20, unit: "pieces", distributed: 0, remaining: 20, status: "High", facility: "Medical Facility" },
-  { resource: "Adhesive Bandage", category: "First Aid Kit", received: 20, unit: "pieces", distributed: 10, remaining: 10, status: "Moderate", facility: "Medical Facility" },
-  { resource: "Roller Bandage", category: "First Aid Kit", received: 20, unit: "pieces", distributed: 0, remaining: 20, status: "High", facility: "Medical Facility" },
-  { resource: "Betadine", category: "First Aid Kit", received: 50, unit: "bottles", distributed: 50, remaining: 0, status: "Critical", facility: "Medical Facility" },
-  { resource: "Band Aid", category: "First Aid Kit", received: 100, unit: "packs", distributed: 65, remaining: 45, status: "Moderate", facility: "Medical Facility" },
-];
-
-// --- Sub-Components ---
-
-const StatCard = ({ title, value, icon: Icon, colorClass, bgColor }) => (
-  <div className="bg-white rounded-xl flex flex-col items-center justify-center p-4 shadow-lg border border-gray-100 hover:shadow-xl transition duration-300 min-h-[140px] md:min-h-0">
-    <div className="flex items-center gap-3">
-      <Icon size={40} className={`h-10 w-10 ${colorClass}`} />
-      <div className="flex flex-col items-center">
-        <div className={`text-4xl font-extrabold ${COLORS.primary}`}>{value}</div>
-        <div className={`text-sm text-center ${COLORS.primary} mt-1 font-medium`}>{title}</div>
-      </div>
-    </div>
-  </div>
-);
-
-
-// --- Main Component ---
+import resourceService from "../../services/resourceService";
 
 export default function ResourceMngmt() {
   const [filter, setFilter] = useState("All");
   const [seeAll, setSeeAll] = useState(false);
+  const evacCategories = ["All", "Food & Water", "Hygiene"];
+  const medicalCategories = ["All", "Medicine", "First Aid Kit"];
   const [facility, setFacility] = useState("Evacuation Center");
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const categories =
+    facility === "Evacuation Center" ? evacCategories : medicalCategories;
+  const [open, setOpen] = useState(false);
+  const [inventory, setInventory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const categories = facility === "Evacuation Center" ? evacCategories : medicalCategories;
+  // Fetch resources from backend
+  const fetchResources = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  // --- Filtering Logic ---
-  const filteredInventory = inventoryData.filter(item => {
-    const facilityMatch = item.facility === facility;
+      const params = {
+        facility: facility,
+      };
 
-    if (filter === "All") {
-      return facilityMatch;
+      // Add category filter if not "All"
+      if (filter !== "All" && filter !== "Critical") {
+        params.category = filter;
+      }
+
+      // Add status filter for Critical
+      if (filter === "Critical") {
+        params.status = "Critical";
+      }
+
+      const data = await resourceService.getAll(params);
+
+      // Map backend data to frontend format
+      const mappedData = data.map((item) => ({
+        resource: item.name,
+        category: item.category,
+        received: parseFloat(item.received || 0),
+        unit: item.unit,
+        distributed: parseFloat(item.distributed || 0),
+        remaining: parseFloat(item.quantity || 0),
+        status: item.status,
+        facility: item.location,
+        id: item.id,
+      }));
+
+      setInventory(mappedData);
+    } catch (err) {
+      console.error("Error fetching resources:", err);
+      setError("Failed to load resources. Please try again.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    if (filter === "Critical Only") {
-      return facilityMatch && item.status === "Critical";
-    }
+  // Fetch resources on component mount and when filters change
+  useEffect(() => {
+    fetchResources();
+  }, [facility, filter]);
 
-    // Category filter
-    return facilityMatch && item.category === filter;
+  const filteredInventory = inventory.filter((item) => {
+    const categoryMatch =
+      filter === "All"
+        ? true
+        : filter === "Critical"
+        ? item.status === "Critical"
+        : item.category === filter;
+
+    const facilityMatch =
+      item.facility === facility || item.facility.includes(facility);
+    return categoryMatch && facilityMatch;
   });
 
-  // --- Summary Calculations ---
-  const criticalCount = filteredInventory.filter(item => item.status === "Critical").length;
-  const totalRemaining = filteredInventory.reduce((sum, i) => sum + i.remaining, 0);
-  const totalReceived = filteredInventory.reduce((sum, i) => sum + i.received, 0);
-  const totalDistributed = filteredInventory.reduce((sum, i) => sum + i.distributed, 0);
+  const criticalCount = filteredInventory.filter(
+    (item) => item.status === "Critical"
+  ).length;
+  const totalRemaining = filteredInventory.reduce(
+    (sum, i) => sum + i.remaining,
+    0
+  );
+  const totalReceived = filteredInventory.reduce(
+    (sum, i) => sum + i.received,
+    0
+  );
+  const totalDistributed = filteredInventory.reduce(
+    (sum, i) => sum + i.distributed,
+    0
+  );
 
   return (
-    <div className="flex flex-col min-h-screen gap-6 p-4 md:p-8 bg-background">
-
-      {/* Header and Title */}
-      <header className="flex flex-wrap justify-between items-center gap-4 p-4 bg-white rounded-xl shadow-lg">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-primary">Resource Management</h1>
+    <div className="grid grid-rows-[minmax(0,_2fr)_minmax(2,_7fr)] w-full h-full gap-5 p-4 sm:p-6 lg:p-4 font-sans">
+      {/* Header */}
+      <header className="flex flex-wrap justify-between items-center gap-3 p-4 bg-white rounded-xl shadow-lg">
+        <h1 className="text-2xl md:text-3xl font-extrabold text-primary">
+          Resource Management
+        </h1>
         <button
-          onClick={() => console.log("Refreshing Data...")} // Placeholder for refresh action
-          className="flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-semibold rounded-lg shadow-md transition duration-200"
+          onClick={fetchResources}
+          className="px-4 py-2 bg-highlight hover:bg-yellow-500 text-white font-medium rounded-lg shadow-lg transition duration-200"
         >
-          <RefreshCw className="h-4 w-4 mr-2"/>
           Refresh Data
         </button>
       </header>
 
-      {/* Overview/Metrics Section */}
-      <div className={`transition-all duration-500 ${!seeAll ? "block" : "hidden md:block"}`}>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Overview Summary</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            title="Remaining Items"
-            value={totalRemaining}
-            icon={Package}
-            colorClass={COLORS.highlight}
-          />
-          <StatCard
-            title="Distributed Items"
-            value={totalDistributed}
-            icon={Truck}
-            colorClass={COLORS.highlight}
-          />
-          <StatCard
-            title="Received Items"
-            value={totalReceived}
-            icon={ArchiveRestore}
-            colorClass={COLORS.highlight}
-          />
-          <StatCard
-            title="Critical Items"
-            value={criticalCount}
-            icon={CircleAlert}
-            colorClass="text-red-500"
-          />
-        </div>
-      </div>
-
-      {/* Inventory List Section */}
-      <div className={`bg-white rounded-xl shadow-xl border border-gray-100 p-4 sm:p-6 flex flex-col flex-1`}>
-        {/* Controls: Category Filter, Facility Dropdown, See All Toggle */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          
-          {/* Category Tabs */}
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {categories.map((btn) => (
-              <button
-                key={btn}
-                onClick={() => setFilter(btn)}
-                className={`relative pb-2 font-semibold whitespace-nowrap text-sm md:text-base transition duration-150
-                  ${filter === btn ? COLORS.highlight : "text-gray-500 hover:text-gray-800"}`}
-              >
-                {btn}
-                {filter === btn ? (
-                  <span className="absolute left-0 bottom-0 w-full h-[3px] bg-yellow-500 rounded-full"></span>
-                ) : null}
-              </button>
-            ))}
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center p-8 bg-white rounded-xl shadow-lg">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+            <p className="text-gray-600 font-medium">Loading resources...</p>
           </div>
-          
-          {/* Actions: Facility and See All */}
-          <div className="flex items-center gap-4">
-            {/* Facility Dropdown */}
-            <div className="relative">
-              <button
-                onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center justify-center gap-2 border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg font-medium bg-white hover:bg-gray-50 transition shadow-sm"
-              >
-                {facility}
-                <ChevronDown size={20} className={`${dropdownOpen ? 'rotate-180' : 'rotate-0'} transition-transform duration-200 h-5 w-5`} />
-              </button>
+        </div>
+      )}
 
-              {dropdownOpen && (
-                <ul
-                  className="absolute right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-20 w-48 overflow-hidden"
-                  onBlur={() => setDropdownOpen(false)}
-                  tabIndex={0}
-                >
-                  {["Evacuation Center", "Medical Facility"].map(option => (
-                    <li
-                      key={option}
-                      onClick={() => {
-                        setFacility(option);
-                        setFilter("All"); // Reset filter on facility change
-                        setDropdownOpen(false);
-                      }}
-                      className={`px-4 py-2 hover:bg-green-100 cursor-pointer text-gray-700 font-medium ${facility === option ? 'bg-green-50' : ''}`}
-                    >
-                      {option}
-                    </li>
-                  ))}
-                </ul>
-              )}
+      {/* Error State */}
+      {error && !loading && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-lg">
+          <div className="flex items-center">
+            <CircleAlert className="text-red-500 mr-3" size={24} />
+            <div>
+              <p className="text-red-800 font-medium">{error}</p>
+              <button
+                onClick={fetchResources}
+                className="mt-2 text-red-600 hover:text-red-800 underline text-sm"
+              >
+                Try again
+              </button>
             </div>
-
-            {/* See All Toggle Button */}
-            <button
-              onClick={() => setSeeAll(!seeAll)}
-              className="px-4 py-1.5 rounded-lg bg-yellow-500 text-gray-800 font-semibold shadow-md hover:bg-yellow-600 transition text-sm"
-            >
-              {seeAll ? "Hide Overview" : "Show All"}
-            </button>
           </div>
         </div>
+      )}
 
-        {/* Inventory Table (Desktop View) */}
-        <div className="hidden md:block overflow-x-auto flex-1">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className=" bg-primary text-white rounded-t-xl sticky top-0">
-              <tr>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider rounded-tl-xl" style={{ width: '20%' }}>Resource</th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{ width: '15%' }}>Category</th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{ width: '10%' }}>Received</th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{ width: '10%' }}>Distributed</th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider" style={{ width: '15%' }}>Remaining</th>
-                <th className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider rounded-tr-xl" style={{ width: '15%' }}>Status</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-100">
-              {filteredInventory.map((item, index) => (
-                <tr key={index} className="hover:bg-gray-50 transition duration-150">
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{item.resource}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{item.category}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium text-green-700">{item.received}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-medium text-red-700">{item.distributed}</td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-center font-extrabold text-gray-800">{item.remaining} <span className="text-xs font-normal text-gray-500">({item.unit})</span></td>
-                  <td className="px-4 py-3 whitespace-nowrap text-center">
-                    <span className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full border ${getStatusClasses(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-            {/* Table Footer with Totals */}
-            <tfoot>
-              <tr className="bg-primary text-white">
-                <td className="px-4 py-3 font-bold text-base text-left rounded-bl-xl">TOTALS</td>
-                <td className="px-4 py-3"></td>
-                <td className="px-4 py-3 font-bold text-center">{totalReceived}</td>
-                <td className="px-4 py-3 font-bold text-center">{totalDistributed}</td>
-                <td className="px-4 py-3 font-bold text-center">{totalRemaining}</td>
-                <td className="px-4 py-3 rounded-br-xl"></td>
-              </tr>
-            </tfoot>
-          </table>
-          
-          {/* No results */}
-          {filteredInventory.length === 0 && (
-            <p className="text-center text-gray-500 p-8">No inventory items found matching the current filter and facility.</p>
-          )}
-        </div>
-
-        {/* Inventory Cards (Mobile View) */}
-        <div className="md:hidden flex flex-col gap-3">
-          {filteredInventory.map((item, index) => (
-            <div
-              key={`mobile-${index}`}
-              className="flex flex-col gap-2 p-4 border border-gray-200 rounded-xl bg-gray-50 shadow-sm hover:bg-white transition"
-            >
-              <div className="flex justify-between items-start border-b pb-2">
-                <div className="text-lg font-extrabold text-gray-800">{item.resource}</div>
-                <div className={`py-1 px-3 text-xs font-bold rounded-full border ${getStatusClasses(item.status)}`}>
-                  {item.status}
+      {!seeAll && !loading && !error && (
+        <div className="bg-[#1A4718] rounded-xl p-4 flex flex-col gap-5 shadow-xl border border-gray-100 hover:shadow-2xl transition duration-300">
+          <h2 className="text-white text-xl font-bold">Overview</h2>
+          <div className="grid grid-cols-4 gap-5 md:gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4">
+            <div className="bg-[#163a14] rounded-lg min-h-[130px] flex items-center justify-center p-3">
+              <div className="flex flex-row lg:items-center md:items-center sm:items-center lg:gap-4 md:gap-2 sm:gap-1">
+                <Package
+                  size={90}
+                  color="#f0d003"
+                  className="lg:size-[90px] sm:size-[58px] md:size-[60px]"
+                />
+                <div className="flex flex-col items-center">
+                  <div className="lg:text-[30px] text-white font-bold sm:text-[20px] md:text-[25px]">
+                    {totalRemaining}
+                  </div>
+                  <div className="lg:text-[15px] md:text-[13px] text-center sm:text text-white">
+                    Remaining Items
+                  </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-700">
-                <span className="font-medium text-gray-500">Category:</span> <span>{item.category}</span>
-                <span className="font-medium text-gray-500">Received:</span> <span className="font-medium text-green-700">{item.received}</span>
-                <span className="font-medium text-gray-500">Distributed:</span> <span className="font-medium text-red-700">{item.distributed}</span>
-                <span className="font-medium text-gray-500">Remaining:</span> <span className="font-bold text-gray-800">{item.remaining} {item.unit}</span>
+            </div>
+            <div className="bg-[#163a14] rounded-lg min-h-[130px] flex items-center justify-center p-3">
+              <div className="flex flex-row lg:items-center md:items-center sm:items-center lg:gap-4 md:gap-2 sm:gap-1">
+                <Truck
+                  size={90}
+                  color="#f0d003"
+                  className="lg:size-[90px] sm:size-[50px] md:size-[60px]"
+                />
+                <div className="flex flex-col items-center">
+                  <div className="lg:text-[30px] text-white font-bold sm:text-[20px] md:text-[25px]">
+                    {totalDistributed}
+                  </div>
+                  <div className="lg:text-[15px] md:text-[13px] text-center sm:text text-white">
+                    Distributed Items
+                  </div>
+                </div>
               </div>
             </div>
-          ))}
-          
-          {/* Mobile Totals Card */}
-          {filteredInventory.length > 0 && (
-            <div className="flex flex-col gap-2 font-bold text-white bg-green-800 p-4 text-sm rounded-xl mt-3 shadow-lg">
-              <div className="text-lg mb-1 border-b border-green-600 pb-2">TOTAL INVENTORY SUMMARY</div>
-              <div className="flex justify-between"><span>Total Received:</span> <span>{totalReceived}</span></div>
-              <div className="flex justify-between"><span>Total Distributed:</span> <span>{totalDistributed}</span></div>
-              <div className="flex justify-between mt-1 pt-1 border-t border-green-600"><span>Total Remaining:</span> <span className="text-yellow-400">{totalRemaining}</span></div>
+            <div className="bg-[#163a14] rounded-lg min-h-[130px] flex items-center justify-center p-3">
+              <div className="flex flex-row lg:items-center md:items-center sm:items-center lg:gap-4 md:gap-2 sm:gap-1">
+                <ArchiveRestore
+                  size={90}
+                  color="#f0d003"
+                  className="lg:size-[90px] sm:size-[50px] md:size-[60px]"
+                />
+                <div className="flex flex-col items-center">
+                  <div className="lg:text-[30px] text-white font-bold sm:text-[20px] md:text-[25px]">
+                    {totalReceived}
+                  </div>
+                  <div className="lg:text-[15px] md:text-[13px] text-center sm:text text-white">
+                    Received Items
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-
-          {/* No results (Mobile) */}
-          {filteredInventory.length === 0 && (
-            <p className="text-center text-gray-500 p-8">No inventory items found matching the current filter and facility.</p>
-          )}
+            <div className="bg-[#163a14] rounded-lg min-h-[130px] flex items-center justify-center p-3">
+              <div className="flex flex-row lg:items-center md:items-center sm:items-center lg:gap-4 md:gap-2 sm:gap-1">
+                <CircleAlert
+                  size={90}
+                  color="#f0d003"
+                  className="lg:size-[90px] sm:size-[50px] md:size-[60px]"
+                />
+                <div className="flex flex-col items-center">
+                  <div className="lg:text-[30px] text-white font-bold sm:text-[20px] md:text-[25px]">
+                    {criticalCount}
+                  </div>
+                  <div className="lg:text-[15px] md:text-[13px] text-center sm:text-sm text-white">
+                    Critical Items
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
+
+      {!loading && !error && (
+        <div
+          className={`bg-white rounded-xl shadow-xl border border-gray-100 hover:shadow-2xl transition duration-300 p-4 sm:p-6 flex flex-col ${
+            seeAll ? "row-span-full" : ""
+          }`}
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 md:flex-row md:items-center md:mb-2 gap-4">
+            <div className="flex lg:flex-row sm:flex-col md:flex-row gap-x-4 gap-y-2">
+              {categories.map((btn) => (
+                <button
+                  key={btn}
+                  onClick={() => setFilter(btn === "All" ? "All" : btn)}
+                  className={`relative pb-2 font-bold whitespace-nowrap
+                  ${
+                    filter === btn ? "text-[#f0d003]" : "text-black"
+                  } lg:text-[15px] md:text-[14px] sm:text-[12px]`}
+                >
+                  {btn === "All" ? "All Resources" : btn}
+                  {filter === btn ? (
+                    <span className="absolute left-0 bottom-0 w-full h-[3px] bg-[#f0d003] rounded-full"></span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+            <div className="flex lg:flex-row sm:flex-col md:flex-row items-center gap-4">
+              <div className="relative inline-block">
+                <button
+                  onClick={() => setOpen(!open)}
+                  className="border border-black text-black lg:text-[15px] sm:text-[10px]  px-3 py-1 rounded-lg font-medium"
+                >
+                  <div className="flex flex-row items-center justify-center gap-1">
+                    {facility}
+                    <ChevronDown
+                      size={20}
+                      className={`${
+                        open ? "rotate-180" : "rotate-0"
+                      } transition-transform duration-200`}
+                    />
+                  </div>
+                </button>
+
+                {open && (
+                  <ul
+                    className="
+                    absolute right-0 sm:left-0 mt-2
+                    bg-white rounded-lg shadow-xl border lg:text-[15px] sm:text-[13px] border-gray-200
+                    z-10 w-48
+                  "
+                  >
+                    <li
+                      onClick={() => {
+                        setFacility("Evacuation Center");
+                        setOpen(false);
+                      }}
+                      className="px-3 py-2 hover:bg-[#77905b] hover:text-white cursor-pointer rounded-t-lg"
+                    >
+                      Evacuation Center
+                    </li>
+                    <li
+                      onClick={() => {
+                        setFacility("Medical Facility");
+                        setOpen(false);
+                      }}
+                      className="px-3 py-2 hover:bg-[#77905b] hover:text-white cursor-pointer rounded-b-lg"
+                    >
+                      Medical Facility
+                    </li>
+                  </ul>
+                )}
+              </div>
+
+              <button
+                onClick={() => setSeeAll(!seeAll)}
+                className="px-3 py-1 rounded-lg bg-[#f0d003] lg:text-[15px] sm:text-[13px]  font-medium text-black shadow-md hover:bg-yellow-400 transition"
+              >
+                {seeAll ? "See Less" : "See All"}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 bg-white rounded-xl overflow-x-auto">
+            <div className="hidden md:grid grid-cols-7 gap-0 font-bold text-white bg-[#1A4718] p-3 mt-4 text-center text-xs md:text-xs rounded-t-xl">
+              <p>Resource</p>
+              <p>Category</p>
+              <p>Received</p>
+              <p>Distributed</p>
+              <p>Remaining</p>
+              <p>Unit</p>
+              <p>Status</p>
+            </div>
+
+            {filteredInventory.map((item, index) => (
+              <>
+                <div
+                  key={index}
+                  className="hidden md:grid grid-cols-7 gap-2 text-sm md:text-sm text-center border-b border-yellow-300 py-3 items-center"
+                >
+                  <p>{item.resource}</p>
+                  <p className="text-gray-600">{item.category}</p>
+                  <p className="font-medium">{item.received}</p>
+                  <p className="font-medium">{item.distributed}</p>
+                  <p className="font-bold">{item.remaining}</p>
+                  <p className="text-xs text-gray-500">{item.unit}</p>
+                  <p
+                    className={`font-bold py-1 px-2 rounded-full text-xs mx-auto w-fit ${
+                      item.status === "Critical"
+                        ? "bg-red-100 text-red-600"
+                        : item.status === "High"
+                        ? "bg-green-100 text-green-600"
+                        : "bg-yellow-100 text-yellow-600"
+                    }`}
+                  >
+                    {item.status}
+                  </p>
+                </div>
+                <div
+                  key={`mobile-${index}`}
+                  className="md:hidden flex flex-col gap-2 p-3 border-b border-gray-100 last:border-b-0 rounded-lg bg-white hover:bg-gray-50 transition"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="text-lg font-extrabold text-[#1A4718]">
+                      {item.resource}
+                    </div>
+                    <div
+                      className={`py-1 px-3 text-xs font-bold rounded-full text-white ${
+                        item.status === "Critical"
+                          ? "bg-red-600"
+                          : item.status === "High"
+                          ? "bg-green-600"
+                          : "bg-yellow-500"
+                      }`}
+                    >
+                      {item.status}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-y-1 text-sm text-gray-700">
+                    <div className="flex justify-between border-b border-gray-100 pb-1">
+                      <span className="font-medium text-gray-500">
+                        Category:
+                      </span>{" "}
+                      <span>{item.category}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1">
+                      <span className="font-medium text-gray-500">
+                        Received:
+                      </span>{" "}
+                      <span className="text-green-700">{item.received}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-gray-100 pb-1">
+                      <span className="font-medium text-gray-500">
+                        Distributed:
+                      </span>{" "}
+                      <span className="text-red-700">{item.distributed}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="font-medium text-gray-500">
+                        Remaining:
+                      </span>{" "}
+                      <span className="font-bold">
+                        {item.remaining} {item.unit}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ))}
+
+            {filteredInventory.length > 0 && (
+              <>
+                <div className="hidden md:grid grid-cols-7 gap-2 font-bold text-white bg-[#1A4718] p-3 text-center text-xs md:text-sm rounded-b-xl mt-2">
+                  <p className="text-center">TOTAL</p>
+                  <p></p>
+                  <p>{totalReceived}</p>
+                  <p>{totalDistributed}</p>
+                  <p>{totalRemaining}</p>
+                  <p></p>
+                  <p></p>
+                </div>
+
+                <div className="md:hidden flex flex-col gap-2 font-bold text-white bg-[#1A4718] p-4 text-sm rounded-lg mt-3 shadow-lg">
+                  <div className="text-lg mb-1 border-b border-[#3c6b39] pb-2">
+                    TOTAL INVENTORY SUMMARY
+                  </div>
+                  <div className="flex justify-between border-b border-[#3c6b39] pb-1">
+                    <span>Total Received:</span> <span>{totalReceived}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-[#3c6b39] pb-1">
+                    <span>Total Distributed:</span>{" "}
+                    <span>{totalDistributed}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total Remaining:</span> <span>{totalRemaining}</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

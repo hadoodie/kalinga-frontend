@@ -11,12 +11,16 @@ import {
   Archive,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LogisticSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
@@ -30,13 +34,15 @@ export default function LogisticSidebar() {
   }, [collapsed]);
 
   const items = [
-    { label: "Dashboard", 
-      path: "/logistics-dashboard", 
-      icon: <Home size={25} /> 
+    {
+      label: "Dashboard",
+      path: "/logistics-dashboard",
+      icon: <Home size={25} />,
     },
-    { label: "Resource Management", 
-      path: "/resource-management", 
-      icon: <Archive size={25} /> 
+    {
+      label: "Resource Management",
+      path: "/resource-management",
+      icon: <Archive size={25} />,
     },
     {
       label: "Asset Registry",
@@ -48,9 +54,10 @@ export default function LogisticSidebar() {
       path: "/supply-tracking",
       icon: <ListPlus size={25} />,
     },
-    { label: "Requested Allocation", 
-      path: "/requested-allocation", 
-      icon: <PackageOpen size={25} /> 
+    {
+      label: "Requested Allocation",
+      path: "/requested-allocation",
+      icon: <PackageOpen size={25} />,
     },
   ];
 
@@ -61,9 +68,21 @@ export default function LogisticSidebar() {
 
   const isActive = (path) => location.pathname === path;
 
-  const handleLogout = () => {
-    navigate("/login");
-    setMobileOpen(false);
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+      });
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Navigate anyway
+      navigate("/login");
+    } finally {
+      setMobileOpen(false);
+    }
   };
 
   const handleSettings = () => {
@@ -105,15 +124,25 @@ export default function LogisticSidebar() {
               <div
                 className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
                   ${collapsed ? "justify-center" : "gap-2"}
-                  ${isActive(item.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"}
+                  ${
+                    isActive(item.path)
+                      ? "bg-white/20 font-bold"
+                      : "hover:bg-white/10"
+                  }
                 `}
                 onClick={() => handleNavigation(item)}
               >
-                {collapsed && <span className="transition-transform duration-300">{item.icon}</span>}
+                {collapsed && (
+                  <span className="transition-transform duration-300">
+                    {item.icon}
+                  </span>
+                )}
                 {!collapsed && (
                   <span
                     className={`transition-all duration-300 transform ${
-                      collapsed ? "opacity-0 -translate-x-2" : "opacity-100 translate-x-0"
+                      collapsed
+                        ? "opacity-0 -translate-x-2"
+                        : "opacity-100 translate-x-0"
                     }`}
                   >
                     {item.label}
@@ -131,7 +160,6 @@ export default function LogisticSidebar() {
           ))}
         </ul>
 
-
         {/* Settings & Logout pinned at bottom */}
         <div className="p-2 space-y-2">
           {/* Settings */}
@@ -140,11 +168,7 @@ export default function LogisticSidebar() {
               ${collapsed ? "justify-center" : "gap-2"}`}
             onClick={() => navigate("/logistics-settings")}
           >
-            {collapsed ? (
-              <Settings size={25} />
-            ) : (
-              <span>Settings</span>
-            )}
+            {collapsed ? <Settings size={25} /> : <span>Settings</span>}
           </div>
 
           {/* Logout */}
@@ -153,11 +177,7 @@ export default function LogisticSidebar() {
               ${collapsed ? "justify-center" : "gap-2"}`}
             onClick={handleLogout}
           >
-            {collapsed ? (
-              <LogOut size={25} />
-            ) : (
-              <span>Log Out</span>
-            )}
+            {collapsed ? <LogOut size={25} /> : <span>Log Out</span>}
           </div>
         </div>
       </aside>
@@ -178,7 +198,11 @@ export default function LogisticSidebar() {
               <div
                 key={idx}
                 className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition
-                  ${isActive(item.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"}`}
+                  ${
+                    isActive(item.path)
+                      ? "bg-white/20 font-bold"
+                      : "hover:bg-white/10"
+                  }`}
                 onClick={() => handleNavigation(item)}
               >
                 <span>{item.label}</span>
