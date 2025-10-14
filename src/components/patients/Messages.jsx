@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { 
   Send, User, Clock, Phone, Mail, MessageSquare, Plus, FileText, 
-  Settings, Zap, Search, HelpCircle, ChevronLeft, ChevronRight, CornerDownLeft 
+  Settings, Zap, Search, HelpCircle, ChevronLeft, ChevronRight, CornerDownLeft, AlertCircle 
 } from 'lucide-react';
 
 // --- MOCK DATA ---
@@ -14,6 +14,7 @@ const MOCK_MESSAGES = [
     date: "2024-10-04T10:30:00Z", 
     status: "Read", 
     priority: "Routine",
+    category: "Medical",
     content: "Hi Jane, regarding the Lisinopril refill—are you experiencing any new symptoms or side effects since starting the 10mg dosage? Please reply here.",
     expectedResponseTime: "4 business hours"
   },
@@ -24,6 +25,7 @@ const MOCK_MESSAGES = [
     date: "2024-10-03T15:15:00Z", 
     status: "Unread", 
     priority: "High",
+    category: "Billing",
     content: "We need clarification on your secondary insurance information. Please call the main billing line or send the details securely via a new message.",
     expectedResponseTime: "2 business days"
   },
@@ -34,8 +36,31 @@ const MOCK_MESSAGES = [
     date: "2024-10-02T08:00:00Z", 
     status: "Read", 
     priority: "Routine",
+    category: "Medical",
     content: "The explanation for your recent Cholesterol Panel is ready in the Health Records section. No immediate action is required, but let me know if you have questions.",
     expectedResponseTime: "8 business hours"
+  },
+  { 
+    id: 4, 
+    subject: "EMERGENCY: Flood Assistance - Active", 
+    sender: "Emergency Responder Team", 
+    date: "2024-10-05T14:22:00Z", 
+    status: "Unread", 
+    priority: "Emergency",
+    category: "Emergency",
+    content: "Your emergency report has been received. Responder Mark Santos is assigned to your location. Current status: EN ROUTE. Stay in a safe elevated area. Do not attempt to cross flowing water.",
+    expectedResponseTime: "Immediate - Active Emergency"
+  },
+  { 
+    id: 5, 
+    subject: "EMERGENCY: Medical Emergency - Resolved", 
+    sender: "Emergency Medical Services", 
+    date: "2024-09-28T09:15:00Z", 
+    status: "Read", 
+    priority: "Emergency",
+    category: "Emergency",
+    content: "Your emergency medical request has been completed. Paramedic arrived at 09:20. Patient transported to St. Mary's Hospital. Case closed. Thank you for using Emergency SOS.",
+    expectedResponseTime: "Resolved"
   },
 ];
 
@@ -67,20 +92,31 @@ const MainContentTabs = {
  * Component 1. Secure Messaging - Message List Item
  */
 const MessageListItem = ({ message, onSelect, isSelected }) => {
-  const statusClass = message.status === "Unread" ? "border-green-200 font-bold" : "bg-white hover:bg-gray-50 border-gray-100";
-  const priorityIcon = message.priority === "High" ? <Zap size={16} className="text-red-500" /> : null;
+  const isEmergency = message.category === "Emergency";
+  const isUnread = message.status === "Unread";
+  
+  // Emergency messages get special red styling
+  const statusClass = isEmergency 
+    ? (isUnread ? "border-red-400 bg-red-50 font-bold" : "border-red-200 bg-red-50/50") 
+    : (isUnread ? "border-green-200 font-bold" : "bg-white hover:bg-gray-50 border-gray-100");
+  
+  const priorityIcon = message.priority === "Emergency" 
+    ? <AlertCircle size={16} className="text-red-600 animate-pulse" />
+    : message.priority === "High" 
+    ? <Zap size={16} className="text-red-500" /> 
+    : null;
   
   const dateFormatted = new Date(message.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   
   return (
     <li 
       onClick={() => onSelect(message)}
-      className={`p-3 cursor-pointer transition rounded-xl mb-1 ${statusClass} ${isSelected ? 'shadow-md font-bold text-green-600' : 'hover:bg-gray-50'}`}
+      className={`p-3 cursor-pointer transition rounded-xl mb-1 border ${statusClass} ${isSelected ? 'shadow-md font-bold ring-2 ring-green-400' : 'hover:bg-gray-50'}`}
     >
       <div className="flex justify-between items-start">
         <div className="flex items-center gap-2 text-sm text-left">
-          <User size={16} />
-          {message.sender} {priorityIcon} 
+          {isEmergency ? <AlertCircle size={16} className="text-red-600" /> : <User size={16} />}
+          <span className={isEmergency ? "text-red-700 font-bold" : ""}>{message.sender}</span> {priorityIcon} 
         </div>
         <span className="text-xs text-gray-500">{dateFormatted}</span>
       </div>
@@ -96,33 +132,45 @@ const MessageListItem = ({ message, onSelect, isSelected }) => {
  */
 const MessageThread = ({ message, onReply, onBack }) => {
   const dateFormatted = new Date(message.date).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+  const isEmergency = message.category === 'Emergency';
   
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border">
-      <div className="p-4 border-b bg-gray-50 sticky top-0 rounded-t-xl z-10">
+    <div className={`flex flex-col h-full bg-white rounded-xl shadow-lg border ${isEmergency ? 'border-red-400' : ''}`}>
+      <div className={`p-4 border-b sticky top-0 rounded-t-xl z-10 ${isEmergency ? 'bg-red-50 border-red-200' : 'bg-gray-50'}`}>
         <button 
           onClick={onBack} 
-          className="text-primary hover:text-green-700 font-semibold flex items-center mb-3"
+          className={`font-semibold flex items-center mb-3 ${isEmergency ? 'text-red-700 hover:text-red-900' : 'text-primary hover:text-green-700'}`}
         >
           <ChevronLeft size={20} /> Back to Inbox
         </button>
-        <h3 className="text-xl font-bold text-gray-900">{message.subject}</h3>
+        <div className="flex items-center gap-2 mb-2">
+          {isEmergency && <AlertCircle size={24} className="text-red-600" />}
+          <h3 className={`text-xl font-bold ${isEmergency ? 'text-red-900' : 'text-gray-900'}`}>{message.subject}</h3>
+        </div>
         <div className="flex justify-between items-center text-sm text-gray-600 mt-1">
-          <span>From: <span className="font-semibold">{message.sender}</span></span>
+          <span>From: <span className={`font-semibold ${isEmergency ? 'text-red-700' : ''}`}>{message.sender}</span></span>
           <span className="flex items-center gap-1"><Clock size={14} /> {dateFormatted}</span>
         </div>
       </div>
       
       <div className="flex-1 p-4 overflow-y-auto space-y-4">
-        <div className="bg-gray-100 p-4 rounded-xl shadow-inner border border-gray-200">
-          <p className="whitespace-pre-wrap text-gray-800">{message.content}</p>
+        <div className={`p-4 rounded-xl shadow-inner border ${isEmergency ? 'bg-red-50 border-red-200' : 'bg-gray-100 border-gray-200'}`}>
+          <p className={`whitespace-pre-wrap ${isEmergency ? 'text-red-900 font-semibold' : 'text-gray-800'}`}>{message.content}</p>
         </div>
         
         {/* Expected Response Time Alert */}
-        <div className="p-3 bg-yellow-50 rounded-lg text-sm text-yellow-800 flex items-start gap-2">
-          <Clock size={18} className="text-yellow-600 mt-0.5 shrink-0" />
+        <div className={`p-3 rounded-lg text-sm flex items-start gap-2 ${
+          isEmergency 
+            ? 'bg-red-100 text-red-900 border border-red-300' 
+            : 'bg-yellow-50 text-yellow-800'
+        }`}>
+          {isEmergency ? (
+            <AlertCircle size={18} className="text-red-600 mt-0.5 shrink-0 animate-pulse" />
+          ) : (
+            <Clock size={18} className="text-yellow-600 mt-0.5 shrink-0" />
+          )}
           <div>
-            <span className="font-bold">Expected Response:</span> {message.expectedResponseTime}. This message is for non-urgent communication.
+            <span className="font-bold">{isEmergency ? 'Emergency Status:' : 'Expected Response:'}</span> {message.expectedResponseTime}{!isEmergency && '. This message is for non-urgent communication.'}
           </div>
         </div>
       </div>
@@ -130,9 +178,13 @@ const MessageThread = ({ message, onReply, onBack }) => {
       <div className="p-4 border-t sticky bottom-0 bg-white">
         <button 
           onClick={() => onReply(message.subject)}
-          className="w-full bg-primary hover:bg-green-700 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition shadow-lg"
+          className={`w-full font-semibold py-3 rounded-xl flex items-center justify-center gap-2 transition shadow-lg ${
+            isEmergency 
+              ? 'bg-red-600 hover:bg-red-700 text-white' 
+              : 'bg-primary hover:bg-green-700 text-white'
+          }`}
         >
-          <CornerDownLeft size={18} /> Reply Securely
+          <CornerDownLeft size={18} /> {isEmergency ? 'Respond to Emergency' : 'Reply Securely'}
         </button>
       </div>
     </div>
@@ -343,15 +395,27 @@ export default function MessagesContact() {
   const [activeTab, setActiveTab] = useState(MainContentTabs.INBOX);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('All'); // New: category filter
 
   const filteredMessages = useMemo(() => {
-    if (!searchTerm) return MOCK_MESSAGES;
-    return MOCK_MESSAGES.filter(msg =>
-      msg.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      msg.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      msg.content.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm]);
+    let messages = MOCK_MESSAGES;
+    
+    // Filter by category
+    if (categoryFilter !== 'All') {
+      messages = messages.filter(msg => msg.category === categoryFilter);
+    }
+    
+    // Filter by search term
+    if (searchTerm) {
+      messages = messages.filter(msg =>
+        msg.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        msg.sender.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        msg.content.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    return messages;
+  }, [searchTerm, categoryFilter]);
   
   // Handlers for navigation
   const navigateToCompose = (subject) => {
@@ -455,6 +519,36 @@ export default function MessagesContact() {
             </div>
             
             <h3 className="text-lg font-bold text-gray-800 border-t pt-4 mb-2">Message Threads</h3>
+            
+            {/* Category Filter Tabs */}
+            <div className="flex gap-2 mb-3 flex-wrap">
+              {['All', 'Emergency', 'Medical', 'Billing'].map(category => {
+                const count = category === 'All' 
+                  ? MOCK_MESSAGES.length 
+                  : MOCK_MESSAGES.filter(m => m.category === category).length;
+                const isEmergency = category === 'Emergency';
+                const emergencyUnread = isEmergency ? MOCK_MESSAGES.filter(m => m.category === 'Emergency' && m.status === 'Unread').length : 0;
+                
+                return (
+                  <button
+                    key={category}
+                    onClick={() => setCategoryFilter(category)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                      categoryFilter === category
+                        ? isEmergency 
+                          ? 'bg-red-600 text-white' 
+                          : 'bg-primary text-white'
+                        : isEmergency
+                          ? 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-300'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {isEmergency && <AlertCircle size={14} className={emergencyUnread > 0 ? 'animate-pulse' : ''} />}
+                    {category} {count > 0 && `(${count})`}
+                  </button>
+                );
+              })}
+            </div>
             
             {/* Search Bar */}
             <div className="relative mb-3">
