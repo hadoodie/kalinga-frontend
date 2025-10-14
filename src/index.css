@@ -53,9 +53,6 @@
     --border: 214 32% 91%;
   }
 
-  /* Dark mode: can be applied to :root, html, or any container */
-  :root.dark,
-  html.dark,
   .dark {
     --background: 220 35% 12%;
     --foreground: 213 31% 92%;

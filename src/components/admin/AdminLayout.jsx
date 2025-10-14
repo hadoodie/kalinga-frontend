@@ -43,13 +43,16 @@ export const AdminLayout = ({
   consoleBadgeLabel = "Current View",
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    // Check localStorage for theme preference
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme === "dark";
+  });
   const [timeRange, setTimeRange] = useState("6h");
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const profileMenuRef = useRef(null);
   const profileButtonRef = useRef(null);
-  const adminContainerRef = useRef(null); // Reference to admin container
 
   const activeSection = useMemo(
     () =>
@@ -97,61 +100,14 @@ export const AdminLayout = ({
 
   const quickActionItems = quickActionsProp ?? defaultQuickActions;
 
-  // Initialize admin-specific theme
+  // Apply theme to document element on mount and when it changes
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    // Wait for ref to be available
-    if (!adminContainerRef.current) {
-      // Retry on next tick if ref not ready
-      const timer = setTimeout(() => {
-        if (!adminContainerRef.current) return;
-        
-        const storedAdminTheme = localStorage.getItem("adminTheme");
-        const prefersDark = window.matchMedia(
-          "(prefers-color-scheme: dark)"
-        ).matches;
-        const shouldUseDark = storedAdminTheme
-          ? storedAdminTheme === "dark"
-          : prefersDark;
-
-        if (shouldUseDark) {
-          adminContainerRef.current.classList.add("dark");
-          setIsDarkMode(true);
-        } else {
-          adminContainerRef.current.classList.remove("dark");
-          setIsDarkMode(false);
-        }
-      }, 0);
-      
-      return () => {
-        clearTimeout(timer);
-        document.documentElement.classList.remove("dark");
-      };
-    }
-
-    // Use separate localStorage key for admin theme
-    const storedAdminTheme = localStorage.getItem("adminTheme");
-    const prefersDark = window.matchMedia(
-      "(prefers-color-scheme: dark)"
-    ).matches;
-    const shouldUseDark = storedAdminTheme
-      ? storedAdminTheme === "dark"
-      : prefersDark;
-
-    if (shouldUseDark) {
-      adminContainerRef.current.classList.add("dark");
-      setIsDarkMode(true);
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
     } else {
-      adminContainerRef.current.classList.remove("dark");
-      setIsDarkMode(false);
-    }
-
-    // Cleanup: ensure global dark class is removed when admin panel unmounts
-    return () => {
       document.documentElement.classList.remove("dark");
-    };
-  }, []);
+    }
+  }, [isDarkMode]);
 
   useEffect(() => {
     const handleClickAway = (event) => {
@@ -170,17 +126,15 @@ export const AdminLayout = ({
   }, []);
 
   const toggleTheme = () => {
-    if (!adminContainerRef.current) return;
-
     setIsDarkMode((prev) => {
       const next = !prev;
       
       if (next) {
-        adminContainerRef.current.classList.add("dark");
-        localStorage.setItem("adminTheme", "dark");
+        document.documentElement.classList.add("dark");
+        localStorage.setItem("theme", "dark");
       } else {
-        adminContainerRef.current.classList.remove("dark");
-        localStorage.setItem("adminTheme", "light");
+        document.documentElement.classList.remove("dark");
+        localStorage.setItem("theme", "light");
       }
       return next;
     });
@@ -245,10 +199,7 @@ export const AdminLayout = ({
   };
 
   return (
-    <div
-      ref={adminContainerRef}
-      className="relative min-h-screen bg-background text-foreground"
-    >
+    <div className="relative min-h-screen bg-background text-foreground">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         {/* Desktop Sidebar */}
         <aside className="hidden border-r border-border/60 bg-card/80 lg:flex lg:flex-col">
