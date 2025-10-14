@@ -1,4 +1,4 @@
-import Sidebar from "../components/Sidebar";
+import PatientSidebar from "../components/patients/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
 import PatientProfile from "../components/Profile";
@@ -9,7 +9,7 @@ export const Profile = () => {
   return (
     <div className="h-screen flex bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
       {/* Main content */}
       <div

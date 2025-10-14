@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChatReport } from "../components/emergency-sos/Chat";
 import { NavbarB } from "../components/Navbar_2";
-import Sidebar from "../components/Sidebar";
+import PatientSidebar from "../components/patients/Sidebar";
 import ChatSidebar from "../components/emergency-sos/ChatSidebar";
 
 export const EmergencyChat = () => {
@@ -11,7 +11,7 @@ export const EmergencyChat = () => {
   return (
     <div className="h-full flex bg-background text-foreground overflow-y-hidden">
       {/* Main App Sidebar */}
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
       {/* Main content wrapper */}
       <div

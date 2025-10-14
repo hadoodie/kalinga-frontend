@@ -9,6 +9,13 @@ import {
   Settings,
   FolderInput,
   Archive,
+  AlertCircle,
+  Building2,
+  Cloud,
+  MessageSquare,
+  Bell,
+  User,
+  Hospital,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
 import { useAuth } from "../../context/AuthContext";
@@ -42,22 +49,47 @@ export default function PatientSidebar() {
     {
       label: "Emergency SOS",
       path: "/patient/report-emergency",
-      icon: <Archive size={25} />,
+      icon: <AlertCircle size={25} />,
     },
     {
-      label: "Appointments & Scheduling",
+      label: "Appointments",
       path: "/patient/appointments",
       icon: <FolderInput size={25} />,
     },
     {
-      label: "My Health Records",
+      label: "Health Records",
       path: "/patient/health-records",
       icon: <ListPlus size={25} />,
     },
     {
-      label: "Messages & Contact",
+      label: "Messages",
       path: "/patient/messages",
-      icon: <PackageOpen size={25} />,
+      icon: <MessageSquare size={25} />,
+    },
+    {
+      label: "Evacuation Centers",
+      path: "/patient/evacuation-center",
+      icon: <Building2 size={25} />,
+    },
+    {
+      label: "Weather",
+      path: "/patient/weather",
+      icon: <Cloud size={25} />,
+    },
+    {
+      label: "Medical Facilities",
+      path: "/patient/medical-facilities",
+      icon: <Hospital size={25} />,
+    },
+    {
+      label: "Notifications",
+      path: "/patient/notifications",
+      icon: <Bell size={25} />,
+    },
+    {
+      label: "Profile",
+      path: "/patient/profile",
+      icon: <User size={25} />,
     },
   ];
 
