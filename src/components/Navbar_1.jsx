@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { HashLink } from "react-router-hash-link";
 import { Link } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
+import { useAuth } from "../context/AuthContext";
 
 const navItems = [
   { name: "Home", href: "#hero" },
@@ -13,6 +14,7 @@ const navItems = [
 ];
 
 export const NavbarA = () => {
+  const { isAuthenticated } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -73,13 +75,15 @@ export const NavbarA = () => {
               </HashLink>
             ))}
 
-            {/* Sign In Button */}
-            <Link
-              to="/login"
-              className="ml-4 px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/80 transition-colors duration-300"
-            >
-              Sign In
-            </Link>
+            {/* Sign In Button - Only show if not authenticated */}
+            {!isAuthenticated && (
+              <Link
+                to="/login"
+                className="ml-4 px-4 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/80 transition-colors duration-300"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -118,14 +122,16 @@ export const NavbarA = () => {
             </HashLink>
           ))}
 
-          {/* Sign In Button */}
-          <Link
-            to="/login"
-            className="px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/80 transition-colors duration-300 text-lg"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            Sign In
-          </Link>
+          {/* Sign In Button - Only show if not authenticated */}
+          {!isAuthenticated && (
+            <Link
+              to="/login"
+              className="px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/80 transition-colors duration-300 text-lg"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Sign In
+            </Link>
+          )}
         </div>
       )}
     </>

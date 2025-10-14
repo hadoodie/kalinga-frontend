@@ -31,9 +31,7 @@ import { PatientAppointment } from "./pages-patients/Appointment";
 import { PatientHealthRecords } from "./pages-patients/HealthRecords";
 import { PatientMessages } from "./pages-patients/Messages";
 import { PatientSettings } from "./pages-patients/Settings";
-import AdminDashboard from "./pages-resident/18_Admin";
-import ResponderDashboard from "./pages-resident/19_Responder";
-import VerificationPending from "./pages-resident/20_VerificationPending";
+import VerificationPending from "./pages-resident/99_VerificationPending";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
