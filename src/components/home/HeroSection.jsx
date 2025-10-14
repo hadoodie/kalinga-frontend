@@ -24,7 +24,8 @@ export const HeroSection = () => {
       {/* Content */}
       <div className="relative z-10 max-w-2xl text-center md:text-left">
         <h1 className="text-3xl md:text-6xl font-bold tracking-tight mb-6 opacity-0 animate-fade-in text-white">
-          Mabilis at maaasahang emergency response system para sa bawat Pilipino.
+          Mabilis at maaasahang emergency response system para sa bawat
+          Pilipino.
         </h1>
 
         <p className="text-base md:text-xl text-gray-200 mb-8 max-w-lg mx-auto md:mx-0 opacity-0 animate-fade-in-delay-3">
@@ -40,7 +41,6 @@ export const HeroSection = () => {
           Report Emergency
         </Link>
       </div>
-
     </section>
   );
 };

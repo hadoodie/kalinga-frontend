@@ -27,8 +27,8 @@ export const AboutSection = () => {
           transition={{ duration: 0.8, delay: 0.2 }}
           viewport={{ once: true }}
         >
-          Handang maghatid ng tulong at kaligtasan anumang oras at kahit saan ka man
-          naroroon!
+          Handang maghatid ng tulong at kaligtasan anumang oras at kahit saan ka
+          man naroroon!
         </motion.p>
 
         {/* Cards */}

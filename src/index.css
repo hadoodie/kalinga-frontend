@@ -54,16 +54,16 @@
   }
 
   .dark {
-    --background: 117 49% 19%;
-    --foreground: 213 31% 91%;
+    --background: 220 35% 12%;
+    --foreground: 213 31% 92%;
 
-    --card: 222 47% 8%;
+    --card: 222 33% 18%;
 
-    --primary: 250 65% 65%;
-    --primary-foreground: 213 31% 91%;
-    --highlight: 52 99% 47%;
+    --primary: 144 55% 58%;
+    --primary-foreground: 144 40% 96%;
+    --highlight: 142 62% 52%;
 
-    --border: 217 33% 20%;
+    --border: 215 32% 26%;
   }
 
   * {

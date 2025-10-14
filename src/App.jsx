@@ -1,31 +1,39 @@
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Home } from "./pages/1_Home";
-import { LogIn } from "./pages/2_LogIn";
-import { CreateAccount } from "./pages/3_CreateAcc";
+import { Home } from "./pages-home/Home";
+import { LogIn } from "./pages-account/LogIn";
+import { CreateAccount } from "./pages-account/CreateAccount";
 import { Toaster } from "./components/ui/toaster";
-import { VerifyIDs } from "./pages/4_VerifyID";
-import { UploadIDs } from "./pages/5_UploadID";
-import { FillInformation } from "./pages/6_FillInformation";
-import { ReportEmergencies } from "./pages/7_Report";
-import { VehicleSelection } from "./pages/8_Vehicle";
-import { OtherVehicles } from "./pages/9_OtherVehicle";
-import { EmergencyChat } from "./pages/10_Chat";
-import { ForgotPassword } from "./pages/2_ForgotPassword";
-import { Dashboard } from "./pages/11_Dashboard";
-import { Weather } from "./pages/12_Weather";
-import { EvacuationCenter } from "./pages/13_EvacuationCenter";
-import { Notifications } from "./pages/14_Notification";
-import { ResidentSettings } from "./pages/15_Settings";
-import { Profile } from "./pages/16_Profile";
-import { MedicalFacilities } from "./pages/17_Hospital";
-import { SupplyTracking } from "./pages-logis/4_Supply";
-import { RequestAllocation } from "./pages-logis/5_Request";
-import { AssetRegistry } from "./pages-logis/3_Registry";
-import { ResourceManagement } from "./pages-logis/2_ResourceMngmt";
-import { DashboardLogistics } from "./pages-logis/1_LogisDash";
-import AdminDashboard from "./pages/18_Admin";
-import ResponderDashboard from "./pages/19_Responder";
-import VerificationPending from "./pages/20_VerificationPending";
+import { VerifyIDs } from "./pages-account/VerifyID";
+import { UploadIDs } from "./pages-account/UploadID";
+import { FillInformation } from "./pages-account/FillInformation";
+import { ReportEmergencies } from "./pages-resident/2_Report";
+import { VehicleSelection } from "./pages-resident/2a_Vehicle";
+import { OtherVehicles } from "./pages-resident/2b_OtherVehicle";
+import { EmergencyChat } from "./pages-resident/3_Chat";
+import { ForgotPassword } from "./pages-account/ForgotPassword";
+import { Dashboard } from "./pages-resident/1_Dashboard";
+import { Weather } from "./pages-resident/5_Weather";
+import { EvacuationCenter } from "./pages-resident/4_EvacuationCenter";
+import { Notifications } from "./pages-resident/6_Notification";
+import { ResidentSettings } from "./pages-resident/7_Settings";
+import { Profile } from "./pages-resident/8_Profile";
+import { MedicalFacilities } from "./pages-resident/3_Hospital";
+import { SupplyTracking } from "./pages-logistics/Supply";
+import { RequestAllocation } from "./pages-logistics/Request";
+import { AssetRegistry } from "./pages-logistics/AssetRegistry";
+import { ResourceManagement } from "./pages-logistics/ResourceManagement";
+import { DashboardLogistics } from "./pages-logistics/Dashboard";
+import { SettingsLogistics } from "./pages-logistics/Settings";
+import { AdminPortal } from "./pages-admin/Admin";
+import { ResponderPortal } from "./pages-responders/Responder";
+import { PatientDashboard } from "./pages-patients/Dashboard";
+import { PatientAppointment } from "./pages-patients/Appointment";
+import { PatientHealthRecords } from "./pages-patients/HealthRecords";
+import { PatientMessages } from "./pages-patients/Messages";
+import { PatientSettings } from "./pages-patients/Settings";
+import AdminDashboard from "./pages-resident/18_Admin";
+import ResponderDashboard from "./pages-resident/19_Responder";
+import VerificationPending from "./pages-resident/20_VerificationPending";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 
@@ -166,12 +174,54 @@ function App() {
               }
             />
 
+            {/* Patient Routes */}
+            <Route
+              path="/patient-dashboard"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <PatientDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient-appointments"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <PatientAppointment />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient-health-records"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <PatientHealthRecords />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient-messages"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <PatientMessages />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient-settings"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <PatientSettings />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Admin Routes */}
             <Route
               path="/admin"
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
-                  <AdminDashboard />
+                  <AdminPortal />
                 </ProtectedRoute>
               }
             />
@@ -181,14 +231,14 @@ function App() {
               path="/responder"
               element={
                 <ProtectedRoute allowedRoles={["responder"]}>
-                  <ResponderDashboard />
+                  <ResponderPortal />
                 </ProtectedRoute>
               }
             />
 
             {/* Logistics Routes */}
             <Route
-              path="/logistic-dashboard"
+              path="/logistics-dashboard"
               element={
                 <ProtectedRoute allowedRoles={["logistics", "admin"]}>
                   <DashboardLogistics />
@@ -224,6 +274,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["logistics", "admin"]}>
                   <RequestAllocation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/logistics-settings"
+              element={
+                <ProtectedRoute allowedRoles={["logistics", "admin"]}>
+                  <SettingsLogistics />
                 </ProtectedRoute>
               }
             />

@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { HashLink } from "react-router-hash-link";
-import { Link } from "react-router-dom"; 
+import { Link } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
 
 const navItems = [
@@ -38,7 +38,9 @@ export const NavbarA = () => {
       <nav
         className={cn(
           "fixed w-full z-50 transition-all duration-300 border-b border-gray-200",
-          isScrolled ? "py-3 bg-background backdrop-blur-md shadow-xs" : "py-5 bg-background"
+          isScrolled
+            ? "py-3 bg-background backdrop-blur-md shadow-xs"
+            : "py-5 bg-background"
         )}
       >
         <div className="container flex items-center justify-between">
