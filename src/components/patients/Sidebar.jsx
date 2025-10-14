@@ -34,15 +34,15 @@ export default function PatientSidebar() {
   }, [collapsed]);
 
   const items = [
-    { 
-      label: "Dashboard", 
-      path: "/patient-dashboard", 
-      icon: <Home size={25} /> 
+    {
+      label: "Dashboard",
+      path: "/patient-dashboard",
+      icon: <Home size={25} />,
     },
-    { 
-      label: "Emergency SOS", 
-      path: "/report-emergency", 
-      icon: <Archive size={25} /> 
+    {
+      label: "Emergency SOS",
+      path: "/report-emergency",
+      icon: <Archive size={25} />,
     },
     {
       label: "Appointments & Scheduling",
@@ -54,10 +54,10 @@ export default function PatientSidebar() {
       path: "/patient-health-records",
       icon: <ListPlus size={25} />,
     },
-    { 
-      label: "Messages & Contact", 
-      path: "/patient-messages", 
-      icon: <PackageOpen size={25} /> 
+    {
+      label: "Messages & Contact",
+      path: "/patient-messages",
+      icon: <PackageOpen size={25} />,
     },
   ];
 
@@ -160,7 +160,6 @@ export default function PatientSidebar() {
           ))}
         </ul>
 
-
         {/* Settings & Logout pinned at bottom */}
         <div className="p-2 space-y-2">
           {/* Settings */}
@@ -169,11 +168,7 @@ export default function PatientSidebar() {
               ${collapsed ? "justify-center" : "gap-2"}`}
             onClick={() => navigate("/patient-settings")}
           >
-            {collapsed ? (
-              <Settings size={25} />
-            ) : (
-              <span>Settings</span>
-            )}
+            {collapsed ? <Settings size={25} /> : <span>Settings</span>}
           </div>
 
           {/* Logout */}
@@ -182,11 +177,7 @@ export default function PatientSidebar() {
               ${collapsed ? "justify-center" : "gap-2"}`}
             onClick={handleLogout}
           >
-            {collapsed ? (
-              <LogOut size={25} />
-            ) : (
-              <span>Log Out</span>
-            )}
+            {collapsed ? <LogOut size={25} /> : <span>Log Out</span>}
           </div>
         </div>
       </aside>

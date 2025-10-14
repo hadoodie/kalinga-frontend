@@ -170,34 +170,17 @@ export const AdminLayout = ({
   }, []);
 
   const toggleTheme = () => {
-    console.log("toggleTheme called!");
-    
-    if (typeof window === "undefined") {
-      console.log("Window is undefined");
-      return;
-    }
-    
-    if (!adminContainerRef.current) {
-      console.error("Admin container ref not available");
-      console.log("adminContainerRef:", adminContainerRef);
-      return;
-    }
-
-    console.log("Current adminContainerRef.current:", adminContainerRef.current);
-    console.log("Current classList:", adminContainerRef.current.classList.toString());
+    if (!adminContainerRef.current) return;
 
     setIsDarkMode((prev) => {
       const next = !prev;
-      console.log("Toggling theme:", prev ? "dark" : "light", "->", next ? "dark" : "light");
       
       if (next) {
         adminContainerRef.current.classList.add("dark");
         localStorage.setItem("adminTheme", "dark");
-        console.log("Added dark class, new classList:", adminContainerRef.current.classList.toString());
       } else {
         adminContainerRef.current.classList.remove("dark");
         localStorage.setItem("adminTheme", "light");
-        console.log("Removed dark class, new classList:", adminContainerRef.current.classList.toString());
       }
       return next;
     });

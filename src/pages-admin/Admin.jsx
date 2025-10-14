@@ -147,10 +147,9 @@ export const AdminPortal = () => {
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-foreground/70">
             This console is reserved for authorized administrators of Kalinga
-            Command. You are currently logged in as{" "}
-            <strong>{user.name}</strong> with role{" "}
-            <strong>{formatRole(user.role)}</strong>. Please contact the
-            operations lead to elevate your access.
+            Command. You are currently logged in as <strong>{user.name}</strong>{" "}
+            with role <strong>{formatRole(user.role)}</strong>. Please contact
+            the operations lead to elevate your access.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3 text-sm">
             <Link
@@ -160,7 +159,7 @@ export const AdminPortal = () => {
               Go to home
             </Link>
             <button
-              onClick={handleLogout}
+              onClick={() => handleLogout()}
               className="inline-flex items-center justify-center rounded-full border border-border/60 px-5 py-2 font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
             >
               Sign out
@@ -180,6 +179,7 @@ export const AdminPortal = () => {
       personaInitials={getInitials(user.name)}
       personaName={user.name}
       personaRole={formatRole(user.role)}
+      personaEmail={user.email}
     >
       <ActiveComponent />
     </AdminLayout>
