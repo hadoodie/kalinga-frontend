@@ -5,7 +5,7 @@
 
 /**
  * Get the default dashboard route for a given user role
- * @param {string} role - User role (admin, logistics, responder, patient, resident)
+ * @param {string} role - User role (admin, logistics, responder, patient)
  * @param {object} user - Full user object (optional, for additional checks)
  * @returns {string} The route path to navigate to
  */
@@ -15,20 +15,19 @@ export const getDefaultRouteForRole = (role, user = null) => {
       return "/admin";
 
     case "logistics":
-      return "/logistic-dashboard";
+      return "/logistics/dashboard";
 
     case "responder":
       return "/responder";
 
     case "patient":
-    case "resident":
-      // For patients/residents, check verification status
+      // For patients, check verification status
       if (user) {
         const status = user.verification_status;
 
         if (status === "verified") {
-          // Verified users go to dashboard
-          return "/dashboard";
+          // Verified users go to patient dashboard
+          return "/patient/dashboard";
         } else if (status === "pending") {
           // Pending users see waiting screen
           return "/verification-pending";
@@ -43,7 +42,7 @@ export const getDefaultRouteForRole = (role, user = null) => {
       return "/verify-id";
 
     default:
-      return "/dashboard";
+      return "/patient/dashboard";
   }
 };
 
@@ -84,8 +83,8 @@ export const navigateToRoleBasedRoute = (user, navigate, options = {}) => {
 export const needsVerification = (user) => {
   if (!user) return false;
 
-  // Only patients and residents need verification
-  if (user.role !== "patient" && user.role !== "resident") {
+  // Only patients need verification
+  if (user.role !== "patient") {
     return false;
   }
 
@@ -112,7 +111,6 @@ export const getPostAuthDescription = (role, user = null) => {
       return "Redirecting to responder dashboard...";
 
     case "patient":
-    case "resident":
       if (needsVerification(user)) {
         return "Please verify your ID to continue.";
       }

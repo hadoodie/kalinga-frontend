@@ -36,27 +36,27 @@ export default function LogisticSidebar() {
   const items = [
     {
       label: "Dashboard",
-      path: "/logistics-dashboard",
+      path: "/logistics/dashboard",
       icon: <Home size={25} />,
     },
     {
       label: "Resource Management",
-      path: "/resource-management",
+      path: "/logistics/resource-management",
       icon: <Archive size={25} />,
     },
     {
       label: "Asset Registry",
-      path: "/asset-registry",
+      path: "/logistics/asset-registry",
       icon: <FolderInput size={25} />,
     },
     {
       label: "Supply Tracking",
-      path: "/supply-tracking",
+      path: "/logistics/supply-tracking",
       icon: <ListPlus size={25} />,
     },
     {
       label: "Requested Allocation",
-      path: "/requested-allocation",
+      path: "/logistics/requested-allocation",
       icon: <PackageOpen size={25} />,
     },
   ];
@@ -166,7 +166,7 @@ export default function LogisticSidebar() {
           <div
             className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
               ${collapsed ? "justify-center" : "gap-2"}`}
-            onClick={() => navigate("/logistics-settings")}
+            onClick={() => navigate("/logistics/settings")}
           >
             {collapsed ? <Settings size={25} /> : <span>Settings</span>}
           </div>

@@ -208,7 +208,7 @@ export default function Dashboard() {
 
         {/* Send Alert Button */}
         <button
-          onClick={() => navigate("/report-emergency")}
+          onClick={() => navigate("/patient/report-emergency")}
           className="col-span-1 lg:row-start-1 lg:row-end-3 lg:col-start-1 lg:col-end-4 bg-[#1A4718] mt-2 md:mt-5 rounded-[50px] border-none shadow-none outline-none flex flex-col items-center justify-center gap-1 p-3 transition-all duration-200 ease-in-out hover:bg-[#f0f0f0] hover:shadow-inner hover:translate-y-1 md:hover:translate-y-3"
         >
           <div className="flex flex-col items-center p-1 text-white hover:text-[#1A4718]">

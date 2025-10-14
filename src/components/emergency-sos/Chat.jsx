@@ -8,7 +8,7 @@ export const ChatReport = ({ responder }) => {
   const navigate = useNavigate();
 
   const goToHome = () => {
-    navigate("/dashboard");
+    navigate("/patient/dashboard");
   };
 
   useEffect(() => {

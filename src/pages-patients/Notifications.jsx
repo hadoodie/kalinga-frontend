@@ -1,9 +1,9 @@
 import Sidebar from "../components/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
-import PatientProfile from "../components/Profile";
+import Notifs from "../components/Notifications";
 
-export const Profile = () => {
+export const Notifications = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -23,8 +23,8 @@ export const Profile = () => {
         </div>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-2">
-          <PatientProfile />
+        <main className="flex-1">
+          <Notifs />
         </main>
       </div>
     </div>

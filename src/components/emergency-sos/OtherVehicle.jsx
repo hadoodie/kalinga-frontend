@@ -7,7 +7,7 @@ export const SpecifyVehicle = () => {
 
   const handleSubmit = () => {
     if (!vehicle.trim()) return
-    navigate('/emergency-chat')
+    navigate('/patient/emergency-chat')
   }
 
   const handleKeyPress = (e) => {

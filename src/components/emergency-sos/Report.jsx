@@ -9,7 +9,7 @@ export const EmergencyReport = () => {
 
   const handleSendNow = () => {
     setShowPopup(false)
-    navigate('/emergency-chat')
+    navigate('/patient/emergency-chat')
   }
 
   const handleCancel = () => {

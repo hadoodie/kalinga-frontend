@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
 import { Home } from "./pages-home/Home";
 import { LogIn } from "./pages-account/LogIn";
 import { CreateAccount } from "./pages-account/CreateAccount";
@@ -6,18 +6,17 @@ import { Toaster } from "./components/ui/toaster";
 import { VerifyIDs } from "./pages-account/VerifyID";
 import { UploadIDs } from "./pages-account/UploadID";
 import { FillInformation } from "./pages-account/FillInformation";
-import { ReportEmergencies } from "./pages-resident/2_Report";
-import { VehicleSelection } from "./pages-resident/2a_Vehicle";
-import { OtherVehicles } from "./pages-resident/2b_OtherVehicle";
-import { EmergencyChat } from "./pages-resident/3_Chat";
+import { ReportEmergencies } from "./pages-patients/ReportEmergency";
+import { VehicleSelection } from "./pages-patients/VehicleSelection";
+import { OtherVehicles } from "./pages-patients/SpecifyVehicle";
+import { EmergencyChat } from "./pages-patients/EmergencyChat";
 import { ForgotPassword } from "./pages-account/ForgotPassword";
-import { Dashboard } from "./pages-resident/1_Dashboard";
-import { Weather } from "./pages-resident/5_Weather";
-import { EvacuationCenter } from "./pages-resident/4_EvacuationCenter";
-import { Notifications } from "./pages-resident/6_Notification";
-import { ResidentSettings } from "./pages-resident/7_Settings";
-import { Profile } from "./pages-resident/8_Profile";
-import { MedicalFacilities } from "./pages-resident/3_Hospital";
+import { CommunityDashboard } from "./pages-patients/CommunityDashboard";
+import { Weather } from "./pages-patients/Weather";
+import { EvacuationCenter } from "./pages-patients/EvacuationCenter";
+import { Notifications } from "./pages-patients/Notifications";
+import { Profile } from "./pages-patients/Profile";
+import { MedicalFacilities } from "./pages-patients/MedicalFacilities";
 import { SupplyTracking } from "./pages-logistics/Supply";
 import { RequestAllocation } from "./pages-logistics/Request";
 import { AssetRegistry } from "./pages-logistics/AssetRegistry";
@@ -76,105 +75,22 @@ function App() {
             <Route
               path="/verification-pending"
               element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
+                <ProtectedRoute allowedRoles={["patient"]}>
                   <VerificationPending />
                 </ProtectedRoute>
               }
             />
 
-            {/* Resident/Patient Routes */}
+            {/* Patient Routes - All nested under /patient */}
+            {/* Redirect /patient to /patient/dashboard */}
             <Route
-              path="/report-emergency"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <ReportEmergencies />
-                </ProtectedRoute>
-              }
+              path="/patient"
+              element={<Navigate to="/patient/dashboard" replace />}
             />
+            
+            {/* Medical Features */}
             <Route
-              path="/vehicle"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <VehicleSelection />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/specify-vehicle"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <OtherVehicles />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/emergency-chat"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <EmergencyChat />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/weather"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <Weather />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/evacuation-center"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <EvacuationCenter />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/notifications"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <Notifications />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <ResidentSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/medical-facilities"
-              element={
-                <ProtectedRoute allowedRoles={["patient", "resident"]}>
-                  <MedicalFacilities />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Patient Routes */}
-            <Route
-              path="/patient-dashboard"
+              path="/patient/dashboard"
               element={
                 <ProtectedRoute allowedRoles={["patient"]}>
                   <PatientDashboard />
@@ -182,7 +98,7 @@ function App() {
               }
             />
             <Route
-              path="/patient-appointments"
+              path="/patient/appointments"
               element={
                 <ProtectedRoute allowedRoles={["patient"]}>
                   <PatientAppointment />
@@ -190,7 +106,7 @@ function App() {
               }
             />
             <Route
-              path="/patient-health-records"
+              path="/patient/health-records"
               element={
                 <ProtectedRoute allowedRoles={["patient"]}>
                   <PatientHealthRecords />
@@ -198,18 +114,92 @@ function App() {
               }
             />
             <Route
-              path="/patient-messages"
+              path="/patient/messages"
               element={
                 <ProtectedRoute allowedRoles={["patient"]}>
                   <PatientMessages />
                 </ProtectedRoute>
               }
             />
+            
+            {/* Emergency & Community Features */}
             <Route
-              path="/patient-settings"
+              path="/patient/report-emergency"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <ReportEmergencies />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/vehicle"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <VehicleSelection />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/specify-vehicle"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <OtherVehicles />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/emergency-chat"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <EmergencyChat />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/weather"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <Weather />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/evacuation-center"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <EvacuationCenter />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/notifications"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <Notifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/medical-facilities"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <MedicalFacilities />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/settings"
               element={
                 <ProtectedRoute allowedRoles={["patient"]}>
                   <PatientSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/patient/profile"
+              element={
+                <ProtectedRoute allowedRoles={["patient"]}>
+                  <Profile />
                 </ProtectedRoute>
               }
             />
@@ -234,9 +224,14 @@ function App() {
               }
             />
 
-            {/* Logistics Routes */}
+            {/* Logistics Routes - Nested under /logistics */}
+            {/* Redirect /logistics to /logistics/dashboard */}
             <Route
-              path="/logistics-dashboard"
+              path="/logistics"
+              element={<Navigate to="/logistics/dashboard" replace />}
+            />
+            <Route
+              path="/logistics/dashboard"
               element={
                 <ProtectedRoute allowedRoles={["logistics", "admin"]}>
                   <DashboardLogistics />
@@ -244,7 +239,7 @@ function App() {
               }
             />
             <Route
-              path="/resource-management"
+              path="/logistics/resource-management"
               element={
                 <ProtectedRoute allowedRoles={["logistics", "admin"]}>
                   <ResourceManagement />
@@ -252,7 +247,7 @@ function App() {
               }
             />
             <Route
-              path="/asset-registry"
+              path="/logistics/asset-registry"
               element={
                 <ProtectedRoute allowedRoles={["logistics", "admin"]}>
                   <AssetRegistry />
@@ -260,7 +255,7 @@ function App() {
               }
             />
             <Route
-              path="/supply-tracking"
+              path="/logistics/supply-tracking"
               element={
                 <ProtectedRoute allowedRoles={["logistics", "admin"]}>
                   <SupplyTracking />
@@ -268,7 +263,7 @@ function App() {
               }
             />
             <Route
-              path="/requested-allocation"
+              path="/logistics/requested-allocation"
               element={
                 <ProtectedRoute allowedRoles={["logistics", "admin"]}>
                   <RequestAllocation />
@@ -276,7 +271,7 @@ function App() {
               }
             />
             <Route
-              path="/logistics-settings"
+              path="/logistics/settings"
               element={
                 <ProtectedRoute allowedRoles={["logistics", "admin"]}>
                   <SettingsLogistics />

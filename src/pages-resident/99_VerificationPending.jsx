@@ -87,7 +87,8 @@ export default function VerificationPending() {
           <div
             className={`${statusInfo.bgColor} border ${statusInfo.borderColor} rounded-lg shadow-lg p-8`}
           >
-            <div className="flex flex-col items-center text-center">{/* Icon */}
+            <div className="flex flex-col items-center text-center">
+              {/* Icon */}
               <div className="mb-4">{statusInfo.icon}</div>
 
               {/* Title */}

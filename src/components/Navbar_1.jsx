@@ -5,6 +5,7 @@ import { HashLink } from "react-router-hash-link";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
 import { useAuth } from "../context/AuthContext";
+import { getDefaultRouteForRole } from "../utils/roleRouting";
 
 const navItems = [
   { name: "Home", href: "#hero" },
@@ -126,10 +127,31 @@ export const NavbarA = () => {
                       </p>
                       {user?.role && (
                         <span className="inline-block mt-2 px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded">
-                          {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                          {user.role.charAt(0).toUpperCase() +
+                            user.role.slice(1)}
                         </span>
                       )}
                     </div>
+
+                    {/* Dashboard/Verification Button */}
+                    {user?.verification_status === "verified" ? (
+                      <Link
+                        to={getDefaultRouteForRole(user?.role, user)}
+                        onClick={() => setIsProfileOpen(false)}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-primary/5 transition-colors border-b border-gray-200"
+                      >
+                        <span>Go to Dashboard</span>
+                      </Link>
+                    ) : (
+                      <Link
+                        to="/verification-pending"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-primary hover:bg-primary/5 transition-colors border-b border-gray-200"
+                      >
+                        <span>View Verification Status</span>
+                      </Link>
+                    )}
+
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
@@ -202,6 +224,26 @@ export const NavbarA = () => {
                   </span>
                 )}
               </div>
+
+              {/* Dashboard/Verification Button */}
+              {user?.verification_status === "verified" ? (
+                <Link
+                  to={getDefaultRouteForRole(user?.role, user)}
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-full px-6 py-2 rounded-lg bg-primary text-white font-medium hover:bg-primary/80 transition-colors duration-300 text-lg text-center"
+                >
+                  Go to Dashboard
+                </Link>
+              ) : (
+                <Link
+                  to="/verification-pending"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="w-full px-6 py-2 rounded-lg border border-primary bg-primary/5 text-primary font-medium hover:bg-primary/10 transition-colors duration-300 text-lg text-center"
+                >
+                  View Verification Status
+                </Link>
+              )}
+
               {/* Logout Button */}
               <button
                 onClick={() => {

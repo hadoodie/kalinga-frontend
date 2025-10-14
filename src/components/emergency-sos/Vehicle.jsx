@@ -6,9 +6,9 @@ export default function EmergencyVehicleSelection () {
 
   const handleSelection = (vehicleType) => {
     if (vehicleType === "Others") {
-      navigate("/specify-vehicle")
+      navigate("/patient/specify-vehicle")
     } else {
-      navigate("/emergency-chat")
+      navigate("/patient/emergency-chat")
     }
   }
 

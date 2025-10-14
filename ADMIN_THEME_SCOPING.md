@@ -37,18 +37,21 @@ return (
 Changed from global `theme` key to admin-specific `adminTheme`:
 
 **Before:**
+
 ```jsx
-localStorage.getItem("theme")
-localStorage.setItem("theme", "dark")
+localStorage.getItem("theme");
+localStorage.setItem("theme", "dark");
 ```
 
 **After:**
+
 ```jsx
-localStorage.getItem("adminTheme")
-localStorage.setItem("adminTheme", "dark")
+localStorage.getItem("adminTheme");
+localStorage.setItem("adminTheme", "dark");
 ```
 
 This allows:
+
 - Admin panel to have its own theme preference
 - Rest of the website to have a different theme preference
 - No conflicts between admin and non-admin themes
@@ -56,6 +59,7 @@ This allows:
 #### 3. **Theme Toggle - Scoped to Container**
 
 **Before (Global):**
+
 ```jsx
 const toggleTheme = () => {
   document.documentElement.classList.add("dark"); // ❌ Affects entire site
@@ -64,6 +68,7 @@ const toggleTheme = () => {
 ```
 
 **After (Scoped):**
+
 ```jsx
 const toggleTheme = () => {
   adminContainerRef.current.classList.add("dark"); // ✅ Only affects admin container
@@ -155,8 +160,12 @@ Tailwind's dark mode works with the `.dark` class anywhere in the parent hierarc
 
 ```css
 /* These still work when .dark is on a parent container */
-.dark .bg-background { background: /* dark color */ }
-.dark .text-foreground { color: /* dark text */ }
+.dark .bg-background {
+  background: ; /* dark color */
+}
+.dark .text-foreground {
+  color: ; /* dark text */
+}
 ```
 
 So by applying `.dark` to the admin container, all Tailwind dark mode classes inside it activate, while the rest of the site remains unaffected.
@@ -167,10 +176,10 @@ So by applying `.dark` to the admin container, all Tailwind dark mode classes in
 
 ### localStorage Keys
 
-| Key | Scope | Values |
-|-----|-------|--------|
-| `adminTheme` | Admin panel only | `"dark"` \| `"light"` |
-| `theme` | Rest of website | `"dark"` \| `"light"` (if implemented) |
+| Key          | Scope            | Values                                 |
+| ------------ | ---------------- | -------------------------------------- |
+| `adminTheme` | Admin panel only | `"dark"` \| `"light"`                  |
+| `theme`      | Rest of website  | `"dark"` \| `"light"` (if implemented) |
 
 ### State Management
 
@@ -185,11 +194,13 @@ const [isDarkMode, setIsDarkMode] = useState(false);
 ### React Lifecycle
 
 1. **On Mount:**
+
    - Check `localStorage.getItem("adminTheme")`
    - Apply to `adminContainerRef.current`
    - Set `isDarkMode` state
 
 2. **On Toggle:**
+
    - Update `adminContainerRef.current` class
    - Save to `localStorage.setItem("adminTheme", ...)`
    - Update `isDarkMode` state
@@ -251,13 +262,13 @@ Store theme preference per user role:
 ✅ No complex state management needed  
 ✅ Clean separation of concerns  
 ✅ Proper cleanup on unmount  
-✅ Independent localStorage keys  
+✅ Independent localStorage keys
 
 ### Potential Issues
 
 ⚠️ If user opens multiple admin tabs, theme sync might be inconsistent  
 ⚠️ No theme sync across admin tabs (could add localStorage event listener)  
-⚠️ Assumes Tailwind dark mode is configured correctly  
+⚠️ Assumes Tailwind dark mode is configured correctly
 
 ### Best Practices Applied
 
@@ -265,24 +276,27 @@ Store theme preference per user role:
 ✅ Cleanup function in `useEffect`  
 ✅ Null checks before accessing refs  
 ✅ Separate localStorage namespacing  
-✅ Maintained backward compatibility  
+✅ Maintained backward compatibility
 
 ---
 
 ## 🎯 Summary
 
 **Before:**
+
 - Admin theme toggle affected entire website ❌
 - Used global `document.documentElement` ❌
 - Single `theme` localStorage key ❌
 
 **After:**
+
 - Admin theme toggle only affects admin panel ✅
 - Uses scoped container ref ✅
 - Separate `adminTheme` localStorage key ✅
 - Proper cleanup on unmount ✅
 
 **Impact:**
+
 - Users can have different themes for admin vs other sections
 - No unexpected theme changes when navigating between pages
 - Clean, maintainable implementation
@@ -292,11 +306,11 @@ Store theme preference per user role:
 
 ## 🧪 Test Results
 
-| Test | Expected | Actual | Status |
-|------|----------|--------|--------|
-| Toggle admin theme | Only admin changes | ✅ | Pass |
-| Navigate away | Other pages unaffected | ✅ | Pass |
-| Return to admin | Theme persists | ✅ | Pass |
-| No global pollution | No `dark` on `<html>` | ✅ | Pass |
+| Test                | Expected               | Actual | Status |
+| ------------------- | ---------------------- | ------ | ------ |
+| Toggle admin theme  | Only admin changes     | ✅     | Pass   |
+| Navigate away       | Other pages unaffected | ✅     | Pass   |
+| Return to admin     | Theme persists         | ✅     | Pass   |
+| No global pollution | No `dark` on `<html>`  | ✅     | Pass   |
 
 **All tests passing!** 🎉
