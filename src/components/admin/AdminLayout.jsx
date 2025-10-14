@@ -145,28 +145,28 @@ export const AdminLayout = ({
     });
   };
 
-  const renderNavItem = (section) => {
-    const handleProfileAction = (value) => {
-      setIsProfileMenuOpen(false);
-      switch (value) {
-        case "logout":
-          onLogout?.();
-          break;
-        case "support":
-          window.open(
-            "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
-            "_blank"
-          );
-          break;
-        case "settings":
-        case "profile":
-        case "preferences":
-        default:
-          console.info(`Selected admin profile action: ${value}`);
-          break;
-      }
-    };
+  const handleProfileAction = (value) => {
+    setIsProfileMenuOpen(false);
+    switch (value) {
+      case "logout":
+        onLogout?.();
+        break;
+      case "support":
+        window.open(
+          "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
+          "_blank"
+        );
+        break;
+      case "settings":
+      case "profile":
+      case "preferences":
+      default:
+        console.info(`Selected admin profile action: ${value}`);
+        break;
+    }
+  };
 
+  const renderNavItem = (section) => {
     const Icon = section.icon;
     const isActive = section.id === activeSection.id;
 
