@@ -6,11 +6,11 @@ const resourceService = {
   getAll: async (params = {}) => {
     try {
       // Use authenticated endpoint with filters
-      const response = await api.get("/resources", { 
+      const response = await api.get("/resources", {
         params: {
           ...params,
-          all: true  // Get all resources without pagination
-        }
+          all: true, // Get all resources without pagination
+        },
       });
       return response.data;
     } catch (error) {
