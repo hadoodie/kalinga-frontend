@@ -100,7 +100,7 @@ export default function ResourceMngmt() {
   );
 
   return (
-    <div className="grid grid-rows-[minmax(0,_2fr)_minmax(2,_7fr)] w-full h-full gap-5 p-4 sm:p-6 lg:p-4 font-sans">
+    <div className="grid grid-rows-[auto_1fr] w-full min-h-screen gap-5 p-4 sm:p-6 lg:p-4 font-sans pb-20">
       {/* Header */}
       <header className="flex flex-wrap justify-between items-center gap-3 p-4 bg-white rounded-xl shadow-lg">
         <h1 className="text-2xl md:text-3xl font-extrabold text-primary">
@@ -220,8 +220,8 @@ export default function ResourceMngmt() {
 
       {!loading && !error && (
         <div
-          className={`bg-white rounded-xl shadow-xl border border-gray-100 hover:shadow-2xl transition duration-300 p-4 sm:p-6 flex flex-col ${
-            seeAll ? "row-span-full" : ""
+          className={`bg-white rounded-xl shadow-xl border border-gray-100 hover:shadow-2xl transition duration-300 p-4 sm:p-6 flex flex-col mb-6 ${
+            seeAll ? "" : ""
           }`}
         >
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 md:flex-row md:items-center md:mb-2 gap-4">
