@@ -3,19 +3,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
   ListPlus,
-  PackageOpen,
   Menu,
   LogOut,
   Settings,
   FolderInput,
-  Archive,
   AlertCircle,
-  Building2,
   Cloud,
   MessageSquare,
   Bell,
   User,
-  Hospital,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
 import { useAuth } from "../../context/AuthContext";
@@ -67,19 +63,9 @@ export default function PatientSidebar() {
       icon: <MessageSquare size={25} />,
     },
     {
-      label: "Evacuation Centers",
-      path: "/patient/evacuation-center",
-      icon: <Building2 size={25} />,
-    },
-    {
       label: "Weather",
       path: "/patient/weather",
       icon: <Cloud size={25} />,
-    },
-    {
-      label: "Medical Facilities",
-      path: "/patient/medical-facilities",
-      icon: <Hospital size={25} />,
     },
     {
       label: "Notifications",

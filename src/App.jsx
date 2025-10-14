@@ -13,10 +13,8 @@ import { EmergencyChat } from "./pages-patients/EmergencyChat";
 import { ForgotPassword } from "./pages-account/ForgotPassword";
 import { CommunityDashboard } from "./pages-patients/CommunityDashboard";
 import { Weather } from "./pages-patients/Weather";
-import { EvacuationCenter } from "./pages-patients/EvacuationCenter";
 import { Notifications } from "./pages-patients/Notifications";
 import { Profile } from "./pages-patients/Profile";
-import { MedicalFacilities } from "./pages-patients/MedicalFacilities";
 import { SupplyTracking } from "./pages-logistics/Supply";
 import { RequestAllocation } from "./pages-logistics/Request";
 import { AssetRegistry } from "./pages-logistics/AssetRegistry";
@@ -164,26 +162,10 @@ function App() {
               }
             />
             <Route
-              path="/patient/evacuation-center"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <EvacuationCenter />
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/patient/notifications"
               element={
                 <ProtectedRoute allowedRoles={["patient"]}>
                   <Notifications />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/medical-facilities"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <MedicalFacilities />
                 </ProtectedRoute>
               }
             />
