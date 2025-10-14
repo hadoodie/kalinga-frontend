@@ -40,7 +40,7 @@ export default function LogInPage() {
         title: "Login Failed",
         description:
           error.response?.data?.message +
-            " Try using test credentials: patient@kalinga.com | password123" ||
+            " Try using test credentials: patient_verified@kalinga.com | password123" ||
           "Invalid email or password",
         variant: "destructive",
       });
