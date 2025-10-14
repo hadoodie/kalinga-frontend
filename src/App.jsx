@@ -9,7 +9,6 @@ import { FillInformation } from "./pages-account/FillInformation";
 import { ReportEmergencies } from "./pages-patients/ReportEmergency";
 import { VehicleSelection } from "./pages-patients/VehicleSelection";
 import { OtherVehicles } from "./pages-patients/SpecifyVehicle";
-import { EmergencyChat } from "./pages-patients/EmergencyChat";
 import { ForgotPassword } from "./pages-account/ForgotPassword";
 import { CommunityDashboard } from "./pages-patients/CommunityDashboard";
 import { Weather } from "./pages-patients/Weather";
@@ -142,14 +141,6 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["patient"]}>
                   <OtherVehicles />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/emergency-chat"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <EmergencyChat />
                 </ProtectedRoute>
               }
             />

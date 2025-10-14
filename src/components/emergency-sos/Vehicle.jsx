@@ -8,7 +8,9 @@ export default function EmergencyVehicleSelection () {
     if (vehicleType === "Others") {
       navigate("/patient/specify-vehicle")
     } else {
-      navigate("/patient/emergency-chat")
+      // TODO: Send vehicle selection to backend
+      // After successful submission, navigate to Messages
+      navigate("/patient/messages", { state: { filterCategory: 'Emergency' } })
     }
   }
 

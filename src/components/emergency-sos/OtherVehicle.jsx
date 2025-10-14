@@ -7,7 +7,9 @@ export const SpecifyVehicle = () => {
 
   const handleSubmit = () => {
     if (!vehicle.trim()) return
-    navigate('/patient/emergency-chat')
+    // TODO: Send custom vehicle type to backend
+    // After successful submission, navigate to Messages
+    navigate('/patient/messages', { state: { filterCategory: 'Emergency' } })
   }
 
   const handleKeyPress = (e) => {

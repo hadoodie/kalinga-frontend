@@ -9,7 +9,9 @@ export const EmergencyReport = () => {
 
   const handleSendNow = () => {
     setShowPopup(false)
-    navigate('/patient/emergency-chat')
+    // TODO: Here you would send the emergency report to the backend
+    // After successful report, navigate to Messages page
+    navigate('/patient/messages', { state: { filterCategory: 'Emergency' } })
   }
 
   const handleCancel = () => {
