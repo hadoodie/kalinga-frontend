@@ -84,7 +84,7 @@ function App() {
               path="/patient"
               element={<Navigate to="/patient/dashboard" replace />}
             />
-            
+
             {/* Medical Features */}
             <Route
               path="/patient/dashboard"
@@ -118,7 +118,7 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            
+
             {/* Emergency & Community Features */}
             <Route
               path="/patient/report-emergency"

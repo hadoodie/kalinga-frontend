@@ -26,20 +26,20 @@ export const EmergencyChat = () => {
 
         {/* Content area with responder sidebar + chat */}
         <main className="flex-1 flex overflow-hidden ">
-        {/* Chat Responder Sidebar */}
-        <div className="h-full">
-          <ChatSidebar
-          activeResponder={activeResponder}
-          setActiveResponder={setActiveResponder}
-        />
-        </div>
-        
-        {/* Chat Window */}
-        <div className="flex-1 overflow-y-auto">
-          <ChatReport responder={activeResponder} />
-        </div>
-      </main>
+          {/* Chat Responder Sidebar */}
+          <div className="h-full">
+            <ChatSidebar
+              activeResponder={activeResponder}
+              setActiveResponder={setActiveResponder}
+            />
+          </div>
+
+          {/* Chat Window */}
+          <div className="flex-1 overflow-y-auto">
+            <ChatReport responder={activeResponder} />
+          </div>
+        </main>
+      </div>
     </div>
-  </div>
   );
 };

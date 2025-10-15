@@ -1,18 +1,18 @@
-import { useNavigate } from "react-router-dom"
-import { Ambulance, Truck } from "lucide-react"
+import { useNavigate } from "react-router-dom";
+import { Ambulance, Truck } from "lucide-react";
 
-export default function EmergencyVehicleSelection () {
-  const navigate = useNavigate()
+export default function EmergencyVehicleSelection() {
+  const navigate = useNavigate();
 
   const handleSelection = (vehicleType) => {
     if (vehicleType === "Others") {
-      navigate("/patient/specify-vehicle")
+      navigate("/patient/specify-vehicle");
     } else {
       // TODO: Send vehicle selection to backend
       // After successful submission, navigate to Messages
-      navigate("/patient/messages", { state: { filterCategory: 'Emergency' } })
+      navigate("/patient/messages", { state: { filterCategory: "Emergency" } });
     }
-  }
+  };
 
   return (
     <section className="h-screen bg-background text-primary flex flex-col items-center justify-center px-6 text-center overflow-hidden">
@@ -47,5 +47,5 @@ export default function EmergencyVehicleSelection () {
         </button>
       </div>
     </section>
-  )
+  );
 }

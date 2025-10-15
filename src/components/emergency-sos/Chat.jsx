@@ -39,8 +39,8 @@ export const ChatReport = ({ responder }) => {
         {responder ? (
           <>
             Chatting with{" "}
-            <span className="font-bold text-green-700">{responder.name}</span>{" "}
-            ({responder.role})
+            <span className="font-bold text-green-700">{responder.name}</span> (
+            {responder.role})
           </>
         ) : (
           <>

@@ -1089,8 +1089,8 @@ export default function MessagesContact() {
 
   const handleSelectConversation = (conversation) => {
     // Prevent page scroll when selecting conversation
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    
+    window.scrollTo({ top: 0, behavior: "instant" });
+
     setSelectedConversation(conversation);
     setActiveTab(MainContentTabs.INBOX);
 
@@ -1098,9 +1098,7 @@ export default function MessagesContact() {
     if (conversation.unreadCount > 0) {
       setConversations((prev) =>
         prev.map((conv) =>
-          conv.id === conversation.id
-            ? { ...conv, unreadCount: 0 }
-            : conv
+          conv.id === conversation.id ? { ...conv, unreadCount: 0 } : conv
         )
       );
     }
@@ -1110,12 +1108,7 @@ export default function MessagesContact() {
   const renderMainPanel = () => {
     switch (activeTab) {
       case MainContentTabs.COMPOSE:
-        return (
-          <MessageComposer
-            initialSubject=""
-            onSend={navigateToInbox}
-          />
-        );
+        return <MessageComposer initialSubject="" onSend={navigateToInbox} />;
       case MainContentTabs.CONTACTS:
         return <ContactDirectory />;
       case MainContentTabs.SUPPORT:
@@ -1221,46 +1214,48 @@ export default function MessagesContact() {
 
                 {/* Category Filter Tabs */}
                 <div className="flex gap-2 mb-3 flex-wrap">
-                  {["All", "Emergency", "Medical", "Billing"].map((category) => {
-                    const count =
-                      category === "All"
-                        ? conversations.length
-                        : conversations.filter((c) => c.category === category)
-                            .length;
-                    const isEmergency = category === "Emergency";
-                    const emergencyUnread = isEmergency
-                      ? conversations
-                          .filter((c) => c.category === "Emergency")
-                          .reduce((sum, c) => sum + c.unreadCount, 0)
-                      : 0;
+                  {["All", "Emergency", "Medical", "Billing"].map(
+                    (category) => {
+                      const count =
+                        category === "All"
+                          ? conversations.length
+                          : conversations.filter((c) => c.category === category)
+                              .length;
+                      const isEmergency = category === "Emergency";
+                      const emergencyUnread = isEmergency
+                        ? conversations
+                            .filter((c) => c.category === "Emergency")
+                            .reduce((sum, c) => sum + c.unreadCount, 0)
+                        : 0;
 
-                    return (
-                      <button
-                        key={category}
-                        onClick={() => setCategoryFilter(category)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
-                          categoryFilter === category
-                            ? isEmergency
-                              ? "bg-red-600 text-white"
-                              : "bg-primary text-white"
-                            : isEmergency
-                            ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-300"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {isEmergency && (
-                          <AlertCircle
-                            size={14}
-                            className={
-                              emergencyUnread > 0 ? "animate-pulse" : ""
-                            }
-                          />
-                        )}
-                        {category}
-                        {count > 0 && ` (${count})`}
-                      </button>
-                    );
-                  })}
+                      return (
+                        <button
+                          key={category}
+                          onClick={() => setCategoryFilter(category)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                            categoryFilter === category
+                              ? isEmergency
+                                ? "bg-red-600 text-white"
+                                : "bg-primary text-white"
+                              : isEmergency
+                              ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-300"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          }`}
+                        >
+                          {isEmergency && (
+                            <AlertCircle
+                              size={14}
+                              className={
+                                emergencyUnread > 0 ? "animate-pulse" : ""
+                              }
+                            />
+                          )}
+                          {category}
+                          {count > 0 && ` (${count})`}
+                        </button>
+                      );
+                    }
+                  )}
                 </div>
 
                 {/* Search Bar */}

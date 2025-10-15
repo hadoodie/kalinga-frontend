@@ -1,28 +1,27 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const SpecifyVehicle = () => {
-  const [vehicle, setVehicle] = useState('')
-  const navigate = useNavigate()
+  const [vehicle, setVehicle] = useState("");
+  const navigate = useNavigate();
 
   const handleSubmit = () => {
-    if (!vehicle.trim()) return
+    if (!vehicle.trim()) return;
     // TODO: Send custom vehicle type to backend
     // After successful submission, navigate to Messages
-    navigate('/patient/messages', { state: { filterCategory: 'Emergency' } })
-  }
+    navigate("/patient/messages", { state: { filterCategory: "Emergency" } });
+  };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSubmit()
+    if (e.key === "Enter") {
+      handleSubmit();
     }
-  }
+  };
 
   return (
     <div className="h-screen bg-background text-primary flex flex-col items-center justify-center px-8 text-center">
       <h2 className="text-[1.8rem] mb-12">
-        Please{' '}
-        <span className="text-highlight font-bold">specify</span> the{' '}
+        Please <span className="text-highlight font-bold">specify</span> the{" "}
         <span className="text-highlight font-bold">vehicle type</span>.
       </h2>
 
@@ -43,5 +42,5 @@ export const SpecifyVehicle = () => {
         </button>
       </div>
     </div>
-  )
-}
+  );
+};

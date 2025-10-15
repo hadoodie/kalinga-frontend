@@ -31,15 +31,27 @@ export default function Sidebar() {
   }, [collapsed]);
 
   const items = [
-    { label: "Dashboard", path: "/patient/dashboard", icon: <Home size={25} /> },
-    { label: "Emergency SOS", path: "/patient/report-emergency", icon: <AlertCircle size={25} /> },
+    {
+      label: "Dashboard",
+      path: "/patient/dashboard",
+      icon: <Home size={25} />,
+    },
+    {
+      label: "Emergency SOS",
+      path: "/patient/report-emergency",
+      icon: <AlertCircle size={25} />,
+    },
     {
       label: "Evacuation Centers",
       path: "/patient/evacuation-center",
       icon: <Building2 size={25} />,
     },
     { label: "Weather", path: "/patient/weather", icon: <Cloud size={25} /> },
-    { label: "Messages", path: "/patient/messages", icon: <MessageSquare size={25} /> },
+    {
+      label: "Messages",
+      path: "/patient/messages",
+      icon: <MessageSquare size={25} />,
+    },
     {
       label: "Notifications",
       path: "/patient/notifications",

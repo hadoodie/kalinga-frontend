@@ -54,7 +54,12 @@ export const ProtectedRoute = ({
       responder: "/responder",
       patient: "/patient/dashboard",
     };
-    return <Navigate to={roleRedirects[user?.role] || "/patient/dashboard"} replace />;
+    return (
+      <Navigate
+        to={roleRedirects[user?.role] || "/patient/dashboard"}
+        replace
+      />
+    );
   }
 
   // Check if patient needs verification (but allow access to verification pages)

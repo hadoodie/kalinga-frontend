@@ -1,22 +1,22 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { emergencyButton } from '@images'
-import { EmergencyPopup } from '/src/components/emergency-sos/PopUp'
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { emergencyButton } from "@images";
+import { EmergencyPopup } from "/src/components/emergency-sos/PopUp";
 
 export const EmergencyReport = () => {
-  const [showPopup, setShowPopup] = useState(false)
-  const navigate = useNavigate()
+  const [showPopup, setShowPopup] = useState(false);
+  const navigate = useNavigate();
 
   const handleSendNow = () => {
-    setShowPopup(false)
+    setShowPopup(false);
     // TODO: Here you would send the emergency report to the backend
     // After successful report, navigate to Messages page
-    navigate('/patient/messages', { state: { filterCategory: 'Emergency' } })
-  }
+    navigate("/patient/messages", { state: { filterCategory: "Emergency" } });
+  };
 
   const handleCancel = () => {
-    setShowPopup(false)
-  }
+    setShowPopup(false);
+  };
 
   return (
     <div className="h-screen w-screen bg-background flex items-center justify-center">
@@ -45,5 +45,5 @@ export const EmergencyReport = () => {
         )}
       </section>
     </div>
-  )
-}
+  );
+};
