@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         // Removed statefulApi() to make API truly stateless (token-based)
         // statefulApi() adds session and CSRF middleware which we don't need
+        
+        // Add database failover middleware globally
+        $middleware->append(\App\Http\Middleware\DatabaseFailoverMiddleware::class);
+        
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
         ]);
