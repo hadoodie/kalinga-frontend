@@ -99,6 +99,7 @@ php artisan db:sync-cloud-to-local
 ```
 
 **Example Output:**
+
 ```
 🔄 Starting Cloud to Local Database Sync...
 
@@ -135,11 +136,11 @@ protected function schedule(Schedule $schedule)
              ->hourly()
              ->withoutOverlapping()
              ->runInBackground();
-    
+
     // Or sync every 6 hours
     $schedule->command('db:sync-cloud-to-local --skip-confirm')
              ->everySixHours();
-    
+
     // Or sync daily at 2 AM
     $schedule->command('db:sync-cloud-to-local --skip-confirm')
              ->dailyAt('02:00');
@@ -147,6 +148,7 @@ protected function schedule(Schedule $schedule)
 ```
 
 Then run the scheduler:
+
 ```bash
 php artisan schedule:work
 ```
@@ -154,6 +156,7 @@ php artisan schedule:work
 #### Option 2: Cron Job (Production)
 
 Add to your server's crontab:
+
 ```bash
 # Run every hour
 0 * * * * cd /path/to/backend && php artisan db:sync-cloud-to-local --skip-confirm >> /dev/null 2>&1
@@ -164,10 +167,10 @@ Add to your server's crontab:
 
 ## Command Options
 
-| Option | Description |
-|--------|-------------|
+| Option                | Description                                         |
+| --------------------- | --------------------------------------------------- |
 | `--tables=TABLE_NAME` | Sync specific table(s). Can be used multiple times. |
-| `--skip-confirm` | Skip confirmation prompt (required for automation) |
+| `--skip-confirm`      | Skip confirmation prompt (required for automation)  |
 
 ### Examples
 
@@ -184,12 +187,12 @@ php artisan db:sync-cloud-to-local --skip-confirm
 
 ## Tables Synced by Default
 
-- `users`
-- `resources`
-- `resource_requests`
-- `vehicles`
-- `hospitals`
-- `personal_access_tokens`
+-   `users`
+-   `resources`
+-   `resource_requests`
+-   `vehicles`
+-   `hospitals`
+-   `personal_access_tokens`
 
 To sync additional tables, use the `--tables` option.
 
@@ -197,21 +200,21 @@ To sync additional tables, use the `--tables` option.
 
 ### ⚠️ Warning
 
-- This is a **ONE-WAY sync** (Cloud → Local)
-- Local changes will be **overwritten**
-- Always backup important local data before syncing
+-   This is a **ONE-WAY sync** (Cloud → Local)
+-   Local changes will be **overwritten**
+-   Always backup important local data before syncing
 
 ### 🔒 Security
 
-- Never commit `.env` file to git
-- Keep cloud credentials secure
-- Use separate passwords for cloud and local databases
+-   Never commit `.env` file to git
+-   Keep cloud credentials secure
+-   Use separate passwords for cloud and local databases
 
 ### 📊 Performance
 
-- Large datasets are automatically chunked (100 records per batch)
-- Sync time depends on data size and network speed
-- Use `--tables` option to sync only needed tables
+-   Large datasets are automatically chunked (100 records per batch)
+-   Sync time depends on data size and network speed
+-   Use `--tables` option to sync only needed tables
 
 ## Switching Between Databases
 
@@ -232,6 +235,7 @@ DB_HOST=127.0.0.1
 ```
 
 Or use in code:
+
 ```php
 // Use cloud database
 $users = DB::connection('pgsql_cloud')->table('users')->get();
@@ -247,15 +251,17 @@ $users = DB::connection('pgsql_local')->table('users')->get();
 **Error:** `Cloud database connection failed`
 
 **Solution:**
-- Check your internet connection
-- Verify Supabase credentials in `.env`
-- Ensure `CLOUD_DB_HOST` uses session pooler endpoint
+
+-   Check your internet connection
+-   Verify Supabase credentials in `.env`
+-   Ensure `CLOUD_DB_HOST` uses session pooler endpoint
 
 ### Local Database Not Found
 
 **Error:** `Local database connection failed`
 
 **Solution:**
+
 ```bash
 # Create the database
 createdb db_kalinga_local
@@ -269,6 +275,7 @@ php artisan migrate --database=pgsql_local
 **Error:** `Table 'xyz' does not exist in local database`
 
 **Solution:**
+
 ```bash
 php artisan migrate --database=pgsql_local
 ```
@@ -278,38 +285,42 @@ php artisan migrate --database=pgsql_local
 **Error:** `SQLSTATE[42501]: Insufficient privilege`
 
 **Solution:**
-- Grant proper permissions to local PostgreSQL user
-- Or use a user with CREATE/INSERT/TRUNCATE privileges
+
+-   Grant proper permissions to local PostgreSQL user
+-   Or use a user with CREATE/INSERT/TRUNCATE privileges
 
 ## Team Collaboration
 
 ### For Team Members
 
 1. **Get credentials** from team lead:
-   - Cloud DB credentials (read from `.env.example.replication`)
-   - Local DB password
+
+    - Cloud DB credentials (read from `.env.example.replication`)
+    - Local DB password
 
 2. **Set up local database:**
-   ```bash
-   createdb db_kalinga_local
-   php artisan migrate --database=pgsql_local
-   ```
+
+    ```bash
+    createdb db_kalinga_local
+    php artisan migrate --database=pgsql_local
+    ```
 
 3. **Sync data:**
-   ```bash
-   php artisan db:sync-cloud-to-local
-   ```
+
+    ```bash
+    php artisan db:sync-cloud-to-local
+    ```
 
 4. **Work locally** (optional):
-   - Change `DB_CONNECTION=pgsql_local` in `.env`
-   - Run `php artisan config:clear`
+    - Change `DB_CONNECTION=pgsql_local` in `.env`
+    - Run `php artisan config:clear`
 
 ### Best Practices
 
-- ✅ Sync daily or before starting work
-- ✅ Use cloud DB for development (stay in sync with team)
-- ✅ Use local DB for testing/offline work
-- ✅ Never modify cloud DB structure without team coordination
+-   ✅ Sync daily or before starting work
+-   ✅ Use cloud DB for development (stay in sync with team)
+-   ✅ Use local DB for testing/offline work
+-   ✅ Never modify cloud DB structure without team coordination
 
 ## Advanced Usage
 
@@ -338,6 +349,7 @@ php artisan db:sync-cloud-to-local --skip-confirm >> storage/logs/db-sync.log 2>
 ## Support
 
 For issues or questions:
+
 1. Check this documentation
 2. Review error messages carefully
 3. Verify database connections

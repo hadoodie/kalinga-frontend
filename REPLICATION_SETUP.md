@@ -13,11 +13,13 @@ We've implemented automatic database backup from Supabase (cloud) to your local 
 ### Quick Setup (5 minutes)
 
 #### 1. Create Local Database
+
 ```bash
 createdb db_kalinga_local
 ```
 
 #### 2. Add to your `.env` file
+
 ```env
 # Local Database (for backup)
 LOCAL_DB_HOST=127.0.0.1
@@ -28,12 +30,14 @@ LOCAL_DB_PASSWORD=your_password_here
 ```
 
 #### 3. Run Migrations on Local DB
+
 ```bash
 cd backend
 php artisan migrate --database=pgsql_local
 ```
 
 #### 4. Sync Data from Cloud
+
 ```bash
 php artisan db:sync-cloud-to-local
 ```
@@ -43,16 +47,19 @@ That's it! Your local database now has a backup of all cloud data.
 ### Usage
 
 **Manual sync anytime:**
+
 ```bash
 php artisan db:sync-cloud-to-local
 ```
 
 **Sync specific tables:**
+
 ```bash
 php artisan db:sync-cloud-to-local --tables=users --tables=resources
 ```
 
 **For automation (skip confirmation):**
+
 ```bash
 php artisan db:sync-cloud-to-local --skip-confirm
 ```
@@ -67,6 +74,7 @@ php artisan db:sync-cloud-to-local --skip-confirm
 ### Documentation
 
 See `DATABASE_REPLICATION.md` for complete documentation including:
+
 - Automatic scheduling
 - Advanced options
 - Troubleshooting
@@ -75,6 +83,7 @@ See `DATABASE_REPLICATION.md` for complete documentation including:
 ### Important Notes
 
 ⚠️ **This is ONE-WAY sync** (Cloud → Local)
+
 - Local changes will be overwritten when you sync
 - Use cloud DB for active development
 - Use local DB for testing/backup

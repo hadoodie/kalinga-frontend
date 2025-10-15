@@ -1,11 +1,13 @@
 # Automatic Database Sync Setup
 
 ## Overview
+
 The database replication system is configured to automatically sync from the cloud database (Supabase) to the local backup database every hour.
 
 ## Configuration
 
 ### Schedule Configuration
+
 Located in: `routes/console.php`
 
 ```php
@@ -21,10 +23,11 @@ Schedule::command('db:sync-cloud-to-local --skip-confirm')
 ```
 
 ### What This Does
-- **Runs every hour** - Syncs data from cloud to local database
-- **Without overlapping** - Prevents multiple sync processes from running simultaneously
-- **Success/Failure logging** - Logs sync results to `storage/logs/laravel.log`
-- **Skips confirmation** - Runs automatically without user input
+
+-   **Runs every hour** - Syncs data from cloud to local database
+-   **Without overlapping** - Prevents multiple sync processes from running simultaneously
+-   **Success/Failure logging** - Logs sync results to `storage/logs/laravel.log`
+-   **Skips confirmation** - Runs automatically without user input
 
 ## Running the Scheduler
 
@@ -44,12 +47,12 @@ This command will run in the foreground and execute scheduled tasks at their def
 
 1. Open Task Scheduler
 2. Create a new task with these settings:
-   - **Trigger**: Daily at 00:00
-   - **Action**: Start a program
-   - **Program**: `php`
-   - **Arguments**: `artisan schedule:run`
-   - **Start in**: `C:\path\to\kalinga-frontend\backend`
-   - **Repeat**: Every 1 minute for duration of 24 hours
+    - **Trigger**: Daily at 00:00
+    - **Action**: Start a program
+    - **Program**: `php`
+    - **Arguments**: `artisan schedule:run`
+    - **Start in**: `C:\path\to\kalinga-frontend\backend`
+    - **Repeat**: Every 1 minute for duration of 24 hours
 
 #### Option 2: Cron Job (Linux/Mac)
 
@@ -62,21 +65,25 @@ Add this to your crontab:
 ## Verification
 
 ### Check Schedule Status
+
 ```bash
 php artisan schedule:list
 ```
 
 Expected output:
+
 ```
 0 * * * *  php artisan db:sync-cloud-to-local --skip-confirm .... Next Due: XX minutes from now
 ```
 
 ### Test Manual Sync
+
 ```bash
 php artisan db:sync-cloud-to-local
 ```
 
 ### Check Sync Logs
+
 View the logs in `storage/logs/laravel.log`:
 
 ```bash
@@ -92,24 +99,28 @@ tail -f storage/logs/laravel.log
 You can modify the sync frequency in `routes/console.php`:
 
 ### Every 30 Minutes
+
 ```php
 Schedule::command('db:sync-cloud-to-local --skip-confirm')
     ->everyThirtyMinutes()
 ```
 
 ### Every 6 Hours
+
 ```php
 Schedule::command('db:sync-cloud-to-local --skip-confirm')
     ->everySixHours()
 ```
 
 ### Daily at 2 AM
+
 ```php
 Schedule::command('db:sync-cloud-to-local --skip-confirm')
     ->dailyAt('02:00')
 ```
 
 ### Weekdays Only at 9 AM
+
 ```php
 Schedule::command('db:sync-cloud-to-local --skip-confirm')
     ->weekdays()
@@ -119,46 +130,54 @@ Schedule::command('db:sync-cloud-to-local --skip-confirm')
 ## Monitoring
 
 ### Success Indicators
-- ✅ Command exits with status 0
-- ✅ Log shows "Database sync completed successfully"
-- ✅ Local database records match cloud database
+
+-   ✅ Command exits with status 0
+-   ✅ Log shows "Database sync completed successfully"
+-   ✅ Local database records match cloud database
 
 ### Failure Indicators
-- ❌ Command exits with non-zero status
-- ❌ Log shows "Database sync failed"
-- ❌ Connection errors in logs
+
+-   ❌ Command exits with non-zero status
+-   ❌ Log shows "Database sync failed"
+-   ❌ Connection errors in logs
 
 ### Common Issues
 
 #### Issue: Schedule not running
+
 **Solution**: Make sure `schedule:work` is running in development, or Task Scheduler/cron is properly configured in production
 
 #### Issue: Connection failures
-**Solution**: 
-- Verify cloud database credentials in `.env`
-- Check network connectivity
-- Ensure SSL mode is correct (`require` for cloud, `prefer` for local)
+
+**Solution**:
+
+-   Verify cloud database credentials in `.env`
+-   Check network connectivity
+-   Ensure SSL mode is correct (`require` for cloud, `prefer` for local)
 
 #### Issue: Permission denied
+
 **Solution**:
-- Verify local database user has write permissions
-- Check that the local database exists: `psql -U postgres -l | grep db_kalinga`
+
+-   Verify local database user has write permissions
+-   Check that the local database exists: `psql -U postgres -l | grep db_kalinga`
 
 ## Testing the Automatic Sync
 
 1. **Start the scheduler**:
-   ```bash
-   php artisan schedule:work
-   ```
+
+    ```bash
+    php artisan schedule:work
+    ```
 
 2. **Make a change in cloud database** (via Supabase dashboard or API)
 
 3. **Wait for next scheduled run** (check with `php artisan schedule:list`)
 
 4. **Verify changes synced to local**:
-   ```bash
-   psql -U postgres -d db_kalinga -c "SELECT * FROM users LIMIT 5;"
-   ```
+    ```bash
+    psql -U postgres -d db_kalinga -c "SELECT * FROM users LIMIT 5;"
+    ```
 
 ## Disabling Automatic Sync
 
@@ -195,13 +214,14 @@ php artisan db:sync-cloud-to-local --skip-confirm
 
 ## Related Documentation
 
-- [DATABASE_REPLICATION.md](./DATABASE_REPLICATION.md) - Complete replication system documentation
-- [REPLICATION_SETUP.md](../REPLICATION_SETUP.md) - Quick setup guide
-- `.env.example.replication` - Environment variable template
+-   [DATABASE_REPLICATION.md](./DATABASE_REPLICATION.md) - Complete replication system documentation
+-   [REPLICATION_SETUP.md](../REPLICATION_SETUP.md) - Quick setup guide
+-   `.env.example.replication` - Environment variable template
 
 ## Support
 
 For issues or questions:
+
 1. Check logs: `storage/logs/laravel.log`
 2. Test manual sync: `php artisan db:sync-cloud-to-local`
 3. Verify connections: Check both cloud and local database connectivity
