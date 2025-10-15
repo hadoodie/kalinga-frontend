@@ -1,15 +1,15 @@
-import Sidebar from "../components/Sidebar";
+import Hospital from "../components/dashboard/Hospitals";
+import PatientSidebar from "../components/patients/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
-import PatientProfile from "../components/Profile";
 
-export const Profile = () => {
+export const MedicalFacilities = () => {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
     <div className="h-screen flex bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
       {/* Main content */}
       <div
@@ -23,8 +23,8 @@ export const Profile = () => {
         </div>
 
         {/* Content area */}
-        <main className="flex-1 overflow-y-auto p-2">
-          <PatientProfile />
+        <main className="flex-1 overflow-y-auto p-4 mb-5">
+          <Hospital />
         </main>
       </div>
     </div>

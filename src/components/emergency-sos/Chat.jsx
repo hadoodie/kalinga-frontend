@@ -8,7 +8,7 @@ export const ChatReport = ({ responder }) => {
   const navigate = useNavigate();
 
   const goToHome = () => {
-    navigate("/dashboard");
+    navigate("/patient/dashboard");
   };
 
   useEffect(() => {
@@ -39,8 +39,8 @@ export const ChatReport = ({ responder }) => {
         {responder ? (
           <>
             Chatting with{" "}
-            <span className="font-bold text-green-700">{responder.name}</span>{" "}
-            ({responder.role})
+            <span className="font-bold text-green-700">{responder.name}</span> (
+            {responder.role})
           </>
         ) : (
           <>

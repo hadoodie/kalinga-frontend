@@ -10,6 +10,7 @@ import {
   MessageSquare,
   User,
   LogOut,
+  AlertCircle,
 } from "lucide-react";
 import logo from "../assets/kalinga-logo-white.PNG";
 
@@ -30,12 +31,33 @@ export default function Sidebar() {
   }, [collapsed]);
 
   const items = [
-    { label: "Dashboard", path: "/dashboard", icon: <Home size={25} /> },
-    { label: "Evacuation Centers", path: "/evacuation-center", icon: <Building2 size={25} /> },
-    { label: "Weather", path: "/weather", icon: <Cloud size={25} /> },
-    { label: "Messages", path: "/messages", icon: <MessageSquare size={25} /> },
-    { label: "Notifications", path: "/notifications", icon: <Bell size={25} /> },
-    { label: "Profile", path: "/profile", icon: <User size={25} /> },
+    {
+      label: "Dashboard",
+      path: "/patient/dashboard",
+      icon: <Home size={25} />,
+    },
+    {
+      label: "Emergency SOS",
+      path: "/patient/report-emergency",
+      icon: <AlertCircle size={25} />,
+    },
+    {
+      label: "Evacuation Centers",
+      path: "/patient/evacuation-center",
+      icon: <Building2 size={25} />,
+    },
+    { label: "Weather", path: "/patient/weather", icon: <Cloud size={25} /> },
+    {
+      label: "Messages",
+      path: "/patient/messages",
+      icon: <MessageSquare size={25} />,
+    },
+    {
+      label: "Notifications",
+      path: "/patient/notifications",
+      icon: <Bell size={25} />,
+    },
+    { label: "Profile", path: "/patient/profile", icon: <User size={25} /> },
   ];
 
   const handleNavigation = (item) => {
@@ -94,7 +116,7 @@ export default function Sidebar() {
             }`}
           >
             <h2 className="mt-2 text-lg font-bold">Juan Dela Cruz</h2>
-            <p className="text-sm text-white/70">Resident</p>
+            <p className="text-sm text-white/70">Patient</p>
           </div>
         </div>
 
@@ -132,7 +154,7 @@ export default function Sidebar() {
           <div
             className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
               ${collapsed ? "justify-center" : "gap-2"}`}
-            onClick={() => navigate("/settings")}
+            onClick={() => navigate("/patient/settings")}
           >
             <Settings size={25} />
             {!collapsed && <span>Settings</span>}
@@ -194,7 +216,7 @@ export default function Sidebar() {
             {/* Settings and Logout */}
             <div
               className="flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
-              onClick={() => navigate("/settings")}
+              onClick={() => navigate("/patient/settings")}
             >
               <Settings size={20} />
               <span>Settings</span>

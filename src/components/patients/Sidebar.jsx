@@ -3,12 +3,15 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
   ListPlus,
-  PackageOpen,
   Menu,
   LogOut,
   Settings,
   FolderInput,
-  Archive,
+  AlertCircle,
+  Cloud,
+  MessageSquare,
+  Bell,
+  User,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
 import { useAuth } from "../../context/AuthContext";
@@ -36,28 +39,43 @@ export default function PatientSidebar() {
   const items = [
     {
       label: "Dashboard",
-      path: "/patient-dashboard",
+      path: "/patient/dashboard",
       icon: <Home size={25} />,
     },
     {
       label: "Emergency SOS",
-      path: "/report-emergency",
-      icon: <Archive size={25} />,
+      path: "/patient/report-emergency",
+      icon: <AlertCircle size={25} />,
     },
     {
-      label: "Appointments & Scheduling",
-      path: "/patient-appointments",
+      label: "Appointments",
+      path: "/patient/appointments",
       icon: <FolderInput size={25} />,
     },
     {
-      label: "My Health Records",
-      path: "/patient-health-records",
+      label: "Health Records",
+      path: "/patient/health-records",
       icon: <ListPlus size={25} />,
     },
     {
-      label: "Messages & Contact",
-      path: "/patient-messages",
-      icon: <PackageOpen size={25} />,
+      label: "Messages",
+      path: "/patient/messages",
+      icon: <MessageSquare size={25} />,
+    },
+    {
+      label: "Weather",
+      path: "/patient/weather",
+      icon: <Cloud size={25} />,
+    },
+    {
+      label: "Notifications",
+      path: "/patient/notifications",
+      icon: <Bell size={25} />,
+    },
+    {
+      label: "Profile",
+      path: "/patient/profile",
+      icon: <User size={25} />,
     },
   ];
 
@@ -86,7 +104,7 @@ export default function PatientSidebar() {
   };
 
   const handleSettings = () => {
-    navigate("/settings");
+    navigate("/patient/settings");
     setMobileOpen(false);
   };
 
@@ -166,7 +184,7 @@ export default function PatientSidebar() {
           <div
             className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
               ${collapsed ? "justify-center" : "gap-2"}`}
-            onClick={() => navigate("/patient-settings")}
+            onClick={() => navigate("/patient/settings")}
           >
             {collapsed ? <Settings size={25} /> : <span>Settings</span>}
           </div>
@@ -211,7 +229,7 @@ export default function PatientSidebar() {
             {/* Settings and Logout */}
             <div
               className="flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
-              onClick={() => navigate("/settings")}
+              onClick={() => navigate("/patient/settings")}
             >
               <Settings size={20} />
               <span>Settings</span>

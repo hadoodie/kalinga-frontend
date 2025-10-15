@@ -50,15 +50,19 @@ export const ProtectedRoute = ({
     // Redirect to appropriate dashboard based on role
     const roleRedirects = {
       admin: "/admin",
-      logistics: "/logistic-dashboard",
+      logistics: "/logistics/dashboard",
       responder: "/responder",
-      patient: "/dashboard",
-      resident: "/dashboard",
+      patient: "/patient/dashboard",
     };
-    return <Navigate to={roleRedirects[user?.role] || "/dashboard"} replace />;
+    return (
+      <Navigate
+        to={roleRedirects[user?.role] || "/patient/dashboard"}
+        replace
+      />
+    );
   }
 
-  // Check if patient/resident needs verification (but allow access to verification pages)
+  // Check if patient needs verification (but allow access to verification pages)
   const verificationPages = [
     "/verify-id",
     "/upload-id",

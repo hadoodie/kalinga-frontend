@@ -102,7 +102,7 @@ export const NavbarB = ({
                     Notifications
                   </span>
                   <button
-                    onClick={() => navigate("/notifications")}
+                    onClick={() => navigate("/patient/notifications")}
                     className="text-xs text-blue-600 hover:underline"
                   >
                     See all
@@ -163,7 +163,7 @@ export const NavbarB = ({
                 <ul className="py-1 text-sm text-gray-700">
                   <li>
                     <button
-                      onClick={() => navigate("/profile")}
+                      onClick={() => navigate("/patient/profile")}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Profile
@@ -171,7 +171,7 @@ export const NavbarB = ({
                   </li>
                   <li>
                     <button
-                      onClick={() => navigate("/settings")}
+                      onClick={() => navigate("/patient/settings")}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Settings

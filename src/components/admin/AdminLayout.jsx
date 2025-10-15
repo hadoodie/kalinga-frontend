@@ -128,7 +128,7 @@ export const AdminLayout = ({
   const toggleTheme = () => {
     setIsDarkMode((prev) => {
       const next = !prev;
-      
+
       if (next) {
         document.documentElement.classList.add("dark");
         localStorage.setItem("theme", "dark");
