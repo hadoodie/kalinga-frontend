@@ -97,6 +97,36 @@ return [
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
 
+        // Cloud Database Connection (Supabase)
+        'pgsql_cloud' => [
+            'driver' => 'pgsql',
+            'host' => env('CLOUD_DB_HOST', 'aws-1-ap-southeast-1.pooler.supabase.com'),
+            'port' => env('CLOUD_DB_PORT', '5432'),
+            'database' => env('CLOUD_DB_DATABASE', 'postgres'),
+            'username' => env('CLOUD_DB_USERNAME', 'postgres'),
+            'password' => env('CLOUD_DB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('CLOUD_DB_SSLMODE', 'require'),
+        ],
+
+        // Local Database Connection (Backup)
+        'pgsql_local' => [
+            'driver' => 'pgsql',
+            'host' => env('LOCAL_DB_HOST', '127.0.0.1'),
+            'port' => env('LOCAL_DB_PORT', '5432'),
+            'database' => env('LOCAL_DB_DATABASE', 'db_kalinga'),
+            'username' => env('LOCAL_DB_USERNAME', 'postgres'),
+            'password' => env('LOCAL_DB_PASSWORD', ''),
+            'charset' => 'utf8',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => 'prefer',
+        ],
+
         'sqlsrv' => [
             'driver' => 'sqlsrv',
             'url' => env('DB_URL'),
