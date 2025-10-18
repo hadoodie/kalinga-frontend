@@ -18,6 +18,9 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             HospitalSeeder::class,
             ResourceSeeder::class,
+            HealthRecordsSeeder::class, 
+            AppointmentsSeeder::class,
+            LabResultSeeder::class,
         ]);
     }
 }

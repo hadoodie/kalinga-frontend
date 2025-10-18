@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\HospitalController;
+use App\Http\Controllers\Api\LabResultController;
+use App\Http\Controllers\Api\AppointmentController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -34,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/verify-id', [AuthController::class, 'verifyId']);
     Route::post('/submit-verification', [AuthController::class, 'submitVerification']);
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
@@ -57,9 +60,11 @@ Route::middleware('auth:sanctum')->group(function () {
         // Emergency response routes will go here
     });
     
-    // Resident routes
-    Route::middleware(['role:admin,resident'])->group(function () {
-        // Resident-specific routes will go here
+    // Patient routes
+    Route::middleware(['role:admin,patient'])->group(function () {
+        // Patient-specific routes will go here
+        Route::get('/lab-results', [LabResultController::class, 'index']);
+        Route::get('/appointments', [AppointmentController::class, 'index']);
     });
 });
 
