@@ -1,5 +1,5 @@
 // src/pages/Settings.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Layout from "../layouts/Layout";
 import "../styles/personnel-style.css";
 import {
@@ -11,19 +11,38 @@ import {
   FaTimes,
   FaSave,
 } from "react-icons/fa";
+import api from "../services/api";
 
 const Settings = () => {
   const [activeModal, setActiveModal] = useState(null);
   const [formData, setFormData] = useState({
-    name: "John Doe",
-    email: "johndoe@gmail.com",
-    phone: "09123456789",
-    role: "Youth Leader",
-    availability: "Weekends",
+    name: "",
+    email: "",
+    phone: "",
+    role: "",
+    availability: "",
     language: "English",
     theme: "Light",
     visibility: "Public",
   });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch user data when component loads
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await api.get("/me");
+        setFormData(response.data);
+      } catch (err) {
+        setError("Failed to load user settings.");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUserData();
+  }, []);
 
   const openModal = (modalName) => setActiveModal(modalName);
   const closeModal = () => setActiveModal(null);
@@ -33,10 +52,42 @@ const Settings = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSave = () => {
-    alert("Settings saved successfully!");
-    closeModal();
+  const handleSave = async () => {
+    try {
+      const response = await api.put("/profile", formData);
+      setFormData(response.data);
+      alert("Settings saved successfully!");
+      closeModal();
+    } catch (err) {
+      if (err.response && err.response.status === 422) {
+        const validationErrors = err.response.data;
+        alert("Please fix the following errors:\n" + Object.values(validationErrors).flat().join('\n'));
+      } else {
+        alert("Failed to save settings. Please try again.");
+      }
+      console.error(err);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="settings-page">
+          <div className="text-center p-8">Loading settings...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout>
+        <div className="settings-page">
+          <div className="text-center p-8 text-red-500">{error}</div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -110,19 +161,19 @@ const Settings = () => {
                   <label>Full Name:</label>
                   <input
                     name="name"
-                    value={formData.name}
+                    value={formData.name || ''}
                     onChange={handleChange}
                   />
                   <label>Email Address:</label>
                   <input
                     name="email"
-                    value={formData.email}
+                    value={formData.email || ''}
                     onChange={handleChange}
                   />
                   <label>Phone Number:</label>
                   <input
                     name="phone"
-                    value={formData.phone}
+                    value={formData.phone || ''}
                     onChange={handleChange}
                   />
                   <button className="save-btn" onClick={handleSave}>
@@ -138,7 +189,7 @@ const Settings = () => {
                   <label>Your Role:</label>
                   <input
                     name="role"
-                    value={formData.role}
+                    value={formData.role || ''}
                     onChange={handleChange}
                   />
                   <button className="save-btn" onClick={handleSave}>
@@ -154,7 +205,7 @@ const Settings = () => {
                   <label>When are you available?</label>
                   <input
                     name="availability"
-                    value={formData.availability}
+                    value={formData.availability || ''}
                     onChange={handleChange}
                   />
                   <button className="save-btn" onClick={handleSave}>
