@@ -1,35 +1,27 @@
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
-import { Home } from "./pages-home/Home";
-import { LogIn } from "./pages-account/LogIn";
-import { CreateAccount } from "./pages-account/CreateAccount";
-import { Toaster } from "./components/ui/toaster";
-import { VerifyIDs } from "./pages-account/VerifyID";
-import { UploadIDs } from "./pages-account/UploadID";
-import { FillInformation } from "./pages-account/FillInformation";
-import { ReportEmergencies } from "./pages-patients/ReportEmergency";
-import { VehicleSelection } from "./pages-patients/VehicleSelection";
-import { OtherVehicles } from "./pages-patients/SpecifyVehicle";
-import { ForgotPassword } from "./pages-account/ForgotPassword";
-import { CommunityDashboard } from "./pages-patients/CommunityDashboard";
-import { Weather } from "./pages-patients/Weather";
-import { Notifications } from "./pages-patients/Notifications";
-import { Profile } from "./pages-patients/Profile";
-import { SupplyTracking } from "./pages-logistics/Supply";
-import { RequestAllocation } from "./pages-logistics/Request";
-import { AssetRegistry } from "./pages-logistics/AssetRegistry";
-import { ResourceManagement } from "./pages-logistics/ResourceManagement";
-import { DashboardLogistics } from "./pages-logistics/Dashboard";
-import { SettingsLogistics } from "./pages-logistics/Settings";
-import { AdminPortal } from "./pages-admin/Admin";
-import { ResponderPortal } from "./pages-responders/Responder";
-import { PatientDashboard } from "./pages-patients/Dashboard";
-import { PatientAppointment } from "./pages-patients/Appointment";
-import { PatientHealthRecords } from "./pages-patients/HealthRecords";
-import { PatientMessages } from "./pages-patients/Messages";
-import { PatientSettings } from "./pages-patients/Settings";
-import VerificationPending from "./pages-resident/99_VerificationPending";
+import { Suspense } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+// Context & Components
 import { AuthProvider } from "./context/AuthContext";
-import { ProtectedRoute } from "./components/ProtectedRoute";
+import { Toaster } from "./components/ui/toaster";
+
+// Route Modules
+import { PublicRoutes } from "./routes/PublicRoutes";
+import { AccountRoutes } from "./routes/AccountRoutes";
+import { PatientRoutes } from "./routes/PatientRoutes";
+import { AdminRoutes } from "./routes/AdminRoutes";
+import { ResponderRoutes } from "./routes/ResponderRoutes";
+import { LogisticsRoutes } from "./routes/LogisticsRoutes";
+
+// Loading component for Suspense fallback
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+      <p className="text-muted-foreground">Loading...</p>
+    </div>
+  </div>
+);
 
 function App() {
   return (
@@ -37,224 +29,44 @@ function App() {
       <Toaster />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route index element={<Home />} />
-            <Route path="/login" element={<LogIn />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/create-acc" element={<CreateAccount />} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public Routes */}
+              {PublicRoutes()}
 
-            {/* Account Creation Flow - Protected */}
-            <Route
-              path="/verify-id"
-              element={
-                <ProtectedRoute>
-                  <VerifyIDs />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/upload-id"
-              element={
-                <ProtectedRoute>
-                  <UploadIDs />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/fill-info"
-              element={
-                <ProtectedRoute>
-                  <FillInformation />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/verification-pending"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <VerificationPending />
-                </ProtectedRoute>
-              }
-            />
+              {/* Account Creation Flow */}
+              {AccountRoutes()}
 
-            {/* Patient Routes - All nested under /patient */}
-            {/* Redirect /patient to /patient/dashboard */}
-            <Route
-              path="/patient"
-              element={<Navigate to="/patient/dashboard" replace />}
-            />
+              {/* Patient Routes */}
+              {PatientRoutes()}
 
-            {/* Medical Features */}
-            <Route
-              path="/patient/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <PatientDashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/appointments"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <PatientAppointment />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/health-records"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <PatientHealthRecords />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/messages"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <PatientMessages />
-                </ProtectedRoute>
-              }
-            />
+              {/* Admin Routes */}
+              {AdminRoutes()}
 
-            {/* Emergency & Community Features */}
-            <Route
-              path="/patient/report-emergency"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <ReportEmergencies />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/vehicle"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <VehicleSelection />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/specify-vehicle"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <OtherVehicles />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/weather"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <Weather />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/notifications"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <Notifications />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/settings"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <PatientSettings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/patient/profile"
-              element={
-                <ProtectedRoute allowedRoles={["patient"]}>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
+              {/* Responder Routes */}
+              {ResponderRoutes()}
 
-            {/* Admin Routes */}
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute allowedRoles={["admin"]}>
-                  <AdminPortal />
-                </ProtectedRoute>
-              }
-            />
+              {/* Logistics Routes */}
+              {LogisticsRoutes()}
 
-            {/* Responder Routes */}
-            <Route
-              path="/responder"
-              element={
-                <ProtectedRoute allowedRoles={["responder"]}>
-                  <ResponderPortal />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Logistics Routes - Nested under /logistics */}
-            {/* Redirect /logistics to /logistics/dashboard */}
-            <Route
-              path="/logistics"
-              element={<Navigate to="/logistics/dashboard" replace />}
-            />
-            <Route
-              path="/logistics/dashboard"
-              element={
-                <ProtectedRoute allowedRoles={["logistics", "admin"]}>
-                  <DashboardLogistics />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/logistics/resource-management"
-              element={
-                <ProtectedRoute allowedRoles={["logistics", "admin"]}>
-                  <ResourceManagement />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/logistics/asset-registry"
-              element={
-                <ProtectedRoute allowedRoles={["logistics", "admin"]}>
-                  <AssetRegistry />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/logistics/supply-tracking"
-              element={
-                <ProtectedRoute allowedRoles={["logistics", "admin"]}>
-                  <SupplyTracking />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/logistics/requested-allocation"
-              element={
-                <ProtectedRoute allowedRoles={["logistics", "admin"]}>
-                  <RequestAllocation />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/logistics/settings"
-              element={
-                <ProtectedRoute allowedRoles={["logistics", "admin"]}>
-                  <SettingsLogistics />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* 404 */}
-            <Route path="*" element={<h1>404 Not Found</h1>} />
-          </Routes>
+              {/* 404 Not Found */}
+              <Route
+                path="*"
+                element={
+                  <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center">
+                      <h1 className="text-6xl font-bold text-primary mb-4">
+                        404
+                      </h1>
+                      <p className="text-xl text-muted-foreground">
+                        Page Not Found
+                      </p>
+                    </div>
+                  </div>
+                }
+              />
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </>
