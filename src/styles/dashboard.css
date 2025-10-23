@@ -1,0 +1,138 @@
+/* Main Dashboard Layout */
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+  background: #EFEFF3;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Main content area */
+.main {
+  flex: 1;
+  padding: 20px;
+  margin-left: 70px; /* collapsed sidebar space */
+  transition: margin-left 0.3s ease;
+}
+
+/* Adjust main content when sidebar expands */
+.sidebar:hover ~ .main {
+  margin-left: 250px;
+}
+
+/* Topbar */
+.topbar {
+  background: white;
+  border-radius: 15px;
+  padding: 7px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: margin-left 0.3s ease, width 0.3s ease;
+  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.topbar h2 {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: #02462E;
+}
+
+/* Search bar */
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #02462E;
+  border-radius: 20px;
+  padding: 5px 12px;
+  background: #fff;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+  font-size: 14px;
+}
+
+/* Icons inside topbar */
+.topbar-icons {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.topbar-icons i {
+  font-size: 20px;
+  cursor: pointer;
+  color: #02462E;
+}
+
+/* Dashboard content spacing */
+.dashboard-content {
+  margin-top: 20px;
+  font-size: 20px;
+  font-weight: bold;
+  color: #02462E;
+}
+
+/* Cards Grid */
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card h3 {
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #02462E;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .main {
+    margin-left: 0;
+  }
+
+  .sidebar {
+    width: 100% !important;
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .sidebar ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .topbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0px 2px 6px rgba(0, 0, 0, 0.1);
+}
+

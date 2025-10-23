@@ -1,7 +1,7 @@
 // src/components/Sidebar.jsx
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import "../styles/personnel-style.css";
+import "../../styles/personnel-style.css";
 
 const Sidebar = () => {
   const location = useLocation();
@@ -16,45 +16,45 @@ const Sidebar = () => {
         <h1>KALINGA</h1>
       </div>
       <ul>
-        <li className={isActive("/dashboard") ? "active" : ""}>
-          <Link to="/dashboard">Dashboard</Link>
+        <li className={isActive("/responder/dashboard") ? "active" : ""}>
+          <Link to="/responder/dashboard">Dashboard</Link>
         </li>
 
-        <li className={isActive("/incident-logs") ? "active" : ""}>
-          <Link to="/incident-logs">Incident Logs</Link>
+        <li className={isActive("/responder/incident-logs") ? "active" : ""}>
+          <Link to="/responder/incident-logs">Incident Logs</Link>
         </li>
 
-        <li className={isActive("/emergency-sos") ? "active" : ""}>
-          <Link to="/emergency-sos">Emergency SOS</Link>
+        <li className={isActive("/responder/emergency-sos") ? "active" : ""}>
+          <Link to="/responder/emergency-sos">Emergency SOS</Link>
         </li>
 
-        <li className={isActive("/triage-system") ? "active" : ""}>
-          <Link to="/triage-system">Triage System</Link>
+        <li className={isActive("/responder/triage-system") ? "active" : ""}>
+          <Link to="/responder/triage-system">Triage System</Link>
         </li>
 
         {/* Online Training with submenu */}
         <li
           className={`has-submenu ${
-            isActive("/online-training") ||
-            isActive("/modules") ||
-            isActive("/certifications")
+            isActive("/responder/online-training") ||
+            isActive("/responder/modules") ||
+            isActive("/responder/certifications")
               ? "active"
               : ""
           }`}
         >
-          <Link to="/online-training">Online Training</Link>
+          <Link to="/responder/online-training">Online Training</Link>
           <ul className="submenu">
-            <li className={isActive("/modules") ? "active" : ""}>
-              <Link to="/modules">Modules</Link>
+            <li className={isActive("/responder/modules") ? "active" : ""}>
+              <Link to="/responder/modules">Modules</Link>
             </li>
-            <li className={isActive("/certifications") ? "active" : ""}>
-              <Link to="/certifications">Certifications</Link>
+            <li className={isActive("/responder/certifications") ? "active" : ""}>
+              <Link to="/responder/certifications">Certifications</Link>
             </li>
           </ul>
         </li>
 
-        <li className={isActive("/settings") ? "active" : ""}>
-          <Link to="/settings">Settings</Link>
+        <li className={isActive("/responder/settings") ? "active" : ""}>
+          <Link to="/responder/settings">Settings</Link>
         </li>
       </ul>
     </div>

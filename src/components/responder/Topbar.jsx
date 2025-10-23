@@ -10,7 +10,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import "../styles/topbar.css";
+import "../../styles/topbar.css";
 
 const Topbar = () => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -83,13 +83,13 @@ const Topbar = () => {
                   transition={{ duration: 0.2 }}
                 >
                   <ul>
-                    <li onClick={() => handleNavigate("/profile")}>
+                    <li onClick={() => handleNavigate("/responder/profile")}>
                       <FaUser className="menu-icon" /> Profile
                     </li>
-                    <li onClick={() => handleNavigate("/settings")}>
+                    <li onClick={() => handleNavigate("/responder/settings")}>
                       <FaCog className="menu-icon" /> Settings
                     </li>
-                    <li onClick={() => handleNavigate("/grades")}>
+                    <li onClick={() => handleNavigate("/responder/grades")}>
                       <FaGraduationCap className="menu-icon" /> Grades
                     </li>
                     {/* ✅ Logout now actually logs the user out */}

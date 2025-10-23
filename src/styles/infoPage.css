@@ -1,0 +1,176 @@
+.info-page {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.info-title {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #135b37;
+  margin-bottom: 1rem;
+}
+
+.info-content {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 1.5rem;
+  line-height: 1.6;
+}
+/* === Info Page === */
+.info-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.breadcrumbs {
+  font-size: 0.95rem;
+  margin-bottom: 1.5rem;
+  color: #004d40;
+}
+
+.breadcrumbs a {
+  color: #004d40;
+  text-decoration: none;
+}
+
+.info-title {
+  text-transform: capitalize;
+  font-size: 2rem;
+  color: #004d40;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+/* Content box */
+.info-content {
+  background-color: #f9fafa;
+  border: 1px solid #e0e0e0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  line-height: 1.6;
+  font-size: 1rem;
+  color: #333;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.info-content strong {
+  color: #004d40;
+}
+
+/* Buttons section */
+.info-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2rem;
+}
+
+.btn {
+  border-radius: 8px;
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-outline {
+  border: 2px solid #004d40;
+  background: transparent;
+  color: #004d40;
+}
+
+.btn-outline:hover {
+  background: #004d40;
+  color: #fff;
+}
+
+.btn-primary {
+  background-color: #004d40;
+  color: white;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #00695c;
+}
+
+/* Make the Next button align to the right, same style as Back to Course */
+.btn-primary.full-width {
+  width: auto;                /* short button, not full width */
+  display: inline-block;
+  text-align: center;
+  padding: 0.8rem 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+}
+
+/* Container for navigation buttons */
+.info-buttons {
+  display: flex;
+  justify-content: space-between; /* “Back” on left, “Next” on right */
+  align-items: center;
+  margin-top: 1.5rem;
+  gap: 1rem;
+}
+
+/* Style for both buttons */
+.btn-nav {
+  flex: 1; /* makes both buttons equal width */
+  text-align: center;
+  padding: 0.8rem 1.2rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Back button */
+.btn-outline {
+  background-color: transparent;
+  border: 2px solid #0a593e; /* dark green border */
+  color: #0a593e;
+}
+
+.btn-outline:hover {
+  background-color: #0a593e;
+  color: white;
+}
+
+/* Next button */
+.btn-primary {
+  background-color: #0a593e;
+  color: white;
+  border: 2px solid #0a593e;
+}
+
+.btn-primary:hover {
+  background-color: #084c34;
+}
+/* Buttons aligned side-by-side */
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+/* Match your button styles */
+.btn-primary.short {
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  background-color: #0a593e;
+  color: white;
+  transition: background 0.3s;
+}
+
+.btn-primary.short:hover {
+  background-color: #0a593e;
+}

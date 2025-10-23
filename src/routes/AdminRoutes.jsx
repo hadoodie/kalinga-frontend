@@ -4,7 +4,11 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { ROUTES, ROLES } from "../config/routes";
 
 // Lazy load admin pages
-const AdminPortal = lazy(() => import("../pages-admin/Admin"));
+const AdminPortal = lazy(() =>
+  import("../pages-admin/Admin").then((module) => ({
+    default: module.AdminPortal,
+  }))
+);
 
 const adminRoles = [ROLES.ADMIN];
 

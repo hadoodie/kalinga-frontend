@@ -1,0 +1,94 @@
+.incident-logs-container {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  margin: 20px;
+}
+
+.incident-title {
+  font-size: 22px;
+  font-weight: bold;
+  color: #064420;
+  margin-bottom: 15px;
+}
+
+.incident-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.incident-table th {
+  background: #f4f4f4;
+  padding: 10px;
+  text-align: left;
+  font-weight: bold;
+}
+
+.incident-table td {
+  padding: 10px;
+  text-align: left;
+}
+
+.incident-table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+/* Status colors */
+.incident-table td.ongoing {
+  background: #ffcccb; /* light red */
+  color: #900;
+  font-weight: bold;
+}
+
+.incident-table td.resolved {
+  background: #c8facc; /* light green */
+  color: #065f1f;
+  font-weight: bold;
+}
+
+.incident-table td.pending {
+  background: #ffe79a; /* yellow */
+  color: #9a7400;
+  font-weight: bold;
+}
+
+/* Footer */
+.footer {
+  margin-top: 30px;
+  background: #f8f8f8;
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.footer-feedback {
+  flex: 1;
+  margin-right: 20px;
+}
+
+.footer-feedback textarea {
+  width: 100%;
+  min-height: 60px;
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.footer-feedback button {
+  margin-top: 10px;
+  padding: 8px 15px;
+  border: none;
+  background: #0b6e4f;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.footer-feedback button:hover {
+  background: #064420;
+}
+
+.footer-social, .footer-contact {
+  flex: 0.5;
+}

@@ -4,23 +4,61 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { ROUTES, ROLES } from "../config/routes";
 
 // Lazy load patient pages
-const PatientDashboard = lazy(() => import("../pages-patients/Dashboard"));
-const PatientAppointment = lazy(() => import("../pages-patients/Appointment"));
-const PatientHealthRecords = lazy(() =>
-  import("../pages-patients/HealthRecords")
+const PatientDashboard = lazy(() =>
+  import("../pages-patients/Dashboard").then((module) => ({
+    default: module.PatientDashboard,
+  }))
 );
-const PatientMessages = lazy(() => import("../pages-patients/Messages"));
-const PatientSettings = lazy(() => import("../pages-patients/Settings"));
+const PatientAppointment = lazy(() =>
+  import("../pages-patients/Appointment").then((module) => ({
+    default: module.PatientAppointment,
+  }))
+);
+const PatientHealthRecords = lazy(() =>
+  import("../pages-patients/HealthRecords").then((module) => ({
+    default: module.PatientHealthRecords,
+  }))
+);
+const PatientMessages = lazy(() =>
+  import("../pages-patients/Messages").then((module) => ({
+    default: module.PatientMessages,
+  }))
+);
+const PatientSettings = lazy(() =>
+  import("../pages-patients/Settings").then((module) => ({
+    default: module.PatientSettings,
+  }))
+);
 const ReportEmergencies = lazy(() =>
-  import("../pages-patients/ReportEmergency")
+  import("../pages-patients/ReportEmergency").then((module) => ({
+    default: module.ReportEmergencies,
+  }))
 );
 const VehicleSelection = lazy(() =>
-  import("../pages-patients/VehicleSelection")
+  import("../pages-patients/VehicleSelection").then((module) => ({
+    default: module.VehicleSelection,
+  }))
 );
-const OtherVehicles = lazy(() => import("../pages-patients/SpecifyVehicle"));
-const Weather = lazy(() => import("../pages-patients/Weather"));
-const Notifications = lazy(() => import("../pages-patients/Notifications"));
-const Profile = lazy(() => import("../pages-patients/Profile"));
+const OtherVehicles = lazy(() =>
+  import("../pages-patients/SpecifyVehicle").then((module) => ({
+    default: module.OtherVehicles,
+  }))
+);
+const Weather = lazy(() =>
+  import("../pages-patients/Weather").then((module) => ({
+    default: module.Weather,
+  }))
+);
+const Notifications = lazy(() =>
+  import("../pages-patients/Notifications").then((module) => ({
+    default: module.Notifications,
+  }))
+);
+const Profile = lazy(() =>
+  import("../pages-patients/Profile").then((module) => ({
+    default: module.Profile,
+  }))
+);
 
 const patientRoles = [ROLES.PATIENT];
 
