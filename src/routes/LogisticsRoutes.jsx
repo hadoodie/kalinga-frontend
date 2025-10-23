@@ -4,14 +4,36 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { ROUTES, ROLES } from "../config/routes";
 
 // Lazy load logistics pages
-const DashboardLogistics = lazy(() => import("../pages-logistics/Dashboard"));
-const ResourceManagement = lazy(() =>
-  import("../pages-logistics/ResourceManagement")
+const DashboardLogistics = lazy(() =>
+  import("../pages-logistics/Dashboard").then((module) => ({
+    default: module.DashboardLogistics,
+  }))
 );
-const AssetRegistry = lazy(() => import("../pages-logistics/AssetRegistry"));
-const SupplyTracking = lazy(() => import("../pages-logistics/Supply"));
-const RequestAllocation = lazy(() => import("../pages-logistics/Request"));
-const SettingsLogistics = lazy(() => import("../pages-logistics/Settings"));
+const ResourceManagement = lazy(() =>
+  import("../pages-logistics/ResourceManagement").then((module) => ({
+    default: module.ResourceManagement,
+  }))
+);
+const AssetRegistry = lazy(() =>
+  import("../pages-logistics/AssetRegistry").then((module) => ({
+    default: module.AssetRegistry,
+  }))
+);
+const SupplyTracking = lazy(() =>
+  import("../pages-logistics/Supply").then((module) => ({
+    default: module.SupplyTracking,
+  }))
+);
+const RequestAllocation = lazy(() =>
+  import("../pages-logistics/Request").then((module) => ({
+    default: module.RequestAllocation,
+  }))
+);
+const SettingsLogistics = lazy(() =>
+  import("../pages-logistics/Settings").then((module) => ({
+    default: module.SettingsLogistics,
+  }))
+);
 
 const logisticsRoles = [ROLES.LOGISTICS, ROLES.ADMIN];
 

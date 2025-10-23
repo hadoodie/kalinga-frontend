@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { FaFacebook, FaTwitter, FaInstagram, FaYoutube } from "react-icons/fa";
-import "../styles/personnel-style.css";
+import "../../styles/personnel-style.css";
 
 const Footer = () => {
   const [email, setEmail] = useState("");

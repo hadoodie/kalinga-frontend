@@ -1,0 +1,113 @@
+/* src/styles/training.css */
+.modules-container {
+  padding: 20px;
+}
+
+.tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 2px solid #ddd;
+  margin-bottom: 20px;
+}
+
+.tabs button {
+  background: none;
+  border: none;
+  padding: 10px 15px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #444;
+}
+
+.tabs button.active {
+  border-bottom: 3px solid #006400;
+  color: #006400;
+}
+
+h2 {
+  margin: 25px 0 10px;
+  font-size: 20px;
+  color: #004d26;
+}
+
+.card-grid {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.course-card {
+  border: 1px solid #ddd;
+  border-radius: 12px;
+  padding: 10px;
+  width: 220px;
+  text-align: center;
+  background: #fff;
+}
+
+.course-card img {
+  width: 100%;
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+
+.show-more {
+  padding: 8px 15px;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  margin-bottom: 20px;
+}
+
+.categories {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.categories button {
+  background: #004d26;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.record-page {
+  padding: 20px;
+}
+
+.section {
+  margin-bottom: 25px;
+}
+
+.section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  background: #f1f1f1;
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+table th {
+  text-align: left;
+  padding: 10px;
+  color: #004d26;
+}
+
+table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #ddd;
+}

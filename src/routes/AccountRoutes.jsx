@@ -4,9 +4,21 @@ import { ProtectedRoute } from "../components/ProtectedRoute";
 import { ROUTES, ROLES } from "../config/routes";
 
 // Lazy load account creation flow pages
-const VerifyIDs = lazy(() => import("../pages-account/VerifyID"));
-const UploadIDs = lazy(() => import("../pages-account/UploadID"));
-const FillInformation = lazy(() => import("../pages-account/FillInformation"));
+const VerifyIDs = lazy(() =>
+  import("../pages-account/VerifyID").then((module) => ({
+    default: module.VerifyIDs,
+  }))
+);
+const UploadIDs = lazy(() =>
+  import("../pages-account/UploadID").then((module) => ({
+    default: module.UploadIDs,
+  }))
+);
+const FillInformation = lazy(() =>
+  import("../pages-account/FillInformation").then((module) => ({
+    default: module.FillInformation,
+  }))
+);
 const VerificationPending = lazy(() =>
   import("../pages-resident/99_VerificationPending")
 );

@@ -1,0 +1,1061 @@
+
+/* src/styles/profile.css */
+
+/* Container */
+.profile-container {
+  padding: 20px;
+  background: #f3f4f6; /* light gray background */
+  min-height: calc(100vh - 120px); /* adjust for topbar + footer */
+}
+
+/* Welcome Text */
+.welcome-text {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #1c3b2e;
+}
+
+/* Grid Layout for Profile Info + Status */
+.profile-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* Card Base */
+.card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0px 3px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Root font scale - adjust here */
+:root {
+  --profile-name-size: 100px;
+  --profile-label-size: 18.5px;
+  --profile-text-size: 17.5px;
+  --profile-icon-size: 22px;
+}
+
+/* Profile Card */
+.profile-card {
+  position: relative;
+  padding: 20px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: flex-start;   /* align top */
+  gap: 20px;
+  text-align: left;          /* force text left */
+}
+
+.profile-info {
+  flex: 1;
+  text-align: left;
+}
+
+.profile-info p {
+  margin: 4px 0;
+  font-size: var(--profile-text-size);
+}
+
+.profile-info .label {
+  font-size: var(--profile-label-size);
+  font-weight: 700;
+  color: #145a32;
+}
+
+.profile-icons {
+  margin-top: 8px;
+  display: flex;
+  gap: 10px;
+}
+
+.profile-icons i {
+  font-size: var(--profile-icon-size);
+  cursor: pointer;
+  color: #145a32;
+}
+
+
+
+.edit-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* Status Card */
+.status-card {
+  padding: 1.5rem;
+  text-align: left;
+}
+
+.status-badge {
+  display: block;
+  background: #145a32;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin: 0 auto 20px auto; /* ✅ badge stays centered */
+  text-align: center;
+  width: fit-content;
+}
+
+/* Section Titles */
+.status-card h4 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1c3b2e;
+  text-align: left; /* ✅ force left alignment */
+}
+
+/* Certifications List */
+.status-card ul {
+  list-style: none;
+  padding-left: 20px; /* ✅ indent */
+  margin: 0 0 16px 0;
+}
+
+.status-card li {
+  margin-bottom: 10px;
+}
+
+.status-card li strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #145a32;
+}
+
+.status-card li span {
+  display: block;
+  font-size: 16px;
+  color: #555;
+  margin-left: 12px; /* ✅ indent sub text */
+}
+
+/* Emergency Contact */
+.status-card .contact-info {
+  padding-left: 20px; /* ✅ indent like certifications */
+}
+
+.status-card .contact-info p {
+  margin: 2px 0;
+  font-size: 16px;
+  color: #145a32;
+}
+
+.status-card .contact-info p strong {
+  font-weight: 600;
+  color: #145a32;
+}
+
+/* Logs */
+.logs-list {
+  list-style: none;
+  padding: 0;
+}
+
+.logs-list li {
+  margin-bottom: 10px;
+}
+
+.logs-list strong {
+  color: #145a32;
+  font-weight: 600;
+}
+
+.logs-list span {
+  display: block;
+  font-size: 13px;
+  color: #555;
+}
+
+/* Training Progress */
+.training-list {
+  list-style: none;
+  padding: 0;
+}
+
+.training-list li {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.training-list span {
+  font-size: 13px;
+  margin-left: 6px;
+  color: #555;
+}
+
+.training-list .in-progress {
+  color: #e67e22; /* orange */
+}
+
+.training-list .locked {
+  color: #c0392b; /* red */
+}
+
+/* Profile Header Layout Fix */
+.profile-header {
+  display: flex;
+  align-items: flex-start;
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.edit-btn {
+  background: #f3f4f6;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 6px 10px;
+  transition: background 0.2s ease;
+}
+
+.edit-btn:hover {
+  background: #e5e7eb;
+}
+
+/* Icon Buttons */
+.profile-icons i {
+  font-size: 16px;
+  margin-right: 8px;
+  cursor: pointer;
+  color: #145a32;
+  padding: 6px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.profile-icons i:hover {
+  background: #e8f5e9;
+  color: #0d3d23;
+}
+
+/* Card Hover Effect */
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0px 5px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* Responsive Grid */
+@media (max-width: 768px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-avatar {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .welcome-text {
+    font-size: 18px;
+  }
+}
+/* Activity Grid */
+.activity-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Responsive: Stack on mobile */
+@media (max-width: 768px) {
+  .activity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.activity-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem; /* space between sub-cards */
+}
+
+.sub-card {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  width: 100%;
+}
+
+.profile-card {
+  position: relative;
+  text-align: center;
+  padding-top: 4rem; /* space for avatar overlap */
+}
+
+.profile-avatar-large {
+  position: absolute;
+  top: -20px; /* makes it overlap */
+  left: 10%;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: #145a32;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: bold;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.profile-info-centered {
+  margin-top: 2.5rem; /* push content under avatar */
+}
+
+
+.profile-info-centered p {
+  margin: 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+.profile-info-centered strong {
+  font-weight: 600;
+}
+
+.profile-icons {
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 1.2rem;
+  color: #555;
+}
+
+.profile-icons i:hover {
+  color: #0077b5; /* LinkedIn blue or email highlight */
+  cursor: pointer;
+}
+/* Progress Bar */
+.progress-bar {
+  width: 100%;
+  height: 10px;
+  background: #eaeaea;
+  border-radius: 6px;
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f39c12, #e67e22);
+  transition: width 0.4s ease-in-out;
+}
+
+/* Activity Overview */
+.activity-overview h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #064420;
+  margin-bottom: 1rem;
+}
+
+/* Card Containers */
+.card {
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.recent-logs {
+  background: #4CAF50; /* green */
+  color: #1c3b2e;
+  border: 2px solid #f39c12;
+}
+
+.training-progress {
+  border: 2px solid #064420;
+  background: #fff;
+}
+
+/* Timeline */
+.timeline {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+  border-left: 2px solid #064420;
+}
+
+.timeline li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.timeline .dot {
+  position: absolute;
+  left: -7px;
+  top: 5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #064420;
+}
+
+/* Training Progress Status Colors */
+.training-progress strong {
+  font-weight: 700;
+}
+
+.in-progress {
+  color: #e67e22; /* orange */
+}
+
+.locked {
+  color: #c0392b; /* red */
+}
+
+.profile-container {
+  padding: 20px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+.edit-btn {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: #02462E;
+  font-weight: bold;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.profile-avatar-large {
+  background-color: #02462E;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.label {
+  font-weight: bold;
+  color: #02462E;
+}
+
+.profile-buttons {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.profile-btn.email {
+  background-color: #007bff;
+}
+
+.profile-btn.linkedin {
+  background-color: #0e76a8;
+}
+
+.profile-edit-form input {
+  display: block;
+  width: 50%;
+  padding: 6px 10px;
+  margin-bottom: 11px;
+  border: 0.5px solid #ccc;
+  border-radius: 10px;
+}
+
+.save-btn {
+  background-color: #02462E;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.status-badge.active {
+  display: inline-block;
+  color: green;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.timeline {
+  list-style: none;
+  padding: 0;
+}
+
+.timeline li {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.timeline .dot {
+  width: 10px;
+  height: 10px;
+  background: #02462E;
+  border-radius: 50%;
+  margin-top: 6px;
+}
+
+.progress-bar {
+  background-color: #eee;
+  border-radius: 5px;
+  height: 6px;
+  margin-top: 4px;
+}
+
+.progress {
+  background-color: #02462E;
+  height: 6px;
+  border-radius: 5px;
+}
+/* === PROFILE CARD FIX === */
+.profile-card {
+  position: relative;
+  overflow: visible; /* allow avatar to float above card */
+  padding-top: 0rem; /* add space so name isn't covered */
+}
+
+/* Avatar now floats above the card */
+.profile-avatar-large {
+  position: absolute;
+  top: 0px;          /* lowered from -30px to 20px */
+  left: 80px;
+  width: 120px;
+  height: 120px;
+  background-color: #02462e;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  z-index: 5;         /* ensures it floats above but not behind buttons */
+}
+
+
+/* Profile name and info are pushed down */
+.profile-info {
+  margin-top: 1rem;
+  padding-left: 0.5rem;
+}
+
+/* Edit button stays clean on top right */
+.edit-btn {
+  position: absolute;
+  top: 0.8rem;
+  right: 1rem;
+  background: transparent;
+  border: none;
+  color: #02462e;
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.profile-card {
+  position: relative;
+  overflow: visible;
+  padding-top: 6rem; /* increase spacing for avatar + edit button */
+}
+.edit-btn {
+  top: 1.2rem;
+
+/*QR CODE*/
+}
+.side-by-side {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.profile-main {
+  flex: 1;
+  min-width: 280px;
+}
+
+.profile-qr {
+  text-align: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: auto;
+  transform: translateX(-55px); /* adjust how far toward center */
+}
+
+
+.profile-qr h4 {
+  color: #02462E;
+  font-weight: 600;
+  margin-bottom: 10px; /* from 100px → 10px */
+  margin-top: 60px;       /* remove any extra top spacing */
+  font-size: 1.5rem;   /* optional: slightly smaller for balance */
+}
+
+
+.qr-caption {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 5px;
+}
+
+@media (max-width: 768px) {
+  .side-by-side {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .profile-qr {
+    margin-left: 0;
+    margin-top: 20px;
+  }
+}
+/* Modal overlay */
+.profile-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(2, 70, 46, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Modal box */
+.profile-modal {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+/* Close button */
+.close-modal {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #02462E;
+  font-size: 1.2rem;
+}
+
+.profile-modal h3 {
+  color: #02462E;
+  margin-bottom: 1rem;
+}
+
+.profile-modal p {
+  margin: 0.3rem 0;
+  font-size: 0.95rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+/* === Modal Overlay === */
+.profile-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(2, 70, 46, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* === Modal Box === */
+.profile-modal {
+  background: white;
+  padding: 2rem;
+  border-radius: 16px;
+  width: 420px;
+  max-width: 90%;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+  position: relative;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.close-modal {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #02462E;
+  font-size: 1.2rem;
+}
+
+/* === Verified Header === */
+.verified-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #02a44f;
+  margin-bottom: 1rem;
+}
+
+.verified-icon {
+  font-size: 1.5rem;
+  color: #02b34f;
+}
+
+/* === Verified Info === */
+.verified-info p {
+  margin: 0.4rem 0;
+  font-size: 0.95rem;
+  color: #02462E;
+}
+
+/* === Download Button === */
+.download-btn {
+  margin-top: 1.5rem;
+  background-color: #02462E;
+  color: white;
+  border: none;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  transition: 0.3s ease;
+}
+
+.download-btn:hover {
+  background-color: #037a4d;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+.profile-avatar-large {
+  position: absolute;
+  top: -38px; /* move upward to overlap */
+  left: 15%;
+  transform: translateX(-50%);
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background-color: #02462E;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.profile-image {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.upload-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0%;
+  color: white;
+  border-radius: 0%;
+  padding: 1px;
+  size: 2cm;
+  cursor: pointer;
+}
+.verified-photo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: block;
+  margin: 0 auto 10px auto;
+  object-fit: cover;
+}
+/* === PROFILE NAME CLEAN VERSION === */
+.profile-name {
+  margin-top: 1rem;
+  font-weight: 700;
+  font-size: var(--profile-name-size); /* uses your variable for flexibility */
+  color: #02462E;
+  text-align: left; /* optional: keep name aligned */
+}
+/* Modern Status Header */
+.status-header.modern {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #b8e6c7; /* light green like 2nd image */
+  padding: 10px 18px;
+  border-radius: 25px;
+  font-weight: bold;
+  color: #02462E;
+  margin-bottom: 15px;
+}
+
+.status-badge.modern {
+  background: none;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-icon {
+  font-size: 1.3rem;
+  color: #02462E;
+}
+
+/* Timeline & Dots */
+.timeline.affiliations {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.timeline.affiliations li {
+  position: relative;
+  margin-left: 20px;
+  margin-bottom: 18px;
+}
+
+.timeline.affiliations li .dot {
+  position: absolute;
+  left: -20px;
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  background: #02462E;
+  border-radius: 50%;
+}
+
+.timeline.affiliations li div {
+  color: #02462E;
+}
+
+.affiliation-title {
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-top: 10px;
+  margin-bottom: 8px;
+  color: #02462E;
+}
+.affiliations-timeline {
+  position: relative;
+  margin-left: 1.5rem;
+  padding-left: 1.5rem;
+}
+
+.affiliations-timeline::before {
+  content: "";
+  position: absolute;
+  top: 0.5rem; /* aligns with top dot */
+  bottom: 0.5rem; /* aligns with bottom dot */
+  left: 0;
+  width: 3px;
+  background-color: #004d2b;
+}
+
+.affiliation-item {
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.affiliation-item:last-child {
+  margin-bottom: 0;
+}
+
+.dot {
+  position: absolute;
+  left: -0.5rem;
+  top: 0.25rem;
+  width: 12px;
+  height: 12px;
+  background-color: #004d2b;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.details strong {
+  display: block;
+  color: #004d2b;
+  font-weight: 700;
+}
+
+.details p {
+  margin: 0;
+  color: #7a7a7a;
+  font-size: 0.9rem;
+}
+/* === Status Card === */
+.status-card {
+  background: #fff;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  text-align: left; /* ✅ Align text left */
+}
+
+/* ✅ Center the active badge itself */
+.status-badge {
+  display: block;
+  margin: 0 auto 15px auto; /* centers badge */
+  background: #004d2b;
+  color: #fff;
+  padding: 6px 18px;
+  border-radius: 25px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+/* === Affiliations Section === */
+.affiliation-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #004d2b;
+}
+
+/* === Timeline === */
+.affiliations-timeline {
+  position: relative;
+  margin-left: 30px; /* ✅ Left indent */
+  padding-left: 20px;
+}
+
+.affiliations-timeline::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 7px;
+  width: 3px;
+  background-color: #004d2b;
+}
+
+/* === Each Item === */
+.affiliation-item {
+  position: relative;
+  margin-bottom: 22px;
+}
+
+.affiliation-item:last-child {
+  margin-bottom: 0;
+}
+
+.dot {
+  position: absolute;
+  left: -19px;
+  top: 6px;
+  width: 14px;
+  height: 14px;
+  background-color: #004d2b;
+  border-radius: 50%;
+  z-index: 1;
+}
+
+.affiliation-item strong {
+  color: #004d2b;
+  font-weight: 700;
+}
+
+.affiliation-role {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+/* === Badges Title === */
+.badges-title {
+  font-weight: 700;
+  color: #004d2b;
+  margin-top: 20px;
+}
+.status-card {
+  text-align: center;
+}
+
+.status-badge {
+  display: block;
+  margin: 0 auto 15px auto;
+  text-align: center;
+  color: #ffffff !important; /* force white text */
+}
