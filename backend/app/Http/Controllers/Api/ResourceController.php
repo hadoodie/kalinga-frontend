@@ -8,23 +8,23 @@ use Illuminate\Http\Request;
 
 class ResourceController extends Controller
 {
-    /**
-     * Display a listing of resources
-     */
     public function index(Request $request)
     {
         $query = Resource::with('hospital');
 
-        // Filter by facility type (Evacuation Center or Medical Facility)
+        // Filter by location/facility
+        if ($request->has('location')) {
+            $query->where('location', $request->location);
+        }
+
+        // Filter by facility (alternative parameter name)
         if ($request->has('facility')) {
-            $facility = $request->facility;
-            if ($facility === 'Evacuation Center') {
-                $query->where('location', 'LIKE', '%Evacuation%');
-            } elseif ($facility === 'Medical Facility') {
-                $query->where('location', 'LIKE', '%Medical%')
-                      ->orWhere('location', 'LIKE', '%Hospital%')
-                      ->orWhere('location', 'LIKE', '%Clinic%');
-            }
+            $query->where('location', $request->facility);
+        }
+
+        // Filter by hospital_id
+        if ($request->has('hospital_id')) {
+            $query->where('hospital_id', $request->hospital_id);
         }
 
         // Filter by category
@@ -215,7 +215,7 @@ class ResourceController extends Controller
     /**
      * Adjust stock (add or remove)
      */
-    public function adjustStock(Request $request, Resource $resource)
+    public function adjustStock(Request $request, $id)
     {
         $validated = $request->validate([
             'quantity' => 'required|numeric',
@@ -224,15 +224,46 @@ class ResourceController extends Controller
         ]);
 
         try {
-            if ($validated['type'] === 'add') {
-                $resource->addStock($validated['quantity'], $resource->hospital_id, $validated['reason'] ?? 'Manual adjustment');
-            } else {
-                $resource->removeStock($validated['quantity'], $resource->hospital_id, $validated['reason'] ?? 'Manual adjustment');
-            }
+        $resource = Resource::findOrFail($id);
+        
+        $quantity = (float) $validated['quantity'];
+
+        Log::info("Adjusting stock for resource {$id}", [
+                'type' => $validated['type'],
+                'adjustment_quantity' => $quantity,
+                'current_quantity' => $resource->quantity,
+                'current_received' => $resource->received,
+            ]);
+
+        switch ($validated['type']) {
+            case 'add':
+                // Add to existing quantity
+                $resource->quantity = $resource->quantity + $quantity;
+                $resource->received = $resource->received + $quantity;
+                break;
+            case 'remove':
+                // Subtract from quantity
+                $resource->quantity = max(0, $resource->quantity - $quantity);
+                $resource->distributed = $resource->distributed + $quantity;
+                break;
+            case 'set':
+                // Set exact quantity
+                $resource->quantity = $quantity;
+                break;
+        }
+        
+        $resource->save();
+        $resource->refresh();
+        $resource->updateStatus();
+
+        Log::info("Stock adjusted successfully", [
+                'new_quantity' => $resource->quantity,
+                'new_received' => $resource->received,
+            ]);
 
             return response()->json([
                 'message' => 'Stock adjusted successfully',
-                'resource' => $resource->fresh(),
+                'resource' => $resource->fresh()->load('hospital'),
             ]);
         } catch (\Exception $e) {
             return response()->json([
