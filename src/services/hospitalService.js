@@ -1,61 +1,35 @@
-// src/services/hospitalService.js
 import api from "./api";
 
 const hospitalService = {
-  // Get all hospitals
-  getAll: async () => {
+  getAll: async (params = {}) => {
     try {
-      // For now, use test endpoint (no auth required)
-      const response = await api.get("/test/hospitals");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching hospitals:", error);
-      throw error;
+      // Prefer real endpoint; fallback to test
+      const res = await api.get("/hospitals", { params });
+      return res.data;
+    } catch (err) {
+      const res = await api.get("/test/hospitals", { params });
+      return res.data;
     }
   },
 
-  // Get single hospital by ID
   getById: async (id) => {
-    try {
-      const response = await api.get(`/hospitals/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching hospital:", error);
-      throw error;
-    }
+    const res = await api.get(`/hospitals/${id}`);
+    return res.data;
   },
 
-  // Create new hospital
   create: async (data) => {
-    try {
-      const response = await api.post("/hospitals", data);
-      return response.data;
-    } catch (error) {
-      console.error("Error creating hospital:", error);
-      throw error;
-    }
+    const res = await api.post("/hospitals", data);
+    return res.data;
   },
 
-  // Update hospital
   update: async (id, data) => {
-    try {
-      const response = await api.put(`/hospitals/${id}`, data);
-      return response.data;
-    } catch (error) {
-      console.error("Error updating hospital:", error);
-      throw error;
-    }
+    const res = await api.put(`/hospitals/${id}`, data);
+    return res.data;
   },
 
-  // Delete hospital
   delete: async (id) => {
-    try {
-      const response = await api.delete(`/hospitals/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error("Error deleting hospital:", error);
-      throw error;
-    }
+    const res = await api.delete(`/hospitals/${id}`);
+    return res.data;
   },
 };
 

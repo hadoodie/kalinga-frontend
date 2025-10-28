@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ArchiveRestore,
   Package,
@@ -8,6 +8,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import resourceService from "../../services/resourceService";
+import hospitalService from "../../services/hospitalService";
 
 // --- Configuration & Helpers ---
 
@@ -57,9 +58,20 @@ const StatCard = ({ title, value, icon: Icon, colorClass }) => (
 // --- Main Component ---
 
 export default function ResourceMngmt() {
+  // MOVE facilityCategories INSIDE the component
+  const DEFAULT_CATEGORIES = ["All", "Medicine", "First Aid Kit", "Critical Only"];
+
+  const [categoriesByFacility, setCategoriesByFacility] = useState({
+    "Central General Hospital": ["All", "Medicine", "First Aid Kit", "Critical Only"],
+    "Emergency Field Hospital": ["All", "Medicine", "First Aid Kit", "Critical Only"],
+    "St. Luke's Medical Center": ["All", "Medicine", "First Aid Kit", "Specialized Items", "Critical Only"],
+  });
+
   const [filter, setFilter] = useState("All");
   const [seeAll, setSeeAll] = useState(false);
-  const [facility, setFacility] = useState("Evacuation Center");
+  const [facility, setFacility] = useState("");
+  const [categories, setCategories] = useState(["All", "Critical Only"]); // Default categories
+  const [facilities, setFacilities] = useState([]); // Dynamic facilities from hospitals
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,20 +80,9 @@ export default function ResourceMngmt() {
   const [editResource, setEditResource] = useState(null);
   const [editing, setEditing] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
-  const [stockResource, setStockResource] = useState(null); // The resource item selected to adjust stock
-  const [stockAdjustment, setStockAdjustment] = useState(''); // The quantity the user wants to add
-  const [adjusting, setAdjusting] = useState(false)
-
-   // Combine 'All', categories, AND 'Critical Only' into one filter array for better UX
-  const [evacCategories, setEvacCategories] = useState([
-    "All", "Food & Water", "Hygiene", "Critical Only"
-  ]);
-  const [medicalCategories, setMedicalCategories] = useState([
-    "All", "Medicine", "First Aid Kit", "Critical Only"
-  ]); 
-
-  const categories =
-    facility === "Evacuation Center" ? evacCategories : medicalCategories;
+  const [stockResource, setStockResource] = useState(null);
+  const [stockAdjustment, setStockAdjustment] = useState('');
+  const [adjusting, setAdjusting] = useState(false);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [newResource, setNewResource] = useState({
@@ -89,9 +90,53 @@ export default function ResourceMngmt() {
     category: "",
     unit: "",
     quantity: "",
-    location: facility,
+    location: "",
   });
   const [adding, setAdding] = useState(false);
+
+  const getCategoriesForFacility = (facilityName) => {
+    return categoriesByFacility[facilityName] || DEFAULT_CATEGORIES;
+  };
+
+  // Fetch hospitals on component mount
+  useEffect(() => {
+    const fetchHospitals = async () => {
+      try {
+        const hospitalsData = await hospitalService.getAll();
+        const facilitiesData = hospitalsData.map(hospital => ({
+          id: hospital.id,
+          name: hospital.name,
+          value: hospital.name,
+          location: hospital.location,
+          capacity: hospital.capacity,
+        }));
+
+        setFacilities(facilitiesData);
+        
+        const newCategoriesMap = { ...categoriesByFacility };
+        facilitiesData.forEach(f => {
+          if (!newCategoriesMap[f.name]) {
+            newCategoriesMap[f.name] = DEFAULT_CATEGORIES;
+          }
+        });
+        setCategoriesByFacility(newCategoriesMap);
+
+        if (facilitiesData.length > 0) {
+          const firstHospital = facilitiesData[0].name;
+          setFacility(firstHospital);
+          
+          const firstCategories = categoriesByFacility[firstHospital] || DEFAULT_CATEGORIES;
++         setCategories(firstCategories);
+          setNewResource(prev => ({ ...prev, location: firstHospital }));
+        }
+      } catch (err) {
+        console.error("Error fetching hospitals:", err);
+        setError("Failed to load hospitals. Please try again.");
+      }
+    };
+
+    fetchHospitals();
+  }, []);
 
   // Fetch resources from backend
   const fetchResources = async () => {
@@ -99,21 +144,13 @@ export default function ResourceMngmt() {
       setLoading(true);
       setError(null);
 
-      const params = {
-        facility: facility,
-      };
+      const params = { location: facility };
 
-      // Add category filter if not "All"
-      if (filter !== "All" && filter !== "Critical Only") {
-        params.category = filter;
-      }
+      console.log("Fetching resources with params:", params); // DEBUG
 
-      // Add status filter for Critical
-      if (filter === "Critical Only") {
-        params.status = "Critical";
-      }
+      const data = await resourceService.getAll(params);
 
-  const data = await resourceService.getAll(params);
+      console.log("Fetched resources:", data); // DEBUG
 
       // Map backend data to the frontend's format
       const mappedData = data.map((item) => ({
@@ -128,40 +165,66 @@ export default function ResourceMngmt() {
         id: item.id,
       }));
 
+      console.log("Mapped inventory data:", mappedData); // DEBUG
+
       setInventory(mappedData);
+
+      const cats = Array.from(
+        new Set(
+          mappedData
+            .map(i => i.category)
+            .filter(Boolean)
+        )
+      );
+      const ordered = [
+        "All",
+        ...cats.filter(c => c !== "All" && c !== "Critical Only"),
+        "Critical Only",
+      ];
+      setCategoriesByFacility(prev => ({ ...prev, [facility]: ordered }));
+      setCategories(ordered);
+
     } catch (err) {
-      console.error("Error fetching resources:", err);
-      setError("Failed to load resources. Please try again.");
+        console.error("Error fetching resources:", err);
+        setError("Failed to load resources. Please try again.");
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
   };
 
-  // Fetch resources on component mount and when filters change
-  useEffect(() => {
-    fetchResources();
-  }, [facility, filter]);
+    // Fetch resources on component mount and when filters change
+    useEffect(() => {
+      if (facility) {
+        fetchResources();
+      }
+    }, [facility]); // fetch once per facility; category is filtered client-side
 
-  const filteredInventory =
-    filter === "Critical Only"
-      ? inventory.filter((item) => item.status === "Critical")
-      : inventory;
+    const filteredInventory = useMemo(() => {
+      let list = inventory;
+      if (filter === "Critical Only") {
+        list = list.filter(i => i.status === "Critical");
+      } else if (filter !== "All") {
+        list = list.filter(i => i.category === filter);
+      }
+      return list;
+    }, [inventory, filter]);
 
-  const criticalCount = filteredInventory.filter(
-    (item) => item.status === "Critical"
-  ).length;
-  const totalRemaining = filteredInventory.reduce(
-    (sum, i) => sum + i.remaining,
-    0
-  );
-  const totalReceived = filteredInventory.reduce(
-    (sum, i) => sum + i.received,
-    0
-  );
-  const totalDistributed = filteredInventory.reduce(
-    (sum, i) => sum + i.distributed,
-    0
-  );
+
+    const criticalCount = filteredInventory.filter(
+      (item) => item.status === "Critical"
+    ).length;
+    const totalRemaining = filteredInventory.reduce(
+      (sum, i) => sum + i.remaining,
+      0
+    );
+    const totalReceived = filteredInventory.reduce(
+      (sum, i) => sum + i.received,
+      0
+    );
+    const totalDistributed = filteredInventory.reduce(
+      (sum, i) => sum + i.distributed,
+      0
+    );
 
   // Handle Add Resource form submit
   const handleAddResource = async (e) => {
@@ -173,35 +236,23 @@ export default function ResourceMngmt() {
         location: newResource.location || facility, 
         quantity: newResource.quantity === "" ? 0 : Number(newResource.quantity),
       });
-      // Add new category if not present
-      if (
-        newResource.category &&
-        newResource.category !== "All" &&
-        newResource.category !== "Critical Only"
-      ) {
-        if (facility === "Evacuation Center") {
-          setEvacCategories((prev) => {
-            if (!prev.includes(newResource.category)) {
-              return [
-                ...prev.slice(0, -1),
-                newResource.category,
-                "Critical Only",
-              ];
-            }
-            return prev;
-          });
-        } else {
-          setMedicalCategories((prev) => {
-            if (!prev.includes(newResource.category)) {
-              return [
-                ...prev.slice(0, -1),
-                newResource.category,
-                "Critical Only",
-              ];
-            }
-            return prev;
-          });
-        }
+
+      // If user typed a new category, add it for that facility
+      const loc = newResource.location || facility;
+      const cat = (newResource.category || "").trim();
+      if (cat && cat !== "All" && cat !== "Critical Only") {
+        setCategoriesByFacility(prev => {
+          const current = prev[loc] || DEFAULT_CATEGORIES;
+          if (current.includes(cat)) return prev;
+
+          // Insert before "Critical Only"
+          const withoutCritical = current.filter(c => c !== "Critical Only");
+          const updated = [...withoutCritical, cat, "Critical Only"];
+          const next = { ...prev, [loc]: updated };
+          // Also update visible categories if we're on the same facility
+          if (loc === facility) setCategories(updated);
+          return next;
+        });
       }
 
       setShowAddModal(false);
@@ -214,49 +265,58 @@ export default function ResourceMngmt() {
       });
       fetchResources(); // Refresh list
     } catch (err) {
+      console.error("Failed to add resource:", err);
       alert("Failed to add resource.");
     } finally {
       setAdding(false);
     }
   };
 
-// Add Stock to each Resource
-const handleAddStock = (item) => {
+  // Add Stock to each Resource
+  const handleAddStock = (item) => {
     setStockResource(item);
     setShowStockModal(true);
     setStockAdjustment('');
-};
+  };
 
-const handleStockAdjustmentSubmit = async (e) => {
+  const handleStockAdjustmentSubmit = async (e) => {
     e.preventDefault();
     setAdjusting(true);
     
     const adjustmentValue = Number(stockAdjustment);
     if (adjustmentValue <= 0) {
-        alert("Please enter a valid quantity greater than 0.");
-        setAdjusting(false);
-        return;
+      alert("Please enter a valid quantity greater than 0.");
+      setAdjusting(false);
+      return;
     }
 
     try {
-      await resourceService.adjustStock(resourceId, {
-      quantity: Number(quantityToAdd),
-      type: "add",
-      reason: "Manual stock addition",
-    });
+      console.log("Sending stock adjustment:", {
+        id: stockResource.id,
+        quantity: adjustmentValue,
+        type: "add",
+        currentQuantity: stockResource.remaining
+      });
+
+      await resourceService.adjustStock(stockResource.id, {
+        quantity: adjustmentValue,
+        type: "add",
+        reason: "Manual stock addition",
+      });
             
-        setShowStockModal(false);
-        setStockResource(null);
-        setStockAdjustment('');
-        fetchResources(); 
+      setShowStockModal(false);
+      setStockResource(null);
+      setStockAdjustment('');
+      fetchResources(); 
         
     } catch (err) {
-        console.error("Stock adjustment failed:", err);
-        alert("Failed to add stock.");
+      console.error("Stock adjustment failed:", err);
+      console.error("Error details:", err.response?.data);
+      alert("Failed to add stock.");
     } finally {
-        setAdjusting(false);
+      setAdjusting(false);
     }
-};
+  };
 
   const handleEditResource = (item) => {
     setEditResource(item);
@@ -264,47 +324,67 @@ const handleStockAdjustmentSubmit = async (e) => {
   };
 
   const handleUpdateResource = async (e) => {
-  e.preventDefault();
-  setEditing(true);
-  try {
-    await resourceService.update(editResource.id, {
-      name: editResource.resource,
-      category: editResource.category,
-      unit: editResource.unit,
-      received: Number(newResource.received),
-  distributed: Number(newResource.distributed),
-      location: editResource.location,
-    });
-    setShowEditModal(false);
-    setEditResource(null);
-    fetchResources();
-  } catch (err) {
-    alert("Failed to update resource.");
-  } finally {
-    setEditing(false);
-  }
-};
-
-const handleDeleteResource = async (id) => {
-  if (window.confirm("Are you sure you want to delete this resource?")) {
+    e.preventDefault();
+    setEditing(true);
     try {
-      await resourceService.delete(id);
-      fetchResources(); // Refresh list
+      await resourceService.update(editResource.id, {
+        name: editResource.resource,
+        category: editResource.category,
+        unit: editResource.unit,
+        quantity: Number(editResource.remaining),
+        location: editResource.facility,
+      });
+
+      // Also ensure edited category is added to that facility
+      const loc = editResource.facility;
+      const cat = (editResource.category || "").trim();
+      if (cat && cat !== "All" && cat !== "Critical Only") {
+        setCategoriesByFacility(prev => {
+          const current = prev[loc] || DEFAULT_CATEGORIES;
+          if (current.includes(cat)) return prev;
+
+          const withoutCritical = current.filter(c => c !== "Critical Only");
+          const updated = [...withoutCritical, cat, "Critical Only"];
+          const next = { ...prev, [loc]: updated };
+          if (loc === facility) setCategories(updated);
+          return next;
+        });
+      }
+
+      setShowEditModal(false);
+      setEditResource(null);
+      fetchResources();
     } catch (err) {
-      alert("Failed to delete resource.");
+      console.error("Failed to update resource:", err);
+      alert("Failed to update resource.");
+    } finally {
+      setEditing(false);
     }
-  }
-};
+  };
+
+  const handleDeleteResource = async (id) => {
+    if (window.confirm("Are you sure you want to delete this resource?")) {
+      try {
+        await resourceService.delete(id);
+        fetchResources(); // Refresh list
+      } catch (err) {
+        console.error("Failed to delete resource:", err);
+        alert("Failed to delete resource.");
+      }
+    }
+  };
 
   // Function to handle facility change and reset filter
   const handleFacilityChange = (newFacility) => {
     setFacility(newFacility);
     setFilter("All"); // Reset filter on facility change
+    setCategories(getCategoriesForFacility(newFacility)); 
     setDropdownOpen(false);
   };
 
   return (
     <div className="flex flex-col min-h-screen gap-6 p-4 md:p-8 bg-background">
+      {/* ...rest of your JSX stays exactly the same... */}
       {/* Header and Title */}
       <header className="flex flex-wrap justify-between items-center gap-4 p-4 bg-white rounded-xl shadow-lg">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
@@ -313,7 +393,7 @@ const handleDeleteResource = async (id) => {
         <button
           onClick={fetchResources}
           className="flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-semibold rounded-lg shadow-md transition duration-200"
-          disabled={loading} // Disable during loading
+          disabled={loading}
         >
           <RefreshCw className="h-4 w-4 mr-2" />
           {loading ? "Refreshing..." : "Refresh Data"}
@@ -354,8 +434,8 @@ const handleDeleteResource = async (id) => {
           {/* Overview/Metrics Section */}
           <div
             className={`transition-all duration-500 ${
-              !seeAll ? "block" : "hidden md:block"
-            }`}
+              seeAll ? "hidden" : "block"
+             }`}
           >
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
               Overview
@@ -417,7 +497,7 @@ const handleDeleteResource = async (id) => {
 
                {/* Add Resource Modal */}
                 {showAddModal && (
-                  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                  <div className="fixed inset-0 bg-none bg-opacity-50 backdrop-blur-lg flex items-center justify-center z-50">
                     <form
                       onSubmit={handleAddResource}
                       className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md flex flex-col gap-4"
@@ -430,8 +510,11 @@ const handleDeleteResource = async (id) => {
                         onChange={e => setNewResource({ ...newResource, location: e.target.value })}
                         required
                       >
-                        <option value="Evacuation Center">Evacuation Center</option>
-                        <option value="Medical Facility">Medical Facility</option>
+                        {facilities.map((fac) => (
+                          <option key={fac.id} value={fac.name}>
+                            {fac.name}
+                          </option>
+                        ))}
                       </select>                     
                       <input
                         className="border rounded px-3 py-2"
@@ -484,7 +567,7 @@ const handleDeleteResource = async (id) => {
                 )}
 
               {showStockModal && stockResource && (
-                  <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                  <div className="fixed inset-0 bg-none bg-opacity-50 backdrop-blur-lg flex items-center justify-center z-50">
                       <form
                           onSubmit={handleStockAdjustmentSubmit}
                           className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md flex flex-col gap-4"
@@ -526,7 +609,7 @@ const handleDeleteResource = async (id) => {
               )}
 
               {showEditModal && editResource && (
-                <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-none bg-opacity-50 backdrop-blur-lg flex items-center justify-center z-50">
                   <form
                     onSubmit={handleUpdateResource}
                     className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md flex flex-col gap-4"
@@ -534,12 +617,15 @@ const handleDeleteResource = async (id) => {
                     <h2 className="text-xl font-bold mb-2">Edit Resource</h2>
                     <select
                       className="border rounded-lg px-3 py-2"
-                      value={editResource.location}
-                      onChange={e => setEditResource({ ...editResource, location: e.target.value })}
+                      value={editResource.facility}
+                      onChange={e => setEditResource({ ...editResource, facility: e.target.value })}
                       required
                     >
-                      <option value="Evacuation Center">Evacuation Center</option>
-                      <option value="Medical Facility">Medical Facility</option>
+                      {facilities.map((fac) => (
+                        <option key={fac.id} value={fac.name}>
+                          {fac.name}
+                        </option>
+                      ))}
                     </select>
                     <input
                       className="border rounded px-3 py-2"
@@ -597,7 +683,7 @@ const handleDeleteResource = async (id) => {
                 <div className="relative">
                   <button
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className="flex items-center justify-center gap-1 text-gray-700 px-2 py-1.5 rounded-lg bg-white hover:bg-gray-50 transition shadow-sm"
+                    className="flex items-center justify-center gap-1 text-gray-700 px-2 py-1 rounded-lg bg-white hover:bg-gray-50 transition shadow-sm"
                   >
                     {facility}
                     <ChevronDown
@@ -610,23 +696,21 @@ const handleDeleteResource = async (id) => {
 
                   {dropdownOpen && (
                     <ul
-                      className="absolute right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-20 w-48 overflow-hidden"
+                      className="absolute right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 z-20 w-48 overflow-hidden max-h-60 overflow-y-auto"
                       onBlur={() => setDropdownOpen(false)}
                       tabIndex={0}
                     >
-                      {["Evacuation Center", "Medical Facility"].map(
-                        (option) => (
-                          <li
-                            key={option}
-                            onClick={() => handleFacilityChange(option)}
-                            className={`px-4 py-2 hover:bg-green-100 cursor-pointer text-gray-700 font-medium ${
-                              facility === option ? "bg-green-50" : ""
-                            }`}
-                          >
-                            {option}
-                          </li>
-                        )
-                      )}
+                      {facilities.map((option) => (
+                        <li
+                          key={option.id}
+                          onClick={() => handleFacilityChange(option.name)}
+                          className={`px-4 py-2 hover:bg-green-100 cursor-pointer text-gray-700 font-medium ${
+                            facility === option.name ? "bg-green-50" : ""
+                          }`}
+                        >
+                          {option.name}
+                        </li>
+                      ))}
                     </ul>
                   )}
                 </div>
@@ -642,7 +726,7 @@ const handleDeleteResource = async (id) => {
                 {/* See All Toggle Button */}
                 <button
                   onClick={() => setSeeAll(!seeAll)}
-                  className="px-4 py-1.5 rounded-lg bg-yellow-500 text-gray-800 font-semibold shadow-md hover:bg-yellow-600 transition text-sm"
+                  className="px-2 py-1 rounded-lg bg-yellow-500 text-gray-800 font-semibold shadow-md hover:bg-yellow-600 transition text-sm"
                 >
                   {seeAll ? "Hide Overview" : "Show All"}
                 </button>
