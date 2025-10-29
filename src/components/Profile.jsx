@@ -1,296 +1,369 @@
 import { useState } from "react";
+import {
+  UserRound,
+  Edit,
+  Mail,
+  Phone,
+  QrCode,
+  FilePenLine,
+  HeartPulse,
+  Stethoscope,
+  Thermometer,
+} from "lucide-react";
 
+// Reusable Input Component
+const FormInput = ({ label, name, value, onChange }) => (
+  <div>
+    <label
+      htmlFor={name}
+      className="block text-sm font-semibold text-green-900 mb-1"
+    >
+      {label}:
+    </label>
+    <input
+      type="text"
+      id={name}
+      name={name}
+      value={value}
+      onChange={onChange}
+      className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+    />
+  </div>
+);
+
+// Patient Activity Section
+function PatientActivity() {
+  return (
+    <div className="w-full">
+      <h2 className="text-3xl text-left font-bold text-green-900 mb-6">
+        Patient Activity
+      </h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Upcoming Appointments */}
+        <div className="bg-white rounded-lg shadow-md p-6 border border-green-400">
+          <h3 className="text-xl  text-left font-semibold text-green-900 mb-6">
+            Upcoming Appointments
+          </h3>
+          <div className="relative pl-6 text-left  border-l-2 border-gray-300 space-y-8">
+            <TimelineItem
+              color="bg-green-600"
+              title="Cardiology Consult"
+              date="Oct 25, 2025 - 10:00 AM"
+            />
+            <TimelineItem
+              color="bg-green-600"
+              title="Physical Therapy"
+              date="Oct 26, 2025 - 02:00 PM"
+            />
+          </div>
+        </div>
+
+        {/* Recent Vitals */}
+        <div className="bg-white rounded-lg shadow-md p-6 border border-green-700">
+          <h3 className="text-left text-xl font-semibold text-green-900 mb-6">
+            Recent Vitals
+          </h3>
+          <div className="text-left relative pl-6 border-l-2 border-gray-300 space-y-8">
+            <VitalItem
+              color="bg-green-600"
+              title="Blood Pressure"
+              value="120/80"
+              unit="mmHg"
+              status="Normal"
+              icon={<Stethoscope className="w-5 h-5 text-green-700" />}
+            />
+            <VitalItem
+              color="bg-green-600"
+              title="Heart Rate"
+              value="72"
+              unit="bpm"
+              status="Normal"
+              icon={<HeartPulse className="w-5 h-5 text-green-700" />}
+            />
+            <VitalItem
+              color="bg-orange-500"
+              title="Temperature"
+              value="37.8"
+              unit="°C"
+              status="Slight Fever"
+              icon={<Thermometer className="w-5 h-5 text-orange-600" />}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Timeline Item (for Patient Activity)
+const TimelineItem = ({ color, title, date }) => (
+  <div className="relative">
+    <div
+      className={`absolute w-4 h-4 ${color} rounded-full -left-[33px] top-1 border-4 border-white`}
+    ></div>
+    <h4 className="font-semibold text-green-800 text-lg">{title}</h4>
+    <p className="text-sm text-gray-500">{date}</p>
+  </div>
+);
+
+// Vitals Item
+const VitalItem = ({ color, title, value, unit, status, icon }) => (
+  <div className="relative">
+    <div
+      className={`absolute w-4 h-4 ${color} rounded-full -left-[33px] top-1 border-4 border-white`}
+    ></div>
+    <div className="flex justify-between items-center">
+      <h4 className="font-semibold text-green-800 text-lg">{title}</h4>
+      {icon}
+    </div>
+    <p className="text-lg font-medium text-gray-700">
+      {value} <span className="text-sm font-normal">{unit}</span>
+    </p>
+    <p
+      className={`text-sm font-medium ${
+        status === "Slight Fever" ? "text-orange-600" : "text-green-600"
+      }`}
+    >
+      {status}
+    </p>
+  </div>
+);
+
+// Display Mode
+function ProfileDisplay({ data, onEdit }) {
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 pt-16 relative">
+      <button
+        onClick={onEdit}
+        className="absolute top-6 right-6 flex-shrink-0 flex items-center text-gray-600 hover:text-green-700 text-sm"
+      >
+        <Edit className="w-4 h-4 mr-1" />
+        Edit
+      </button>
+
+      <div className="absolute left-1/2 -translate-x-1/2 -top-12 w-24 h-24 bg-green-800 rounded-full flex items-center justify-center border-4 border-white shadow-md">
+        <UserRound className="w-16 h-16 text-white" strokeWidth={1.5} />
+      </div>
+
+      <h1 className="text-3xl font-bold text-green-900 text-center">
+        {data.name}
+      </h1>
+
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-2">
+          <div className="space-y-2 text-gray-700 text-left">
+            <ProfileField label="Patient ID" value={data.patientId} />
+            <ProfileField label="Date of Birth" value={data.dob} />
+            <ProfileField label="Blood Type" value={data.bloodType} />
+            <ProfileField label="Address" value={data.address} />
+            <ProfileField label="Phone" value={data.phoneNumber} />
+            <ProfileField label="Admitted" value={data.admitted} />
+            <ProfileField label="Emergency Contact" value={data.emergencyContactName} />
+            <ProfileField label="Emergency Contact Number" value={data.emergencyContactPhone} />
+          </div>
+
+          <div className="mt-6 flex gap-3">
+            <a
+              href={`mailto:${data.email}`}
+              className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              <Mail className="w-5 h-5" />
+              Email
+            </a>
+            <a
+              href={`tel:${data.phoneNumber}`}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              <Phone className="w-5 h-5" />
+              Call
+            </a>
+          </div>
+        </div>
+
+        <div className="md:col-span-1 flex flex-col items-center justify-start pt-4 md:pt-0">
+          <h3 className="text-lg font-semibold text-green-900 mb-2">
+            Patient ID QR Code
+          </h3>
+          <QrCode className="w-32 h-32 text-green-900" />
+          <p className="text-xs text-gray-500 mt-2">Scan for Patient Record</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Profile Info Row
+const ProfileField = ({ label, value }) => (
+  <p>
+    <span className="font-semibold text-green-800 w-32 inline-block">
+      {label}:
+    </span>{" "}
+    {value}
+  </p>
+);
+
+// Edit Form
+function ProfileEditForm({ data, onChange, onSave, onCancel }) {
+  const CancelIcon = FilePenLine;
+  return (
+    <div className="bg-white rounded-lg shadow-md p-6 relative">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-green-900">
+          Edit Patient Profile
+        </h2>
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-green-900 px-4 py-2 rounded-md text-sm font-medium"
+        >
+          <CancelIcon className="w-4 h-4" />
+          Cancel
+        </button>
+      </div>
+
+      <div className="space-y-4 text-left">
+        <FormInput label="Name" name="name" value={data.name} onChange={onChange} />
+        <FormInput label="Patient ID" name="patientId" value={data.patientId} onChange={onChange} />
+        <FormInput label="Date of Birth" name="dob" value={data.dob} onChange={onChange} />
+        <FormInput label="Blood Type" name="bloodType" value={data.bloodType} onChange={onChange} />
+        <FormInput label="Address" name="address" value={data.address} onChange={onChange} />
+        <FormInput label="Email" name="email" value={data.email} onChange={onChange} />
+        <FormInput label="Phone Number" name="phoneNumber" value={data.phoneNumber} onChange={onChange} />
+        <FormInput label="Admitted" name="admitted" value={data.admitted} onChange={onChange} />
+        <hr className="my-4" />
+        <h3 className="text-lg font-semibold text-green-900">
+          Emergency Contact
+        </h3>
+        <FormInput label="Contact Name" name="emergencyContactName" value={data.emergencyContactName} onChange={onChange} />
+        <FormInput label="Contact Phone" name="emergencyContactPhone" value={data.emergencyContactPhone} onChange={onChange} />
+
+        <div className="pt-4">
+          <button
+            onClick={onSave}
+            className="bg-green-800 hover:bg-green-700 text-white px-5 py-2 rounded-md text-sm font-medium"
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sidebar
+function PatientSidebar({ emergencyContact }) {
+  return (
+    <div className="lg:col-span-1 bg-white rounded-lg shadow-md p-6 h-fit lg:mt-16">
+      <span className="inline-flex items-center bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full">
+        <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+        Status: Admitted
+      </span>
+
+      <div className="mt-6 text-left">
+        <h3 className="text-lg font-semibold text-green-900 mb-4">
+          Key Information
+        </h3>
+        <InfoItem label="Primary Physician" value="Dr. R. Alon, MD" />
+        <InfoItem label="Room" value="305B, West Wing" />
+        <InfoItem label="Diet" value="Low Sodium, Soft Foods" />
+      </div>
+
+      <div className="mt-8 text-left">
+        <h3 className="text-lg font-semibold text-green-900 mb-2">Allergies</h3>
+        <div className="flex flex-wrap gap-2">
+          <Badge label="Penicillin" color="red" />
+          <Badge label="Peanuts" color="yellow" />
+          <Badge label="Dust" color="gray" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// InfoItem for Sidebar
+const InfoItem = ({ label, value }) => (
+  <div className="relative pl-6 border-l-2 border-green-700 space-y-1 mb-4">
+    <div className="absolute w-4 h-4 bg-green-700 rounded-full -left-[9px] top-1 border-4 border-white"></div>
+    <h4 className="font-semibold text-green-800">{label}</h4>
+    <p className="text-sm text-gray-600">{value}</p>
+  </div>
+);
+
+//Badge for Allergies
+const Badge = ({ label, color }) => (
+  <span
+    className={`bg-${color}-100 text-${color}-800 text-xs font-medium px-2.5 py-0.5 rounded-full`}
+  >
+    {label}
+  </span>
+);
+
+// MAIN COMPONENT
 export default function PatientProfile() {
-  const [profile, setProfile] = useState({
-    firstName: "",
-    middleName: "",
-    lastName: "",
-    nickname: "",
-    birthDate: "",
-    gender: "",
-    phone: "",
-    email: "",
-    address: "",
-    gpsEnabled: false,
-    householdSize: 0,
-    hasChildren: false,
-    hasElderly: false,
-    hasPWD: false,
-    hasPets: false,
-    medicalNeeds: "",
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState({
+    name: "Maria Dela Cruz",
+    patientId: "HN-0012345",
+    dob: "October 15, 1985",
+    bloodType: "O+",
+    address: "456 Rizal St., Valenzuela, Metro Manila",
+    admitted: "October 20, 2025",
+    email: "maria.dc@email.com",
+    phoneNumber: "0917-555-6789",
+    emergencyContactName: "Juan Dela Cruz",
+    emergencyContactPhone: "0918-555-4321",
   });
 
-  const [errors, setErrors] = useState({});
+  const [originalData, setOriginalData] = useState(profileData);
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!profile.firstName) newErrors.firstName = "First name is required";
-    if (!profile.lastName) newErrors.lastName = "Last name is required";
-    if (!profile.phone) newErrors.phone = "Mobile number is required";
-    if (!profile.email || !/\S+@\S+\.\S+/.test(profile.email))
-      newErrors.email = "Valid email is required";
-    if (!profile.address) newErrors.address = "Home address is required";
-    return newErrors;
+  const handleEdit = () => {
+    setOriginalData(profileData);
+    setIsEditing(true);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const formErrors = validateForm();
-    if (Object.keys(formErrors).length > 0) {
-      setErrors(formErrors);
-    } else {
-      setErrors({});
-      console.log("Profile saved:", profile);
-      // Add save logic here
-    }
+  const handleCancel = () => {
+    setProfileData(originalData);
+    setIsEditing(false);
+  };
+
+  const handleSave = () => {
+    setOriginalData(profileData);
+    setIsEditing(false);
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setProfileData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="max-w-4xl mx-auto p-8 bg-white shadow-md rounded-lg"
-    >
-      <h2 className="text-2xl font-bold text-primary mb-4 text-left">
-        Patient Profile
-      </h2>
-
-      {/* Basic Info */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold text-primary text-left mb-2">
-          Basic Information
-        </h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <input
-                type="text"
-                placeholder="First Name"
-                className="input w-full"
-                value={profile.firstName}
-                onChange={(e) =>
-                  setProfile({ ...profile, firstName: e.target.value })
-                }
+    <div className="min-h-screen bg-[#F8FBF8] p-8">
+      <div className="max-w-7xl mx-auto flex flex-col gap-10">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className={`lg:col-span-2 ${isEditing ? "" : "mt-16"}`}>
+            {isEditing ? (
+              <ProfileEditForm
+                data={profileData}
+                onChange={handleChange}
+                onSave={handleSave}
+                onCancel={handleCancel}
               />
-              {errors.firstName && (
-                <p className="text-red-500 text-sm">{errors.firstName}</p>
-              )}
-            </div>
-            <input
-              type="text"
-              placeholder="Middle Name"
-              className="input w-full"
-              value={profile.middleName}
-              onChange={(e) =>
-                setProfile({ ...profile, middleName: e.target.value })
-              }
-            />
-            <div>
-              <input
-                type="text"
-                placeholder="Last Name"
-                className="input w-full"
-                value={profile.lastName}
-                onChange={(e) =>
-                  setProfile({ ...profile, lastName: e.target.value })
-                }
-              />
-              {errors.lastName && (
-                <p className="text-red-500 text-sm">{errors.lastName}</p>
-              )}
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input
-              type="date"
-              className="input"
-              value={profile.birthDate}
-              onChange={(e) =>
-                setProfile({ ...profile, birthDate: e.target.value })
-              }
-            />
-            <select
-              className="input"
-              value={profile.gender}
-              onChange={(e) =>
-                setProfile({ ...profile, gender: e.target.value })
-              }
-            >
-              <option value="">Gender</option>
-              <option>Female</option>
-              <option>Male</option>
-              <option>Prefer not to say</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      {/* Contact Info */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold text-primary text-left mb-2">
-          Contact Details
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <input
-              type="tel"
-              placeholder="Mobile Number"
-              className="input w-full"
-              value={profile.phone}
-              onChange={(e) =>
-                setProfile({ ...profile, phone: e.target.value })
-              }
-            />
-            {errors.phone && (
-              <p className="text-red-500 text-sm">{errors.phone}</p>
+            ) : (
+              <ProfileDisplay data={profileData} onEdit={handleEdit} />
             )}
           </div>
-          <div>
-            <input
-              type="email"
-              placeholder="Email Address"
-              className="input w-full"
-              value={profile.email}
-              onChange={(e) =>
-                setProfile({ ...profile, email: e.target.value })
-              }
-            />
-            {errors.email && (
-              <p className="text-red-500 text-sm">{errors.email}</p>
-            )}
-          </div>
-        </div>
-      </section>
 
-      {/* Location */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold text-primary text-left mb-2">
-          Home & Location
-        </h3>
-        <div>
-          <input
-            type="text"
-            placeholder="Home Address (Barangay, Zone)"
-            className="input w-full mb-2"
-            value={profile.address}
-            onChange={(e) =>
-              setProfile({ ...profile, address: e.target.value })
-            }
+          <PatientSidebar
+            emergencyContact={{
+              name: profileData.emergencyContactName,
+              phone: profileData.emergencyContactPhone,
+            }}
           />
-          {errors.address && (
-            <p className="text-red-500 text-sm">{errors.address}</p>
-          )}
         </div>
-        <label className="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            checked={profile.gpsEnabled}
-            onChange={(e) =>
-              setProfile({ ...profile, gpsEnabled: e.target.checked })
-            }
-          />
-          <span className="text-left">
-            Enable GPS for real-time location during emergencies
-          </span>
-        </label>
-      </section>
-
-      {/* Household */}
-      <section className="mb-6">
-        <h3 className="text-lg font-semibold text-primary text-left mb-2">
-          Household Composition
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Column 1: Companions */}
-          <div>
-            <label className="block mb-2 font-medium text-primary text-left">
-              Number of Companions
-            </label>
-            <input
-              type="number"
-              min="0"
-              placeholder="Enter number"
-              className="input w-full"
-              value={profile.householdSize}
-              onChange={(e) =>
-                setProfile({
-                  ...profile,
-                  householdSize: Math.max(0, parseInt(e.target.value) || 0),
-                })
-              }
-            />
-          </div>
-
-          {/* Column 2: Checklist */}
-          <div className="space-y-2">
-            <label className="block font-medium text-primary mb-2 text-left">
-              Household Details
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={profile.hasChildren}
-                onChange={(e) =>
-                  setProfile({ ...profile, hasChildren: e.target.checked })
-                }
-              />
-              <span>Children present</span>
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={profile.hasElderly}
-                onChange={(e) =>
-                  setProfile({ ...profile, hasElderly: e.target.checked })
-                }
-              />
-              <span>Elderly present</span>
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={profile.hasPWD}
-                onChange={(e) =>
-                  setProfile({ ...profile, hasPWD: e.target.checked })
-                }
-              />
-              <span>Persons with disabilities</span>
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                checked={profile.hasPets}
-                onChange={(e) =>
-                  setProfile({ ...profile, hasPets: e.target.checked })
-                }
-              />
-              <span>Pets in household</span>
-            </label>
-          </div>
-
-          {/* Column 3: Medical Needs */}
-          <div>
-            <label className="block mb-2 font-medium text-primary text-left">
-              Medical Needs or Mobility Concerns
-            </label>
-            <textarea
-              placeholder="Describe any medical needs or mobility concerns"
-              className="input w-full h-24 resize-none"
-              value={profile.medicalNeeds}
-              onChange={(e) =>
-                setProfile({ ...profile, medicalNeeds: e.target.value })
-              }
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Save Button */}
-      <button
-        type="submit"
-        className="mt-1 w-full bg-primary text-white py-2 px-4 rounded hover:bg-highlight transition"
-      >
-        Save Profile
-      </button>
-    </form>
+        <PatientActivity />
+      </div>
+    </div>
   );
 }

@@ -10,9 +10,9 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Automatic Database Replication Schedule
-// Sync cloud database to local backup every hour
+// Sync cloud database to local backup every minute (for testing/development)
 Schedule::command('db:sync-cloud-to-local --skip-confirm')
-    ->hourly()
+    ->everyMinute()
     ->withoutOverlapping()
     ->when(function () {
         // Only sync if cloud is available
@@ -28,7 +28,7 @@ Schedule::command('db:sync-cloud-to-local --skip-confirm')
 // Automatic Local to Cloud Sync (Bidirectional)
 // Syncs local changes back to cloud when connection is restored
 Schedule::command('db:sync-local-to-cloud --skip-confirm')
-    ->everyFiveMinutes()
+    ->everyMinute()
     ->withoutOverlapping()
     ->when(function () {
         // Only sync if:

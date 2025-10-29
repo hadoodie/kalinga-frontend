@@ -5,8 +5,11 @@ use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\LabResultController;
 use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Models\Appointment;//
+use App\Models\LabResult; //
 
 /*
 |--------------------------------------------------------------------------
@@ -33,18 +36,19 @@ Route::middleware('auth:sanctum')->group(function () {
     // Common authenticated routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
-    Route::put('/profile', [AuthController::class, 'updateProfile']);
+    Route::put('/profile', [AuthController::class, 'updateProfile']); // <-- Duplicate removed
     Route::post('/verify-id', [AuthController::class, 'verifyId']);
     Route::post('/submit-verification', [AuthController::class, 'submitVerification']);
-    Route::put('/profile', [AuthController::class, 'updateProfile']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/admin/users', [AuthController::class, 'getAllUsers']);
         Route::put('/admin/users/{id}/activate', [AuthController::class, 'activateUser']);
         Route::put('/admin/users/{id}/deactivate', [AuthController::class, 'deactivateUser']);
+        Route::post('/notifications', [NotificationController::class, 'store']);
     });
-    
+    // <-- DELETED THE EXTRA '});' FROM HERE
+
     // Admin and Logistics routes
     Route::middleware(['role:admin,logistics'])->group(function () {
         Route::apiResource('resources', ResourceController::class);
@@ -65,8 +69,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Patient-specific routes will go here
         Route::get('/lab-results', [LabResultController::class, 'index']);
         Route::get('/appointments', [AppointmentController::class, 'index']);
+        Route::get('/notifications', [NotificationController::class, 'index']);
     });
-});
+
+}); // <-- This is the correct closing brace for 'auth:sanctum'
 
 // Health check
 Route::get('/health', function () {
@@ -81,6 +87,16 @@ Route::get('/test/hospitals', function () {
     return response()->json(\App\Models\Hospital::all());
 });
 
+// Test routes (public)
 Route::get('/test/resources', function () {
     return response()->json(\App\Models\Resource::with('hospital')->get());
+});
+
+// 🔍 TEST ROUTES — temporary, no auth required
+Route::get('/test/appointments', function () {
+    return Appointment::with('user')->get();
+});
+
+Route::get('/test/lab-results', function () {
+    return LabResult::with('user')->get();
 });
