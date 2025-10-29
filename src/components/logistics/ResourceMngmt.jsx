@@ -104,7 +104,7 @@ export default function ResourceMngmt() {
   };
 
   // Fetch hospitals on component mount
-  useEffect(() => {
+   useEffect(() => {
     const fetchHospitals = async () => {
       try {
         const hospitalsData = await hospitalService.getAll();
@@ -131,7 +131,7 @@ export default function ResourceMngmt() {
           setFacility(firstHospital);
           
           const firstCategories = categoriesByFacility[firstHospital] || DEFAULT_CATEGORIES;
-          setCategories(firstCategories);
++         setCategories(firstCategories);
           setNewResource(prev => ({ ...prev, location: firstHospital }));
         }
       } catch (err) {
@@ -149,13 +149,12 @@ export default function ResourceMngmt() {
       setLoading(true);
       setError(null);
 
-      const params = { location: facility };
+      // Fetch ALL resources without filtering
+      const data = await resourceService.getAll({});
 
-      console.log("Fetching resources with params:", params); // DEBUG
-
-      const data = await resourceService.getAll(params);
-
-      console.log("Fetched resources:", data); // DEBUG
+      console.log("Fetched ALL resources:", data); // DEBUG
+      console.log("Current facility:", facility); // DEBUG
+      console.log("Available locations in data:", [...new Set(data.map(r => r.location))]); // DEBUG
 
       // Map backend data to the frontend's format
       const mappedData = data.map((item) => ({
@@ -172,11 +171,18 @@ export default function ResourceMngmt() {
 
       console.log("Mapped inventory data:", mappedData); // DEBUG
 
-      setInventory(mappedData);
+      // Filter by facility client-side if needed
+      const filtered = facility 
+        ? mappedData.filter(item => item.facility === facility)
+        : mappedData;
+
+      console.log("Filtered inventory:", filtered); // DEBUG
+
+      setInventory(filtered);
 
       const cats = Array.from(
         new Set(
-          mappedData
+          filtered
             .map(i => i.category)
             .filter(Boolean)
         )
