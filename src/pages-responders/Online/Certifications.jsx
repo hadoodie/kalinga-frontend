@@ -3,7 +3,13 @@ import React from "react";
 import Layout from "../../layouts/Layout";
 import Footer from "../../components/responder/Footer";
 import "../../styles/personnel-style.css";
-import { FaDownload, FaPlus, FaCheckCircle, FaTimesCircle, FaClock } from "react-icons/fa";
+import {
+  FaDownload,
+  FaPlus,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaClock,
+} from "react-icons/fa";
 
 const Certifications = () => {
   return (
@@ -18,27 +24,39 @@ const Certifications = () => {
             <div className="gray-card">
               <p className="title">Registered Nurse (RN) License</p>
               <p className="subtitle">License No. / Expiration</p>
-              <span className="status active"><FaCheckCircle /> Active</span>
+              <span className="status active">
+                <FaCheckCircle /> Active
+              </span>
             </div>
             <div className="gray-card">
               <p className="title">Dentist License</p>
               <p className="subtitle">License No. / Expiration</p>
-              <span className="status active"><FaCheckCircle /> Active</span>
+              <span className="status active">
+                <FaCheckCircle /> Active
+              </span>
             </div>
             <div className="gray-card">
               <p className="title">Medical Technologist License</p>
               <p className="subtitle">License No./ Expiration</p>
-              <span className="status active"><FaCheckCircle /> Active</span>
+              <span className="status active">
+                <FaCheckCircle /> Active
+              </span>
             </div>
             <div className="gray-card">
               <p className="title">Pharmacist License</p>
               <p className="subtitle">License No. / Expiration</p>
-              <span className="status active"><FaCheckCircle /> Active</span>
+              <span className="status active">
+                <FaCheckCircle /> Active
+              </span>
             </div>
             <div className="gray-card">
-              <p className="title">Physical and Occupational Therapist License</p>
+              <p className="title">
+                Physical and Occupational Therapist License
+              </p>
               <p className="subtitle">License No. / Expiration</p>
-              <span className="status active"><FaCheckCircle /> Active</span>
+              <span className="status active">
+                <FaCheckCircle /> Active
+              </span>
             </div>
           </div>
           <button className="btn-outline small">
@@ -52,11 +70,15 @@ const Certifications = () => {
           <div className="card-list">
             <div className="gray-card">
               <p className="title">Pediatric Advanced Life Support (PALS)</p>
-              <span className="status active"><FaCheckCircle /> Active</span>
+              <span className="status active">
+                <FaCheckCircle /> Active
+              </span>
             </div>
             <div className="gray-card">
               <p className="title">Advanced Cardiac Life Support (ACLS)</p>
-              <span className="status expired"><FaTimesCircle /> Expired</span>
+              <span className="status expired">
+                <FaTimesCircle /> Expired
+              </span>
             </div>
           </div>
         </div>

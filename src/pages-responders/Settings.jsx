@@ -61,7 +61,10 @@ const Settings = () => {
     } catch (err) {
       if (err.response && err.response.status === 422) {
         const validationErrors = err.response.data;
-        alert("Please fix the following errors:\n" + Object.values(validationErrors).flat().join('\n'));
+        alert(
+          "Please fix the following errors:\n" +
+            Object.values(validationErrors).flat().join("\n")
+        );
       } else {
         alert("Failed to save settings. Please try again.");
       }
@@ -99,16 +102,22 @@ const Settings = () => {
 
         {/* Account and Security */}
         <div className="settings-section">
-          <h3><FaUserShield className="icon" /> Account and Security</h3>
+          <h3>
+            <FaUserShield className="icon" /> Account and Security
+          </h3>
           <ul>
-            <li onClick={() => openModal("personalInfo")}>Personal Information</li>
+            <li onClick={() => openModal("personalInfo")}>
+              Personal Information
+            </li>
             <li onClick={() => openModal("loginDevices")}>Login Devices</li>
           </ul>
         </div>
 
         {/* Professional Information */}
         <div className="settings-section">
-          <h3><FaUser className="icon" /> Professional Information</h3>
+          <h3>
+            <FaUser className="icon" /> Professional Information
+          </h3>
           <ul>
             <li onClick={() => openModal("rolePosition")}>Role and Position</li>
             <li onClick={() => openModal("availability")}>Availability</li>
@@ -117,9 +126,13 @@ const Settings = () => {
 
         {/* Notifications */}
         <div className="settings-section">
-          <h3><FaBell className="icon" /> Notifications</h3>
+          <h3>
+            <FaBell className="icon" /> Notifications
+          </h3>
           <ul>
-            <li onClick={() => openModal("notificationType")}>Notification Type</li>
+            <li onClick={() => openModal("notificationType")}>
+              Notification Type
+            </li>
             <li onClick={() => openModal("priorityAlerts")}>Priority Alerts</li>
             <li onClick={() => openModal("muteSnooze")}>Mute/Snooze</li>
             <li onClick={() => openModal("reminders")}>Reminders</li>
@@ -128,7 +141,9 @@ const Settings = () => {
 
         {/* System Preferences */}
         <div className="settings-section">
-          <h3><FaCogs className="icon" /> System Preferences</h3>
+          <h3>
+            <FaCogs className="icon" /> System Preferences
+          </h3>
           <ul>
             <li onClick={() => openModal("language")}>Language</li>
             <li onClick={() => openModal("theme")}>Theme</li>
@@ -137,9 +152,13 @@ const Settings = () => {
 
         {/* Privacy and Data */}
         <div className="settings-section">
-          <h3><FaLock className="icon" /> Privacy and Data</h3>
+          <h3>
+            <FaLock className="icon" /> Privacy and Data
+          </h3>
           <ul>
-            <li onClick={() => openModal("visibilitySettings")}>Visibility Settings</li>
+            <li onClick={() => openModal("visibilitySettings")}>
+              Visibility Settings
+            </li>
           </ul>
         </div>
 
@@ -161,19 +180,19 @@ const Settings = () => {
                   <label>Full Name:</label>
                   <input
                     name="name"
-                    value={formData.name || ''}
+                    value={formData.name || ""}
                     onChange={handleChange}
                   />
                   <label>Email Address:</label>
                   <input
                     name="email"
-                    value={formData.email || ''}
+                    value={formData.email || ""}
                     onChange={handleChange}
                   />
                   <label>Phone Number:</label>
                   <input
                     name="phone"
-                    value={formData.phone || ''}
+                    value={formData.phone || ""}
                     onChange={handleChange}
                   />
                   <button className="save-btn" onClick={handleSave}>
@@ -189,7 +208,7 @@ const Settings = () => {
                   <label>Your Role:</label>
                   <input
                     name="role"
-                    value={formData.role || ''}
+                    value={formData.role || ""}
                     onChange={handleChange}
                   />
                   <button className="save-btn" onClick={handleSave}>
@@ -205,7 +224,7 @@ const Settings = () => {
                   <label>When are you available?</label>
                   <input
                     name="availability"
-                    value={formData.availability || ''}
+                    value={formData.availability || ""}
                     onChange={handleChange}
                   />
                   <button className="save-btn" onClick={handleSave}>
@@ -273,13 +292,18 @@ const Settings = () => {
               {activeModal === "loginDevices" && (
                 <>
                   <h2>Login Devices</h2>
-                  <p>Feature coming soon: Manage all devices connected to your account.</p>
+                  <p>
+                    Feature coming soon: Manage all devices connected to your
+                    account.
+                  </p>
                 </>
               )}
               {activeModal === "notificationType" && (
                 <>
                   <h2>Notification Type</h2>
-                  <p>Choose how you'd like to receive updates (Email, SMS, App).</p>
+                  <p>
+                    Choose how you'd like to receive updates (Email, SMS, App).
+                  </p>
                 </>
               )}
               {activeModal === "priorityAlerts" && (

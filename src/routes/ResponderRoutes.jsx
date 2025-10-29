@@ -13,14 +13,32 @@ const Settings = lazy(() => import("../pages-responders/Settings"));
 const Profile = lazy(() => import("../pages-responders/Profile"));
 const Grades = lazy(() => import("../pages-responders/Grades"));
 
+// Pathfinding Pages
+const ResponseMap = lazy(() =>
+  import("../pages-responders/pathfinding/ResponseMap")
+);
+const HospitalMap = lazy(() =>
+  import("../pages-responders/pathfinding/HospitalMap")
+);
+
 // Online Training Pages
 const Modules = lazy(() => import("../pages-responders/Online/Modules"));
-const CourseDetails = lazy(() => import("../pages-responders/Online/CourseDetails"));
+const CourseDetails = lazy(() =>
+  import("../pages-responders/Online/CourseDetails")
+);
 const InfoPage = lazy(() => import("../pages-responders/Online/InfoPage"));
-const LessonDetails = lazy(() => import("../pages-responders/Online/LessonDetails"));
-const SectionPage = lazy(() => import("../pages-responders/Online/SectionPage"));
-const AssessmentPage = lazy(() => import("../pages-responders/Online/AssessmentPage"));
-const Certifications = lazy(() => import("../pages-responders/Online/Certifications"));
+const LessonDetails = lazy(() =>
+  import("../pages-responders/Online/LessonDetails")
+);
+const SectionPage = lazy(() =>
+  import("../pages-responders/Online/SectionPage")
+);
+const AssessmentPage = lazy(() =>
+  import("../pages-responders/Online/AssessmentPage")
+);
+const Certifications = lazy(() =>
+  import("../pages-responders/Online/Certifications")
+);
 
 const responderRoles = [ROLES.RESPONDER];
 
@@ -54,6 +72,22 @@ export const ResponderRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
           <EmergencySOS />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/responder/response-map"
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <ResponseMap />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/responder/hospital-map"
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <HospitalMap />
         </ProtectedRoute>
       }
     />

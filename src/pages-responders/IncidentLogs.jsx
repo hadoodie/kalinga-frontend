@@ -80,8 +80,10 @@ const IncidentLogs = () => {
   // Status/type based row colors
   const getRowClass = (log) => {
     if (log.status === "Resolved") return "status-resolved"; // green
-    if (log.status === "Pending" || log.status === "Ongoing") return "status-ongoing"; // yellow
-    if (log.status === "Critical" || log.type === "Missing Person") return "status-critical"; // red
+    if (log.status === "Pending" || log.status === "Ongoing")
+      return "status-ongoing"; // yellow
+    if (log.status === "Critical" || log.type === "Missing Person")
+      return "status-critical"; // red
     return "";
   };
 
@@ -118,7 +120,7 @@ const IncidentLogs = () => {
           </tbody>
         </table>
       </div>
-       <Footer />
+      <Footer />
     </Layout>
   );
 };

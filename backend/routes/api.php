@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\LabResultController;
 use App\Http\Controllers\Api\AppointmentController;
+use App\Http\Controllers\Api\IncidentApiController;
+use App\Http\Controllers\Api\RoadBlockadeController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -57,7 +59,15 @@ Route::middleware('auth:sanctum')->group(function () {
     
     // Responder routes
     Route::middleware(['role:admin,responder'])->group(function () {
-        // Emergency response routes will go here
+        // Pathfinding routes - protected by role middleware
+Route::middleware(['auth:sanctum', 'role:admin,responder'])->group(function () {
+    Route::get('/incidents', [IncidentApiController::class, 'index']);
+    Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);
+    
+    Route::apiResource('road-blockades', RoadBlockadeController::class);
+    Route::post('/road-blockades/route', [RoadBlockadeController::class, 'getRouteBlockades']);
+    Route::patch('/road-blockades/{id}/remove', [RoadBlockadeController::class, 'removeBlockade']);
+});
     });
     
     // Patient routes

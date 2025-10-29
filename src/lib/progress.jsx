@@ -9,11 +9,17 @@ export function getProgress(courseId) {
   try {
     const raw = localStorage.getItem(key(courseId));
     if (!raw) {
-      return { viewed: { general: {}, helpful: {}, training: {} }, unlocked: { helpful: false, training: false } };
+      return {
+        viewed: { general: {}, helpful: {}, training: {} },
+        unlocked: { helpful: false, training: false },
+      };
     }
     return JSON.parse(raw);
   } catch (e) {
-    return { viewed: { general: {}, helpful: {}, training: {} }, unlocked: { helpful: false, training: false } };
+    return {
+      viewed: { general: {}, helpful: {}, training: {} },
+      unlocked: { helpful: false, training: false },
+    };
   }
 }
 
@@ -28,7 +34,11 @@ export function saveProgress(courseId, progress) {
  */
 export function markViewed(courseId, sectionType, slug, courseSections) {
   const progress = getProgress(courseId);
-  progress.viewed = progress.viewed || { general: {}, helpful: {}, training: {} };
+  progress.viewed = progress.viewed || {
+    general: {},
+    helpful: {},
+    training: {},
+  };
   progress.viewed[sectionType] = progress.viewed[sectionType] || {};
   progress.viewed[sectionType][slug] = true;
 

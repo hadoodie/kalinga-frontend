@@ -40,17 +40,23 @@ const Grades = () => {
   return (
     <Layout>
       <div className="grades-container">
-        <h1 className="grades-title">📊  Grades</h1>
+        <h1 className="grades-title">📊 Grades</h1>
         <p className="grades-subtitle">
           Here are your assessment results across all 12 training courses.
         </p>
 
         <div className="grades-grid">
           {courses.map((title, index) => {
-            const grades = mockGrades[index] || { pretest: "-", quiz: "-", final: "-" };
+            const grades = mockGrades[index] || {
+              pretest: "-",
+              quiz: "-",
+              final: "-",
+            };
 
             const overall =
-              grades.pretest !== "-" && grades.quiz !== "-" && grades.final !== "-"
+              grades.pretest !== "-" &&
+              grades.quiz !== "-" &&
+              grades.final !== "-"
                 ? Math.round((grades.pretest + grades.quiz + grades.final) / 3)
                 : "-";
 
