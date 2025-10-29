@@ -1,30 +1,53 @@
 import { Bell } from "lucide-react";
+import { useState, useEffect } from "react";
+// You'll need a library to format the time
+import { formatDistanceToNow } from 'date-fns';
 
-export default function Notifs({
-  notifications = [
-    {
-      id: 1,
-      title: "Typhoon Warning",
-      description: "Signal #3 raised in your area. Stay indoors.",
-      time: "2h ago",
-    },
-    {
-      id: 2,
-      title: "Relief Goods Distribution",
-      description: "Distribution at Barangay Hall starts at 3PM.",
-      time: "5h ago",
-    },
-    {
-      id: 3,
-      title: "Responder Alert",
-      description: "Team dispatched near your location.",
-      time: "1d ago",
-    },
-  ],
-}) {
+// 1. Remove the default notifications prop
+export default function Notifs() {
+  // 2. Set up state to hold notifications
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 3. Fetch data when the component loads
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        // Get the token from local storage
+        const token = localStorage.getItem('token'); 
+
+        const response = await fetch('/api/notifications', {
+          headers: {
+            // Use the real token in the header
+            'Authorization': `Bearer ${token}`, 
+            'Accept': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch notifications');
+        }
+
+        const data = await response.json();
+        setNotifications(data);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, []); // Empty array means this runs once on mount
+
+  // 4. (Optional) Add a loading state
+  if (loading) {
+    return <div className="p-6">Loading notifications...</div>;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Page Header */}
+      {/* Page Header (no changes) */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-green-900 flex items-center gap-2">
           <Bell className="w-6 h-6" />
@@ -50,7 +73,8 @@ export default function Notifs({
                 <p className="text-sm text-gray-600">{notif.description}</p>
               </div>
               <span className="text-xs text-gray-500 mt-1 sm:mt-0 sm:ml-4 whitespace-nowrap">
-                {notif.time}
+                {/* 5. Format the timestamp from the server */}
+                {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
               </span>
             </div>
           ))
