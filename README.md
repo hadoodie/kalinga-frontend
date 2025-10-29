@@ -1,6 +1,326 @@
 # Kalinga Emergency Response System
 
-A comprehensive emergency response and logistics management system built with React (Fronten## 📋 Recent Updates
+A comprehensive emergency response and healthcare management system with real-time logistics tracking, patient health records, and automatic database failover.
+
+## 🏗️ Architecture
+
+```
+kalinga-hotfix-db/
+├── frontend/          # React + Vite + TailwindCSS
+└── backend/           # Laravel 11 + PostgreSQL (with failover)
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- PHP 8.2+
+- PostgreSQL 17.x
+- Composer
+
+### Frontend Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+Frontend runs on: `http://localhost:5173`
+
+### Backend Setup
+
+```bash
+cd backend
+
+# Install dependencies
+composer install
+npm install
+
+# Configure environment
+cp .env.example .env
+php artisan key:generate
+
+# Run migrations and seed data
+php artisan migrate --seed
+
+# Start server
+php artisan serve
+```
+
+Backend runs on: `http://localhost:8000`
+
+**For complete backend setup including database failover, see:** [backend/README.md](./backend/README.md)
+
+## 🎯 Features
+
+### 🏥 Healthcare Management
+- Patient health records and medical history
+- Appointment scheduling and management
+- Lab results and test reports
+- Medication and immunization tracking
+- Allergy and diagnosis management
+
+### 🚨 Emergency Response
+- Real-time emergency reporting
+- Evacuation center management
+- Responder coordination
+- Emergency communication system
+
+### 📦 Logistics & Resources
+- Hospital and resource management
+- Inventory tracking with alerts
+- Supply request management
+- Vehicle tracking
+
+### 🔐 Authentication & Security
+- JWT token-based authentication
+- Role-based access control (RBAC)
+- 4 user roles: Admin, Logistics, Responder, Patient
+- Secure API endpoints
+
+### 💾 Database Failover System
+- Automatic failover between cloud (Supabase) and local PostgreSQL
+- Bidirectional data synchronization
+- Zero downtime during outages
+- Complete data consistency
+
+## 🔑 Test Credentials
+
+All test accounts use password: `password123`
+
+| Role      | Email                          | Access Level                    |
+| --------- | ------------------------------ | ------------------------------- |
+| Admin     | admin@kalinga.com              | Full system access              |
+| Logistics | logistics@kalinga.com          | Resources & supply management   |
+| Responder | responder@kalinga.com          | Emergency response features     |
+| Patient   | patient@kalinga.com            | Health records & appointments   |
+| Patient   | patient_verified@kalinga.com   | Verified patient with full data |
+
+## 🛠️ Tech Stack
+
+### Frontend
+- **Framework**: React 19
+- **Build Tool**: Vite
+- **Styling**: TailwindCSS 4
+- **UI Components**: Radix UI, Framer Motion
+- **Data Visualization**: Recharts
+- **Maps**: React Leaflet
+- **HTTP Client**: Axios
+- **Routing**: React Router v7
+
+### Backend
+- **Framework**: Laravel 11
+- **Database**: PostgreSQL (Cloud: Supabase, Local: Failover)
+- **Authentication**: Laravel Sanctum (JWT)
+- **API**: RESTful
+- **Scheduler**: Laravel Task Scheduler
+
+## 📖 API Documentation
+
+### Authentication Endpoints
+
+```
+POST   /api/register          # Create new user account
+POST   /api/login             # User login (returns token)
+POST   /api/logout            # Logout current user
+GET    /api/me                # Get authenticated user info
+PUT    /api/profile           # Update user profile
+POST   /api/verify-id         # Submit ID verification
+```
+
+### Health Records (Patient/Admin)
+
+```
+GET    /api/appointments      # List user appointments
+GET    /api/lab-results       # List lab results
+GET    /api/notifications     # Get user notifications
+```
+
+### Logistics (Admin/Logistics)
+
+```
+GET    /api/resources         # List all resources
+POST   /api/resources         # Create new resource
+PUT    /api/resources/{id}    # Update resource
+DELETE /api/resources/{id}    # Delete resource
+GET    /api/hospitals         # List all hospitals
+POST   /api/hospitals         # Create new hospital
+```
+
+### Database Management
+
+```
+php artisan db:status                  # Check database connection status
+php artisan db:sync-cloud-to-local     # Sync cloud → local
+php artisan db:sync-local-to-cloud     # Sync local → cloud
+```
+
+For complete API documentation, see [backend/README.md](./backend/README.md)
+
+## 🚀 Development
+
+### Running in Development
+
+**Terminal 1 - Frontend:**
+```bash
+npm run dev
+```
+
+**Terminal 2 - Backend:**
+```bash
+cd backend
+php artisan serve
+```
+
+**Terminal 3 - Scheduler (for database sync):**
+```bash
+cd backend
+php artisan schedule:work
+```
+
+### Building for Production
+
+**Frontend:**
+```bash
+npm run build
+npm run preview  # Test production build
+```
+
+**Backend:**
+```bash
+cd backend
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+```
+
+## 🧪 Testing
+
+### Frontend
+```bash
+npm run test
+```
+
+### Backend
+```bash
+cd backend
+php artisan test
+```
+
+## � Configuration
+
+### Environment Variables
+
+**Frontend** (`.env`):
+```env
+VITE_API_URL=http://localhost:8000
+```
+
+**Backend** (`backend/.env`):
+```env
+APP_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:5173
+
+# Cloud Database (Primary)
+DB_CONNECTION=pgsql_cloud
+CLOUD_DB_HOST=aws-1-ap-southeast-1.pooler.supabase.com
+CLOUD_DB_DATABASE=postgres
+CLOUD_DB_USERNAME=your_username
+CLOUD_DB_PASSWORD=your_password
+
+# Local Database (Failover)
+LOCAL_DB_HOST=127.0.0.1
+LOCAL_DB_DATABASE=db_kalinga
+LOCAL_DB_USERNAME=postgres
+LOCAL_DB_PASSWORD=your_local_password
+```
+
+## 🐛 Troubleshooting
+
+### Frontend Issues
+
+**Error: "Cannot connect to API"**
+- Ensure backend is running on port 8000
+- Check `VITE_API_URL` in `.env`
+- Verify CORS settings in backend
+
+**Blank page after login**
+- Clear browser localStorage: `localStorage.clear()`
+- Check browser console for errors
+- Verify user token is stored
+
+### Backend Issues
+
+**Database connection failed**
+- Ensure PostgreSQL is running
+- Verify credentials in `.env`
+- Run `php artisan db:status` to check connections
+
+**Scheduler not running**
+- Start scheduler: `php artisan schedule:work`
+- Verify schedule with: `php artisan schedule:list`
+
+For detailed troubleshooting, see [backend/README.md](./backend/README.md)
+
+## 📁 Project Structure
+
+```
+kalinga-hotfix-db/
+├── backend/
+│   ├── app/
+│   │   ├── Console/Commands/          # Database sync commands
+│   │   ├── Http/
+│   │   │   ├── Controllers/Api/       # API controllers
+│   │   │   └── Middleware/            # Auth & failover middleware
+│   │   ├── Models/                    # Eloquent models
+│   │   └── Services/                  # Business logic
+│   ├── database/
+│   │   ├── migrations/                # Database schema
+│   │   └── seeders/                   # Sample data
+│   ├── routes/
+│   │   ├── api.php                    # API routes
+│   │   └── console.php                # Scheduler config
+│   └── README.md                      # Backend documentation
+├── src/
+│   ├── components/                    # React components
+│   ├── pages-account/                 # Registration/login pages
+│   ├── pages-admin/                   # Admin dashboard
+│   ├── pages-patients/                # Patient portal
+│   ├── pages-logistics/               # Logistics management
+│   ├── pages-responders/              # Responder interface
+│   ├── services/                      # API service layer
+│   └── context/                       # React context providers
+├── public/                            # Static assets
+└── package.json                       # Dependencies
+```
+
+## 🤝 Contributing
+
+When cloning this repository:
+
+1. **Frontend**: Run `npm install` and `npm run dev`
+2. **Backend**: 
+   - Install dependencies: `composer install`
+   - Set up local database (see [backend/README.md](./backend/README.md))
+   - Run migrations: `php artisan migrate`
+   - Start scheduler: `php artisan schedule:work`
+
+## 📝 License
+
+This project is licensed under the MIT License.
+
+## 👥 Team
+
+Built by the Kalinga Development Team
+
+---
+
+<p align="center">
+  <strong>Emergency Response • Healthcare Management • Logistics Tracking</strong>
+</p>
 
 ### October 13, 2025 - Registration Flow Fix
 
