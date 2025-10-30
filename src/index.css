@@ -1,3 +1,4 @@
+@import "leaflet/dist/leaflet.css";
 @import "tailwindcss";
 
 @theme {
@@ -128,4 +129,34 @@
   margin: 0 auto;
   padding: 0;
   text-align: center;
+}
+
+/* Leaflet Map Specific Styles */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.leaflet-popup-pane {
+  z-index: 1000;
+}
+
+.leaflet-control-container {
+  z-index: 1001;
+}
+
+.leaflet-control {
+  z-index: 1001;
+}
+
+/* Mobile-specific map styles */
+@media (max-width: 768px) {
+  .leaflet-container {
+    touch-action: none;
+  }
+
+  .leaflet-popup-content {
+    font-size: 14px;
+  }
 }

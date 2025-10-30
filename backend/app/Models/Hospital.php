@@ -13,11 +13,19 @@ class Hospital extends Model
         'name',
         'address',
         'contact_number',
+        'contact',
         'email',
         'capacity',
         'type',
         'latitude',
         'longitude',
+        'emergency_services'
+    ];
+
+    protected $casts = [
+        'latitude' => 'decimal:8',
+        'longitude' => 'decimal:8',
+        'emergency_services' => 'boolean'
     ];
 
     // Relationships

@@ -26,7 +26,10 @@ export default function InfoPage() {
     ],
   };
 
-  const allTopics = [...sections.generalInformation, ...sections.helpfulMaterials];
+  const allTopics = [
+    ...sections.generalInformation,
+    ...sections.helpfulMaterials,
+  ];
   const currentSection = sections.generalInformation.includes(topicSlug)
     ? "generalInformation"
     : "helpfulMaterials";
@@ -44,7 +47,9 @@ export default function InfoPage() {
       localStorage.setItem(key, JSON.stringify(viewed));
     }
 
-    const allGeneralViewed = sections.generalInformation.every((t) => viewed.includes(t));
+    const allGeneralViewed = sections.generalInformation.every((t) =>
+      viewed.includes(t)
+    );
     if (allGeneralViewed) {
       localStorage.setItem(`unlocked_helpful_${id}`, "true");
     }
@@ -63,7 +68,9 @@ export default function InfoPage() {
       // Finished a section
       if (currentSection === "generalInformation") {
         localStorage.setItem(`unlocked_helpful_${id}`, "true");
-        alert("✅ You’ve completed the General Information section! Helpful Materials are now unlocked.");
+        alert(
+          "✅ You’ve completed the General Information section! Helpful Materials are now unlocked."
+        );
         navigate(`/modules/${id}/info/reference-materials`); // ✅ Fixed path
       } else {
         alert("🎉 You’ve completed all topics in this section!");
@@ -78,14 +85,19 @@ export default function InfoPage() {
       content = (
         <>
           <p>
-            Welcome to the <strong>Barangay First 1000 Days Facilitator’s Guide eTraining</strong>!  
-            This program equips community facilitators, health workers, and local leaders 
-            with the knowledge and skills needed to promote proper nutrition and care during 
-            the first 1000 days of life—from conception to a child’s second birthday.
+            Welcome to the{" "}
+            <strong>
+              Barangay First 1000 Days Facilitator’s Guide eTraining
+            </strong>
+            ! This program equips community facilitators, health workers, and
+            local leaders with the knowledge and skills needed to promote proper
+            nutrition and care during the first 1000 days of life—from
+            conception to a child’s second birthday.
           </p>
           <p>
-            Through this training, you will strengthen your ability to guide families in 
-            implementing nutrition-sensitive and nutrition-specific programs in your barangay.
+            Through this training, you will strengthen your ability to guide
+            families in implementing nutrition-sensitive and nutrition-specific
+            programs in your barangay.
           </p>
         </>
       );
@@ -96,14 +108,22 @@ export default function InfoPage() {
         <>
           <h4>Course Overview & Objectives</h4>
           <p>
-            The course highlights the national strategies supporting the First 1000 Days Program 
-            and empowers facilitators to lead effective local initiatives.
+            The course highlights the national strategies supporting the First
+            1000 Days Program and empowers facilitators to lead effective local
+            initiatives.
           </p>
           <ul>
-            <li>Understand the key concepts and importance of the First 1000 Days.</li>
-            <li>Identify the roles of barangay facilitators in program implementation.</li>
+            <li>
+              Understand the key concepts and importance of the First 1000 Days.
+            </li>
+            <li>
+              Identify the roles of barangay facilitators in program
+              implementation.
+            </li>
             <li>Learn facilitation techniques for community-based sessions.</li>
-            <li>Access reference tools and templates to support facilitation.</li>
+            <li>
+              Access reference tools and templates to support facilitation.
+            </li>
           </ul>
         </>
       );
@@ -114,15 +134,26 @@ export default function InfoPage() {
         <>
           <h4>Training Flow & Requirements</h4>
           <p>
-            The eTraining is divided into three main sections: <strong>General Information</strong>, 
-            <strong> Helpful Materials</strong>, and <strong>Training Modules</strong>. 
-            You must complete all topics in each section to unlock the next one.
+            The eTraining is divided into three main sections:{" "}
+            <strong>General Information</strong>,
+            <strong> Helpful Materials</strong>, and{" "}
+            <strong>Training Modules</strong>. You must complete all topics in
+            each section to unlock the next one.
           </p>
           <h5>Training Flow:</h5>
           <ol>
-            <li>Start with <strong>General Information</strong> for course orientation.</li>
-            <li>Proceed to <strong>Helpful Materials</strong> for reference tools and policies.</li>
-            <li>Complete <strong>Training Modules</strong> with guided readings and assessments.</li>
+            <li>
+              Start with <strong>General Information</strong> for course
+              orientation.
+            </li>
+            <li>
+              Proceed to <strong>Helpful Materials</strong> for reference tools
+              and policies.
+            </li>
+            <li>
+              Complete <strong>Training Modules</strong> with guided readings
+              and assessments.
+            </li>
           </ol>
           <h5>Requirements:</h5>
           <ul>
@@ -139,8 +170,8 @@ export default function InfoPage() {
         <>
           <h4>Facilitator’s Guide Outline</h4>
           <p>
-            This guide provides structured content for conducting sessions and implementing 
-            activities under the First 1000 Days Program.
+            This guide provides structured content for conducting sessions and
+            implementing activities under the First 1000 Days Program.
           </p>
           <ul>
             <li>Part I – Overview of the First 1000 Days Program</li>
@@ -159,8 +190,9 @@ export default function InfoPage() {
         <>
           <h4>Reference Materials</h4>
           <p>
-            This section includes reading materials, manuals, and resources that support 
-            facilitators in implementing nutrition-related activities in their communities.
+            This section includes reading materials, manuals, and resources that
+            support facilitators in implementing nutrition-related activities in
+            their communities.
           </p>
         </>
       );
@@ -171,8 +203,8 @@ export default function InfoPage() {
         <>
           <h4>Nutrition Policy Documents</h4>
           <p>
-            Access official policy guidelines, executive orders, and government memoranda 
-            relevant to nutrition and child development programs.
+            Access official policy guidelines, executive orders, and government
+            memoranda relevant to nutrition and child development programs.
           </p>
         </>
       );
@@ -183,8 +215,8 @@ export default function InfoPage() {
         <>
           <h4>Community Tools & Templates</h4>
           <p>
-            Download practical forms, templates, and community tracking tools to help monitor 
-            progress and facilitate barangay nutrition sessions.
+            Download practical forms, templates, and community tracking tools to
+            help monitor progress and facilitate barangay nutrition sessions.
           </p>
         </>
       );
@@ -195,8 +227,8 @@ export default function InfoPage() {
         <>
           <h4>Sample Session Plans</h4>
           <p>
-            Explore ready-made session plans you can adapt for your barangay’s nutrition 
-            education activities.
+            Explore ready-made session plans you can adapt for your barangay’s
+            nutrition education activities.
           </p>
         </>
       );

@@ -7,30 +7,51 @@ import Footer from "../components/responder/Footer";
 const TriageSystem = () => {
   const [selectedArea, setSelectedArea] = useState("Metro Manila");
 
-  const areas = ["Metro Manila", "North Luzon", "South Luzon", "Visayas", "Mindanao"];
+  const areas = [
+    "Metro Manila",
+    "North Luzon",
+    "South Luzon",
+    "Visayas",
+    "Mindanao",
+  ];
 
   const data = {
     "Metro Manila": [
       { hospital: "Philippine Heart Center", values: [25, 12, 4, 3, 1] },
       { hospital: "East Avenue Medical Center", values: [40, 18, 10, 5, 2] },
-      { hospital: "Jose Reyes Memorial Medical Center", values: [32, 14, 6, 4, 1] },
+      {
+        hospital: "Jose Reyes Memorial Medical Center",
+        values: [32, 14, 6, 4, 1],
+      },
       { hospital: "San Lazaro Hospital", values: [28, 20, 9, 2, 0] },
     ],
     "North Luzon": [
       { hospital: "Baguio General Hospital", values: [38, 10, 5, 2, 1] },
-      { hospital: "Ilocos Training & Regional Medical Center", values: [25, 12, 6, 2, 1] },
+      {
+        hospital: "Ilocos Training & Regional Medical Center",
+        values: [25, 12, 6, 2, 1],
+      },
     ],
     "South Luzon": [
       { hospital: "Batangas Medical Center", values: [45, 22, 10, 6, 2] },
       { hospital: "Bicol Regional Hospital", values: [30, 15, 8, 5, 2] },
     ],
-    "Visayas": [
-      { hospital: "Vicente Sotto Memorial Medical Center", values: [40, 18, 9, 4, 1] },
+    Visayas: [
+      {
+        hospital: "Vicente Sotto Memorial Medical Center",
+        values: [40, 18, 9, 4, 1],
+      },
       { hospital: "Western Visayas Medical Center", values: [32, 14, 6, 3, 0] },
     ],
-    "Mindanao": [
-      { hospital: "Southern Philippines Medical Center", values: [60, 20, 15, 6, 3] },
-      { hospital: "Northern Mindanao Medical Center", values: [35, 18, 9, 5, 2] },
+    Mindanao: [
+      {
+        hospital: "Southern Philippines Medical Center",
+        values: [60, 20, 15, 6, 3],
+      },
+      {
+        hospital: "Northern Mindanao Medical Center",
+        values: [35, 18, 9, 5, 2],
+      },
     ],
   };
 
@@ -46,9 +67,18 @@ const TriageSystem = () => {
   ];
 
   const highlights = [
-    { text: "<b>High severity</b> respiratory cases rising at San Lazaro Hospital.", level: "high" },
-    { text: "East Avenue Medical Center shows <b>increased orthopedic admissions</b>.", level: "medium" },
-    { text: "Philippine Heart Center remains at <b>maximum ICU capacity</b>.", level: "critical" },
+    {
+      text: "<b>High severity</b> respiratory cases rising at San Lazaro Hospital.",
+      level: "high",
+    },
+    {
+      text: "East Avenue Medical Center shows <b>increased orthopedic admissions</b>.",
+      level: "medium",
+    },
+    {
+      text: "Philippine Heart Center remains at <b>maximum ICU capacity</b>.",
+      level: "critical",
+    },
   ];
 
   const badge = {
@@ -62,10 +92,11 @@ const TriageSystem = () => {
   return (
     <Layout>
       <div className="content">
-
         {/* === PAGE HEADER === */}
         <div className="page-header">
-          <h2 className="page-title">DOH Hospital Triage & Specialist Tracking</h2>
+          <h2 className="page-title">
+            DOH Hospital Triage & Specialist Tracking
+          </h2>
           <div className="region-dropdown">
             <select
               value={selectedArea}
@@ -115,7 +146,9 @@ const TriageSystem = () => {
           {/* === LEGEND === */}
           <div className="legend">
             {Object.values(badge).map((b, i) => (
-              <div key={i} className="legend-item">{b}</div>
+              <div key={i} className="legend-item">
+                {b}
+              </div>
             ))}
           </div>
         </div>
