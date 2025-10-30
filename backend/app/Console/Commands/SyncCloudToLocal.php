@@ -34,6 +34,15 @@ class SyncCloudToLocal extends Command
         'vehicles',
         'hospitals',
         'personal_access_tokens',
+        'appointments',
+        'lab_results',
+        'allergies',
+        'diagnoses',
+        'immunizations',
+        'medications',
+        'test_results',
+        'test_result_details',
+        'notifications',
     ];
 
     /**

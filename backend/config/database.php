@@ -16,7 +16,7 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'pgsql_cloud'),
+    'default' => env('DB_CONNECTION', 'pgsql_local'),
 
     /*
     |--------------------------------------------------------------------------
@@ -87,9 +87,9 @@ return [
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
-            'password' => env('DB_PASSWORD', ''),
+            'database' => env('DB_DATABASE', 'kalinga_db'),
+            'username' => env('DB_USERNAME', 'postgres'),
+            'password' => env('DB_PASSWORD', 'kalingadatabase'), 
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
@@ -103,8 +103,8 @@ return [
             'host' => env('CLOUD_DB_HOST', 'aws-1-ap-southeast-1.pooler.supabase.com'),
             'port' => env('CLOUD_DB_PORT', '5432'),
             'database' => env('CLOUD_DB_DATABASE', 'postgres'),
-            'username' => env('CLOUD_DB_USERNAME', 'postgres'),
-            'password' => env('CLOUD_DB_PASSWORD', ''),
+            'username' => env('CLOUD_DB_USERNAME', 'postgres.psblyvwfbgmwyrtzoyhz'),
+            'password' => env('CLOUD_DB_PASSWORD', 'KalingaDB2526'),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
@@ -117,9 +117,9 @@ return [
             'driver' => 'pgsql',
             'host' => env('LOCAL_DB_HOST', '127.0.0.1'),
             'port' => env('LOCAL_DB_PORT', '5432'),
-            'database' => env('LOCAL_DB_DATABASE', 'db_kalinga'),
+            'database' => env('LOCAL_DB_DATABASE', 'kalinga_db'),
             'username' => env('LOCAL_DB_USERNAME', 'postgres'),
-            'password' => env('LOCAL_DB_PASSWORD', ''),
+            'password' => env('LOCAL_DB_PASSWORD', 'kalingadatabase'),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,

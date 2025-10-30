@@ -19,6 +19,7 @@ class DatabaseFailoverMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         // Get the active connection (cloud or local based on availability)
+        // Automatic failover: cloud is primary, local is backup
         $activeConnection = DatabaseConnectionManager::getActiveConnection();
         
         // Set the default connection dynamically

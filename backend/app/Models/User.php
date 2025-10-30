@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Appointment;
+use App\Models\Notification;
 
 class User extends Authenticatable
 {
@@ -39,6 +40,12 @@ class User extends Authenticatable
         'theme',      
         'availability', 
         'visibility', 
+        'patientId',  
+        'dob',  
+        'bloodType',  
+        'admitted',  
+        'emergencyContactName',  
+        'emergencyContactPhone',  
     ];
 
     /**
@@ -71,5 +78,13 @@ class User extends Authenticatable
     public function appointments(): HasMany
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    /**
+     * Get all of the notifications for the User.
+     */
+    public function notifications(): HasMany // <-- ADD THIS FUNCTION
+    {
+        return $this->hasMany(Notification::class);
     }
 }

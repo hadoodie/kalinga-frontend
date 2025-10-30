@@ -83,6 +83,14 @@ class UserSeeder extends Seeder
             'phone' => '09171234571',
             'is_active' => true,
             'verification_status' => 'verified',
+            // --- PATIENT DATA ADDED HERE ---
+            'patientId' => 'HN-0012345',
+            'dob' => '1985-10-15', 
+            'bloodType' => 'O+',
+            'address' => '456 Rizal St., Valenzuela, Metro Manila',
+            'admitted' => '2025-10-20', 
+            'emergencyContactName' => 'Juan Dela Cruz',
+            'emergencyContactPhone' => '0918-555-4321',
         ]);
     }
 }
