@@ -7,9 +7,6 @@ use App\Http\Controllers\Api\LabResultController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Models\Appointment;//
-use App\Models\LabResult; //
 
 /*
 |--------------------------------------------------------------------------
@@ -90,13 +87,4 @@ Route::get('/test/hospitals', function () {
 // Test routes (public)
 Route::get('/test/resources', function () {
     return response()->json(\App\Models\Resource::with('hospital')->get());
-});
-
-// 🔍 TEST ROUTES — temporary, no auth required
-Route::get('/test/appointments', function () {
-    return Appointment::with('user')->get();
-});
-
-Route::get('/test/lab-results', function () {
-    return LabResult::with('user')->get();
-});
+}); 

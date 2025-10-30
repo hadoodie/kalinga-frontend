@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react"; // <-- MODIFIED: Added useEffect
 import {
   UserRound,
   Edit,
@@ -10,6 +10,9 @@ import {
   Stethoscope,
   Thermometer,
 } from "lucide-react";
+
+// <-- NEW: Import your custom api service
+import api from "../services/api";
 
 // Reusable Input Component
 const FormInput = ({ label, name, value, onChange }) => (
@@ -24,14 +27,14 @@ const FormInput = ({ label, name, value, onChange }) => (
       type="text"
       id={name}
       name={name}
-      value={value}
+      value={value || ""} // <-- MODIFIED: Handles null/undefined values
       onChange={onChange}
       className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
     />
   </div>
 );
 
-// Patient Activity Section
+// Patient Activity Section  
 function PatientActivity() {
   return (
     <div className="w-full">
@@ -95,7 +98,7 @@ function PatientActivity() {
   );
 }
 
-// Timeline Item (for Patient Activity)
+// Timeline Item (for Patient Activity)  
 const TimelineItem = ({ color, title, date }) => (
   <div className="relative">
     <div
@@ -106,7 +109,7 @@ const TimelineItem = ({ color, title, date }) => (
   </div>
 );
 
-// Vitals Item
+// Vitals Item  
 const VitalItem = ({ color, title, value, unit, status, icon }) => (
   <div className="relative">
     <div
@@ -129,7 +132,7 @@ const VitalItem = ({ color, title, value, unit, status, icon }) => (
   </div>
 );
 
-// Display Mode
+// Display Mode  
 function ProfileDisplay({ data, onEdit }) {
   return (
     <div className="bg-white rounded-lg shadow-md p-6 pt-16 relative">
@@ -158,8 +161,14 @@ function ProfileDisplay({ data, onEdit }) {
             <ProfileField label="Address" value={data.address} />
             <ProfileField label="Phone" value={data.phoneNumber} />
             <ProfileField label="Admitted" value={data.admitted} />
-            <ProfileField label="Emergency Contact" value={data.emergencyContactName} />
-            <ProfileField label="Emergency Contact Number" value={data.emergencyContactPhone} />
+            <ProfileField
+              label="Emergency Contact"
+              value={data.emergencyContactName}
+            />
+            <ProfileField
+              label="Emergency Contact Number"
+              value={data.emergencyContactPhone}
+            />
           </div>
 
           <div className="mt-6 flex gap-3">
@@ -198,11 +207,11 @@ const ProfileField = ({ label, value }) => (
     <span className="font-semibold text-green-800 w-32 inline-block">
       {label}:
     </span>{" "}
-    {value}
+    {value || "N/A"} {/* <-- MODIFIED: Handles null/undefined values */}
   </p>
 );
 
-// Edit Form
+// Edit Form  
 function ProfileEditForm({ data, onChange, onSave, onCancel }) {
   const CancelIcon = FilePenLine;
   return (
@@ -222,19 +231,64 @@ function ProfileEditForm({ data, onChange, onSave, onCancel }) {
 
       <div className="space-y-4 text-left">
         <FormInput label="Name" name="name" value={data.name} onChange={onChange} />
-        <FormInput label="Patient ID" name="patientId" value={data.patientId} onChange={onChange} />
-        <FormInput label="Date of Birth" name="dob" value={data.dob} onChange={onChange} />
-        <FormInput label="Blood Type" name="bloodType" value={data.bloodType} onChange={onChange} />
-        <FormInput label="Address" name="address" value={data.address} onChange={onChange} />
-        <FormInput label="Email" name="email" value={data.email} onChange={onChange} />
-        <FormInput label="Phone Number" name="phoneNumber" value={data.phoneNumber} onChange={onChange} />
-        <FormInput label="Admitted" name="admitted" value={data.admitted} onChange={onChange} />
+        <FormInput
+          label="Patient ID"
+          name="patientId"
+          value={data.patientId}
+          onChange={onChange}
+        />
+        <FormInput
+          label="Date of Birth"
+          name="dob"
+          value={data.dob}
+          onChange={onChange}
+        />
+        <FormInput
+          label="Blood Type"
+          name="bloodType"
+          value={data.bloodType}
+          onChange={onChange}
+        />
+        <FormInput
+          label="Address"
+          name="address"
+          value={data.address}
+          onChange={onChange}
+        />
+        <FormInput
+          label="Email"
+          name="email"
+          value={data.email}
+          onChange={onChange}
+        />
+        <FormInput
+          label="Phone Number"
+          name="phoneNumber"
+          value={data.phoneNumber}
+          onChange={onChange}
+        />
+        <FormInput
+          label="Admitted"
+          name="admitted"
+          value={data.admitted}
+          onChange={onChange}
+        />
         <hr className="my-4" />
         <h3 className="text-lg font-semibold text-green-900">
           Emergency Contact
         </h3>
-        <FormInput label="Contact Name" name="emergencyContactName" value={data.emergencyContactName} onChange={onChange} />
-        <FormInput label="Contact Phone" name="emergencyContactPhone" value={data.emergencyContactPhone} onChange={onChange} />
+        <FormInput
+          label="Contact Name"
+          name="emergencyContactName"
+          value={data.emergencyContactName}
+          onChange={onChange}
+        />
+        <FormInput
+          label="Contact Phone"
+          name="emergencyContactPhone"
+          value={data.emergencyContactPhone}
+          onChange={onChange}
+        />
 
         <div className="pt-4">
           <button
@@ -249,7 +303,7 @@ function ProfileEditForm({ data, onChange, onSave, onCancel }) {
   );
 }
 
-// Sidebar
+// Sidebar  
 function PatientSidebar({ emergencyContact }) {
   return (
     <div className="lg:col-span-1 bg-white rounded-lg shadow-md p-6 h-fit lg:mt-16">
@@ -279,7 +333,7 @@ function PatientSidebar({ emergencyContact }) {
   );
 }
 
-// InfoItem for Sidebar
+// InfoItem for Sidebar  
 const InfoItem = ({ label, value }) => (
   <div className="relative pl-6 border-l-2 border-green-700 space-y-1 mb-4">
     <div className="absolute w-4 h-4 bg-green-700 rounded-full -left-[9px] top-1 border-4 border-white"></div>
@@ -288,7 +342,7 @@ const InfoItem = ({ label, value }) => (
   </div>
 );
 
-//Badge for Allergies
+//Badge for Allergies  
 const Badge = ({ label, color }) => (
   <span
     className={`bg-${color}-100 text-${color}-800 text-xs font-medium px-2.5 py-0.5 rounded-full`}
@@ -297,23 +351,50 @@ const Badge = ({ label, color }) => (
   </span>
 );
 
-// MAIN COMPONENT
+// -----------------------------------------------------------------
+// MAIN COMPONENT 
+// -----------------------------------------------------------------
 export default function PatientProfile() {
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [profileData, setProfileData] = useState({
-    name: "Maria Dela Cruz",
-    patientId: "HN-0012345",
-    dob: "October 15, 1985",
-    bloodType: "O+",
-    address: "456 Rizal St., Valenzuela, Metro Manila",
-    admitted: "October 20, 2025",
-    email: "maria.dc@email.com",
-    phoneNumber: "0917-555-6789",
-    emergencyContactName: "Juan Dela Cruz",
-    emergencyContactPhone: "0918-555-4321",
+    name: "",
+    patientId: "",
+    dob: "",
+    bloodType: "",
+    address: "",
+    admitted: "",
+    email: "",
+    phoneNumber: "",
+    emergencyContactName: "",
+    emergencyContactPhone: "",
   });
 
   const [originalData, setOriginalData] = useState(profileData);
+
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      setIsLoading(true);
+      try {
+        const response = await api.get("/me");
+
+        // Map 'phone' from database to 'phoneNumber' in state
+        const data = {
+          ...response.data,
+          phoneNumber: response.data.phone || "", // Map 'phone' to 'phoneNumber'
+        };
+
+        setProfileData(data);
+        setOriginalData(data);
+      } catch (error) {
+        console.error("Error fetching profile data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, []); // Empty array means this runs once when the component mounts
 
   const handleEdit = () => {
     setOriginalData(profileData);
@@ -325,9 +406,26 @@ export default function PatientProfile() {
     setIsEditing(false);
   };
 
-  const handleSave = () => {
-    setOriginalData(profileData);
-    setIsEditing(false);
+  const handleSave = async () => {
+    try {
+      const response = await api.put("/profile", profileData);
+
+      // Your controller returns the updated user, let's use it
+      const data = {
+        ...response.data.user,
+        phoneNumber: response.data.user.phone || "", // Map 'phone' to 'phoneNumber'
+      };
+
+      setProfileData(data);
+      setOriginalData(data);
+      setIsEditing(false);
+      console.log("Profile updated successfully!");
+    } catch (error) {
+      console.error("Error saving profile data:", error);
+      if (error.response && error.response.status === 422) {
+        console.error("Validation Errors:", error.response.data);
+      }
+    }
   };
 
   const handleChange = (e) => {
@@ -337,6 +435,16 @@ export default function PatientProfile() {
       [name]: value,
     }));
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#F8FBF8] p-8 flex justify-center items-center">
+        <h2 className="text-2xl font-bold text-green-900">
+          Loading Profile...
+        </h2>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FBF8] p-8">

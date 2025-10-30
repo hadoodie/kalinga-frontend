@@ -40,6 +40,12 @@ class User extends Authenticatable
         'theme',      
         'availability', 
         'visibility', 
+        'patientId',  
+        'dob',  
+        'bloodType',  
+        'admitted',  
+        'emergencyContactName',  
+        'emergencyContactPhone',  
     ];
 
     /**
