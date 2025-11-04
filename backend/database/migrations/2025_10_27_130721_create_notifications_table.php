@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->string('title');
             $table->text('description');
-            $table->timestamp('read_at')->nullable(); // For "Mark as read"
+            $table->timestamp('read_at')->nullable(); 
             $table->timestamps();
         });
     }
