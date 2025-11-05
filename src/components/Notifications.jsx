@@ -1,39 +1,58 @@
 import { Bell } from "lucide-react";
+import { useState, useEffect } from "react";
+import { formatDistanceToNow } from 'date-fns';
+import api from "../services/api"; 
 
-export default function Notifs({
-  notifications = [
-    {
-      id: 1,
-      title: "Typhoon Warning",
-      description: "Signal #3 raised in your area. Stay indoors.",
-      time: "2h ago",
-    },
-    {
-      id: 2,
-      title: "Relief Goods Distribution",
-      description: "Distribution at Barangay Hall starts at 3PM.",
-      time: "5h ago",
-    },
-    {
-      id: 3,
-      title: "Responder Alert",
-      description: "Team dispatched near your location.",
-      time: "1d ago",
-    },
-  ],
-}) {
+export default function Notifs() {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const response = await api.get('/notifications');
+
+        setNotifications(response.data);
+      } catch (error) {
+        console.error("Failed to fetch notifications:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, []); // Empty array means this runs once on mount
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        {/* Page Header */}
+        <header className="flex flex-wrap justify-between items-center gap-4 mb-8 p-4 bg-white rounded-xl shadow-lg">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
+            Notifications
+          </h1>
+          <button className="px-4 py-2 text-sm rounded-md bg-green-900 text-white hover:bg-green-700 transition">
+            Mark all as read
+          </button>
+        </header>
+
+        {/* Notifications List */}
+        <div className="p-6 text-center text-gray-500">Loading notifications...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Page Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-green-900 flex items-center gap-2">
-          <Bell className="w-6 h-6" />
+      <header className="flex flex-wrap justify-between items-center gap-4 mb-8 p-4 bg-white rounded-xl shadow-lg">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
           Notifications
         </h1>
         <button className="px-4 py-2 text-sm rounded-md bg-green-900 text-white hover:bg-green-700 transition">
           Mark all as read
         </button>
-      </div>
+      </header>
 
       {/* Notifications List */}
       <div className="bg-white shadow rounded-lg divide-y divide-gray-200">
@@ -50,7 +69,7 @@ export default function Notifs({
                 <p className="text-sm text-gray-600">{notif.description}</p>
               </div>
               <span className="text-xs text-gray-500 mt-1 sm:mt-0 sm:ml-4 whitespace-nowrap">
-                {notif.time}
+                {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
               </span>
             </div>
           ))

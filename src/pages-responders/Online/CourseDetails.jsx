@@ -31,13 +31,16 @@ const markLessonComplete = (section, lessonId, setProgress) => {
 };
 
 const slugify = (text) =>
-  text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 
 // ----------------------
 // 🔹 Courses Data
 // ----------------------
 const allCourses = {
-  "1": {
+  1: {
     title: "Barangay First 1000 Days Facilitator's Guide eTraining",
     sections: [
       {
@@ -77,7 +80,7 @@ const allCourses = {
     ],
   },
 
-  "2": {
+  2: {
     title: "DOH Integrated People-Centered Health Services",
     sections: [
       {
@@ -101,7 +104,7 @@ const allCourses = {
     ],
   },
 
-  "3": {
+  3: {
     title: "Integrated Course on Primary Care",
     sections: [
       {
@@ -125,7 +128,7 @@ const allCourses = {
     ],
   },
 
-  "4": {
+  4: {
     title:
       "Introduction to Seven Major Recommendations to Prevent Tuberculosis Transmission",
     sections: [
@@ -150,7 +153,7 @@ const allCourses = {
     ],
   },
 
-  "5": {
+  5: {
     title: "Healthy Hearts Technical Package",
     sections: [
       {
@@ -174,7 +177,7 @@ const allCourses = {
     ],
   },
 
-  "6": {
+  6: {
     title:
       "Basic Course in Family Planning Final Exam and Certificate of Training",
     sections: [
@@ -200,7 +203,7 @@ const allCourses = {
     ],
   },
 
-  "7": {
+  7: {
     title: "Nutrition Care Process for Clinical Nutritionist Dietitians",
     sections: [
       {
@@ -224,7 +227,7 @@ const allCourses = {
     ],
   },
 
-  "8": {
+  8: {
     title:
       "Basic Life Support Online Training - Didactic [NCMH - 2025 BATCH 10]",
     sections: [
@@ -254,7 +257,7 @@ const allCourses = {
     ],
   },
 
-  "9": {
+  9: {
     title:
       "Basic Course on Continuous Quality Improvement for Health Facilities",
     sections: [
@@ -279,7 +282,7 @@ const allCourses = {
     ],
   },
 
-  "10": {
+  10: {
     title: "Data to Policy Competency 1 - Problem Statement",
     sections: [
       {
@@ -303,7 +306,7 @@ const allCourses = {
     ],
   },
 
-  "11": {
+  11: {
     title:
       "Orientation on Navigating the Continuing Professional Accreditation System (CPDAS)",
     sections: [
@@ -328,7 +331,7 @@ const allCourses = {
     ],
   },
 
-  "12": {
+  12: {
     title: "Laboratory Quality Management System Online Training",
     sections: [
       {
@@ -448,8 +451,7 @@ const CourseDetails = () => {
     const completedItems = progress[sectionKey];
     // unlock first item or if the previous one is completed
     return (
-      itemIndex === 0 ||
-      completedItems.includes(section.items[itemIndex - 1])
+      itemIndex === 0 || completedItems.includes(section.items[itemIndex - 1])
     );
   };
 
@@ -470,10 +472,8 @@ const CourseDetails = () => {
     const slug = slugify(item);
 
     if (section.heading.includes("Training")) {
-      if (item === "Pre-Test")
-        navigate(`/modules/${id}/assessment/pre-test`);
-      else if (item === "Quiz")
-        navigate(`/modules/${id}/assessment/quiz`);
+      if (item === "Pre-Test") navigate(`/modules/${id}/assessment/pre-test`);
+      else if (item === "Quiz") navigate(`/modules/${id}/assessment/quiz`);
       else if (item === "Final Assessment")
         navigate(`/modules/${id}/assessment/final-assessment`);
       else navigate(`/modules/${id}/lesson/${slug}`);

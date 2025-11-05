@@ -2,13 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TestResult extends Model
 {
     use HasFactory;
 
+    /**
+     * The attributes that are mass assignable.
+     */
     protected $fillable = [
         'user_id',
         'name',
@@ -18,13 +22,12 @@ class TestResult extends Model
         'overall_status',
     ];
 
-    public function details()
+    /**
+     * Get all of the details for the TestResult.
+     * This is the function your seeder needs.
+     */
+    public function details(): HasMany
     {
-        return $this->hasMany(TestResultDetail::class, 'test_result_id');
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class);
+        return $this->hasMany(TestResultDetail::class);
     }
 }

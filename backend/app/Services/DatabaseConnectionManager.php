@@ -10,7 +10,7 @@ use Exception;
 class DatabaseConnectionManager
 {
     private const CLOUD_CONNECTION = 'pgsql_cloud';
-    private const LOCAL_CONNECTION = 'pgsql';
+    private const LOCAL_CONNECTION = 'pgsql_local';
     private const FAILOVER_CACHE_KEY = 'db_failover_status';
     private const CONNECTION_CHECK_INTERVAL = 60; // seconds
 

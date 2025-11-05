@@ -43,18 +43,32 @@ const FILTERS = [
 const CATEGORY_ICONS = {
   "Emergency Medicine & Trauma Care": <FaAmbulance size={28} color="#007bff" />,
   "Nursing & Patient Care": <FaUserNurse size={28} color="#28a745" />,
-  "Disaster Response & Management": <FaBriefcaseMedical size={28} color="#dc3545" />,
-  "Pharmacology & Medication Management": <FaCapsules size={28} color="#6f42c1" />,
+  "Disaster Response & Management": (
+    <FaBriefcaseMedical size={28} color="#dc3545" />
+  ),
+  "Pharmacology & Medication Management": (
+    <FaCapsules size={28} color="#6f42c1" />
+  ),
   "Basic Life Support (BLS) & Advanced Cardiac Life Support (ACLS)": (
     <FaHeartbeat size={28} color="#e83e8c" />
   ),
-  "Mental Health & Psychological First Aid": <FaBrain size={28} color="#20c997" />,
-  "Infectious Disease Control & Public Health": <FaVirus size={28} color="#fd7e14" />,
+  "Mental Health & Psychological First Aid": (
+    <FaBrain size={28} color="#20c997" />
+  ),
+  "Infectious Disease Control & Public Health": (
+    <FaVirus size={28} color="#fd7e14" />
+  ),
   "Surgical & Critical Care Skills": <FaSyringe size={28} color="#17a2b8" />,
-  "Telemedicine & Digital Health Tools": <FaMobileAlt size={28} color="#343a40" />,
+  "Telemedicine & Digital Health Tools": (
+    <FaMobileAlt size={28} color="#343a40" />
+  ),
   "Community Health & Outreach": <FaUsers size={28} color="#ffc107" />,
-  "Medical Ethics & Legal Standards": <FaBalanceScale size={28} color="#6c757d" />,
-  "Continuing Professional Development & Licensing": <FaCertificate size={28} color="#6610f2" />,
+  "Medical Ethics & Legal Standards": (
+    <FaBalanceScale size={28} color="#6c757d" />
+  ),
+  "Continuing Professional Development & Licensing": (
+    <FaCertificate size={28} color="#6610f2" />
+  ),
 };
 
 // Expanded Courses (IDs must match CourseDetails.jsx)
@@ -79,7 +93,8 @@ const COURSES = [
   },
   {
     id: 4,
-    title: "Introduction to Seven Major Recommendations to Prevent Tuberculosis Transmission",
+    title:
+      "Introduction to Seven Major Recommendations to Prevent Tuberculosis Transmission",
     category: "Recently Viewed Courses",
     type: "Infectious Disease Control & Public Health",
   },
@@ -91,7 +106,8 @@ const COURSES = [
   },
   {
     id: 6,
-    title: "Basic Course in Family Planning Final Exam and Certificate of Training",
+    title:
+      "Basic Course in Family Planning Final Exam and Certificate of Training",
     category: "Most Popular Certificates",
     type: "Community Health & Outreach",
   },
@@ -103,13 +119,15 @@ const COURSES = [
   },
   {
     id: 8,
-    title: "Basic Life Support Online Training - Didactic [NCMH - 2025 BATCH 10]",
+    title:
+      "Basic Life Support Online Training - Didactic [NCMH - 2025 BATCH 10]",
     category: "Most Popular Certificates",
     type: "Basic Life Support (BLS) & Advanced Cardiac Life Support (ACLS)",
   },
   {
     id: 9,
-    title: "Basic Course on Continuous Quality Improvement for Health Facilities",
+    title:
+      "Basic Course on Continuous Quality Improvement for Health Facilities",
     category: "Most Popular Certificates",
     type: "Continuing Professional Development & Licensing",
   },
@@ -121,7 +139,8 @@ const COURSES = [
   },
   {
     id: 11,
-    title: "Orientation on Navigating the Continuing Professional Accreditation System (CPDAS)",
+    title:
+      "Orientation on Navigating the Continuing Professional Accreditation System (CPDAS)",
     category: "Most Popular Certificates",
     type: "Continuing Professional Development & Licensing",
   },
@@ -192,17 +211,25 @@ const Modules = () => {
                       tabIndex={0}
                       onClick={() => navigate(`/modules/${course.id}`)} // ✅ linked
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") navigate(`/modules/${course.id}`);
+                        if (e.key === "Enter")
+                          navigate(`/modules/${course.id}`);
                       }}
                     >
-                      <div className="card-icon">{CATEGORY_ICONS[course.type]}</div>
+                      <div className="card-icon">
+                        {CATEGORY_ICONS[course.type]}
+                      </div>
                       <h4>{course.title}</h4>
-                      <p>Short description about {course.title} and why it’s useful.</p>
+                      <p>
+                        Short description about {course.title} and why it’s
+                        useful.
+                      </p>
 
                       <div className="progress">
                         <div
                           className="progress-fill"
-                          style={{ width: `${Math.floor(Math.random() * 60) + 20}%` }}
+                          style={{
+                            width: `${Math.floor(Math.random() * 60) + 20}%`,
+                          }}
                         ></div>
                       </div>
                     </div>
@@ -224,12 +251,17 @@ const Modules = () => {
                       tabIndex={0}
                       onClick={() => navigate(`/modules/${course.id}`)} // ✅ linked
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") navigate(`/modules/${course.id}`);
+                        if (e.key === "Enter")
+                          navigate(`/modules/${course.id}`);
                       }}
                     >
-                      <div className="card-icon">{CATEGORY_ICONS[course.type]}</div>
+                      <div className="card-icon">
+                        {CATEGORY_ICONS[course.type]}
+                      </div>
                       <h4>{course.title}</h4>
-                      <p>Enroll now and boost your skills with {course.title}.</p>
+                      <p>
+                        Enroll now and boost your skills with {course.title}.
+                      </p>
                     </div>
                   ))}
               </div>
@@ -259,7 +291,10 @@ const Modules = () => {
                     <td>Oct 30, 2025</td>
                     <td>
                       <div className="progress small">
-                        <div className="progress-fill" style={{ width: "50%" }}></div>
+                        <div
+                          className="progress-fill"
+                          style={{ width: "50%" }}
+                        ></div>
                       </div>
                     </td>
                   </tr>
@@ -269,7 +304,10 @@ const Modules = () => {
                     <td>Nov 15, 2025</td>
                     <td>
                       <div className="progress small">
-                        <div className="progress-fill" style={{ width: "25%" }}></div>
+                        <div
+                          className="progress-fill"
+                          style={{ width: "25%" }}
+                        ></div>
                       </div>
                     </td>
                   </tr>

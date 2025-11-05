@@ -1,110 +1,216 @@
-import React, { useState, useRef, useEffect } from "react";
-import {
-  FaBell,
-  FaUserCircle,
-  FaSearch,
-  FaUser,
-  FaCog,
-  FaSignOutAlt,
-  FaGraduationCap,
-} from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { HashLink } from "react-router-hash-link";
+import { Search, Bell, UserCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import "../../styles/topbar.css";
+import logo from "../../assets/kalinga-logo.png";
+import { useAuth } from "../../context/AuthContext";
 
-const Topbar = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
+export default function ResponderTopbar({
+  notifications = [
+    "New incident reported in your area",
+    "Triage training module available",
+    "Emergency response team deployed",
+  ],
+}) {
+  const { user, logout } = useAuth();
+  const capitalizeFirstLetter = (str) => {
+    if (!str) return str;
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const profileRef = useRef(null);
+  const notifRef = useRef(null);
   const navigate = useNavigate();
+  const userName = user?.name || "Responder";
+  const userRole = user?.role ? capitalizeFirstLetter(user.role) : "Responder";
+  const userPic = user?.profilePicture || "https://i.pravatar.cc/100";
 
-  // Close dropdown when clicking outside
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
+  };
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setIsProfileOpen(false);
+      }
+      if (notifRef.current && !notifRef.current.contains(event.target)) {
+        setIsNotifOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
-  // ✅ Navigation handler
-  const handleNavigate = (path) => {
-    navigate(path);
-    setMenuOpen(false);
-  };
-
-  // ✅ Logout handler
-  const handleLogout = () => {
-    // Clear any stored user session data
-    localStorage.clear();
-    sessionStorage.clear();
-
-    alert("You have been logged out.");
-    setMenuOpen(false);
-
-    // Redirect to login or homepage
-    navigate("/login"); // ← change to "/" if you want to go to homepage
-  };
-
   return (
-    <div className="topbar-container">
-      <div className="topbar">
-        <h2 className="welcome-text">Welcome Back, John!</h2>
+    <div className="flex flex-col bg-white p-3 shadow-md relative">
+      {/* === Top Row === */}
+      <div className="flex flex-wrap justify-between items-center gap-3">
+        {/* Logo */}
+        <HashLink
+          smooth
+          to="/responder/dashboard"
+          className="flex items-center space-x-2 text-xl font-bold text-primary"
+        >
+          <img src={logo} alt="Kalinga Logo" className="h-10 w-auto" />
+          <span className="relative z-10">
+            <span className="text-2xl font-bold bg-gradient-to-r from-lime-400 to-green-950 bg-clip-text text-transparent">
+              KALINGA
+            </span>
+          </span>
+        </HashLink>
 
-        <div className="topbar-right">
+        {/* === Right Side === */}
+        <div className="flex items-center gap-3 sm:gap-5 w-full sm:w-auto justify-between sm:justify-end">
           {/* Search Box */}
-          <div className="search-box">
-            <FaSearch className="search-icon" />
-            <input type="text" placeholder="Search..." />
+          <div className="flex flex-1 sm:flex-none items-center border border-[#004d25] rounded-full px-3 py-1.5 sm:px-4 sm:py-2 bg-[#f9f9f9] max-w-xs">
+            <Search className="text-[#004d25] w-4 h-4 mr-2" />
+            <input
+              type="text"
+              placeholder="Search..."
+              className="bg-transparent border-none outline-none text-sm sm:text-[14px] text-black placeholder:text-gray-500 w-full"
+            />
           </div>
 
-          {/* Notifications */}
-          <button className="icon-button">
-            <FaBell />
-          </button>
-
-          {/* User Dropdown */}
-          <div className="user-menu" ref={menuRef}>
+          {/* Notification Button + Dropdown */}
+          <div className="relative" ref={notifRef}>
             <button
-              className="icon-button"
-              onClick={() => setMenuOpen((prev) => !prev)}
+              className="relative text-[#004d25] w-10 h-10 flex items-center justify-center focus:outline-none"
+              onClick={() => {
+                setIsNotifOpen((prev) => !prev);
+                setIsProfileOpen(false);
+              }}
             >
-              <FaUserCircle />
+              <Bell />
+              {notifications.length > 0 && (
+                <span className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {notifications.length}
+                </span>
+              )}
             </button>
 
-            <AnimatePresence>
-              {menuOpen && (
-                <motion.div
-                  className="dropdown-menu"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ul>
-                    <li onClick={() => handleNavigate("/responder/profile")}>
-                      <FaUser className="menu-icon" /> Profile
+            {isNotifOpen && (
+              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                {/* Header with "See all" */}
+                <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
+                  <span className="font-semibold text-sm text-gray-700">
+                    Notifications
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigate("/responder/dashboard");
+                      setIsNotifOpen(false);
+                    }}
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    See all
+                  </button>
+                </div>
+                <ul className="text-left max-h-60 overflow-y-auto">
+                  {notifications.length > 0 ? (
+                    notifications.map((notif, idx) => (
+                      <li
+                        key={idx}
+                        className="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer"
+                      >
+                        {notif}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="px-4 py-2 text-sm text-gray-500">
+                      No notifications
                     </li>
-                    <li onClick={() => handleNavigate("/responder/settings")}>
-                      <FaCog className="menu-icon" /> Settings
-                    </li>
-                    <li onClick={() => handleNavigate("/responder/grades")}>
-                      <FaGraduationCap className="menu-icon" /> Grades
-                    </li>
-                    {/* ✅ Logout now actually logs the user out */}
-                    <li className="logout" onClick={handleLogout}>
-                      <FaSignOutAlt className="menu-icon" /> Logout
-                    </li>
-                  </ul>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Profile Button + Dropdown */}
+          <div className="relative" ref={profileRef}>
+            <button
+              className="text-[#004d25] w-10 h-10 flex items-center justify-center focus:outline-none"
+              onClick={() => {
+                setIsProfileOpen((prev) => !prev);
+                setIsNotifOpen(false);
+              }}
+            >
+              <UserCircle />
+            </button>
+
+            {isProfileOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                {/* User Info Section */}
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
+                  <img
+                    src={userPic}
+                    alt="User"
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {userName}
+                    </p>
+                    <p className="text-left text-xs text-gray-500">
+                      {userRole}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Dropdown Menu */}
+                <ul className="py-1 text-sm text-gray-700">
+                  <li>
+                    <button
+                      onClick={() => {
+                        navigate("/responder/profile");
+                        setIsProfileOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    >
+                      Profile
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => {
+                        navigate("/responder/grades");
+                        setIsProfileOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    >
+                      Grades
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => {
+                        navigate("/responder/settings");
+                        setIsProfileOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100"
+                    >
+                      Settings
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => handleLogout()}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+                    >
+                      Log out
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default Topbar;
+}

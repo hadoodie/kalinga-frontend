@@ -1,22 +1,23 @@
 import { useState, useRef, useEffect } from "react";
 import { HashLink } from "react-router-hash-link";
-import { Search, Bell, UserCircle } from "lucide-react";
+import { Search, Bell, UserCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
 import { useAuth } from "../context/AuthContext";
+import api from "../services/api"; 
+import { formatDistanceToNow } from 'date-fns'; 
 
-export const NavbarB = ({
-  notifications = [
-    "Typhoon warning in your area",
-    "Relief goods distribution at Barangay Hall",
-    "Responder team dispatched nearby",
-  ],
-}) => {
+// Remove the notifications prop
+export const NavbarB = () => {
   const { user, logout } = useAuth();
   const capitalizeFirstLetter = (str) => {
-    if (!str) return str; // Handles null, undefined, or empty string
+    if (!str) return str;
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
+
+  // Add state for notifications
+  const [notifications, setNotifications] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -31,6 +32,25 @@ export const NavbarB = ({
     await logout();
     navigate("/login");
   };
+
+  // Fetch notifications when the user logs in
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!user) return; // Don't fetch if no user
+      
+      setIsLoading(true);
+      try {
+        const response = await api.get('/notifications');
+        setNotifications(response.data.slice(0, 5)); // Get 5 most recent
+      } catch (error) {
+        console.error("Failed to fetch navbar notifications:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, [user]); // Re-fetch when user changes (e.g., on login)
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -87,6 +107,7 @@ export const NavbarB = ({
               }}
             >
               <Bell />
+              {/* Notification count */}
               {notifications.length > 0 && (
                 <span className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {notifications.length}
@@ -95,8 +116,7 @@ export const NavbarB = ({
             </button>
 
             {isNotifOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                {/* Header with "See all" */}
+              <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
                 <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200">
                   <span className="font-semibold text-sm text-gray-700">
                     Notifications
@@ -108,19 +128,28 @@ export const NavbarB = ({
                     See all
                   </button>
                 </div>
-                <ul className="text-left max-h-60 overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.map((notif, idx) => (
+                {/* Dropdown list */}
+                <ul className="text-left max-h-80 overflow-y-auto">
+                  {isLoading ? (
+                    <li className="px-4 py-3 text-sm text-gray-500 flex items-center justify-center">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    </li>
+                  ) : notifications.length > 0 ? (
+                    notifications.map((notif) => (
                       <li
-                        key={idx}
-                        className="px-4 py-2 text-sm hover:bg-gray-100 cursor-pointer"
+                        key={notif.id}
+                        className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
                       >
-                        {notif}
+                        <p className="text-sm font-semibold text-gray-800">{notif.title}</p>
+                        <p className="text-sm text-gray-600 truncate">{notif.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                        </p>
                       </li>
                     ))
                   ) : (
-                    <li className="px-4 py-2 text-sm text-gray-500">
-                      No notifications
+                    <li className="px-4 py-3 text-sm text-gray-500 text-center">
+                      No new notifications
                     </li>
                   )}
                 </ul>
@@ -142,7 +171,6 @@ export const NavbarB = ({
 
             {isProfileOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-                {/* User Info Section */}
                 <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200">
                   <img
                     src={userPic}
@@ -158,8 +186,6 @@ export const NavbarB = ({
                     </p>
                   </div>
                 </div>
-
-                {/* Dropdown Menu */}
                 <ul className="py-1 text-sm text-gray-700">
                   <li>
                     <button

@@ -26,7 +26,10 @@ const Dashboard = () => {
 
       <div className="cards-grid mt-4">
         <Reports selectedHospital={selectedHospital} />
-        <MapCard selectedCity={selectedCity} selectedHospital={selectedHospital} />
+        <MapCard
+          selectedCity={selectedCity}
+          selectedHospital={selectedHospital}
+        />
       </div>
 
       <div className="mt-4">

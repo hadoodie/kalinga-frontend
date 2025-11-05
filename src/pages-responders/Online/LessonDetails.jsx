@@ -106,7 +106,9 @@ export default function LessonDetails() {
     } else {
       setTimeout(() => {
         if (activeIndex < activities.length - 1) {
-          navigate(`/modules/${id}/activity/${activities[activeIndex + 1].slug}`);
+          navigate(
+            `/modules/${id}/activity/${activities[activeIndex + 1].slug}`
+          );
         }
       }, 600);
     }
@@ -161,7 +163,12 @@ export default function LessonDetails() {
         </div>
 
         <div className="pdf-fallback">
-          <a href={pdfUrl} target="_blank" rel="noreferrer" className="btn btn-outline">
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-outline"
+          >
             Open lesson resource in a new tab / download
           </a>
         </div>
