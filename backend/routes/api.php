@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\IncidentApiController;
 use App\Http\Controllers\Api\RoadBlockadeController;
 use App\Http\Controllers\Api\NotificationController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,7 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Common authenticated routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
-    Route::put('/profile', [AuthController::class, 'updateProfile']); // <-- Duplicate removed
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/verify-id', [AuthController::class, 'verifyId']);
     Route::post('/submit-verification', [AuthController::class, 'submitVerification']);
     
@@ -46,40 +47,46 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/admin/users/{id}/deactivate', [AuthController::class, 'deactivateUser']);
         Route::post('/notifications', [NotificationController::class, 'store']);
     });
-    // <-- DELETED THE EXTRA '});' FROM HERE
 
     // Admin and Logistics routes
     Route::middleware(['role:admin,logistics'])->group(function () {
-        Route::apiResource('resources', ResourceController::class);
+        // Calendar & History Routes (from your calendar feature)
+        Route::get('/resources/calendar/events', [ResourceController::class, 'calendarEvents']);
+        Route::get('/resources/calendar/events/{date}', [ResourceController::class, 'dateEvents']);
+        Route::get('/resources/{resource}/history', [ResourceController::class, 'resourceHistory']);
+        Route::get('/resources/stock-movements', [ResourceController::class, 'stockMovements']);
+        
+        // Stock adjustment (from your calendar feature)
+        Route::post('/resources/{id}/adjust-stock', [ResourceController::class, 'adjustStock']);
+        
+        // Special queries (from your calendar feature)
         Route::get('/resources/low-stock', [ResourceController::class, 'lowStock']);
         Route::get('/resources/critical', [ResourceController::class, 'critical']);
         Route::get('/resources/expiring', [ResourceController::class, 'expiring']);
         
+        // Full CRUD resources (keep this last)
+        Route::apiResource('resources', ResourceController::class);
         Route::apiResource('hospitals', HospitalController::class);
     });
     
     // Responder routes
     Route::middleware(['role:admin,responder'])->group(function () {
-        // Pathfinding routes - protected by role middleware
-Route::middleware(['auth:sanctum', 'role:admin,responder'])->group(function () {
-    Route::get('/incidents', [IncidentApiController::class, 'index']);
-    Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);
-    
-    Route::apiResource('road-blockades', RoadBlockadeController::class);
-    Route::post('/road-blockades/route', [RoadBlockadeController::class, 'getRouteBlockades']);
-    Route::patch('/road-blockades/{id}/remove', [RoadBlockadeController::class, 'removeBlockade']);
-});
+        // Pathfinding routes
+        Route::get('/incidents', [IncidentApiController::class, 'index']);
+        Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);
+        
+        Route::apiResource('road-blockades', RoadBlockadeController::class);
+        Route::post('/road-blockades/route', [RoadBlockadeController::class, 'getRouteBlockades']);
+        Route::patch('/road-blockades/{id}/remove', [RoadBlockadeController::class, 'removeBlockade']);
     });
     
     // Patient routes
     Route::middleware(['role:admin,patient'])->group(function () {
-        // Patient-specific routes will go here
         Route::get('/lab-results', [LabResultController::class, 'index']);
         Route::get('/appointments', [AppointmentController::class, 'index']);
         Route::get('/notifications', [NotificationController::class, 'index']);
     });
-
-}); // <-- This is the correct closing brace for 'auth:sanctum'
+});
 
 // Health check
 Route::get('/health', function () {
@@ -94,7 +101,6 @@ Route::get('/test/hospitals', function () {
     return response()->json(\App\Models\Hospital::all());
 });
 
-// Test routes (public)
 Route::get('/test/resources', function () {
     return response()->json(\App\Models\Resource::with('hospital')->get());
-}); 
+});

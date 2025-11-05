@@ -1,7 +1,7 @@
-// src/components/logistics/registry/RegistryTabs.jsx - UPDATED
-import OverviewTab from "./OverviewTab";
-import MaintenanceTab from "./MaintenanceTab";
-import ReportsTab from "./ReportsTab";
+// src/components/logistics/registry/RegistryTabs.jsx
+import OverviewTab from "./overview/OverviewTab";
+import MaintenanceTab from "./maintenance/MaintenanceTab";
+import ReportsTab from "./reports/ReportsTab";
 
 export default function RegistryTabs({ 
   activeTab, 

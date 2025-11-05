@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Log;
 
 class Resource extends Model
 {
@@ -27,6 +28,11 @@ class Resource extends Model
         'image_url',
         'is_critical',
         'requires_refrigeration',
+        // NEW: History tracking fields
+        'last_stock_movement_date',
+        'last_status_change_date',
+        'significant_quantity_date',
+        'expiry_alert_date',
     ];
 
     protected $casts = [
@@ -37,6 +43,11 @@ class Resource extends Model
         'is_critical' => 'boolean',
         'requires_refrigeration' => 'boolean',
         'expiry_date' => 'date',
+        // NEW: Cast history fields
+        'last_stock_movement_date' => 'date',
+        'last_status_change_date' => 'date',
+        'significant_quantity_date' => 'date',
+        'expiry_alert_date' => 'date',
     ];
 
     /**
@@ -47,6 +58,12 @@ class Resource extends Model
     public function hospital()
     {
         return $this->belongsTo(Hospital::class);
+    }
+
+    // NEW: Stock movements relationship
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class);
     }
 
     // Get total value of this resource
@@ -83,6 +100,15 @@ class Resource extends Model
             return false;
         }
         return $this->expiry_date->isPast();
+    }
+
+    // NEW: Check if needs expiry alert
+    public function getNeedsExpiryAlertAttribute()
+    {
+        if (!$this->expiry_date) {
+            return false;
+        }
+        return $this->expiry_date->diffInDays(now()) <= 30;
     }
 
     /**
@@ -128,6 +154,13 @@ class Resource extends Model
         return $query->where('quantity', '>', 0);
     }
 
+    // NEW: Get items with recent stock movements
+    public function scopeWithRecentMovements($query, $days = 7)
+    {
+        return $query->whereNotNull('last_stock_movement_date')
+                    ->where('last_stock_movement_date', '>=', now()->subDays($days));
+    }
+
     /**
      * Methods
      */
@@ -135,6 +168,8 @@ class Resource extends Model
     // Update status based on quantity
     public function updateStatus()
     {
+        $previousStatus = $this->status;
+        
         if ($this->quantity <= 0) {
             $this->status = 'Out of Stock';
         } elseif ($this->quantity <= ($this->minimum_stock * 0.2)) {
@@ -144,34 +179,97 @@ class Resource extends Model
         } else {
             $this->status = 'High';
         }
+
+        // Record status change if it changed
+        if ($previousStatus !== $this->status) {
+            $this->last_status_change_date = now();
+            
+            // Create status change event for calendar
+            $this->recordStatusChangeEvent($previousStatus, $this->status);
+        }
+
         $this->save();
     }
 
-    // Add stock
-    public function addStock($quantity, $warehouse_id = null, $reason = null)
+    // NEW: Record stock movement with calendar tracking
+    public function recordStockMovement($type, $quantity, $reason = null)
+    {
+        $movement = StockMovement::create([
+            'resource_id' => $this->id,
+            'movement_type' => $type,
+            'quantity' => $quantity,
+            'previous_quantity' => $this->quantity,
+            'new_quantity' => $this->quantity, // Will be updated after quantity change
+            'reason' => $reason ?? 'Manual adjustment',
+            'performed_by' => auth()->id(),
+        ]);
+
+        $this->last_stock_movement_date = now();
+        
+        // Check for significant quantity changes
+        $this->checkSignificantQuantityChange();
+
+        return $movement;
+    }
+
+    // NEW: Check for significant quantity threshold crossings
+    public function checkSignificantQuantityChange()
+    {
+        $previousQuantity = $this->getOriginal('quantity');
+        $currentQuantity = $this->quantity;
+
+        // Check if crossed important thresholds
+        $thresholds = [
+            $this->minimum_stock * 0.2, // Critical threshold (20% of min stock)
+            $this->minimum_stock,        // Low stock threshold
+            0,                           // Out of stock threshold
+        ];
+
+        foreach ($thresholds as $threshold) {
+            if (($previousQuantity > $threshold && $currentQuantity <= $threshold) ||
+                ($previousQuantity <= $threshold && $currentQuantity > $threshold)) {
+                $this->significant_quantity_date = now();
+                break;
+            }
+        }
+    }
+
+    // NEW: Record status change event for calendar
+    public function recordStatusChangeEvent($fromStatus, $toStatus)
+    {
+        // This creates a special calendar event for status changes
+        // You can log this to a separate table or include in stock movements
+        Log::info("Resource status changed", [
+            'resource_id' => $this->id,
+            'resource_name' => $this->name,
+            'from_status' => $fromStatus,
+            'to_status' => $toStatus,
+            'facility' => $this->location,
+            'timestamp' => now()
+        ]);
+    }
+
+    // UPDATED: Add stock with enhanced tracking
+    public function addStock($quantity, $reason = null)
     {
         $previousQuantity = $this->quantity;
         $this->quantity += $quantity;
+        $this->received += $quantity;
         $this->save();
 
-        // Record stock movement
-        StockMovement::create([
-            'resource_id' => $this->id,
-            'warehouse_id' => $warehouse_id ?? $this->warehouse_id,
-            'movement_type' => 'in',
-            'quantity' => $quantity,
-            'previous_quantity' => $previousQuantity,
+        // Update the stock movement with correct new quantity
+        $movement = $this->recordStockMovement('in', $quantity, $reason);
+        $movement->update([
             'new_quantity' => $this->quantity,
-            'performed_by' => auth()->id(),
-            'reason' => $reason,
+            'previous_quantity' => $previousQuantity
         ]);
 
         $this->updateStatus();
         return $this;
     }
 
-    // Remove stock
-    public function removeStock($quantity, $warehouse_id = null, $reason = null)
+    // UPDATED: Remove stock with enhanced tracking
+    public function removeStock($quantity, $reason = null)
     {
         if ($this->quantity < $quantity) {
             throw new \Exception("Insufficient stock. Available: {$this->quantity}, Requested: {$quantity}");
@@ -179,21 +277,41 @@ class Resource extends Model
 
         $previousQuantity = $this->quantity;
         $this->quantity -= $quantity;
+        $this->distributed += $quantity;
         $this->save();
 
-        // Record stock movement
-        StockMovement::create([
-            'resource_id' => $this->id,
-            'warehouse_id' => $warehouse_id ?? $this->warehouse_id,
-            'movement_type' => 'out',
-            'quantity' => $quantity,
-            'previous_quantity' => $previousQuantity,
+        // Update the stock movement with correct new quantity
+        $movement = $this->recordStockMovement('out', $quantity, $reason);
+        $movement->update([
             'new_quantity' => $this->quantity,
-            'performed_by' => auth()->id(),
-            'reason' => $reason,
+            'previous_quantity' => $previousQuantity
         ]);
 
         $this->updateStatus();
         return $this;
+    }
+
+    // NEW: Update expiry alert date
+    public function updateExpiryAlert()
+    {
+        if ($this->expiry_date) {
+            $this->expiry_alert_date = $this->expiry_date->subDays(30);
+            $this->save();
+        }
+    }
+
+    // NEW: Get calendar events for this resource
+    public function getCalendarEvents($startDate = null, $endDate = null)
+    {
+        $query = $this->stockMovements()->with('performedBy');
+
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        return $query->orderBy('created_at', 'desc')->get();
     }
 }

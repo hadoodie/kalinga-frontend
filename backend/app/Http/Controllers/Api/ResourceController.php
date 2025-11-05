@@ -4,7 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Resource;
+use App\Models\StockMovement; 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log; 
+
 
 class ResourceController extends Controller
 {
@@ -76,6 +79,130 @@ class ResourceController extends Controller
 
         return response()->json($resources);
     }
+
+    // Calendar & History Endpoints
+public function calendarEvents(Request $request)
+{
+    $query = StockMovement::with(['resource', 'performedBy'])
+        ->select('stock_movements.*')
+        ->join('resources', 'stock_movements.resource_id', '=', 'resources.id');
+    
+    // Filter by facility/location
+    if ($request->has('location')) {
+        $query->where('resources.location', $request->location);
+    }
+    
+    // Filter by date range
+    if ($request->has('start_date')) {
+        $query->whereDate('stock_movements.created_at', '>=', $request->start_date);
+    }
+    if ($request->has('end_date')) {
+        $query->whereDate('stock_movements.created_at', '<=', $request->end_date);
+    }
+    
+    // Filter by movement type
+    if ($request->has('movement_type')) {
+        $query->where('movement_type', $request->movement_type);
+    }
+    
+    $movements = $query->orderBy('stock_movements.created_at', 'desc')
+                      ->get()
+                      ->groupBy(function($movement) {
+                          return $movement->created_at->format('Y-m-d');
+                      });
+    
+    $events = [];
+    foreach ($movements as $date => $dateMovements) {
+        $events[] = [
+            'date' => $date,
+            'events' => $dateMovements->map(function($movement) {
+                return $this->formatCalendarEvent($movement);
+            })->toArray()
+        ];
+    }
+    
+    return response()->json($events);
+}
+
+public function dateEvents(Request $request, $date)
+{
+    $movements = StockMovement::with(['resource', 'performedBy'])
+        ->whereDate('created_at', $date)
+        ->orderBy('created_at', 'desc')
+        ->get();
+    
+    return response()->json([
+        'date' => $date,
+        'events' => $movements->map(function($movement) {
+            return $this->formatCalendarEvent($movement);
+        })->toArray()
+    ]);
+}
+
+public function resourceHistory(Resource $resource)
+{
+    $movements = $resource->stockMovements()
+                         ->with('performedBy')
+                         ->orderBy('created_at', 'desc')
+                         ->get();
+    
+    return response()->json([
+        'resource' => $resource,
+        'history' => $movements
+    ]);
+}
+
+public function stockMovements(Request $request)
+{
+    $query = StockMovement::with(['resource', 'performedBy']);
+    
+    // Add filters
+    if ($request->has('resource_id')) {
+        $query->where('resource_id', $request->resource_id);
+    }
+    if ($request->has('movement_type')) {
+        $query->where('movement_type', $request->movement_type);
+    }
+    if ($request->has('start_date')) {
+        $query->whereDate('created_at', '>=', $request->start_date);
+    }
+    if ($request->has('end_date')) {
+        $query->whereDate('created_at', '<=', $request->end_date);
+    }
+    
+    $movements = $query->orderBy('created_at', 'desc')
+                      ->paginate($request->get('per_page', 15));
+    
+    return response()->json($movements);
+}
+
+private function formatCalendarEvent(StockMovement $movement)
+{
+    $eventTypes = [
+        'in' => ['type' => 'stock_in', 'color' => 'green', 'icon' => '📥'],
+        'out' => ['type' => 'stock_out', 'color' => 'red', 'icon' => '📤'],
+        'adjustment' => ['type' => 'stock_adjustment', 'color' => 'blue', 'icon' => '⚙️']
+    ];
+    
+    $typeConfig = $eventTypes[$movement->movement_type] ?? $eventTypes['adjustment'];
+    
+    return [
+        'type' => $typeConfig['type'],
+        'resource' => $movement->resource->name,
+        'quantity' => $movement->quantity,
+        'previous_quantity' => $movement->previous_quantity,
+        'new_quantity' => $movement->new_quantity,
+        'facility' => $movement->resource->location,
+        'reason' => $movement->reason,
+        'performed_by' => $movement->performedBy ? $movement->performedBy->name : 'System',
+        'color' => $typeConfig['color'],
+        'icon' => $typeConfig['icon'],
+        'timestamp' => $movement->created_at->toISOString()
+    ];
+}
+
+
+
 
     /**
      * Store a newly created resource
@@ -228,12 +355,12 @@ class ResourceController extends Controller
         
         $quantity = (float) $validated['quantity'];
 
-        Log::info("Adjusting stock for resource {$id}", [
-                'type' => $validated['type'],
-                'adjustment_quantity' => $quantity,
-                'current_quantity' => $resource->quantity,
-                'current_received' => $resource->received,
-            ]);
+            Log::info("Adjusting stock for resource {$id}", [
+            'type' => $validated['type'],
+            'adjustment_quantity' => $quantity,
+            'current_quantity' => $resource->quantity,
+            'current_received' => $resource->received,
+        ]);
 
         switch ($validated['type']) {
             case 'add':

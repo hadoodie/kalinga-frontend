@@ -1,7 +1,12 @@
-// src/services/mockAssetService.js - ENHANCED WITH 50+ SAMPLE DATA
-// Mock data simulating backend responses
+// src/services/mockAssetService.js
+// MERGED MOCK ASSET SERVICE
+// - Combines original template management + enhanced 50+ assets
+// - Preserves compatibility with existing method names & return shapes
+// - Keeps console logs and artificial async delays for realistic behaviour
 
-// Mock assets data - EXPANDED TO 50+ ASSETS
+// --------------------
+// MOCK DATA - ASSETS
+// --------------------
 const mockAssets = [
   {
     id: "AST-001",
@@ -19,7 +24,9 @@ const mockAssets = [
     year: "2022",
     fuelType: "Diesel",
     mileage: "45,200",
-    value: "$185,000"
+    value: "$185,000",
+    purchaseDate: "2023-03-10",
+    fuelLevel: 85
   },
   {
     id: "VHL-002",
@@ -145,7 +152,6 @@ const mockAssets = [
     setupTime: "45 min",
     value: "$1,200,000"
   },
-  // Additional Medical Vehicles
   {
     id: "AST-009",
     type: "Ambulance",
@@ -200,7 +206,6 @@ const mockAssets = [
     mileage: "42,100",
     value: "$85,000"
   },
-  // Additional Emergency Vehicles
   {
     id: "VHL-012",
     type: "Fire Engine",
@@ -255,7 +260,6 @@ const mockAssets = [
     mileage: "22,800",
     value: "$420,000"
   },
-  // Power Equipment
   {
     id: "EQP-015",
     type: "Generator",
@@ -309,7 +313,6 @@ const mockAssets = [
     power: "Electric",
     value: "$18,000"
   },
-  // Watercraft
   {
     id: "VHL-018",
     type: "Rescue Boat",
@@ -346,7 +349,6 @@ const mockAssets = [
     hours: "680",
     value: "$120,000"
   },
-  // Communications Equipment
   {
     id: "AST-020",
     type: "Satellite Trailer",
@@ -381,7 +383,6 @@ const mockAssets = [
     power: "Solar/Battery",
     value: "$35,000"
   },
-  // Additional All-Terrain Vehicles
   {
     id: "VHL-022",
     type: "ATV",
@@ -418,7 +419,6 @@ const mockAssets = [
     mileage: "800",
     value: "$25,000"
   },
-  // Water Equipment
   {
     id: "EQP-024",
     type: "Water Purifier",
@@ -454,7 +454,6 @@ const mockAssets = [
     mileage: "38,900",
     value: "$180,000"
   },
-  // Medical Equipment
   {
     id: "EQP-026",
     type: "Portable Ventilator",
@@ -489,7 +488,6 @@ const mockAssets = [
     power: "Battery",
     value: "$28,000"
   },
-  // Add more to reach 50+...
   {
     id: "AST-028",
     type: "Mobile Kitchen",
@@ -543,7 +541,6 @@ const mockAssets = [
     power: "Generator",
     value: "$12,000"
   },
-  // Continue adding more assets...
   {
     id: "AST-031",
     type: "Decontamination Unit",
@@ -720,7 +717,6 @@ const mockAssets = [
     mileage: "34,200",
     value: "$220,000"
   },
-  // Continue to 50...
   {
     id: "VHL-041",
     type: "Patient Transport",
@@ -898,6 +894,297 @@ const mockAssets = [
   }
 ];
 
+// --------------------
+// Simple maintenance array (keeps backwards compatibility)
+// --------------------
+const mockMaintenanceDataSimple = [
+  {
+    id: 1,
+    assetId: "AST-001",
+    scheduledDate: "2024-02-15",
+    description: "Routine service and inspection",
+    status: "scheduled",
+    priority: "high",
+    technician: "Tech. James Wilson",
+    cost: 450
+  },
+  {
+    id: 2,
+    assetId: "AST-002",
+    scheduledDate: "2024-01-25",
+    description: "Battery replacement and calibration",
+    status: "completed",
+    priority: "medium",
+    technician: "Tech. Maria Garcia",
+    cost: 320
+  },
+  {
+    id: 3,
+    assetId: "AST-003",
+    scheduledDate: "2024-01-30",
+    description: "Wheel assembly repair",
+    status: "overdue",
+    priority: "high",
+    technician: "Tech. Robert Brown",
+    cost: 180
+  }
+];
+
+// --------------------
+// Enhanced maintenance categorized dataset
+// --------------------
+const mockMaintenanceDataEnhanced = {
+  upcoming: [
+    
+
+    {
+      id: 1,
+      assetId: "AST-001",
+      scheduledDate: "2024-02-15",
+      description: "Routine service and inspection",
+      status: "scheduled",
+      priority: "high",
+      technician: "Tech. James Wilson",
+      cost: 450
+    },
+    {
+      id: 2,
+      assetId: "VHL-002",
+      scheduledDate: "2024-02-20",
+      description: "Engine maintenance",
+      status: "scheduled",
+      priority: "medium",
+      technician: "Tech. Maria Garcia",
+      cost: 1200
+    },
+    {
+      id: 6,
+      assetId: "EQP-006",
+      scheduledDate: "2024-02-25",
+      description: "Filter replacement",
+      status: "scheduled",
+      priority: "low",
+      technician: "Tech. Kevin Patel",
+      cost: 200
+    },
+    {
+      id: 10,
+      assetId: "AST-010",
+      scheduledDate: "2024-02-28",
+      description: "ICU equipment calibration",
+      status: "scheduled",
+      priority: "high",
+      technician: "Medical Tech",
+      cost: 1500
+    },
+    {
+      id: 15,
+      assetId: "EQP-015",
+      scheduledDate: "2024-03-01",
+      description: "Generator service",
+      status: "scheduled",
+      priority: "medium",
+      technician: "Tech. James Wilson",
+      cost: 800
+    },
+    {
+      id: 22,
+      assetId: "VHL-022",
+      scheduledDate: "2024-03-05",
+      description: "ATV tire replacement",
+      status: "scheduled",
+      priority: "low",
+      technician: "Tech. Tom Harris",
+      cost: 120
+    }
+  ],
+  overdue: [
+    {
+      id: 3,
+      assetId: "EQP-003",
+      scheduledDate: "2024-01-30",
+      description: "Generator repair",
+      status: "overdue",
+      priority: "high",
+      technician: "Tech. James Wilson",
+      cost: 2200
+    },
+    {
+      id: 7,
+      assetId: "VHL-007",
+      scheduledDate: "2024-01-15",
+      description: "Transmission repair",
+      status: "overdue",
+      priority: "high",
+      technician: "Tech. Tom Harris",
+      cost: 3100
+    },
+    {
+      id: 17,
+      assetId: "EQP-017",
+      scheduledDate: "2024-02-10",
+      description: "Power distribution repair",
+      status: "overdue",
+      priority: "high",
+      technician: "Tech. Lisa Wang",
+      cost: 4200
+    },
+    {
+      id: 33,
+      assetId: "EQP-033",
+      scheduledDate: "2024-02-05",
+      description: "Air compressor overhaul",
+      status: "overdue",
+      priority: "medium",
+      technician: "Tech. James Wilson",
+      cost: 2100
+    },
+    {
+      id: 45,
+      assetId: "EQP-045",
+      scheduledDate: "2024-02-12",
+      description: "Water pump repair",
+      status: "overdue",
+      priority: "medium",
+      technician: "Tech. Tom Harris",
+      cost: 900
+    }
+  ],
+  completed: [
+    {
+      id: 4,
+      assetId: "VHL-004",
+      completedDate: "2024-02-05",
+      description: "Hull inspection and cleaning",
+      status: "completed",
+      technician: "Tech. James Wilson",
+      cost: 450
+    },
+    {
+      id: 5,
+      assetId: "AST-005",
+      completedDate: "2024-02-01",
+      description: "Communication system update",
+      status: "completed",
+      technician: "Tech. Maria Garcia",
+      cost: 1200
+    },
+    {
+      id: 8,
+      assetId: "AST-008",
+      completedDate: "2024-01-28",
+      description: "Tent inspection and repair",
+      status: "completed",
+      technician: "Tech. Tom Harris",
+      cost: 320
+    },
+    {
+      id: 12,
+      assetId: "VHL-012",
+      completedDate: "2024-02-08",
+      description: "Pump testing",
+      status: "completed",
+      technician: "Tech. Kevin Patel",
+      cost: 850
+    },
+    {
+      id: 19,
+      assetId: "VHL-019",
+      completedDate: "2024-02-03",
+      description: "Engine service",
+      status: "completed",
+      technician: "Tech. Lisa Wang",
+      cost: 1200
+    },
+    {
+      id: 26,
+      assetId: "EQP-026",
+      completedDate: "2024-02-10",
+      description: "Ventilator calibration",
+      status: "completed",
+      technician: "Medical Tech",
+      cost: 600
+    }, 
+
+    // In mockMaintenanceDataEnhanced - ADD these to the upcoming array:
+{
+  id: 51,
+  assetId: "AST-001",
+  scheduledDate: "2025-10-15",
+  description: "Annual comprehensive inspection",
+  status: "scheduled",
+  priority: "high",
+  technician: "Tech. James Wilson",
+  cost: 1200
+},
+{
+  id: 52,
+  assetId: "VHL-002", 
+  scheduledDate: "2025-10-20",
+  description: "Engine overhaul and system update",
+  status: "scheduled",
+  priority: "high",
+  technician: "Tech. Maria Garcia",
+  cost: 8500
+},
+{
+  id: 53,
+  assetId: "AST-010",
+  scheduledDate: "2025-11-05",
+  description: "ICU equipment certification",
+  status: "scheduled", 
+  priority: "high",
+  technician: "Medical Tech",
+  cost: 3200
+},
+{
+  id: 54,
+  assetId: "VHL-038",
+  scheduledDate: "2025-11-15",
+  description: "Helicopter annual maintenance",
+  status: "scheduled",
+  priority: "high", 
+  technician: "Aviation Tech",
+  cost: 45000
+},
+{
+  id: 55,
+  assetId: "AST-005",
+  scheduledDate: "2025-12-01",
+  description: "End-of-year communication system update",
+  status: "scheduled",
+  priority: "medium",
+  technician: "Tech. Maria Garcia", 
+  cost: 2800
+},
+{
+  id: 56,
+  assetId: "EQP-016",
+  scheduledDate: "2025-12-10",
+  description: "Generator winter preparation",
+  status: "scheduled",
+  priority: "medium",
+  technician: "Tech. James Wilson",
+  cost: 1500
+},
+{
+  id: 57,
+  assetId: "VHL-032",
+  scheduledDate: "2025-12-20",
+  description: "Ambulance bus safety inspection",
+  status: "scheduled",
+  priority: "high",
+  technician: "EMT Supervisor",
+  cost: 3200
+}
+
+    
+  ]
+};
+
+// --------------------
+// Analytics & Metrics
+// --------------------
 const mockMetrics = {
   total_assets: 50,
   active_assets: 42,
@@ -909,68 +1196,313 @@ const mockMetrics = {
   uptime_percentage: "92%"
 };
 
-// Simulate API delay
+const mockAnalyticsData = {
+  totalAssets: 156,
+  activeAssets: 142,
+  underRepair: 8,
+  standbyAssets: 6,
+  utilizationRate: 91,
+  maintenanceCost: 12500,
+  upcomingMaintenance: 12,
+  assetCategories: [
+    { name: "Medical Vehicles", count: 45, color: "#10B981" },
+    { name: "Medical Equipment", count: 67, color: "#3B82F6" },
+    { name: "Communication", count: 22, color: "#8B5CF6" },
+    { name: "Safety Gear", count: 22, color: "#F59E0B" }
+  ]
+};
+
+// --------------------
+// Template Management (from original file)
+// --------------------
+export const mockTemplates = [
+  {
+    id: 'template-ambulance',
+    name: 'Ambulance',
+    category: 'Medical Vehicles',
+    description: 'Emergency medical transport vehicle with patient care equipment',
+    icon: '🚑',
+    fieldCount: 8,
+    usageCount: 24,
+    lastUsed: '2024-01-15',
+    createdAt: '2023-12-01',
+    updatedAt: '2024-01-10',
+    fields: [
+      { id: 'vin', label: 'VIN Number', type: 'text', required: true, placeholder: 'Enter 17-character VIN', validation: { maxLength: 17, minLength: 17 } },
+      { id: 'capacity', label: 'Patient Capacity', type: 'number', required: true, defaultValue: 6, validation: { min: 1, max: 20 } },
+      { id: 'mileage', label: 'Current Mileage', type: 'number', required: false, validation: { min: 0 } },
+      { id: 'fuel_type', label: 'Fuel Type', type: 'dropdown', required: true, options: ['Gasoline', 'Diesel', 'Hybrid', 'Electric'], defaultValue: 'Gasoline' },
+      { id: 'equipment', label: 'Medical Equipment', type: 'checklist', options: ['Defibrillator', 'Oxygen Tank', 'Stretcher', 'First Aid Kit', 'Patient Monitor', 'Ventilator'] },
+      { id: 'purchase_date', label: 'Purchase Date', type: 'date', required: true },
+      { id: 'license_plate', label: 'License Plate', type: 'text', required: true },
+      { id: 'insurance_expiry', label: 'Insurance Expiry', type: 'date', required: true }
+    ]
+  },
+  {
+    id: 'template-defibrillator',
+    name: 'Defibrillator',
+    category: 'Medical Equipment',
+    description: 'Portable AED device for emergency cardiac care',
+    icon: '💓',
+    fieldCount: 6,
+    usageCount: 42,
+    lastUsed: '2024-01-18',
+    createdAt: '2023-11-15',
+    updatedAt: '2024-01-05',
+    fields: [
+      { id: 'model', label: 'Model Number', type: 'text', required: true, placeholder: 'e.g., AED-3000' },
+      { id: 'serial_number', label: 'Serial Number', type: 'text', required: true },
+      { id: 'battery_type', label: 'Battery Type', type: 'dropdown', required: true, options: ['Lithium', 'NiMH', 'Lead-Acid', 'Alkaline'], defaultValue: 'Lithium' },
+      { id: 'battery_life', label: 'Battery Life Remaining', type: 'number', required: false, validation: { min: 0, max: 100 }, suffix: '%' },
+      { id: 'last_calibration', label: 'Last Calibration Date', type: 'date', required: true },
+      { id: 'warranty_expiry', label: 'Warranty Expiry Date', type: 'date', required: false }
+    ]
+  },
+  {
+    id: 'template-stretcher',
+    name: 'Medical Stretcher',
+    category: 'Medical Equipment',
+    description: 'Patient transport stretcher with adjustable height',
+    icon: '🛏️',
+    fieldCount: 5,
+    usageCount: 18,
+    lastUsed: '2024-01-10',
+    createdAt: '2023-10-20',
+    updatedAt: '2023-12-15',
+    fields: [
+      { id: 'weight_capacity', label: 'Max Weight Capacity', type: 'number', required: true, validation: { min: 50, max: 500 }, defaultValue: 180, suffix: 'kg' },
+      { id: 'stretcher_type', label: 'Stretcher Type', type: 'dropdown', required: true, options: ['Standard', 'Bariatric', 'Pediatric', 'Stair Chair', 'Scoop'], defaultValue: 'Standard' },
+      { id: 'wheel_type', label: 'Wheel Type', type: 'dropdown', required: false, options: ['Fixed', 'Swivel', 'All-Terrain'] },
+      { id: 'frame_material', label: 'Frame Material', type: 'dropdown', required: false, options: ['Aluminum', 'Steel', 'Composite'] },
+      { id: 'accessories', label: 'Included Accessories', type: 'checklist', options: ['IV Pole', 'Oxygen Holder', 'Restraints', 'Storage Basket'] }
+    ]
+  },
+  {
+    id: 'template-mobile-clinic',
+    name: 'Mobile Clinic',
+    category: 'Medical Vehicles',
+    description: 'Self-contained medical facility on wheels',
+    icon: '🏥',
+    fieldCount: 12,
+    usageCount: 8,
+    lastUsed: '2024-01-20',
+    createdAt: '2024-01-05',
+    updatedAt: '2024-01-15',
+    fields: [
+      { id: 'facilities', label: 'Medical Facilities', type: 'checklist', required: true, options: ['Consultation Room', 'Procedure Room', 'Pharmacy', 'Laboratory', 'Waiting Area', 'Restroom'] },
+      { id: 'staff_capacity', label: 'Staff Capacity', type: 'number', required: true, validation: { min: 1, max: 20 }, defaultValue: 6 },
+      { id: 'power_source', label: 'Power Source', type: 'dropdown', required: true, options: ['Generator', 'Solar', 'Grid Connection', 'Hybrid'], defaultValue: 'Generator' },
+      { id: 'water_capacity', label: 'Water Tank Capacity', type: 'number', required: false, suffix: 'L' },
+      { id: 'climate_control', label: 'Climate Control', type: 'checklist', options: ['AC', 'Heating', 'Ventilation', 'Air Filtration'] }
+    ]
+  },
+  {
+    id: 'template-communication',
+    name: 'Communication Kit',
+    category: 'Communication',
+    description: 'Emergency communication equipment for field operations',
+    icon: '📡',
+    fieldCount: 7,
+    usageCount: 15,
+    lastUsed: '2024-01-12',
+    createdAt: '2023-09-10',
+    updatedAt: '2023-12-20',
+    fields: [
+      { id: 'radio_type', label: 'Radio Type', type: 'dropdown', required: true, options: ['VHF', 'UHF', 'Satellite', 'HF'] },
+      { id: 'frequency_range', label: 'Frequency Range', type: 'text', required: false },
+      { id: 'battery_life', label: 'Battery Life', type: 'number', required: false, suffix: 'hours' }
+    ]
+  }
+];
+
+export const mockCategories = [
+  { id: 'all', name: 'All Templates', count: 5 },
+  { id: 'Medical Vehicles', name: 'Medical Vehicles', count: 2 },
+  { id: 'Medical Equipment', name: 'Medical Equipment', count: 2 },
+  { id: 'Communication', name: 'Communication', count: 1 },
+  { id: 'Safety Equipment', name: 'Safety Equipment', count: 0 }
+];
+
+export const mockAssetTemplates = {
+  // Get all templates
+  getTemplates: async (filters = {}) => {
+    await delay(300);
+    let filteredTemplates = [...mockTemplates];
+    if (filters.category && filters.category !== 'all') {
+      filteredTemplates = filteredTemplates.filter(template => template.category === filters.category);
+    }
+    if (filters.search) {
+      const searchLower = filters.search.toLowerCase();
+      filteredTemplates = filteredTemplates.filter(template =>
+        template.name.toLowerCase().includes(searchLower) ||
+        template.description.toLowerCase().includes(searchLower)
+      );
+    }
+    console.log('getTemplates', { filters, resultCount: filteredTemplates.length });
+    return filteredTemplates;
+  },
+
+  // Get template by ID
+  getTemplate: async (id) => {
+    await delay(200);
+    const template = mockTemplates.find(template => template.id === id);
+    if (!template) {
+      throw new Error(`Template with ID ${id} not found`);
+    }
+    console.log('getTemplate', id);
+    return template;
+  },
+
+  // Create new template
+  createTemplate: async (templateData) => {
+    await delay(400);
+    const newTemplate = {
+      ...templateData,
+      id: `template-${Date.now()}`,
+      usageCount: 0,
+      lastUsed: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockTemplates.push(newTemplate);
+    console.log('Created new template:', newTemplate.id);
+    return newTemplate;
+  },
+
+  // Update template
+  updateTemplate: async (id, updates) => {
+    await delay(400);
+    const idx = mockTemplates.findIndex(t => t.id === id);
+    if (idx === -1) {
+      throw new Error(`Template with ID ${id} not found`);
+    }
+    mockTemplates[idx] = { ...mockTemplates[idx], ...updates, updatedAt: new Date().toISOString() };
+    console.log('Updated template:', id);
+    return mockTemplates[idx];
+  },
+
+  // Delete template
+  deleteTemplate: async (id) => {
+    await delay(300);
+    const idx = mockTemplates.findIndex(t => t.id === id);
+    if (idx !== -1) {
+      const removed = mockTemplates.splice(idx, 1)[0];
+      console.log('Deleted template:', id);
+      return { success: true, message: `Template ${id} deleted successfully`, template: removed };
+    }
+    return { success: false, message: `Template ${id} not found` };
+  },
+
+  // Get categories
+  getCategories: async () => {
+    await delay(200);
+    return mockCategories;
+  },
+
+  // Increment usage count
+  incrementUsage: async (templateId) => {
+    await delay(100);
+    const template = mockTemplates.find(t => t.id === templateId);
+    if (template) {
+      template.usageCount += 1;
+      template.lastUsed = new Date().toISOString().split('T')[0];
+      console.log('incrementUsage', templateId, template.usageCount);
+    }
+    return { success: true };
+  },
+
+  // Duplicate template
+  duplicateTemplate: async (templateId, newName) => {
+    await delay(400);
+    const originalTemplate = mockTemplates.find(t => t.id === templateId);
+    if (!originalTemplate) {
+      throw new Error(`Template with ID ${templateId} not found`);
+    }
+    const duplicatedTemplate = {
+      ...originalTemplate,
+      id: `template-${Date.now()}`,
+      name: newName || `${originalTemplate.name} (Copy)`,
+      usageCount: 0,
+      lastUsed: null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    mockTemplates.push(duplicatedTemplate);
+    console.log('duplicateTemplate', templateId, duplicatedTemplate.id);
+    return duplicatedTemplate;
+  }
+};
+
+// --------------------
+// Utility delay function
+// --------------------
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+// --------------------
+// Exported mockAssetService (combined & compatible)
+// --------------------
 export const mockAssetService = {
-  async getAssets() {
+  // ASSETS
+  async getAssets(filters = {}) {
     await delay(800);
-    return [...mockAssets];
+    let filtered = [...mockAssets];
+
+    if (filters.status) {
+      filtered = filtered.filter(a => a.status === filters.status);
+    }
+    if (filters.location) {
+      filtered = filtered.filter(a => a.location && a.location.includes(filters.location));
+    }
+    if (filters.type) {
+      filtered = filtered.filter(a => a.type === filters.type);
+    }
+    if (filters.category) {
+      filtered = filtered.filter(a => a.category === filters.category);
+    }
+    if (filters.search) {
+      const q = filters.search.toLowerCase();
+      filtered = filtered.filter(asset =>
+        (asset.id && asset.id.toLowerCase().includes(q)) ||
+        (asset.type && asset.type.toLowerCase().includes(q)) ||
+        (asset.location && asset.location.toLowerCase().includes(q)) ||
+        (asset.personnel && asset.personnel.toLowerCase().includes(q)) ||
+        (asset.category && asset.category.toLowerCase().includes(q)) ||
+        (asset.manufacturer && asset.manufacturer.toLowerCase().includes(q))
+      );
+    }
+
+    console.log('getAssets', { filters, resultCount: filtered.length });
+    return [...filtered];
   },
 
-  async getMetrics() {
-    await delay(500);
-    return { ...mockMetrics };
+  async getAsset(id) {
+    await delay(300);
+    const asset = mockAssets.find(a => a.id === id);
+    if (!asset) throw new Error('Asset not found');
+    console.log('getAsset', id);
+    return asset;
   },
 
-  async getTransactionsByDate(date) {
-    await delay(600);
-    return {
-      data: [
-        {
-          assetId: "AST-001",
-          type: "maintenance",
-          description: "Routine service completed",
-          personnel: "Tech. James Wilson",
-          location: "Maintenance Depot",
-          timestamp: `${date}T10:30:00Z`
-        },
-        {
-          assetId: "VHL-002",
-          type: "inspection",
-          description: "Monthly safety inspection",
-          personnel: "Safety Officer",
-          location: "North Station",
-          timestamp: `${date}T14:15:00Z`
-        },
-        {
-          assetId: "EQP-003",
-          type: "repair",
-          description: "Generator engine overhaul",
-          personnel: "Tech. James Wilson",
-          location: "Maintenance Depot",
-          timestamp: `${date}T16:45:00Z`
-        }
-      ]
-    };
-  },
-
-  async createAsset(assetData) {
+  async createAsset(data) {
     await delay(1000);
+    const newId = `AST-${String(mockAssets.length + 1).padStart(3, '0')}`;
     const newAsset = {
-      ...assetData,
-      id: `AST-${String(mockAssets.length + 1).padStart(3, '0')}`,
-      condition: "New"
+      ...data,
+      id: newId,
+      createdAt: new Date().toISOString(),
+      condition: data.condition || 'New'
     };
     mockAssets.push(newAsset);
+    console.log('createAsset', newId);
     return newAsset;
   },
 
-  async updateAsset(id, assetData) {
+  async updateAsset(id, data) {
     await delay(800);
-    const index = mockAssets.findIndex(asset => asset.id === id);
+    const index = mockAssets.findIndex(a => a.id === id);
     if (index !== -1) {
-      mockAssets[index] = { ...mockAssets[index], ...assetData };
+      mockAssets[index] = { ...mockAssets[index], ...data, updatedAt: new Date().toISOString() };
+      console.log('updateAsset', id);
       return mockAssets[index];
     }
     throw new Error("Asset not found");
@@ -978,166 +1510,37 @@ export const mockAssetService = {
 
   async deleteAsset(id) {
     await delay(600);
-    const index = mockAssets.findIndex(asset => asset.id === id);
+    const index = mockAssets.findIndex(a => a.id === id);
     if (index !== -1) {
-      return mockAssets.splice(index, 1)[0];
+      const removed = mockAssets.splice(index, 1)[0];
+      console.log('deleteAsset', id);
+      return removed;
     }
     throw new Error("Asset not found");
   },
 
-  // MAINTENANCE METHODS
-  async getMaintenanceData() {
+  // MAINTENANCE
+  /**
+   * getMaintenanceData(options)
+   * - If called with no args (legacy usage), returns the SIMPLE array (backwards compatible).
+   * - To get the enhanced categorized maintenance structure, pass { detail: 'full' }.
+   */
+  async getMaintenanceData(options = {}) {
     await delay(600);
-    return {
-      upcoming: [
-        {
-          id: 1,
-          assetId: "AST-001",
-          scheduledDate: "2024-02-15",
-          description: "Routine service and inspection",
-          status: "scheduled",
-          priority: "high"
-        },
-        {
-          id: 2,
-          assetId: "VHL-002",
-          scheduledDate: "2024-02-20", 
-          description: "Engine maintenance",
-          status: "scheduled",
-          priority: "medium"
-        },
-        {
-          id: 6,
-          assetId: "EQP-006",
-          scheduledDate: "2024-02-25",
-          description: "Filter replacement",
-          status: "scheduled",
-          priority: "low"
-        },
-        {
-          id: 10,
-          assetId: "AST-010",
-          scheduledDate: "2024-02-28",
-          description: "ICU equipment calibration",
-          status: "scheduled",
-          priority: "high"
-        },
-        {
-          id: 15,
-          assetId: "EQP-015",
-          scheduledDate: "2024-03-01",
-          description: "Generator service",
-          status: "scheduled",
-          priority: "medium"
-        },
-        {
-          id: 22,
-          assetId: "VHL-022",
-          scheduledDate: "2024-03-05",
-          description: "ATV tire replacement",
-          status: "scheduled",
-          priority: "low"
-        }
-      ],
-      overdue: [
-        {
-          id: 3,
-          assetId: "EQP-003",
-          scheduledDate: "2024-01-30",
-          description: "Generator repair",
-          status: "overdue",
-          priority: "high"
-        },
-        {
-          id: 7,
-          assetId: "VHL-007",
-          scheduledDate: "2024-01-15",
-          description: "Transmission repair",
-          status: "overdue",
-          priority: "high"
-        },
-        {
-          id: 17,
-          assetId: "EQP-017",
-          scheduledDate: "2024-02-10",
-          description: "Power distribution repair",
-          status: "overdue",
-          priority: "high"
-        },
-        {
-          id: 33,
-          assetId: "EQP-033",
-          scheduledDate: "2024-02-05",
-          description: "Air compressor overhaul",
-          status: "overdue",
-          priority: "medium"
-        },
-        {
-          id: 45,
-          assetId: "EQP-045",
-          scheduledDate: "2024-02-12",
-          description: "Water pump repair",
-          status: "overdue",
-          priority: "medium"
-        }
-      ],
-      completed: [
-        {
-          id: 4,
-          assetId: "VHL-004",
-          completedDate: "2024-02-05",
-          description: "Hull inspection and cleaning",
-          status: "completed",
-          technician: "Tech. James Wilson",
-          cost: 450
-        },
-        {
-          id: 5,
-          assetId: "AST-005", 
-          completedDate: "2024-02-01",
-          description: "Communication system update",
-          status: "completed",
-          technician: "Tech. Maria Garcia",
-          cost: 1200
-        },
-        {
-          id: 8,
-          assetId: "AST-008",
-          completedDate: "2024-01-28",
-          description: "Tent inspection and repair",
-          status: "completed",
-          technician: "Tech. Tom Harris",
-          cost: 320
-        },
-        {
-          id: 12,
-          assetId: "VHL-012",
-          completedDate: "2024-02-08",
-          description: "Pump testing",
-          status: "completed",
-          technician: "Tech. Kevin Patel",
-          cost: 850
-        },
-        {
-          id: 19,
-          assetId: "VHL-019",
-          completedDate: "2024-02-03",
-          description: "Engine service",
-          status: "completed",
-          technician: "Tech. Lisa Wang",
-          cost: 1200
-        },
-        {
-          id: 26,
-          assetId: "EQP-026",
-          completedDate: "2024-02-10",
-          description: "Ventilator calibration",
-          status: "completed",
-          technician: "Medical Tech",
-          cost: 600
-        }
-      ]
-    };
+    if (options && options.detail === 'full') {
+      console.log('getMaintenanceData (full)');
+      return JSON.parse(JSON.stringify(mockMaintenanceDataEnhanced)); // return clone
+    }
+    // backward compatible default
+    console.log('getMaintenanceData (simple)');
+    return [...mockMaintenanceDataSimple];
+  },
+
+  // For consumers that want explicit access to the enhanced structure
+  async getMaintenanceOverview() {
+    await delay(400);
+    console.log('getMaintenanceOverview');
+    return JSON.parse(JSON.stringify(mockMaintenanceDataEnhanced));
   },
 
   async scheduleMaintenance(maintenanceData) {
@@ -1148,26 +1551,29 @@ export const mockAssetService = {
       status: 'scheduled',
       createdAt: new Date().toISOString()
     };
-    
-    console.log('Scheduling maintenance:', newMaintenance);
+    // For compatibility, push to simple list and the enhanced upcoming list
+    mockMaintenanceDataSimple.push({
+      id: mockMaintenanceDataSimple.length + 1,
+      ...maintenanceData
+    });
+    mockMaintenanceDataEnhanced.upcoming.push({ id: Number(new Date()), ...maintenanceData });
+    console.log('scheduleMaintenance', newMaintenance.id);
     return newMaintenance;
   },
 
-  // REPORTS & ANALYTICS METHODS
+  // ANALYTICS & METRICS
   async getAnalyticsData(dateRange = "month") {
     await delay(700);
-    
-    // Mock analytics data based on date range
+    // Keep similar shape used by enhanced version
     const dataByRange = {
       week: { multiplier: 1, period: "weekly" },
       month: { multiplier: 4, period: "monthly" },
       quarter: { multiplier: 12, period: "quarterly" },
       year: { multiplier: 48, period: "yearly" }
     };
-    
     const range = dataByRange[dateRange] || dataByRange.month;
-    
-    return {
+
+    const analytics = {
       statusDistribution: [
         { status: "Active", count: 42, percentage: 84 },
         { status: "Under Repair", count: 5, percentage: 10 },
@@ -1204,7 +1610,7 @@ export const mockAssetService = {
         { category: "Support Equipment", count: 3, value: "$33,500" }
       ],
       assetMetrics: {
-        totalAssets: "50",
+        totalAssets: String(mockAssets.length),
         utilizationRate: "84%",
         avgMaintenanceCost: "$1,450",
         uptime: "92%",
@@ -1214,31 +1620,80 @@ export const mockAssetService = {
         activePersonnel: "68"
       }
     };
+
+    console.log('getAnalyticsData', { dateRange, period: range.period });
+    return analytics;
   },
 
-  // EXPORT & REPORT METHODS
-  async generateReport(exportConfig) {
+  // Scheduled Reports
+  async getScheduledReports() {
+    await delay(300);
+    const schedules = [
+      {
+        id: 'schedule-1',
+        name: 'Weekly Asset Summary',
+        description: 'Weekly overview of all assets and maintenance',
+        reportSource: 'template',
+        reportId: 'template-1',
+        format: 'pdf',
+        recipients: ['manager@hospital.org', 'logistics@hospital.org'],
+        frequency: 'weekly',
+        dayOfWeek: 1,
+        time: '09:00',
+        timezone: 'America/New_York',
+        enabled: true,
+        lastRun: '2024-01-15T09:00:00Z',
+        lastRunStatus: 'success'
+      },
+      {
+        id: 'schedule-2',
+        name: 'Monthly Maintenance Report',
+        description: 'Detailed maintenance cost analysis',
+        reportSource: 'custom',
+        reportId: 'report-123',
+        format: 'excel',
+        recipients: ['finance@hospital.org'],
+        frequency: 'monthly',
+        dayOfWeek: 1,
+        time: '08:00',
+        timezone: 'America/New_York',
+        enabled: false,
+        lastRun: '2024-01-01T08:00:00Z',
+        lastRunStatus: 'success'
+      }
+    ];
+    console.log('getScheduledReports', schedules.length);
+    return schedules;
+  },
+
+  // REPORT GENERATION (simulate file download)
+  async generateReport(exportConfig = { format: 'pdf', reportType: 'asset-summary', dateRange: 'month' }) {
     console.log('Generating report with config:', exportConfig);
-    
-    // Simulate API delay
     await delay(1500);
-    
-    // Simulate file download
-    const content = `Asset Registry Report\nGenerated: ${new Date().toLocaleDateString()}\nFormat: ${exportConfig.format}\nType: ${exportConfig.reportType}\nDate Range: ${exportConfig.dateRange}\nTotal Assets: 50\nActive Assets: 42\nTotal Value: $15.8M`;
-    const blob = new Blob([content], { 
-      type: exportConfig.format === 'pdf' ? 'application/pdf' : 
-            exportConfig.format === 'csv' ? 'text/csv' : 'application/vnd.ms-excel' 
-    });
-    
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `asset-report-${new Date().toISOString().split('T')[0]}.${exportConfig.format}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
+
+    // Generate content
+    const content = `Asset Registry Report\nGenerated: ${new Date().toLocaleDateString()}\nFormat: ${exportConfig.format}\nType: ${exportConfig.reportType}\nDate Range: ${exportConfig.dateRange}\nTotal Assets: ${mockAssets.length}\nActive Assets: ${mockAssets.filter(a => a.status === 'Active').length}\nTotal Value: ${mockMetrics.total_value || '$15.8M'}`;
+
+    // Create blob and trigger download in browser (if running in browser)
+    try {
+      const blob = new Blob([content], {
+        type: exportConfig.format === 'pdf' ? 'application/pdf' :
+              exportConfig.format === 'csv' ? 'text/csv' : 'application/vnd.ms-excel'
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `asset-report-${new Date().toISOString().split('T')[0]}.${exportConfig.format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      console.log('generateReport: download triggered');
+    } catch (err) {
+      // Not running in browser environment - just return success metadata
+      console.log('generateReport: non-browser environment or download suppressed', err?.message);
+    }
+
     return {
       success: true,
       format: exportConfig.format,
@@ -1250,110 +1705,116 @@ export const mockAssetService = {
   async getReportTemplates() {
     await delay(500);
     return [
-      {
-        id: 'asset-summary',
-        name: 'Asset Summary Report',
-        description: 'Overview of all assets and status',
-        category: 'summary',
-        icon: '📊',
-        popularity: 95
-      },
-      {
-        id: 'maintenance-report',
-        name: 'Maintenance Report',
-        description: 'Maintenance history and schedules',
-        category: 'maintenance',
-        icon: '🔧',
-        popularity: 88
-      },
-      {
-        id: 'utilization-report',
-        name: 'Utilization Report',
-        description: 'Asset usage and performance metrics',
-        category: 'performance',
-        icon: '📈',
-        popularity: 92
-      },
-      {
-        id: 'cost-analysis',
-        name: 'Cost Analysis',
-        description: 'Maintenance and operational costs',
-        category: 'financial',
-        icon: '💰',
-        popularity: 85
-      },
-      {
-        id: 'inventory-report',
-        name: 'Inventory Report',
-        description: 'Complete asset inventory listing',
-        category: 'summary',
-        icon: '📋',
-        popularity: 78
-      },
-      {
-        id: 'performance-dashboard',
-        name: 'Performance Dashboard',
-        description: 'Key performance indicators',
-        category: 'performance',
-        icon: '🚀',
-        popularity: 90
-      }
+      { id: 'asset-summary', name: 'Asset Summary Report', description: 'Overview of all assets and status', category: 'summary', icon: '📊', popularity: 95 },
+      { id: 'maintenance-report', name: 'Maintenance Report', description: 'Maintenance history and schedules', category: 'maintenance', icon: '🔧', popularity: 88 },
+      { id: 'utilization-report', name: 'Utilization Report', description: 'Asset usage and performance metrics', category: 'performance', icon: '📈', popularity: 92 },
+      { id: 'cost-analysis', name: 'Cost Analysis', description: 'Maintenance and operational costs', category: 'financial', icon: '💰', popularity: 85 },
+      { id: 'inventory-report', name: 'Inventory Report', description: 'Complete asset inventory listing', category: 'summary', icon: '📋', popularity: 78 },
+      { id: 'performance-dashboard', name: 'Performance Dashboard', description: 'Key performance indicators', category: 'performance', icon: '🚀', popularity: 90 }
     ];
   },
 
-  async exportData(format, data) {
+  async exportData(format = 'csv', data = {}) {
     await delay(1000);
     console.log(`Exporting data as ${format}:`, data);
-    return { 
-      success: true, 
-      format, 
+    return {
+      success: true,
+      format,
       timestamp: new Date().toISOString(),
       message: `Data exported successfully as ${format}`
     };
   },
 
-  // ADDITIONAL UTILITY METHODS
+  // SEARCH & UTILITY
   async searchAssets(query) {
     await delay(600);
-    const filteredAssets = mockAssets.filter(asset => 
-      asset.id.toLowerCase().includes(query.toLowerCase()) ||
-      asset.type.toLowerCase().includes(query.toLowerCase()) ||
-      asset.location.toLowerCase().includes(query.toLowerCase()) ||
-      asset.personnel.toLowerCase().includes(query.toLowerCase()) ||
-      asset.category.toLowerCase().includes(query.toLowerCase()) ||
-      asset.manufacturer.toLowerCase().includes(query.toLowerCase())
+    const q = (query || '').toLowerCase();
+    const results = mockAssets.filter(asset =>
+      (asset.id && asset.id.toLowerCase().includes(q)) ||
+      (asset.type && asset.type.toLowerCase().includes(q)) ||
+      (asset.location && asset.location.toLowerCase().includes(q)) ||
+      (asset.personnel && asset.personnel.toLowerCase().includes(q)) ||
+      (asset.category && asset.category.toLowerCase().includes(q)) ||
+      (asset.manufacturer && asset.manufacturer.toLowerCase().includes(q))
     );
-    return filteredAssets;
+    console.log('searchAssets', { query, resultCount: results.length });
+    return results;
   },
 
   async getAssetsByStatus(status) {
     await delay(500);
-    const filteredAssets = mockAssets.filter(asset => asset.status === status);
-    return filteredAssets;
+    const out = mockAssets.filter(a => a.status === status);
+    console.log('getAssetsByStatus', status, out.length);
+    return out;
   },
 
   async getAssetsByLocation(location) {
     await delay(500);
-    const filteredAssets = mockAssets.filter(asset => asset.location === location);
-    return filteredAssets;
+    const out = mockAssets.filter(a => a.location === location);
+    console.log('getAssetsByLocation', location, out.length);
+    return out;
   },
 
   async getAssetsByCategory(category) {
     await delay(500);
-    const filteredAssets = mockAssets.filter(asset => asset.category === category);
-    return filteredAssets;
+    const out = mockAssets.filter(a => a.category === category);
+    console.log('getAssetsByCategory', category, out.length);
+    return out;
   },
 
   async getAssetCategories() {
     await delay(300);
     const categories = [...new Set(mockAssets.map(asset => asset.category))];
+    console.log('getAssetCategories', categories.length);
     return categories;
   },
 
   async getAssetLocations() {
     await delay(300);
     const locations = [...new Set(mockAssets.map(asset => asset.location))];
+    console.log('getAssetLocations', locations.length);
     return locations;
+  },
+
+  // METRICS
+  async getMetrics() {
+    await delay(500);
+    console.log('getMetrics');
+    return { ...mockMetrics };
+  },
+
+  // TRANSACTIONS (by date)
+  async getTransactionsByDate(date) {
+    await delay(600);
+    console.log('getTransactionsByDate', date);
+    return {
+      data: [
+        {
+          assetId: "AST-001",
+          type: "maintenance",
+          description: "Routine service completed",
+          personnel: "Tech. James Wilson",
+          location: "Maintenance Depot",
+          timestamp: `${date}T10:30:00Z`
+        },
+        {
+          assetId: "VHL-002",
+          type: "inspection",
+          description: "Monthly safety inspection",
+          personnel: "Safety Officer",
+          location: "North Station",
+          timestamp: `${date}T14:15:00Z`
+        },
+        {
+          assetId: "EQP-003",
+          type: "repair",
+          description: "Generator engine overhaul",
+          personnel: "Tech. James Wilson",
+          location: "Maintenance Depot",
+          timestamp: `${date}T16:45:00Z`
+        }
+      ]
+    };
   }
 };
 
