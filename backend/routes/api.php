@@ -22,17 +22,21 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+// Public routes with rate limiting
+Route::middleware(['throttle:10,1'])->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+});
 
 // Public read-only routes for testing
-Route::get('/hospitals', [HospitalController::class, 'index']);
-Route::get('/resources', [ResourceController::class, 'index']);
+Route::middleware(['throttle:60,1'])->group(function () {
+    Route::get('/hospitals', [HospitalController::class, 'index']);
+    Route::get('/resources', [ResourceController::class, 'index']);
+});
 
-// Protected routes (require authentication)
-Route::middleware('auth:sanctum')->group(function () {
+// Protected routes (require authentication + rate limiting)
+Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Common authenticated routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);

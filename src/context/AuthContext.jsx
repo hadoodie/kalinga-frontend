@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
+import { getCsrfCookie } from "../services/api";
 
 const AuthContext = createContext(null);
 
@@ -16,15 +17,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem("token"));
 
-  // Check if user is authenticated on mount
+  // Initialize CSRF protection and check authentication on mount
   useEffect(() => {
     const initAuth = async () => {
+      // Get CSRF cookie first for security
+      await getCsrfCookie();
+
       const savedToken = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
 
       if (savedToken) {
         try {
-          // First try to use cached user data
+          // First try to use cached user data for faster load
           if (savedUser) {
             setUser(JSON.parse(savedUser));
             setToken(savedToken);
@@ -37,7 +41,13 @@ export const AuthProvider = ({ children }) => {
               localStorage.setItem("user", JSON.stringify(userData));
             } catch (bgError) {
               // If background refresh fails, keep using cached data
-              console.log("Background user refresh failed, using cached data");
+              // Only log out if it's explicitly a 401 Unauthorized (invalid token)
+              if (bgError.response?.status === 401) {
+                console.warn("Token is invalid, will use cached data but may need re-login");
+                // Don't clear immediately - let the API interceptor handle it
+              } else {
+                console.log("Background user refresh failed (network issue), using cached data");
+              }
             }
           } else {
             // No cached user, fetch from API
@@ -64,8 +74,30 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  // Keep session alive with periodic heartbeat
+  useEffect(() => {
+    if (!user || !token) return;
+
+    // Ping server every 10 minutes to keep session active
+    const keepAliveInterval = setInterval(async () => {
+      try {
+        await authService.getCurrentUser();
+        console.log("Session keep-alive successful");
+      } catch (error) {
+        // If keep-alive fails, session might be expired
+        // But don't force logout - let the API interceptor handle it
+        console.warn("Session keep-alive failed:", error.message);
+      }
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => clearInterval(keepAliveInterval);
+  }, [user, token]);
+
   const login = async (credentials) => {
     try {
+      // Ensure CSRF cookie is fresh before login
+      await getCsrfCookie();
+      
       const data = await authService.login(credentials);
       setUser(data.user);
       setToken(data.token);
