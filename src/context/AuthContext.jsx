@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
 import { getCsrfCookie } from "../services/api";
+import { cleanupAuthStorage } from "../utils/storage";
 
 const AuthContext = createContext(null);
 
@@ -22,41 +23,55 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       // Get CSRF cookie first for security
       await getCsrfCookie();
+      
+      // Clean up any invalid localStorage data first
+      cleanupAuthStorage();
 
       const savedToken = localStorage.getItem("token");
       const savedUser = localStorage.getItem("user");
 
       if (savedToken) {
         try {
-          // First try to use cached user data for faster load
-          if (savedUser) {
-            setUser(JSON.parse(savedUser));
-            setToken(savedToken);
-            setLoading(false);
-
-            // Then fetch fresh data in background
+          // First try to use cached user data (with validation)
+          if (savedUser && savedUser !== "undefined" && savedUser !== "null") {
             try {
-              const userData = await authService.getCurrentUser();
-              setUser(userData);
-              localStorage.setItem("user", JSON.stringify(userData));
-            } catch (bgError) {
-              // If background refresh fails, keep using cached data
-              // Only log out if it's explicitly a 401 Unauthorized (invalid token)
-              if (bgError.response?.status === 401) {
-                console.warn("Token is invalid, will use cached data but may need re-login");
-                // Don't clear immediately - let the API interceptor handle it
-              } else {
-                console.log("Background user refresh failed (network issue), using cached data");
+              const parsedUser = JSON.parse(savedUser);
+              // Validate it's actually an object with user data
+              if (parsedUser && typeof parsedUser === "object" && parsedUser.id) {
+                setUser(parsedUser);
+                setToken(savedToken);
+                setLoading(false);
+
+                // Then fetch fresh data in background
+                try {
+                  const userData = await authService.getCurrentUser();
+                  setUser(userData);
+                  localStorage.setItem("user", JSON.stringify(userData));
+                } catch (bgError) {
+                  // If background refresh fails, keep using cached data
+                  // Only log out if it's explicitly a 401 Unauthorized (invalid token)
+                  if (bgError.response?.status === 401) {
+                    console.warn("Token is invalid, will use cached data but may need re-login");
+                    // Don't clear immediately - let the API interceptor handle it
+                  } else {
+                    console.log("Background user refresh failed (network issue), using cached data");
+                  }
+                }
+                return; // Exit early if cached user worked
               }
+            } catch (parseError) {
+              console.warn("Failed to parse saved user data, will fetch fresh");
+              // Clear invalid data
+              localStorage.removeItem("user");
             }
-          } else {
-            // No cached user, fetch from API
-            const userData = await authService.getCurrentUser();
-            setUser(userData);
-            setToken(savedToken);
-            localStorage.setItem("user", JSON.stringify(userData));
-            setLoading(false);
           }
+          
+          // No valid cached user, fetch from API
+          const userData = await authService.getCurrentUser();
+          setUser(userData);
+          setToken(savedToken);
+          localStorage.setItem("user", JSON.stringify(userData));
+          setLoading(false);
         } catch (error) {
           console.error("Failed to fetch user:", error);
           // Token is invalid, clear it
