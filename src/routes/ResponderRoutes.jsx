@@ -12,6 +12,7 @@ const OnlineTraining = lazy(() => import("../pages-responders/OnlineTraining"));
 const Settings = lazy(() => import("../pages-responders/Settings"));
 const Profile = lazy(() => import("../pages-responders/Profile"));
 const Grades = lazy(() => import("../pages-responders/Grades"));
+const Messages = lazy(() => import("../pages-responders/Messages"));
 
 // Pathfinding Pages
 const ResponseMap = lazy(() =>
@@ -96,6 +97,14 @@ export const ResponderRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
           <TriageSystem />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/responder/messages"
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Messages />
         </ProtectedRoute>
       }
     />

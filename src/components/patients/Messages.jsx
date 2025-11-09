@@ -1014,6 +1014,9 @@ export default function MessagesContact() {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
 
+  // Derive detail view state for mobile master-detail pattern
+  const isDetailViewActive = selectedConversation || activeTab !== MainContentTabs.INBOX;
+
   // Check if we're coming from emergency report with a filter state
   useEffect(() => {
     if (location.state?.filterCategory) {
@@ -1154,7 +1157,7 @@ export default function MessagesContact() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Conversation List and Navigation */}
-        <aside className="lg:col-span-1 space-y-6">
+        <aside className={`lg:col-span-1 space-y-6 ${isDetailViewActive ? "hidden lg:block" : "block"}`}>
           <div className="bg-white p-4 rounded-xl shadow-xl border">
             {/* New Message Button */}
             <button
@@ -1300,7 +1303,7 @@ export default function MessagesContact() {
         </aside>
 
         {/* Right Column: Main Content Area */}
-        <section className="lg:col-span-2">{renderMainPanel()}</section>
+        <section className={`lg:col-span-2 ${isDetailViewActive ? "block" : "hidden lg:block"}`}>{renderMainPanel()}</section>
       </div>
     </div>
   );
