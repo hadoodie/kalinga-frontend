@@ -369,7 +369,10 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
   const hasUnread = conversation.unreadCount > 0;
 
   // Emergency conversations get special red styling
-  const statusClass = isEmergency
+  // Selected state uses blue background for clean, non-conflicting selection
+  const statusClass = isSelected
+    ? "border-blue-300 bg-blue-50"
+    : isEmergency
     ? hasUnread
       ? "border-red-400 bg-red-50"
       : "border-red-200 bg-red-50/50"
@@ -387,14 +390,30 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
     }
   );
 
+  const handleMoreClick = (e) => {
+    e.stopPropagation(); // Prevent conversation selection when clicking menu
+  };
+
+  const handleArchive = (e) => {
+    e.stopPropagation();
+    console.log("Archive conversation:", conversation.id);
+    // TODO: Implement archive functionality
+  };
+
+  const handleMarkUnread = (e) => {
+    e.stopPropagation();
+    console.log("Mark as unread:", conversation.id);
+    // TODO: Implement mark as unread functionality
+  };
+
   return (
     <li
       onClick={() => onSelect(conversation)}
-      className={`p-3 cursor-pointer transition rounded-xl mb-2 border ${statusClass} ${
-        isSelected ? "ring-2 ring-green-500 shadow-md" : ""
+      className={`group relative p-3 cursor-pointer transition rounded-xl mb-2 border ${statusClass} ${
+        isSelected ? "shadow-md" : ""
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         {/* Avatar */}
         <div className="relative shrink-0">
           <img
@@ -407,10 +426,11 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
           )}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start mb-1">
-            <div className="flex items-center gap-2">
+        {/* Content - Strictly Left-Aligned Vertical Stack */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          {/* Top Row: Name with Emergency Icon + Timestamp */}
+          <div className="flex justify-between items-center gap-2 mb-0.5">
+            <div className="flex items-center gap-1.5 min-w-0">
               <span
                 className={`font-semibold text-sm truncate ${
                   isEmergency ? "text-red-700" : "text-gray-900"
@@ -421,19 +441,20 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
               {isEmergency && (
                 <AlertCircle
                   size={14}
-                  className={`text-red-600 ${
+                  className={`shrink-0 text-red-600 ${
                     conversation.isActive ? "animate-pulse" : ""
                   }`}
                 />
               )}
             </div>
-            <span className="text-xs text-gray-500 shrink-0">
+            <span className="text-xs text-gray-500 shrink-0 ml-2">
               {timeFormatted}
             </span>
           </div>
 
+          {/* Last Message - Left Aligned */}
           <p
-            className={`text-sm truncate ${
+            className={`text-sm text-left truncate mb-0.5 ${
               hasUnread
                 ? "font-semibold text-gray-900"
                 : "text-gray-600 font-normal"
@@ -442,14 +463,15 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
             {conversation.lastMessage}
           </p>
 
-          {/* Unread badge */}
-          {hasUnread && (
-            <div className="flex justify-between items-center mt-1">
-              <span className="text-xs text-gray-500">
-                {conversation.participant.role}
-              </span>
+          {/* Bottom Row: Role + Unread Badge - Left Aligned */}
+          <div className="flex justify-between items-center gap-2">
+            <span className="text-xs text-gray-500 text-left truncate">
+              {conversation.participant.role}
+            </span>
+            {/* Show unread badge if unreadCount > 0 */}
+            {conversation.unreadCount > 0 && (
               <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
                   isEmergency
                     ? "bg-red-600 text-white"
                     : "bg-green-600 text-white"
@@ -457,8 +479,37 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
               >
                 {conversation.unreadCount}
               </span>
+            )}
+          </div>
+        </div>
+
+        {/* More Options Menu - Visible on Hover */}
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="relative">
+            <button
+              onClick={handleMoreClick}
+              className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+              title="More options"
+            >
+              <MoreVertical size={16} className="text-gray-600" />
+            </button>
+
+            {/* Dropdown Menu - Simple version for now */}
+            <div className="hidden group-hover:block absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+              <button
+                onClick={handleMarkUnread}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+              >
+                Mark as Unread
+              </button>
+              <button
+                onClick={handleArchive}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+              >
+                Archive Conversation
+              </button>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </li>
@@ -516,13 +567,13 @@ const ChatThread = ({ conversation, onBack, onSendMessage }) => {
 
   return (
     <div
-      className={`flex flex-col h-[calc(100vh-12rem)] bg-white rounded-xl shadow-lg border ${
+      className={`flex flex-col h-full bg-white rounded-xl shadow-lg border ${
         isEmergency ? "border-red-400" : "border-gray-200"
       }`}
     >
       {/* Chat Header */}
       <div
-        className={`p-4 border-b flex items-center justify-between rounded-t-xl ${
+        className={`shrink-0 p-4 border-b flex items-center justify-between rounded-t-xl ${
           isEmergency ? "bg-red-50 border-red-200" : "bg-gray-50"
         }`}
       >
@@ -584,7 +635,7 @@ const ChatThread = ({ conversation, onBack, onSendMessage }) => {
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
         {conversation.messages.map((msg, index) => {
           const isOwnMessage = msg.senderId === "patient";
           const isSystemMessage = msg.isSystemMessage;
@@ -671,7 +722,7 @@ const ChatThread = ({ conversation, onBack, onSendMessage }) => {
 
       {/* Message Input Area */}
       <div
-        className={`p-4 border-t bg-white rounded-b-xl ${
+        className={`shrink-0 p-4 border-t bg-white rounded-b-xl ${
           isArchived ? "opacity-50" : ""
         }`}
       >
@@ -880,75 +931,77 @@ const MessageComposer = ({ initialSubject = "", onSend }) => {
  * Component 2. Contact Directory
  */
 const ContactDirectory = () => (
-  <div className="space-y-8 p-6 bg-white rounded-xl shadow-lg border">
-    <h2 className="text-2xl font-bold text-gray-900 border-b pb-2 flex items-center gap-2">
+  <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border">
+    <h2 className="shrink-0 text-2xl font-bold text-gray-900 border-b p-6 pb-4 flex items-center gap-2">
       <Phone size={24} className="text-primary" /> Contact Directory
     </h2>
 
-    {/* My Care Team */}
-    <div className="space-y-4">
-      <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-1">
-        My Care Team
-      </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-        {MOCK_CARE_TEAM.map((member) => (
-          <div
-            key={member.name}
-            className="bg-green-50 p-4 rounded-xl border border-green-200 flex items-center gap-3 shadow-sm"
-          >
-            <img
-              src={member.photo}
-              alt={member.name}
-              className="w-12 h-12 rounded-full object-cover shrink-0"
-              onError={(e) =>
-                (e.currentTarget.src = `https://placehold.co/100x100/A5B4FC/374151?text=${member.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}`)
-              }
-            />
-            <div>
-              <p className="font-bold text-gray-900">{member.name}</p>
-              <p className="text-sm text-green-700 font-medium">
-                {member.role}
-              </p>
-              <div className="text-xs text-gray-600 space-y-0.5 mt-1">
-                <p className="flex items-center gap-1">
-                  <Phone size={12} /> {member.phone}
+    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-8">
+      {/* My Care Team */}
+      <div className="space-y-4">
+        <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-1">
+          My Care Team
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+          {MOCK_CARE_TEAM.map((member) => (
+            <div
+              key={member.name}
+              className="bg-green-50 p-4 rounded-xl border border-green-200 flex items-center gap-3 shadow-sm"
+            >
+              <img
+                src={member.photo}
+                alt={member.name}
+                className="w-12 h-12 rounded-full object-cover shrink-0"
+                onError={(e) =>
+                  (e.currentTarget.src = `https://placehold.co/100x100/A5B4FC/374151?text=${member.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")}`)
+                }
+              />
+              <div>
+                <p className="font-bold text-gray-900">{member.name}</p>
+                <p className="text-sm text-green-700 font-medium">
+                  {member.role}
                 </p>
-                <p className="flex items-center gap-1">
-                  <Mail size={12} /> {member.email}
-                </p>
+                <div className="text-xs text-gray-600 space-y-0.5 mt-1">
+                  <p className="flex items-center gap-1">
+                    <Phone size={12} /> {member.phone}
+                  </p>
+                  <p className="flex items-center gap-1">
+                    <Mail size={12} /> {member.email}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-    </div>
 
-    {/* General Hospital Contacts */}
-    <div className="space-y-4 pt-4 border-t text-left">
-      <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-1">
-        General Contact Numbers
-      </h3>
-      <div className="space-y-3">
-        {MOCK_GENERAL_CONTACTS.map((contact) => (
-          <div
-            key={contact.name}
-            className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border"
-          >
-            <div className="text-gray-800">
-              <p className="font-medium">{contact.name}</p>
-              <p className="text-xs text-gray-500">{contact.role}</p>
-            </div>
-            <a
-              href={`tel:${contact.number}`}
-              className="font-bold text-lg text-green-600 hover:text-green-800 transition"
+      {/* General Hospital Contacts */}
+      <div className="space-y-4 pt-4 border-t text-left">
+        <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-1">
+          General Contact Numbers
+        </h3>
+        <div className="space-y-3">
+          {MOCK_GENERAL_CONTACTS.map((contact) => (
+            <div
+              key={contact.name}
+              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border"
             >
-              {contact.number}
-            </a>
-          </div>
-        ))}
+              <div className="text-gray-800">
+                <p className="font-medium">{contact.name}</p>
+                <p className="text-xs text-gray-500">{contact.role}</p>
+              </div>
+              <a
+                href={`tel:${contact.number}`}
+                className="font-bold text-lg text-green-600 hover:text-green-800 transition"
+              >
+                {contact.number}
+              </a>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   </div>
@@ -958,48 +1011,52 @@ const ContactDirectory = () => (
  * Component 3. Support & Self-Help
  */
 const SupportSection = () => (
-  <div className="p-6 bg-white rounded-xl shadow-lg border space-y-4">
-    <h2 className="text-2xl font-bold text-gray-900 border-b pb-2 flex items-center gap-2">
-      <HelpCircle size={24} className="text-green-600" /> Support & Self-Help
-    </h2>
-
-    <p className="text-gray-600">
-      Find quick answers to common questions about billing, appointments, and
-      accessing your health records.
-    </p>
-
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-      <a
-        href="#"
-        className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200 hover:bg-green-100 transition shadow-sm"
-      >
-        <FileText size={24} className="text-green-600 shrink-0" />
-        <div>
-          <p className="font-semibold text-gray-900">FAQ & Knowledge Base</p>
-          <p className="text-xs text-gray-600">
-            Common questions about the portal and services.
-          </p>
-        </div>
-      </a>
-      <a
-        href="#"
-        className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200 hover:bg-green-100 transition shadow-sm"
-      >
-        <Settings size={24} className="text-green-600 shrink-0" />
-        <div>
-          <p className="font-semibold text-gray-900">Technical Support</p>
-          <p className="text-xs text-gray-600">
-            Troubleshoot login and site issues.
-          </p>
-        </div>
-      </a>
+  <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border">
+    <div className="shrink-0 p-6 border-b">
+      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <HelpCircle size={24} className="text-green-600" /> Support & Self-Help
+      </h2>
     </div>
 
-    <div className="pt-4 border-t mt-4">
-      <p className="text-sm text-gray-500 italic">
-        For medical emergencies, please call your local emergency number
-        immediately.
+    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
+      <p className="text-gray-600">
+        Find quick answers to common questions about billing, appointments, and
+        accessing your health records.
       </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+        <a
+          href="#"
+          className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200 hover:bg-green-100 transition shadow-sm"
+        >
+          <FileText size={24} className="text-green-600 shrink-0" />
+          <div>
+            <p className="font-semibold text-gray-900">FAQ & Knowledge Base</p>
+            <p className="text-xs text-gray-600">
+              Common questions about the portal and services.
+            </p>
+          </div>
+        </a>
+        <a
+          href="#"
+          className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200 hover:bg-green-100 transition shadow-sm"
+        >
+          <Settings size={24} className="text-green-600 shrink-0" />
+          <div>
+            <p className="font-semibold text-gray-900">Technical Support</p>
+            <p className="text-xs text-gray-600">
+              Troubleshoot login and site issues.
+            </p>
+          </div>
+        </a>
+      </div>
+
+      <div className="pt-4 border-t mt-4">
+        <p className="text-sm text-gray-500 italic">
+          For medical emergencies, please call your local emergency number
+          immediately.
+        </p>
+      </div>
     </div>
   </div>
 );
@@ -1015,7 +1072,8 @@ export default function MessagesContact() {
   const [categoryFilter, setCategoryFilter] = useState("All");
 
   // Derive detail view state for mobile master-detail pattern
-  const isDetailViewActive = selectedConversation || activeTab !== MainContentTabs.INBOX;
+  const isDetailViewActive =
+    selectedConversation || activeTab !== MainContentTabs.INBOX;
 
   // Check if we're coming from emergency report with a filter state
   useEffect(() => {
@@ -1148,27 +1206,31 @@ export default function MessagesContact() {
   );
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8 font-sans">
-      <header className="mb-8 p-4 bg-white rounded-xl shadow-lg">
+    <div className="flex flex-col h-full p-4 md:p-8 font-sans">
+      <header className="shrink-0 mb-6 p-4 bg-white rounded-xl shadow-lg">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary text-left">
           Messages & Contact
         </h1>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
         {/* Left Column: Conversation List and Navigation */}
-        <aside className={`lg:col-span-1 space-y-6 ${isDetailViewActive ? "hidden lg:block" : "block"}`}>
-          <div className="bg-white p-4 rounded-xl shadow-xl border">
+        <aside
+          className={`flex flex-col min-h-0 ${
+            isDetailViewActive ? "hidden lg:flex" : "flex"
+          }`}
+        >
+          <div className="bg-white p-4 rounded-xl shadow-xl border flex flex-col min-h-0 flex-1">
             {/* New Message Button */}
             <button
               onClick={navigateToCompose}
-              className="w-full bg-primary hover:bg-green-700 text-white font-bold py-3 rounded-xl mb-4 flex items-center justify-center gap-2 transition shadow-md shadow-green-200"
+              className="shrink-0 w-full bg-primary hover:bg-green-700 text-white font-bold py-3 rounded-xl mb-4 flex items-center justify-center gap-2 transition shadow-md shadow-green-200"
             >
               <Plus size={20} /> New Message
             </button>
 
             {/* Main Tabs for Sidebar */}
-            <div className="space-y-2 mb-4">
+            <div className="shrink-0 space-y-2 mb-4">
               <button
                 onClick={() => {
                   setActiveTab(MainContentTabs.INBOX);
@@ -1211,12 +1273,12 @@ export default function MessagesContact() {
 
             {activeTab === MainContentTabs.INBOX && (
               <>
-                <h3 className="text-lg font-bold text-gray-800 border-t pt-4 mb-2">
+                <h3 className="shrink-0 text-lg font-bold text-gray-800 border-t pt-4 mb-2">
                   Conversations
                 </h3>
 
                 {/* Category Filter Tabs */}
-                <div className="flex gap-2 mb-3 flex-wrap">
+                <div className="shrink-0 flex gap-2 mb-3 flex-wrap">
                   {["All", "Emergency", "Medical", "Billing"].map(
                     (category) => {
                       const count =
@@ -1262,7 +1324,7 @@ export default function MessagesContact() {
                 </div>
 
                 {/* Search Bar */}
-                <div className="relative mb-3">
+                <div className="shrink-0 relative mb-3">
                   <Search
                     size={16}
                     className="absolute left-3 top-3.5 text-gray-400"
@@ -1277,7 +1339,7 @@ export default function MessagesContact() {
                 </div>
 
                 {/* Conversation List */}
-                <ul className="space-y-1 overflow-y-auto max-h-[40vh] md:max-h-[50vh]">
+                <ul className="flex-1 min-h-0 space-y-1 overflow-y-auto">
                   {filteredConversations.length > 0 ? (
                     filteredConversations.map((conv) => (
                       <ConversationListItem
@@ -1303,7 +1365,13 @@ export default function MessagesContact() {
         </aside>
 
         {/* Right Column: Main Content Area */}
-        <section className={`lg:col-span-2 ${isDetailViewActive ? "block" : "hidden lg:block"}`}>{renderMainPanel()}</section>
+        <section
+          className={`lg:col-span-2 flex flex-col items-center min-h-0 ${
+            isDetailViewActive ? "flex" : "hidden lg:flex"
+          }`}
+        >
+          <div className="w-full max-w-5xl h-full">{renderMainPanel()}</div>
+        </section>
       </div>
     </div>
   );

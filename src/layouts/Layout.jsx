@@ -13,8 +13,8 @@ const Layout = ({ children }) => {
         {/* Topbar */}
         <ResponderTopbar />
 
-        {/* Page Content with scroll */}
-        <main className="flex-1 overflow-y-auto bg-gray-50 p-6">
+        {/* Page Content - No scrolling, children handle their own layout */}
+        <main className="flex-1 flex flex-col min-h-0 bg-gray-50">
           {children}
         </main>
       </div>
