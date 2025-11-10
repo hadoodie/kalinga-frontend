@@ -365,6 +365,11 @@ const MainContentTabs = {
  * Component 1. Conversation List Item (Messenger-style)
  */
 const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({
+    x: 0,
+    y: 0,
+  });
   const isEmergency = conversation.category === "Emergency";
   const hasUnread = conversation.unreadCount > 0;
 
@@ -390,129 +395,146 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
     }
   );
 
-  const handleMoreClick = (e) => {
-    e.stopPropagation(); // Prevent conversation selection when clicking menu
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setShowContextMenu(true);
   };
 
   const handleArchive = (e) => {
     e.stopPropagation();
     console.log("Archive conversation:", conversation.id);
+    setShowContextMenu(false);
     // TODO: Implement archive functionality
   };
 
   const handleMarkUnread = (e) => {
     e.stopPropagation();
     console.log("Mark as unread:", conversation.id);
+    setShowContextMenu(false);
     // TODO: Implement mark as unread functionality
   };
 
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (showContextMenu) {
+        setShowContextMenu(false);
+      }
+    };
+
+    if (showContextMenu) {
+      document.addEventListener("click", handleClickOutside);
+      return () => document.removeEventListener("click", handleClickOutside);
+    }
+  }, [showContextMenu]);
+
   return (
-    <li
-      onClick={() => onSelect(conversation)}
-      className={`group relative p-3 cursor-pointer transition rounded-xl mb-2 border ${statusClass} ${
-        isSelected ? "shadow-md" : ""
-      }`}
-    >
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
-        <div className="relative shrink-0">
-          <img
-            src={conversation.participant.avatar}
-            alt={conversation.participant.name}
-            className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
-          />
-          {conversation.participant.isOnline && (
-            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-          )}
-        </div>
-
-        {/* Content - Strictly Left-Aligned Vertical Stack */}
-        <div className="flex-1 min-w-0 flex flex-col">
-          {/* Top Row: Name with Emergency Icon + Timestamp */}
-          <div className="flex justify-between items-center gap-2 mb-0.5">
-            <div className="flex items-center gap-1.5 min-w-0">
-              <span
-                className={`font-semibold text-sm truncate ${
-                  isEmergency ? "text-red-700" : "text-gray-900"
-                }`}
-              >
-                {conversation.participant.name}
-              </span>
-              {isEmergency && (
-                <AlertCircle
-                  size={14}
-                  className={`shrink-0 text-red-600 ${
-                    conversation.isActive ? "animate-pulse" : ""
-                  }`}
-                />
-              )}
-            </div>
-            <span className="text-xs text-gray-500 shrink-0 ml-2">
-              {timeFormatted}
-            </span>
-          </div>
-
-          {/* Last Message - Left Aligned */}
-          <p
-            className={`text-sm text-left truncate mb-0.5 ${
-              hasUnread
-                ? "font-semibold text-gray-900"
-                : "text-gray-600 font-normal"
-            }`}
-          >
-            {conversation.lastMessage}
-          </p>
-
-          {/* Bottom Row: Role + Unread Badge - Left Aligned */}
-          <div className="flex justify-between items-center gap-2">
-            <span className="text-xs text-gray-500 text-left truncate">
-              {conversation.participant.role}
-            </span>
-            {/* Show unread badge if unreadCount > 0 */}
-            {conversation.unreadCount > 0 && (
-              <span
-                className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
-                  isEmergency
-                    ? "bg-red-600 text-white"
-                    : "bg-green-600 text-white"
-                }`}
-              >
-                {conversation.unreadCount}
-              </span>
+    <>
+      <li
+        onClick={() => onSelect(conversation)}
+        onContextMenu={handleContextMenu}
+        className={`group relative p-3 cursor-pointer transition rounded-xl mb-2 border ${statusClass} ${
+          isSelected ? "shadow-md" : ""
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          {/* Avatar */}
+          <div className="relative shrink-0">
+            <img
+              src={conversation.participant.avatar}
+              alt={conversation.participant.name}
+              className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+            />
+            {conversation.participant.isOnline && (
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
             )}
           </div>
-        </div>
 
-        {/* More Options Menu - Visible on Hover */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <div className="relative">
-            <button
-              onClick={handleMoreClick}
-              className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-              title="More options"
+          {/* Content - Strictly Left-Aligned Vertical Stack */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            {/* Top Row: Name with Emergency Icon + Timestamp */}
+            <div className="flex justify-between items-center gap-2 mb-0.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span
+                  className={`font-semibold text-sm truncate ${
+                    isEmergency ? "text-red-700" : "text-gray-900"
+                  }`}
+                >
+                  {conversation.participant.name}
+                </span>
+                {isEmergency && (
+                  <AlertCircle
+                    size={14}
+                    className={`shrink-0 text-red-600 ${
+                      conversation.isActive ? "animate-pulse" : ""
+                    }`}
+                  />
+                )}
+              </div>
+              <span className="text-xs text-gray-500 shrink-0 ml-2">
+                {timeFormatted}
+              </span>
+            </div>
+
+            {/* Last Message - Left Aligned */}
+            <p
+              className={`text-sm text-left truncate mb-0.5 ${
+                hasUnread
+                  ? "font-semibold text-gray-900"
+                  : "text-gray-600 font-normal"
+              }`}
             >
-              <MoreVertical size={16} className="text-gray-600" />
-            </button>
+              {conversation.lastMessage}
+            </p>
 
-            {/* Dropdown Menu - Simple version for now */}
-            <div className="hidden group-hover:block absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-              <button
-                onClick={handleMarkUnread}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
-              >
-                Mark as Unread
-              </button>
-              <button
-                onClick={handleArchive}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
-              >
-                Archive Conversation
-              </button>
+            {/* Bottom Row: Role + Unread Badge - Left Aligned */}
+            <div className="flex justify-between items-center gap-2">
+              <span className="text-xs text-gray-500 text-left truncate">
+                {conversation.participant.role}
+              </span>
+              {/* Show unread badge if unreadCount > 0 */}
+              {conversation.unreadCount > 0 && (
+                <span
+                  className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
+                    isEmergency
+                      ? "bg-red-600 text-white"
+                      : "bg-green-600 text-white"
+                  }`}
+                >
+                  {conversation.unreadCount}
+                </span>
+              )}
             </div>
           </div>
         </div>
-      </div>
-    </li>
+      </li>
+
+      {/* Context Menu - Shows on Right Click */}
+      {showContextMenu && (
+        <div
+          className="fixed bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-50 min-w-[180px]"
+          style={{
+            left: `${contextMenuPosition.x}px`,
+            top: `${contextMenuPosition.y}px`,
+          }}
+        >
+          <button
+            onClick={handleMarkUnread}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+          >
+            Mark as Unread
+          </button>
+          <button
+            onClick={handleArchive}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition"
+          >
+            Archive Conversation
+          </button>
+        </div>
+      )}
+    </>
   );
 };
 
@@ -734,7 +756,7 @@ const ChatThread = ({ conversation, onBack, onSendMessage }) => {
             </p>
           </div>
         ) : (
-          <form onSubmit={handleSend} className="flex items-end gap-2">
+          <form onSubmit={handleSend} className="flex items-center gap-2">
             <button
               type="button"
               className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition shrink-0"
@@ -1207,11 +1229,11 @@ export default function MessagesContact() {
 
   return (
     <div className="flex flex-col h-full p-4 md:p-8 font-sans">
-      <header className="shrink-0 mb-6 p-4 bg-white rounded-xl shadow-lg">
+      {/* <header className="shrink-0 mb-6 p-4 bg-white rounded-xl shadow-lg">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary text-left">
           Messages & Contact
         </h1>
-      </header>
+      </header> */}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
         {/* Left Column: Conversation List and Navigation */}
