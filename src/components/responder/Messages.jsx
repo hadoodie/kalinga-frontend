@@ -47,10 +47,7 @@ const buildAvatarUrl = (name, avatar) => {
 };
 const normalizePerson = (person = {}, fallbackName = "Unknown") => {
   const name =
-    person.name ||
-    person.fullName ||
-    person.displayName ||
-    fallbackName;
+    person.name || person.fullName || person.displayName || fallbackName;
   const avatarSource =
     person.avatar ||
     person.profile_image ||
@@ -77,23 +74,22 @@ const normalizeMessage = (
   const senderSource =
     message.sender ?? message.sender_info ?? message.senderDetails ?? null;
   const receiverSource =
-    message.receiver ?? message.receiver_info ?? message.receiverDetails ?? null;
+    message.receiver ??
+    message.receiver_info ??
+    message.receiverDetails ??
+    null;
 
   const senderObject =
     senderSource && typeof senderSource === "object" ? senderSource : null;
   const receiverObject =
-    receiverSource && typeof receiverSource === "object" ? receiverSource : null;
+    receiverSource && typeof receiverSource === "object"
+      ? receiverSource
+      : null;
 
   const senderId =
-    message.senderId ??
-    message.sender_id ??
-    senderObject?.id ??
-    null;
+    message.senderId ?? message.sender_id ?? senderObject?.id ?? null;
   const receiverId =
-    message.receiverId ??
-    message.receiver_id ??
-    receiverObject?.id ??
-    null;
+    message.receiverId ?? message.receiver_id ?? receiverObject?.id ?? null;
 
   const senderName =
     (typeof senderSource === "string" && senderSource) ||
@@ -160,7 +156,13 @@ const normalizeConversation = (conversation = {}, currentUserId = null) => {
 
   const findOtherParticipant = () => {
     if (currentUserId === null) {
-      return participantFromPayload ?? participantsRaw[0] ?? senderRaw ?? receiverRaw ?? {};
+      return (
+        participantFromPayload ??
+        participantsRaw[0] ??
+        senderRaw ??
+        receiverRaw ??
+        {}
+      );
     }
 
     const fromArray = participantsRaw.find(
@@ -171,7 +173,10 @@ const normalizeConversation = (conversation = {}, currentUserId = null) => {
       return fromArray;
     }
 
-    if (participantFromPayload?.id && participantFromPayload.id !== currentUserId) {
+    if (
+      participantFromPayload?.id &&
+      participantFromPayload.id !== currentUserId
+    ) {
       return participantFromPayload;
     }
 
@@ -183,7 +188,13 @@ const normalizeConversation = (conversation = {}, currentUserId = null) => {
       return receiverRaw;
     }
 
-    return participantFromPayload ?? participantsRaw[0] ?? senderRaw ?? receiverRaw ?? {};
+    return (
+      participantFromPayload ??
+      participantsRaw[0] ??
+      senderRaw ??
+      receiverRaw ??
+      {}
+    );
   };
 
   const rawParticipant = findOtherParticipant() ?? {};
@@ -243,6 +254,92 @@ const isSameConversation = (conv, other) => {
   }
 
   return conv.id === other.id;
+};
+
+const INCOMING_QUEUE_INITIAL_DELAY_MS = 60;
+const INCOMING_QUEUE_DRAIN_INTERVAL_MS = 12;
+
+const insertMessageChronologically = (messages, newMessage) => {
+  if (!newMessage?.timestamp) {
+    return [...messages, newMessage];
+  }
+
+  const newMessageTime = new Date(newMessage.timestamp).getTime();
+
+  const insertIndex = messages.findIndex((existing) => {
+    if (!existing?.timestamp) {
+      return false;
+    }
+
+    return new Date(existing.timestamp).getTime() > newMessageTime;
+  });
+
+  if (insertIndex === -1) {
+    return [...messages, newMessage];
+  }
+
+  return [
+    ...messages.slice(0, insertIndex),
+    newMessage,
+    ...messages.slice(insertIndex),
+  ];
+};
+
+const buildConversationBufferKey = (
+  conversation,
+  fallbackParticipantId = null
+) => {
+  if (conversation?.conversationId) {
+    return `cid:${conversation.conversationId}`;
+  }
+
+  if (conversation?.id) {
+    return `id:${conversation.id}`;
+  }
+
+  if (fallbackParticipantId) {
+    return `participant:${fallbackParticipantId}`;
+  }
+
+  return null;
+};
+
+const mergeConversationSnapshot = (currentSnapshot = {}, incomingSnapshot = {}) => {
+  const mergedMessages = Array.isArray(incomingSnapshot.messages)
+    ? incomingSnapshot.messages.length
+      ? incomingSnapshot.messages
+      : Array.isArray(currentSnapshot.messages)
+      ? currentSnapshot.messages
+      : incomingSnapshot.messages
+    : Array.isArray(currentSnapshot.messages)
+    ? currentSnapshot.messages
+    : [];
+
+  const mergedParticipants = Array.isArray(incomingSnapshot.participants)
+    ? incomingSnapshot.participants.length
+      ? incomingSnapshot.participants
+      : Array.isArray(currentSnapshot.participants)
+      ? currentSnapshot.participants
+      : incomingSnapshot.participants
+    : Array.isArray(currentSnapshot.participants)
+    ? currentSnapshot.participants
+    : [];
+
+  return {
+    ...currentSnapshot,
+    ...incomingSnapshot,
+    id: incomingSnapshot.id ?? currentSnapshot.id ?? null,
+    conversationId:
+      incomingSnapshot.conversationId ?? currentSnapshot.conversationId ?? null,
+    participant:
+      incomingSnapshot.participant ?? currentSnapshot.participant ?? null,
+    participants: mergedParticipants,
+    category: incomingSnapshot.category ?? currentSnapshot.category ?? "General",
+    messages: mergedMessages,
+    lastMessage: incomingSnapshot.lastMessage ?? currentSnapshot.lastMessage ?? "",
+    lastMessageTime:
+      incomingSnapshot.lastMessageTime ?? currentSnapshot.lastMessageTime ?? null,
+  };
 };
 
 /**
@@ -856,6 +953,12 @@ export default function MessagesContact() {
   const [presenceError, setPresenceError] = useState(null);
   const inflightConversationFetch = useRef(new Set());
   const scheduledConversationRefreshes = useRef(new Map());
+  const pendingIncomingMessages = useRef(new Map());
+  const selectedConversationIdRef = useRef(null);
+
+  useEffect(() => {
+    selectedConversationIdRef.current = selectedConversationId;
+  }, [selectedConversationId]);
 
   // Derive detail view state for mobile master-detail pattern
   // derived further below once conversation data is enriched
@@ -920,11 +1023,18 @@ export default function MessagesContact() {
   }, [authLoading, user]);
 
   useEffect(() => {
+    const refreshTimers = scheduledConversationRefreshes.current;
+    const bufferedMessagesRef = pendingIncomingMessages.current;
+
     return () => {
-      scheduledConversationRefreshes.current.forEach((timer) =>
-        clearTimeout(timer)
-      );
-      scheduledConversationRefreshes.current.clear();
+      refreshTimers.forEach((timer) => clearTimeout(timer));
+      refreshTimers.clear();
+      bufferedMessagesRef.forEach((entry) => {
+        if (entry?.timer) {
+          clearTimeout(entry.timer);
+        }
+      });
+      bufferedMessagesRef.clear();
     };
   }, []);
 
@@ -1010,6 +1120,260 @@ export default function MessagesContact() {
     },
     [refreshConversationMessages]
   );
+
+  const applyBufferedMessageToState = useCallback((conversationSnapshot, message) => {
+    if (!conversationSnapshot || !message) {
+      return;
+    }
+
+    setConversations((prev) => {
+      let matchFound = false;
+
+      const updated = prev.map((conv) => {
+        if (!isSameConversation(conv, conversationSnapshot)) {
+          return conv;
+        }
+
+        matchFound = true;
+
+        const isActive = conv.id === selectedConversationIdRef.current;
+        const preparedMessage = isActive
+          ? { ...message, isRead: true }
+          : message;
+
+        const existingIndex = conv.messages.findIndex(
+          (msg) => msg.id === preparedMessage.id
+        );
+
+        let nextMessages;
+        if (existingIndex !== -1) {
+          nextMessages = [
+            ...conv.messages.slice(0, existingIndex),
+            preparedMessage,
+            ...conv.messages.slice(existingIndex + 1),
+          ];
+        } else {
+          nextMessages = insertMessageChronologically(
+            conv.messages,
+            preparedMessage
+          );
+        }
+
+        const lastMessage = nextMessages[nextMessages.length - 1] ?? null;
+
+        return {
+          ...conv,
+          id: conversationSnapshot.id ?? conv.id,
+          conversationId:
+            conversationSnapshot.conversationId ?? conv.conversationId,
+          participant: conversationSnapshot.participant ?? conv.participant,
+          participants: conversationSnapshot.participants?.length
+            ? conversationSnapshot.participants
+            : conv.participants,
+          category: conversationSnapshot.category ?? conv.category,
+          lastMessage: lastMessage?.text ?? conv.lastMessage,
+          lastMessageTime: lastMessage?.timestamp ?? conv.lastMessageTime,
+          messages: nextMessages,
+          unreadCount: isActive
+            ? 0
+            : existingIndex !== -1
+            ? conv.unreadCount ?? 0
+            : (conv.unreadCount ?? 0) + 1,
+        };
+      });
+
+      if (!matchFound) {
+        const isActive =
+          conversationSnapshot.id === selectedConversationIdRef.current;
+        const preparedMessage = isActive
+          ? { ...message, isRead: true }
+          : message;
+
+        const baseMessages = Array.isArray(conversationSnapshot.messages)
+          ? conversationSnapshot.messages.filter(Boolean)
+          : [];
+
+        const baseWithoutIncoming = baseMessages.filter(
+          (existing) => existing?.id !== preparedMessage.id
+        );
+
+        const nextMessages = insertMessageChronologically(
+          baseWithoutIncoming,
+          preparedMessage
+        );
+
+        const finalLastMessage =
+          nextMessages[nextMessages.length - 1] ?? preparedMessage ?? null;
+
+        updated.push({
+          ...conversationSnapshot,
+          messages: nextMessages,
+          lastMessage: finalLastMessage?.text ?? "",
+          lastMessageTime: finalLastMessage?.timestamp ?? null,
+          unreadCount: isActive ? 0 : 1,
+        });
+      }
+
+      return sortConversationsByRecency(updated);
+    });
+  }, []);
+
+  const flushBufferedIncomingMessages = useCallback((conversationKey) => {
+    const entry = pendingIncomingMessages.current.get(conversationKey);
+    if (!entry) {
+      return;
+    }
+
+    if (entry.timer) {
+      clearTimeout(entry.timer);
+      entry.timer = null;
+    }
+
+    entry.state = "processing";
+
+    const messagesOrdered = Array.from(entry.messages.values());
+    if (!messagesOrdered.length) {
+      entry.state = "idle";
+      pendingIncomingMessages.current.delete(conversationKey);
+      return;
+    }
+
+    messagesOrdered.sort((a, b) => {
+      const timeA = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeA - timeB;
+    });
+
+    const nextMessage = messagesOrdered[0];
+    entry.messages.delete(nextMessage.id);
+
+    const conversationSnapshot = entry.conversation;
+    applyBufferedMessageToState(conversationSnapshot, nextMessage);
+
+    if (entry.messages.size > 0) {
+      entry.timer = setTimeout(() => {
+        flushBufferedIncomingMessages(conversationKey);
+      }, INCOMING_QUEUE_DRAIN_INTERVAL_MS);
+    } else {
+      entry.state = "idle";
+      pendingIncomingMessages.current.delete(conversationKey);
+    }
+  }, [applyBufferedMessageToState]);
+
+  const bufferIncomingMessage = useCallback(
+    (
+      normalizedConversation,
+      normalizedMessageWithStatus,
+      otherParticipantId
+    ) => {
+      const bufferKey = buildConversationBufferKey(
+        normalizedConversation,
+        otherParticipantId
+      );
+
+      if (!bufferKey) {
+        applyBufferedMessageToState(
+          normalizedConversation,
+          normalizedMessageWithStatus
+        );
+        return;
+      }
+
+      const isActiveConversation =
+        normalizedConversation?.id === selectedConversationIdRef.current;
+
+      const existingEntry = pendingIncomingMessages.current.get(bufferKey);
+
+      if (existingEntry) {
+        existingEntry.state = existingEntry.state ?? "idle";
+        existingEntry.conversation = mergeConversationSnapshot(
+          existingEntry.conversation,
+          normalizedConversation
+        );
+        existingEntry.messages.set(
+          normalizedMessageWithStatus.id,
+          normalizedMessageWithStatus
+        );
+
+        if (isActiveConversation) {
+          if (existingEntry.timer) {
+            clearTimeout(existingEntry.timer);
+            existingEntry.timer = null;
+          }
+
+          if (existingEntry.state !== "processing") {
+            existingEntry.state = "processing";
+            flushBufferedIncomingMessages(bufferKey);
+          }
+
+          return;
+        }
+
+        if (existingEntry.state !== "processing" && !existingEntry.timer) {
+          existingEntry.timer = setTimeout(() => {
+            flushBufferedIncomingMessages(bufferKey);
+          }, INCOMING_QUEUE_INITIAL_DELAY_MS);
+        }
+
+        return;
+      }
+
+      const entry = {
+        conversation: mergeConversationSnapshot({}, normalizedConversation),
+        messages: new Map([
+          [normalizedMessageWithStatus.id, normalizedMessageWithStatus],
+        ]),
+        timer: null,
+        state: "idle",
+      };
+
+      pendingIncomingMessages.current.set(bufferKey, entry);
+
+      if (isActiveConversation) {
+        entry.state = "processing";
+        flushBufferedIncomingMessages(bufferKey);
+      } else {
+        entry.timer = setTimeout(() => {
+          flushBufferedIncomingMessages(bufferKey);
+        }, INCOMING_QUEUE_INITIAL_DELAY_MS);
+      }
+    },
+    [flushBufferedIncomingMessages, applyBufferedMessageToState]
+  );
+
+  useEffect(() => {
+    if (!selectedConversationId) {
+      return;
+    }
+
+    const keysToFlush = [];
+
+    pendingIncomingMessages.current.forEach((entry, key) => {
+      if (!entry?.conversation?.id) {
+        return;
+      }
+
+      if (entry.conversation.id !== selectedConversationId) {
+        return;
+      }
+
+      if (entry.timer) {
+        clearTimeout(entry.timer);
+        entry.timer = null;
+      }
+
+      if (entry.state !== "processing") {
+        entry.state = "processing";
+        keysToFlush.push(key);
+      }
+    });
+
+    keysToFlush.forEach((key) => {
+      setTimeout(() => {
+        flushBufferedIncomingMessages(key);
+      }, 0);
+    });
+  }, [selectedConversationId, flushBufferedIncomingMessages]);
 
   // Setup Echo presence channel for online status
   useEffect(() => {
@@ -1210,62 +1574,82 @@ export default function MessagesContact() {
         sendError: null,
       };
 
-      setConversations((prev) => {
-        let matchFound = false;
+      const participantCandidates = (normalizedConversation.participants || [])
+        .concat(normalizedConversation.participant || [])
+        .filter(Boolean);
 
-        const updated = prev.map((conv) => {
-          if (!isSameConversation(conv, normalizedConversation)) {
-            return conv;
-          }
+      const otherParticipantId =
+        participantCandidates
+          .map((person) => person?.id)
+          .find((id) => id && id !== user?.id) ??
+        (payload.message?.senderId === user?.id
+          ? payload.message?.receiverId
+          : payload.message?.senderId);
 
-          matchFound = true;
+      if (isIncomingMessage) {
+        bufferIncomingMessage(
+          normalizedConversation,
+          normalizedMessageWithStatus,
+          otherParticipantId
+        );
+      } else {
+        setConversations((prev) => {
+          let matchFound = false;
 
-          const messageExists = conv.messages.some(
-            (msg) => msg.id === normalizedMessage.id
-          );
+          const updated = prev.map((conv) => {
+            if (!isSameConversation(conv, normalizedConversation)) {
+              return conv;
+            }
 
-          const messages = messageExists
-            ? conv.messages.map((msg) =>
-                msg.id === normalizedMessage.id
-                  ? normalizedMessageWithStatus
-                  : msg
-              )
-            : [...conv.messages, normalizedMessageWithStatus];
+            matchFound = true;
 
-          return {
-            ...conv,
-            id: normalizedConversation.id ?? conv.id,
-            conversationId:
-              normalizedConversation.conversationId ?? conv.conversationId,
-            participant: normalizedConversation.participant ?? conv.participant,
-            participants:
-              normalizedConversation.participants?.length
+            const messageExists = conv.messages.some(
+              (msg) => msg.id === normalizedMessage.id
+            );
+
+            const messages = messageExists
+              ? conv.messages.map((msg) =>
+                  msg.id === normalizedMessage.id
+                    ? normalizedMessageWithStatus
+                    : msg
+                )
+              : [...conv.messages, normalizedMessageWithStatus];
+
+            return {
+              ...conv,
+              id: normalizedConversation.id ?? conv.id,
+              conversationId:
+                normalizedConversation.conversationId ?? conv.conversationId,
+              participant:
+                normalizedConversation.participant ?? conv.participant,
+              participants: normalizedConversation.participants?.length
                 ? normalizedConversation.participants
                 : conv.participants,
-            category: normalizedConversation.category ?? conv.category,
-            lastMessage: normalizedMessageWithStatus.text,
-            lastMessageTime: normalizedMessageWithStatus.timestamp,
-            messages,
-            unreadCount: isActiveConversation
-              ? 0
-              : messageExists
-              ? conv.unreadCount
-              : (conv.unreadCount ?? 0) + 1,
-          };
-        });
-
-        if (!matchFound) {
-          updated.push({
-            ...normalizedConversation,
-            messages: normalizedConversation.messages?.length
-              ? normalizedConversation.messages
-              : [normalizedMessageWithStatus],
-            unreadCount: isActiveConversation ? 0 : 1,
+              category: normalizedConversation.category ?? conv.category,
+              lastMessage: normalizedMessageWithStatus.text,
+              lastMessageTime: normalizedMessageWithStatus.timestamp,
+              messages,
+              unreadCount: isActiveConversation
+                ? 0
+                : messageExists
+                ? conv.unreadCount
+                : (conv.unreadCount ?? 0) + 1,
+            };
           });
-        }
 
-        return sortConversationsByRecency(updated);
-      });
+          if (!matchFound) {
+            updated.push({
+              ...normalizedConversation,
+              messages: normalizedConversation.messages?.length
+                ? normalizedConversation.messages
+                : [normalizedMessageWithStatus],
+              unreadCount: isActiveConversation ? 0 : 1,
+            });
+          }
+
+          return sortConversationsByRecency(updated);
+        });
+      }
 
       if (
         isActiveConversation &&
@@ -1274,17 +1658,6 @@ export default function MessagesContact() {
       ) {
         setSelectedConversationId(normalizedConversation.id);
       }
-
-      const participantCandidates = (normalizedConversation.participants || [])
-        .concat(normalizedConversation.participant || [])
-        .filter(Boolean);
-
-      const otherParticipantId = participantCandidates
-        .map((person) => person?.id)
-        .find((id) => id && id !== user?.id) ??
-        (payload.message?.senderId === user?.id
-          ? payload.message?.receiverId
-          : payload.message?.senderId);
 
       if (otherParticipantId && isIncomingMessage) {
         scheduleConversationRefresh(otherParticipantId, {
@@ -1298,6 +1671,7 @@ export default function MessagesContact() {
       selectedConversationId,
       user?.id,
       scheduleConversationRefresh,
+      bufferIncomingMessage,
     ]
   );
 
@@ -1534,7 +1908,9 @@ export default function MessagesContact() {
               const updatedParticipants =
                 Array.isArray(payload.participants) &&
                 payload.participants.length
-                  ? payload.participants.map((person) => normalizePerson(person))
+                  ? payload.participants.map((person) =>
+                      normalizePerson(person)
+                    )
                   : conv.participants;
 
               const messages = conv.messages.map((msg) =>
@@ -1622,6 +1998,17 @@ export default function MessagesContact() {
   const handleSelectConversation = (conversation) => {
     // Prevent page scroll when selecting conversation
     window.scrollTo({ top: 0, behavior: "instant" });
+
+    selectedConversationIdRef.current = conversation.id;
+
+    const bufferKey = buildConversationBufferKey(
+      conversation,
+      conversation?.participant?.id ?? null
+    );
+
+    if (bufferKey) {
+      flushBufferedIncomingMessages(bufferKey);
+    }
 
     setSelectedConversationId(conversation.id);
     setActiveTab(MainContentTabs.INBOX);
