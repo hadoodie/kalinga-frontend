@@ -22,6 +22,7 @@ import {
   Paperclip,
   Smile,
   MoreVertical,
+  Loader2,
 } from "lucide-react";
 import EchoClient, {
   reconnectEcho,
@@ -412,7 +413,6 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
  */
 const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
   const [newMessage, setNewMessage] = useState("");
-  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef(null);
 
   const isEmergency = conversation.category === "Emergency";
@@ -423,20 +423,16 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation.messages]);
 
-  const handleSend = async (e) => {
+  const handleSend = (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || isSending || isArchived) return;
+    if (!newMessage.trim() || isArchived) return;
 
-    setIsSending(true);
+    const textToSend = newMessage.trim();
+    setNewMessage("");
 
-    try {
-      await onSendMessage(conversation, newMessage.trim());
-      setNewMessage("");
-    } catch (error) {
+    Promise.resolve(onSendMessage(conversation, textToSend)).catch((error) => {
       console.error("Failed to send message:", error);
-    } finally {
-      setIsSending(false);
-    }
+    });
   };
 
   const formatMessageTime = (timestamp) => {
@@ -600,15 +596,30 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
                   <span className="text-xs text-gray-500">
                     {formatMessageTime(msg.timestamp)}
                   </span>
-                  {isOwnMessage && (
-                    <span className="text-gray-500">
-                      {msg.isRead ? (
-                        <CheckCheck size={14} className="text-blue-500" />
-                      ) : (
-                        <Check size={14} />
-                      )}
+                  {isOwnMessage && msg.deliveryStatus === "sending" && (
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <Loader2 size={12} className="animate-spin" />
+                      Sending…
                     </span>
                   )}
+                  {isOwnMessage && msg.deliveryStatus === "failed" && (
+                    <span className="text-xs text-red-500 flex items-center gap-1">
+                      <AlertCircle size={12} />
+                      Not sent
+                    </span>
+                  )}
+                  {isOwnMessage &&
+                    (!msg.deliveryStatus ||
+                      msg.deliveryStatus === "sent" ||
+                      msg.deliveryStatus === "delivered") && (
+                      <span className="text-gray-500">
+                        {msg.isRead ? (
+                          <CheckCheck size={14} className="text-blue-500" />
+                        ) : (
+                          <Check size={14} />
+                        )}
+                      </span>
+                    )}
                 </div>
               </div>
             </div>
@@ -656,7 +667,6 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
                 }
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-primary focus:border-primary resize-none max-h-32 transition"
                 rows="1"
-                disabled={isSending}
               />
               <button
                 type="button"
@@ -668,20 +678,14 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
 
             <button
               type="submit"
-              disabled={!newMessage.trim() || isSending}
+              disabled={!newMessage.trim()}
               className={`p-3 rounded-full transition shadow-md shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
                 isEmergency
                   ? "bg-red-600 hover:bg-red-700 text-white"
                   : "bg-primary hover:bg-green-700 text-white"
               }`}
             >
-              {isSending ? (
-                <div className="animate-spin">
-                  <Send size={20} />
-                </div>
-              ) : (
-                <Send size={20} />
-              )}
+              <Send size={20} />
             </button>
           </form>
         )}
@@ -1279,6 +1283,80 @@ export default function MessagesContact() {
         return;
       }
 
+      const tempId = `temp-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
+      const timestamp = new Date().toISOString();
+
+      const optimisticMessage = {
+        id: tempId,
+        clientId: tempId,
+        text: trimmed,
+        senderId: user.id,
+        receiverId,
+        sender: user.name,
+        timestamp,
+        isRead: true,
+        isSystemMessage: false,
+        isOwn: true,
+        deliveryStatus: "sending",
+        sendError: null,
+      };
+
+      setConversations((prev) => {
+        let matchFound = false;
+
+        const updated = prev.map((conv) => {
+          if (!isSameConversation(conv, conversation)) {
+            return conv;
+          }
+
+          matchFound = true;
+          const messages = [...conv.messages, optimisticMessage];
+
+          return {
+            ...conv,
+            messages,
+            lastMessage: trimmed,
+            lastMessageTime: timestamp,
+            unreadCount: 0,
+          };
+        });
+
+        if (!matchFound) {
+          const fallbackParticipant = conversation.participant ?? {
+            id: receiverId,
+            name: "",
+          };
+
+          const normalizedParticipant = normalizePerson(
+            fallbackParticipant,
+            fallbackParticipant.name ?? ""
+          );
+
+          const newConversation = {
+            ...conversation,
+            id: conversation.id ?? `user-${receiverId}`,
+            participant: normalizedParticipant,
+            participants:
+              Array.isArray(conversation.participants) &&
+              conversation.participants.length
+                ? conversation.participants.map((person) =>
+                    normalizePerson(person)
+                  )
+                : [normalizedParticipant],
+            messages: [optimisticMessage],
+            lastMessage: trimmed,
+            lastMessageTime: timestamp,
+            unreadCount: 0,
+          };
+
+          return sortConversationsByRecency([...updated, newConversation]);
+        }
+
+        return sortConversationsByRecency(updated);
+      });
+
       try {
         const payload = await chatService.sendMessage({
           receiver_id: receiverId,
@@ -1297,58 +1375,98 @@ export default function MessagesContact() {
           user.id
         );
 
-        setConversations((prev) => {
-          let matchedConversation = false;
+        setConversations((prev) =>
+          sortConversationsByRecency(
+            prev.map((conv) => {
+              const isTarget =
+                isSameConversation(conv, conversation) ||
+                (payload.conversationId &&
+                  conv.conversationId === payload.conversationId);
 
-          const updated = prev.map((conv) => {
-            const sameConversation = isSameConversation(conv, conversation);
+              if (!isTarget) {
+                return conv;
+              }
 
-            if (!sameConversation) {
+              const updatedParticipant = payload.participant
+                ? normalizePerson(payload.participant)
+                : conv.participant;
+
+              const updatedParticipants =
+                Array.isArray(payload.participants) &&
+                payload.participants.length
+                  ? payload.participants.map((person) => normalizePerson(person))
+                  : conv.participants;
+
+              const messages = conv.messages.map((msg) =>
+                msg.id === tempId
+                  ? {
+                      ...msg,
+                      ...normalizedMessage,
+                      id: normalizedMessage.id ?? payload.id ?? tempId,
+                      clientId: tempId,
+                      deliveryStatus: "sent",
+                      sendError: null,
+                      isOwn: true,
+                    }
+                  : msg
+              );
+
+              return {
+                ...conv,
+                id: payload.conversationId ?? conv.id,
+                conversationId: payload.conversationId ?? conv.conversationId,
+                participant: updatedParticipant,
+                participants: updatedParticipants,
+                lastMessage: normalizedMessage.text,
+                lastMessageTime: normalizedMessage.timestamp,
+                messages,
+              };
+            })
+          )
+        );
+
+        if (payload.conversationId) {
+          setSelectedConversationId((prevId) => {
+            if (!prevId) {
+              return prevId;
+            }
+
+            if (
+              prevId === conversation.id ||
+              prevId === conversation.conversationId ||
+              prevId === `user-${receiverId}`
+            ) {
+              return payload.conversationId;
+            }
+
+            return prevId;
+          });
+        }
+      } catch (error) {
+        setConversations((prev) =>
+          prev.map((conv) => {
+            if (!isSameConversation(conv, conversation)) {
               return conv;
             }
 
-            matchedConversation = true;
-
-            const updatedMessages = [...conv.messages, normalizedMessage];
-
             return {
               ...conv,
-              id: payload.conversationId ?? conv.id,
-              conversationId: payload.conversationId ?? conv.conversationId,
-              messages: updatedMessages,
-              lastMessage: normalizedMessage.text,
-              lastMessageTime: normalizedMessage.timestamp,
-              unreadCount: 0,
+              messages: conv.messages.map((msg) =>
+                msg.id === tempId
+                  ? {
+                      ...msg,
+                      deliveryStatus: "failed",
+                      sendError:
+                        error?.response?.data?.message ??
+                        error?.message ??
+                        "Failed to send message",
+                    }
+                  : msg
+              ),
             };
-          });
+          })
+        );
 
-          if (!matchedConversation) {
-            const participantData =
-              payload.participant ?? conversation.participant;
-            const newConversation = normalizeConversation(
-              {
-                id: payload.conversationId,
-                conversationId: payload.conversationId,
-                participant: participantData,
-                participants: payload.participants,
-                sender: payload.sender,
-                receiver: payload.receiver,
-                messages: [normalizedMessage],
-                lastMessage: normalizedMessage.text,
-                lastMessageTime: normalizedMessage.timestamp,
-              },
-              user?.id ?? null
-            );
-
-            return sortConversationsByRecency([...updated, newConversation]);
-          }
-
-          return sortConversationsByRecency(updated);
-        });
-
-        setSelectedConversationId(payload.conversationId ?? conversation.id);
-      } catch (error) {
-        console.error("Failed to send message", error);
         throw error;
       }
     },
