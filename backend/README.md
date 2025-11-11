@@ -480,6 +480,57 @@ Thank you for considering contributing to the Laravel framework! The contributio
 
 In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
+## Real-Time Messaging with Laravel Reverb
+
+This application includes a real-time messaging system using Laravel Reverb (WebSocket server) for presence channels.
+
+### Setup
+
+1. **Install Dependencies**
+```bash
+composer require pusher/pusher-php-server
+npm install laravel-echo pusher-js
+```
+
+2. **Configure Environment**
+Add to `.env`:
+```env
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=your-app-id
+REVERB_APP_KEY=your-app-key
+REVERB_APP_SECRET=your-app-secret
+REVERB_HOST=localhost
+REVERB_PORT=8080
+REVERB_SCHEME=http
+```
+
+3. **Start Reverb Server**
+```bash
+php artisan reverb:start
+```
+
+### Database Setup
+
+Run the messages seeder to populate sample conversations:
+```bash
+php artisan db:seed --class=MessagesSeeder
+```
+
+The seeder creates:
+- Sample conversations between users
+- Messages with various statuses
+- Group conversations
+- Message attachments (references only)
+
+### User Seeder
+
+To populate users (including verified responders for presence testing):
+```bash
+php artisan db:seed --class=UserSeeder
+```
+
+The seeder uses `updateOrCreate` to be idempotent - safe to run multiple times without duplicate key errors.
+
 ## Security Vulnerabilities
 
 If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.

@@ -8,7 +8,7 @@ export const authService = {
   async login(credentials) {
     const response = await api.post("/login", credentials);
     if (response.data.token) {
-      localStorage.setItem("auth_token", response.data.token);
+      localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
     }
     return response.data;
@@ -24,7 +24,7 @@ export const authService = {
         userData.password_confirmation || userData.password,
     });
     if (response.data.token) {
-      localStorage.setItem("auth_token", response.data.token);
+      localStorage.setItem("token", response.data.token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
     }
     return response.data;
@@ -37,7 +37,7 @@ export const authService = {
     try {
       await api.post("/logout");
     } finally {
-      localStorage.removeItem("auth_token");
+      localStorage.removeItem("token");
       localStorage.removeItem("user");
     }
   },
@@ -97,7 +97,7 @@ export const authService = {
    * Check if user is authenticated
    */
   isAuthenticated() {
-    return !!localStorage.getItem("auth_token");
+    return !!localStorage.getItem("token");
   },
 
   /**

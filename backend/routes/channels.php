@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Broadcast;
 
-Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
+Broadcast::channel('online', function ($user) {
+    // A presence channel MUST return an array with 'id' and 'name'.
+    // It can also include other info you want to share with clients.
+    return $user;
 });
