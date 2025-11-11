@@ -47,8 +47,14 @@ export const authService = {
    */
   async getCurrentUser() {
     const response = await api.get("/me");
-    localStorage.setItem("user", JSON.stringify(response.data.user));
-    return response.data.user;
+    const userData = response.data?.user ?? response.data;
+
+    if (!userData || typeof userData !== "object") {
+      throw new Error("Invalid user data received from /me endpoint");
+    }
+
+    localStorage.setItem("user", JSON.stringify(userData));
+    return userData;
   },
 
   /**

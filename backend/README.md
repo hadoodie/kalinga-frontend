@@ -5,33 +5,37 @@
 Laravel 11 backend API with automatic database failover and synchronization between cloud (Supabase) and local PostgreSQL databases.
 
 ## Table of Contents
-- [Quick Start](#-quick-start)
-- [Database Failover System](#-database-failover-system)
-- [Local Database Setup](#-local-database-setup)
-- [Automatic Sync Scheduler](#-automatic-sync-scheduler)
-- [Available Commands](#-available-commands)
-- [How It Works](#-how-it-works)
-- [Troubleshooting](#-troubleshooting)
+
+-   [Quick Start](#-quick-start)
+-   [Database Failover System](#-database-failover-system)
+-   [Local Database Setup](#-local-database-setup)
+-   [Automatic Sync Scheduler](#-automatic-sync-scheduler)
+-   [Available Commands](#-available-commands)
+-   [How It Works](#-how-it-works)
+-   [Troubleshooting](#-troubleshooting)
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- PHP 8.2+
-- Composer
-- PostgreSQL 17.x (for local failover)
-- Node.js & npm
+
+-   PHP 8.2+
+-   Composer
+-   PostgreSQL 17.x (for local failover)
+-   Node.js & npm
 
 ### Installation
 
 1. **Install Dependencies**
+
 ```bash
 composer install
 npm install
 ```
 
 2. **Configure Environment**
+
 ```bash
 cp .env.example .env
 php artisan key:generate
@@ -40,6 +44,7 @@ php artisan key:generate
 3. **Update `.env`** with your credentials (cloud credentials are pre-configured)
 
 4. **Run Migrations**
+
 ```bash
 # Cloud database (primary)
 php artisan migrate
@@ -49,6 +54,7 @@ php artisan db:seed
 ```
 
 5. **Start Development Server**
+
 ```bash
 php artisan serve
 ```
@@ -92,10 +98,11 @@ This application features automatic database failover for high availability:
 ```
 
 ### Features
-- ✅ **Automatic Failover** - Seamless switch when cloud is unavailable
-- ✅ **Bidirectional Sync** - Cloud ↔ Local data synchronization
-- ✅ **Zero Downtime** - Service continues during outages
-- ✅ **Data Consistency** - Automatic reconciliation after recovery
+
+-   ✅ **Automatic Failover** - Seamless switch when cloud is unavailable
+-   ✅ **Bidirectional Sync** - Cloud ↔ Local data synchronization
+-   ✅ **Zero Downtime** - Service continues during outages
+-   ✅ **Data Consistency** - Automatic reconciliation after recovery
 
 ---
 
@@ -104,11 +111,13 @@ This application features automatic database failover for high availability:
 ### Quick Setup with Scripts
 
 **Windows:**
+
 ```bash
 setup-local-db.bat
 ```
 
 **Mac/Linux:**
+
 ```bash
 chmod +x setup-local-db.sh
 ./setup-local-db.sh
@@ -119,17 +128,20 @@ chmod +x setup-local-db.sh
 #### 1. Install PostgreSQL
 
 **Windows:**
-- Download from: https://www.postgresql.org/download/windows/
-- Remember your postgres password during installation
-- Default port: 5432
+
+-   Download from: https://www.postgresql.org/download/windows/
+-   Remember your postgres password during installation
+-   Default port: 5432
 
 **Mac (Homebrew):**
+
 ```bash
 brew install postgresql@17
 brew services start postgresql@17
 ```
 
 **Linux (Ubuntu/Debian):**
+
 ```bash
 sudo apt update
 sudo apt install postgresql postgresql-contrib
@@ -178,6 +190,7 @@ php artisan db:status
 ```
 
 Expected output:
+
 ```
 ☁️  Cloud Database (Supabase):
    Status: ● Online
@@ -198,6 +211,7 @@ The scheduler automatically syncs data between cloud and local databases.
 ### Running the Scheduler
 
 **Development (keep running in separate terminal):**
+
 ```bash
 php artisan schedule:work
 ```
@@ -205,16 +219,19 @@ php artisan schedule:work
 **Production:**
 
 #### Windows Task Scheduler
+
 1. Open Task Scheduler
 2. Create new task:
-   - **Trigger**: At startup, repeat every 1 minute
-   - **Action**: Run program
-   - **Program**: `php`
-   - **Arguments**: `artisan schedule:run`
-   - **Start in**: `C:\path\to\kalinga-hotfix-db\backend`
+    - **Trigger**: At startup, repeat every 1 minute
+    - **Action**: Run program
+    - **Program**: `php`
+    - **Arguments**: `artisan schedule:run`
+    - **Start in**: `C:\path\to\kalinga-hotfix-db\backend`
 
 #### Linux/Mac Cron Job
+
 Add to crontab (`crontab -e`):
+
 ```bash
 * * * * * cd /path/to/kalinga-hotfix-db/backend && php artisan schedule:run >> /dev/null 2>&1
 ```
@@ -223,22 +240,25 @@ Add to crontab (`crontab -e`):
 
 Configured in `routes/console.php`:
 
-- **Cloud → Local**: Every minute (backup)
-  - Only runs when cloud is available
-  - Prevents data loss during outages
+-   **Cloud → Local**: Every minute (backup)
 
-- **Local → Cloud**: Every minute (recovery)
-  - Only runs during failover recovery
-  - Syncs local changes back to cloud
+    -   Only runs when cloud is available
+    -   Prevents data loss during outages
+
+-   **Local → Cloud**: Every minute (recovery)
+    -   Only runs during failover recovery
+    -   Syncs local changes back to cloud
 
 ### Verify Scheduler
 
 Check scheduled tasks:
+
 ```bash
 php artisan schedule:list
 ```
 
 View sync logs:
+
 ```bash
 # Windows
 Get-Content storage\logs\laravel.log -Tail 50
@@ -252,6 +272,7 @@ tail -f storage/logs/laravel.log
 ## 🛠 Available Commands
 
 ### Database Status
+
 ```bash
 # Check connection status
 php artisan db:status
@@ -261,6 +282,7 @@ php artisan db:status --force-reconnect
 ```
 
 ### Manual Sync
+
 ```bash
 # Sync cloud → local
 php artisan db:sync-cloud-to-local
@@ -273,6 +295,7 @@ php artisan db:sync-cloud-to-local --tables=users --tables=appointments
 ```
 
 ### Database Management
+
 ```bash
 # View database info
 php artisan db:show
@@ -303,6 +326,7 @@ The `DatabaseFailoverMiddleware` automatically detects database availability:
 ### Sync Process
 
 **Cloud to Local (Backup):**
+
 ```php
 Schedule::command('db:sync-cloud-to-local --skip-confirm')
     ->everyMinute()
@@ -312,6 +336,7 @@ Schedule::command('db:sync-cloud-to-local --skip-confirm')
 ```
 
 **Local to Cloud (Recovery):**
+
 ```php
 Schedule::command('db:sync-local-to-cloud --skip-confirm')
     ->everyMinute()
@@ -325,11 +350,12 @@ Schedule::command('db:sync-local-to-cloud --skip-confirm')
 ### Tables Synced
 
 All application tables are automatically synced:
-- `users`, `personal_access_tokens`
-- `appointments`, `notifications`
-- `lab_results`, `test_results`, `test_result_details`
-- `allergies`, `diagnoses`, `immunizations`, `medications`
-- `hospitals`, `resources`, `resource_requests`, `vehicles`
+
+-   `users`, `personal_access_tokens`
+-   `appointments`, `notifications`
+-   `lab_results`, `test_results`, `test_result_details`
+-   `allergies`, `diagnoses`, `immunizations`, `medications`
+-   `hospitals`, `resources`, `resource_requests`, `vehicles`
 
 ---
 
@@ -338,6 +364,7 @@ All application tables are automatically synced:
 ### "Local database connection failed"
 
 **Check PostgreSQL is running:**
+
 ```bash
 # Windows
 services.msc  # Look for postgresql-x64-17
@@ -351,6 +378,7 @@ sudo systemctl status postgresql
 
 **Verify credentials:**
 Test connection:
+
 ```bash
 psql -U postgres -d db_kalinga
 ```
@@ -358,6 +386,7 @@ psql -U postgres -d db_kalinga
 ### "Table does not exist in local database"
 
 Run migrations:
+
 ```bash
 php artisan migrate --database=pgsql_local
 ```
@@ -365,8 +394,9 @@ php artisan migrate --database=pgsql_local
 ### "No scheduled commands are ready to run"
 
 This is normal! The scheduler checks every minute. Your tasks are scheduled at specific intervals:
-- Next sync will run at the next minute mark
-- Use `php artisan schedule:list` to see when tasks will run
+
+-   Next sync will run at the next minute mark
+-   Use `php artisan schedule:list` to see when tasks will run
 
 ### "Scheduler not running"
 
@@ -375,6 +405,7 @@ Ensure `php artisan schedule:work` is running in a terminal or as a background s
 ### Testing Failover
 
 **Simulate cloud failure:**
+
 1. Temporarily change cloud credentials in `.env` to invalid values
 2. Clear cache: `php artisan cache:clear`
 3. Make a request - should switch to local database
@@ -434,13 +465,13 @@ This project is open-sourced software licensed under the [MIT license](https://o
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+-   [Simple, fast routing engine](https://laravel.com/docs/routing).
+-   [Powerful dependency injection container](https://laravel.com/docs/container).
+-   Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+-   Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+-   Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+-   [Robust background job processing](https://laravel.com/docs/queues).
+-   [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
@@ -458,19 +489,19 @@ We would like to extend our thanks to the following sponsors for funding Laravel
 
 ### Premium Partners
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+-   **[Vehikl](https://vehikl.com/)**
+-   **[Tighten Co.](https://tighten.co)**
+-   **[WebReinvent](https://webreinvent.com/)**
+-   **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
+-   **[64 Robots](https://64robots.com)**
+-   **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
+-   **[Cyber-Duck](https://cyber-duck.co.uk)**
+-   **[DevSquad](https://devsquad.com/hire-laravel-developers)**
+-   **[Jump24](https://jump24.co.uk)**
+-   **[Redberry](https://redberry.international/laravel/)**
+-   **[Active Logic](https://activelogic.com)**
+-   **[byte5](https://byte5.de)**
+-   **[OP.GG](https://op.gg)**
 
 ## Contributing
 
@@ -487,13 +518,15 @@ This application includes a real-time messaging system using Laravel Reverb (Web
 ### Setup
 
 1. **Install Dependencies**
+
 ```bash
 composer require pusher/pusher-php-server
 npm install laravel-echo pusher-js
 ```
 
 2. **Configure Environment**
-Add to `.env`:
+   Add to `.env`:
+
 ```env
 BROADCAST_CONNECTION=reverb
 REVERB_APP_ID=your-app-id
@@ -505,6 +538,7 @@ REVERB_SCHEME=http
 ```
 
 3. **Start Reverb Server**
+
 ```bash
 php artisan reverb:start
 ```
@@ -512,19 +546,22 @@ php artisan reverb:start
 ### Database Setup
 
 Run the messages seeder to populate sample conversations:
+
 ```bash
 php artisan db:seed --class=MessagesSeeder
 ```
 
 The seeder creates:
-- Sample conversations between users
-- Messages with various statuses
-- Group conversations
-- Message attachments (references only)
+
+-   Sample conversations between users
+-   Messages with various statuses
+-   Group conversations
+-   Message attachments (references only)
 
 ### User Seeder
 
 To populate users (including verified responders for presence testing):
+
 ```bash
 php artisan db:seed --class=UserSeeder
 ```

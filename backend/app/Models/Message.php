@@ -13,6 +13,7 @@ class Message extends Model
         'sender_id',
         'receiver_id',
         'group_id',
+        'conversation_id',
     ];
 
     public function sender()
@@ -28,6 +29,11 @@ class Message extends Model
     public function group()
     {
         return $this->belongsTo(Group::class);
+    }
+
+    public function conversation()
+    {
+        return $this->belongsTo(Conversation::class);
     }
 
     public function attachments()

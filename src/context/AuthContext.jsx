@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       // Get CSRF cookie first for security
       await getCsrfCookie();
-      
+
       // Clean up any invalid localStorage data first
       cleanupAuthStorage();
 
@@ -37,7 +37,11 @@ export const AuthProvider = ({ children }) => {
             try {
               const parsedUser = JSON.parse(savedUser);
               // Validate it's actually an object with user data
-              if (parsedUser && typeof parsedUser === "object" && parsedUser.id) {
+              if (
+                parsedUser &&
+                typeof parsedUser === "object" &&
+                parsedUser.id
+              ) {
                 setUser(parsedUser);
                 setToken(savedToken);
                 setLoading(false);
@@ -51,10 +55,14 @@ export const AuthProvider = ({ children }) => {
                   // If background refresh fails, keep using cached data
                   // Only log out if it's explicitly a 401 Unauthorized (invalid token)
                   if (bgError.response?.status === 401) {
-                    console.warn("Token is invalid, will use cached data but may need re-login");
+                    console.warn(
+                      "Token is invalid, will use cached data but may need re-login"
+                    );
                     // Don't clear immediately - let the API interceptor handle it
                   } else {
-                    console.log("Background user refresh failed (network issue), using cached data");
+                    console.log(
+                      "Background user refresh failed (network issue), using cached data"
+                    );
                   }
                 }
                 return; // Exit early if cached user worked
@@ -65,7 +73,7 @@ export const AuthProvider = ({ children }) => {
               localStorage.removeItem("user");
             }
           }
-          
+
           // No valid cached user, fetch from API
           const userData = await authService.getCurrentUser();
           setUser(userData);
@@ -112,7 +120,7 @@ export const AuthProvider = ({ children }) => {
     try {
       // Ensure CSRF cookie is fresh before login
       await getCsrfCookie();
-      
+
       const data = await authService.login(credentials);
       setUser(data.user);
       setToken(data.token);

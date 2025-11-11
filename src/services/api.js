@@ -1,5 +1,6 @@
 // src/services/api.js
 import axios from "axios";
+import { getEchoInstance } from "./echo";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -53,6 +54,16 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    try {
+      const echoInstance = getEchoInstance?.();
+      const socketId = echoInstance?.socketId?.();
+      if (socketId) {
+        config.headers["X-Socket-Id"] = socketId;
+      }
+    } catch (socketError) {
+      console.warn("Unable to attach Echo socket id", socketError);
+    }
+
     return config;
   },
   (error) => {
@@ -76,19 +87,18 @@ api.interceptors.response.use(
     // Handle 429 Rate Limit
     if (error.response?.status === 429) {
       const retryAfter = error.response.headers["retry-after"];
-      console.error(
-        `Rate limit exceeded. Retry after ${retryAfter} seconds.`
-      );
+      console.error(`Rate limit exceeded. Retry after ${retryAfter} seconds.`);
       // You can show a toast/notification here
     }
 
     // Handle 401 Unauthorized - but be smart about it
     if (error.response?.status === 401) {
       // Check if this is truly an auth failure or just a network/temporary issue
-      const isAuthEndpoint = originalRequest.url?.includes('/login') || 
-                            originalRequest.url?.includes('/register') ||
-                            originalRequest.url?.includes('/me');
-      
+      const isAuthEndpoint =
+        originalRequest.url?.includes("/login") ||
+        originalRequest.url?.includes("/register") ||
+        originalRequest.url?.includes("/me");
+
       // Only logout if:
       // 1. This is an auth verification endpoint (like /me)
       // 2. OR we've already retried
@@ -97,7 +107,7 @@ api.interceptors.response.use(
         console.warn("Authentication failed - logging out");
         localStorage.removeItem("token");
         localStorage.removeItem("user");
-        
+
         if (!window.location.pathname.includes("/login")) {
           window.location.href = "/login";
         }

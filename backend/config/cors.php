@@ -36,6 +36,7 @@ return [
         'X-Requested-With',
         'X-CSRF-TOKEN',
         'X-XSRF-TOKEN',
+        'X-Socket-Id',
         'Accept',
         'Origin',
     ],
