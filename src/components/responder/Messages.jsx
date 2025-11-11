@@ -118,6 +118,12 @@ const normalizeMessage = (
     ? normalizePerson(receiverObject, receiverName)
     : null;
 
+  const isOwnMessage =
+    message.isOwn ??
+    (currentUserId !== null && senderId !== null
+      ? senderId === currentUserId
+      : undefined);
+
   return {
     id: message.id ?? `msg-${Math.random().toString(36).slice(2)}`,
     text: message.text ?? message.message ?? "",
@@ -130,11 +136,15 @@ const normalizeMessage = (
     timestamp,
     isRead: message.isRead ?? false,
     isSystemMessage: message.isSystemMessage ?? false,
-    isOwn:
-      message.isOwn ??
-      (currentUserId !== null && senderId !== null
-        ? senderId === currentUserId
+    isOwn: isOwnMessage,
+    deliveryStatus:
+      message.deliveryStatus ??
+      (typeof isOwnMessage === "boolean"
+        ? isOwnMessage
+          ? "sent"
+          : "delivered"
         : undefined),
+    sendError: message.sendError ?? null,
   };
 };
 
@@ -209,8 +219,8 @@ const normalizeConversation = (conversation = {}, currentUserId = null) => {
   };
 };
 
-const sortConversationsByRecency = (list = []) =>
-  [...list].sort((a, b) => {
+const sortConversationsByRecency = (list = []) => {
+  return [...list].sort((a, b) => {
     const timeA = a?.lastMessageTime
       ? new Date(a.lastMessageTime).getTime()
       : 0;
@@ -219,6 +229,7 @@ const sortConversationsByRecency = (list = []) =>
       : 0;
     return timeB - timeA;
   });
+};
 
 const isSameConversation = (conv, other) => {
   if (!conv || !other) return false;
@@ -257,7 +268,6 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
     : hasUnread
     ? "border-green-200 bg-green-50"
     : "bg-white hover:bg-gray-50 border-gray-100";
-
   const timeFormatted = conversation.lastMessageTime
     ? new Date(conversation.lastMessageTime).toLocaleString("en-US", {
         month: "short",
@@ -288,7 +298,6 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
     // TODO: Implement mark as unread functionality
   };
 
-  // Close context menu when clicking outside
   useEffect(() => {
     const handleClickOutside = () => {
       if (showContextMenu) {
@@ -300,6 +309,8 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
       document.addEventListener("click", handleClickOutside);
       return () => document.removeEventListener("click", handleClickOutside);
     }
+
+    return undefined;
   }, [showContextMenu]);
 
   return (
@@ -843,6 +854,8 @@ export default function MessagesContact() {
   const [presenceStatus, setPresenceStatus] = useState("idle");
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [presenceError, setPresenceError] = useState(null);
+  const inflightConversationFetch = useRef(new Set());
+  const scheduledConversationRefreshes = useRef(new Map());
 
   // Derive detail view state for mobile master-detail pattern
   // derived further below once conversation data is enriched
@@ -905,6 +918,98 @@ export default function MessagesContact() {
       isCancelled = true;
     };
   }, [authLoading, user]);
+
+  useEffect(() => {
+    return () => {
+      scheduledConversationRefreshes.current.forEach((timer) =>
+        clearTimeout(timer)
+      );
+      scheduledConversationRefreshes.current.clear();
+    };
+  }, []);
+
+  const refreshConversationMessages = useCallback(
+    async (participantId, meta = {}) => {
+      if (!user || !participantId) {
+        return;
+      }
+
+      const key = `${participantId}:${meta.conversationId ?? ""}`;
+      if (inflightConversationFetch.current.has(key)) {
+        return;
+      }
+
+      inflightConversationFetch.current.add(key);
+
+      try {
+        const data = await chatService.getMessages(participantId);
+        const normalizedMessages = data.map((msg) =>
+          normalizeMessage(msg, "", user.id)
+        );
+        const latestMessage =
+          normalizedMessages[normalizedMessages.length - 1] ?? null;
+
+        const descriptor = {
+          id:
+            meta.id ??
+            meta.conversationId ??
+            (participantId ? `user-${participantId}` : undefined),
+          conversationId: meta.conversationId ?? null,
+          participant: { id: participantId },
+        };
+
+        setConversations((prev) =>
+          sortConversationsByRecency(
+            prev.map((conv) => {
+              if (!isSameConversation(conv, descriptor)) {
+                return conv;
+              }
+
+              return {
+                ...conv,
+                messages: normalizedMessages.map((message) => ({
+                  ...message,
+                  deliveryStatus:
+                    message.deliveryStatus ??
+                    (message.isOwn ? "sent" : "delivered"),
+                  sendError: null,
+                })),
+                lastMessage: latestMessage?.text ?? conv.lastMessage,
+                lastMessageTime:
+                  latestMessage?.timestamp ?? conv.lastMessageTime,
+              };
+            })
+          )
+        );
+      } catch (error) {
+        console.error("Failed to refresh conversation messages", error);
+      } finally {
+        inflightConversationFetch.current.delete(key);
+      }
+    },
+    [user]
+  );
+
+  const scheduleConversationRefresh = useCallback(
+    (participantId, meta = {}) => {
+      if (!participantId) {
+        return;
+      }
+
+      const key = `${participantId}:${meta.conversationId ?? ""}`;
+      if (scheduledConversationRefreshes.current.has(key)) {
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        scheduledConversationRefreshes.current.delete(key);
+        refreshConversationMessages(participantId, meta);
+      }, 200);
+
+      scheduledConversationRefreshes.current.set(key, timer);
+    },
+    [refreshConversationMessages]
+  );
 
   // Setup Echo presence channel for online status
   useEffect(() => {
@@ -1095,6 +1200,16 @@ export default function MessagesContact() {
         };
       }
 
+      const isIncomingMessage = normalizedMessage.senderId !== user?.id;
+
+      const normalizedMessageWithStatus = {
+        ...normalizedMessage,
+        deliveryStatus:
+          normalizedMessage.deliveryStatus ??
+          (isIncomingMessage ? "delivered" : "sent"),
+        sendError: null,
+      };
+
       setConversations((prev) => {
         let matchFound = false;
 
@@ -1111,9 +1226,11 @@ export default function MessagesContact() {
 
           const messages = messageExists
             ? conv.messages.map((msg) =>
-                msg.id === normalizedMessage.id ? normalizedMessage : msg
+                msg.id === normalizedMessage.id
+                  ? normalizedMessageWithStatus
+                  : msg
               )
-            : [...conv.messages, normalizedMessage];
+            : [...conv.messages, normalizedMessageWithStatus];
 
           return {
             ...conv,
@@ -1126,8 +1243,8 @@ export default function MessagesContact() {
                 ? normalizedConversation.participants
                 : conv.participants,
             category: normalizedConversation.category ?? conv.category,
-            lastMessage: normalizedMessage.text,
-            lastMessageTime: normalizedMessage.timestamp,
+            lastMessage: normalizedMessageWithStatus.text,
+            lastMessageTime: normalizedMessageWithStatus.timestamp,
             messages,
             unreadCount: isActiveConversation
               ? 0
@@ -1142,7 +1259,7 @@ export default function MessagesContact() {
             ...normalizedConversation,
             messages: normalizedConversation.messages?.length
               ? normalizedConversation.messages
-              : [normalizedMessage],
+              : [normalizedMessageWithStatus],
             unreadCount: isActiveConversation ? 0 : 1,
           });
         }
@@ -1157,8 +1274,31 @@ export default function MessagesContact() {
       ) {
         setSelectedConversationId(normalizedConversation.id);
       }
+
+      const participantCandidates = (normalizedConversation.participants || [])
+        .concat(normalizedConversation.participant || [])
+        .filter(Boolean);
+
+      const otherParticipantId = participantCandidates
+        .map((person) => person?.id)
+        .find((id) => id && id !== user?.id) ??
+        (payload.message?.senderId === user?.id
+          ? payload.message?.receiverId
+          : payload.message?.senderId);
+
+      if (otherParticipantId && isIncomingMessage) {
+        scheduleConversationRefresh(otherParticipantId, {
+          conversationId: normalizedConversation.conversationId ?? null,
+          id: normalizedConversation.id ?? null,
+        });
+      }
     },
-    [selectedConversation, selectedConversationId, user?.id]
+    [
+      selectedConversation,
+      selectedConversationId,
+      user?.id,
+      scheduleConversationRefresh,
+    ]
   );
 
   // Subscribe to realtime chat events
