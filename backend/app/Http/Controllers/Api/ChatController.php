@@ -5,9 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
+use App\Models\Incident;
 use App\Models\Message;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 
 class ChatController extends Controller
@@ -188,6 +191,7 @@ class ChatController extends Controller
             'receiver_id' => ['required', 'integer', 'exists:users,id'],
             'message' => ['required_without:group_id', 'nullable', 'string'],
             'group_id' => ['nullable', 'integer', 'exists:groups,id'],
+            'emergency_payload' => ['nullable', 'array'],
         ]);
 
         if ((int) $validated['receiver_id'] === $user->id && empty($validated['group_id'])) {
@@ -195,9 +199,9 @@ class ChatController extends Controller
                 'receiver_id' => 'You cannot send a direct message to yourself.',
             ]);
         }
-
         $receiverId = (int) $validated['receiver_id'];
         $groupId = $validated['group_id'] ?? null;
+        $emergencyPayload = $validated['emergency_payload'] ?? null;
 
         $conversationId = null;
 
@@ -280,16 +284,172 @@ class ChatController extends Controller
             groupId: $groupId,
         ));
 
+        $autoReplyPayload = $this->handleEmergencyEscalation(
+            sender: $user,
+            patientMessage: $message,
+            conversationPayload: $conversationPayload,
+            receiverPayload: $receiverPayload,
+            emergencyPayload: $emergencyPayload,
+        );
+
+        $responseData = array_merge($messagePayload, [
+            'isOwn' => true,
+            'conversationId' => $conversationId,
+            'participant' => $conversationPayload['participant'],
+            'participants' => $conversationPayload['participants'],
+            'receiver' => $receiverPayload,
+            'sender' => $senderPayload,
+        ]);
+
+        if ($autoReplyPayload) {
+            $responseData['autoReply'] = $autoReplyPayload;
+        }
+
         return response()->json([
-            'data' => array_merge($messagePayload, [
-                'isOwn' => true,
-                'conversationId' => $conversationId,
-                'participant' => $conversationPayload['participant'],
-                'participants' => $conversationPayload['participants'],
-                'receiver' => $receiverPayload,
-                'sender' => $senderPayload,
-            ]),
+            'data' => $responseData,
         ], 201);
+    }
+
+    private function handleEmergencyEscalation(
+        \App\Models\User $sender,
+        Message $patientMessage,
+        array $conversationPayload,
+        ?array $receiverPayload,
+        ?array $emergencyPayload
+    ): ?array {
+        if (empty($emergencyPayload) || $sender->role !== 'patient') {
+            return null;
+        }
+
+        if (!$receiverPayload || !isset($receiverPayload['id'])) {
+            return null;
+        }
+
+        $latitudeRaw = Arr::get($emergencyPayload, 'latitude');
+        $longitudeRaw = Arr::get($emergencyPayload, 'longitude');
+
+        $latitude = is_numeric($latitudeRaw) ? (float) $latitudeRaw : null;
+        $longitude = is_numeric($longitudeRaw) ? (float) $longitudeRaw : null;
+
+        $locationLabel = Arr::get($emergencyPayload, 'location_label');
+        if (!$locationLabel) {
+            if ($latitude !== null && $longitude !== null) {
+                $locationLabel = sprintf('Coordinates: %.5f, %.5f', $latitude, $longitude);
+            } else {
+                $locationLabel = 'Location not provided';
+            }
+        }
+
+        $description = Arr::get($emergencyPayload, 'description')
+            ?? $patientMessage->message
+            ?? 'Emergency SOS triggered.';
+
+        $incidentType = Arr::get($emergencyPayload, 'incident_type', 'Emergency SOS');
+
+        $incidentData = [
+            'type' => $incidentType,
+            'location' => $locationLabel,
+            'latlng' => ($latitude !== null && $longitude !== null)
+                ? sprintf('%s,%s', $latitude, $longitude)
+                : null,
+            'description' => $description,
+            'user_id' => $sender->id,
+            'status' => 'available',
+            'assigned_responder_id' => null,
+            'assigned_at' => null,
+        ];
+
+        Incident::create($incidentData);
+
+        $conversationId = $conversationPayload['conversationId'] ?? null;
+
+        if (!$conversationId) {
+            return null;
+        }
+
+        $autoReplyText = Arr::get($emergencyPayload, 'auto_reply_text')
+            ?? 'Responder has received your emergency alert and is preparing to assist you. Stay safe and provide any updates if your situation changes.';
+
+        $autoMessage = Message::create([
+            'message' => $autoReplyText,
+            'sender_id' => $receiverPayload['id'],
+            'receiver_id' => $sender->id,
+            'group_id' => null,
+            'conversation_id' => $conversationId,
+        ]);
+
+        Conversation::whereKey($conversationId)->update([
+            'last_message_id' => $autoMessage->id,
+        ]);
+
+        $autoMessage->load(['sender:id,name,role,profile_image', 'receiver:id,name,role,profile_image']);
+
+        $autoSenderPayload = $autoMessage->sender ? [
+            'id' => $autoMessage->sender->id,
+            'name' => $autoMessage->sender->name,
+            'role' => $autoMessage->sender->role,
+            'avatar' => $autoMessage->sender->profile_image,
+            'profile_image' => $autoMessage->sender->profile_image,
+        ] : null;
+
+        $autoReceiverPayload = $autoMessage->receiver ? [
+            'id' => $autoMessage->receiver->id,
+            'name' => $autoMessage->receiver->name,
+            'role' => $autoMessage->receiver->role,
+            'avatar' => $autoMessage->receiver->profile_image,
+            'profile_image' => $autoMessage->receiver->profile_image,
+        ] : null;
+
+        $autoTimestamp = optional($autoMessage->created_at)->toIso8601String();
+
+        $autoMessagePayload = [
+            'id' => $autoMessage->id,
+            'text' => $autoMessage->message,
+            'senderId' => $autoMessage->sender_id,
+            'receiverId' => $autoMessage->receiver_id,
+            'sender' => $autoMessage->sender?->name,
+            'timestamp' => $autoTimestamp,
+            'isRead' => false,
+            'isSystemMessage' => false,
+        ];
+
+        $participants = $conversationPayload['participants']
+            ?? collect([$autoSenderPayload, $autoReceiverPayload])
+                ->filter()
+                ->values()
+                ->all();
+
+        $participant = $conversationPayload['participant']
+            ?? ($autoReceiverPayload ?? $autoSenderPayload);
+
+        $autoConversationPayload = [
+            'id' => $conversationPayload['id'],
+            'conversationId' => $conversationId,
+            'participant' => $participant,
+            'participants' => $participants,
+            'sender' => $autoSenderPayload,
+            'receiver' => $autoReceiverPayload,
+            'category' => $conversationPayload['category'] ?? 'Emergency',
+            'unreadCount' => 0,
+            'isArchived' => false,
+            'lastMessage' => $autoMessage->message,
+            'lastMessageTime' => $autoTimestamp,
+            'messages' => [$autoMessagePayload],
+        ];
+
+        broadcast(new MessageSent(
+            message: $autoMessagePayload,
+            conversation: $autoConversationPayload,
+            senderId: $autoMessage->sender_id,
+            receiverId: $autoMessage->receiver_id,
+            groupId: null,
+            suppressCurrentUser: false,
+        ));
+
+        return [
+            'message' => $autoMessagePayload,
+            'conversation' => $autoConversationPayload,
+        ];
     }
 
     public function deleteMessage(Request $request, int $messageId)

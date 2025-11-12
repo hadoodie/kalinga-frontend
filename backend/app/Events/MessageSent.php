@@ -20,8 +20,11 @@ class MessageSent implements ShouldBroadcastNow
         public int $senderId,
         public ?int $receiverId,
         public ?int $groupId = null,
+        public bool $suppressCurrentUser = true,
     ) {
-        $this->dontBroadcastToCurrentUser();
+        if ($this->suppressCurrentUser) {
+            $this->dontBroadcastToCurrentUser();
+        }
     }
 
     public function broadcastOn(): array

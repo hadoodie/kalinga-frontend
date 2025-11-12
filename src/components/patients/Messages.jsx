@@ -2000,7 +2000,7 @@ export default function MessagesContact() {
 
   // Handle sending a new message
   const handleSendMessage = useCallback(
-    async (conversation, messageText) => {
+    async (conversation, messageText, options = {}) => {
       if (!conversation || !user) return;
 
       const trimmed = messageText.trim();
@@ -2087,10 +2087,16 @@ export default function MessagesContact() {
       });
 
       try {
-        const payload = await chatService.sendMessage({
+        const requestPayload = {
           receiver_id: receiverId,
           message: trimmed,
-        });
+        };
+
+        if (options.emergencyPayload) {
+          requestPayload.emergency_payload = options.emergencyPayload;
+        }
+
+        const payload = await chatService.sendMessage(requestPayload);
 
         const normalizedMessage = normalizeMessage(
           {
@@ -2173,6 +2179,80 @@ export default function MessagesContact() {
             return prevId;
           });
         }
+
+        if (
+          payload.autoReply?.message &&
+          payload.autoReply?.conversation
+        ) {
+          const autoConversation = normalizeConversation(
+            payload.autoReply.conversation,
+            user?.id ?? null
+          );
+
+          const autoMessage = normalizeMessage(
+            payload.autoReply.message,
+            payload.autoReply.message.sender ?? "",
+            user?.id ?? null
+          );
+
+          setConversations((prev) => {
+            let found = false;
+
+            const mapped = prev.map((conv) => {
+              if (!isSameConversation(conv, autoConversation)) {
+                return conv;
+              }
+
+              found = true;
+
+              const messageExists = conv.messages.some(
+                (msg) => msg.id === autoMessage.id
+              );
+
+              if (messageExists) {
+                return conv;
+              }
+
+              const updatedParticipant =
+                autoConversation.participant ?? conv.participant;
+
+              const updatedParticipants =
+                Array.isArray(autoConversation.participants) &&
+                autoConversation.participants.length
+                  ? autoConversation.participants
+                  : conv.participants;
+
+              const messages = [...conv.messages, autoMessage];
+
+              return {
+                ...conv,
+                id: autoConversation.id ?? conv.id,
+                conversationId:
+                  autoConversation.conversationId ?? conv.conversationId,
+                participant: updatedParticipant,
+                participants: updatedParticipants,
+                lastMessage: autoMessage.text,
+                lastMessageTime: autoMessage.timestamp,
+                messages,
+              };
+            });
+
+            const nextConversations = !found
+              ? [
+                  ...mapped,
+                  {
+                    ...autoConversation,
+                    messages: autoConversation.messages?.length
+                      ? autoConversation.messages
+                      : [autoMessage],
+                    unreadCount: autoConversation.unreadCount ?? 0,
+                  },
+                ]
+              : mapped;
+
+            return sortConversationsByRecency(nextConversations);
+          });
+        }
       } catch (error) {
         setConversations((prev) =>
           prev.map((conv) => {
@@ -2250,33 +2330,64 @@ export default function MessagesContact() {
         }
       }
 
+      let latNumber = null;
+      let lngNumber = null;
+      let latDisplay = null;
+      let lngDisplay = null;
+      let mapLink = null;
+      let accuracyValue = null;
+      let accuracyDisplay = null;
+
+      if (locationInfo) {
+        const latCandidate = Number(locationInfo.latitude);
+        const lngCandidate = Number(locationInfo.longitude);
+
+        if (Number.isFinite(latCandidate) && Number.isFinite(lngCandidate)) {
+          latNumber = latCandidate;
+          lngNumber = lngCandidate;
+          latDisplay = latCandidate.toFixed(5);
+          lngDisplay = lngCandidate.toFixed(5);
+          mapLink = buildMapsLink(latCandidate, lngCandidate);
+        } else {
+          latDisplay =
+            locationInfo.latitude !== undefined && locationInfo.latitude !== null
+              ? String(locationInfo.latitude)
+              : null;
+          lngDisplay =
+            locationInfo.longitude !== undefined &&
+            locationInfo.longitude !== null
+              ? String(locationInfo.longitude)
+              : null;
+        }
+
+        if (typeof locationInfo.accuracy === "number") {
+          accuracyValue = locationInfo.accuracy;
+          accuracyDisplay = `Accuracy: ±${Math.round(accuracyValue)}m`;
+        }
+      }
+
       const timestampLabel = new Date(triggeredAt).toLocaleString();
       let messageText = options.message ?? "";
 
       if (!messageText) {
         if (locationInfo) {
-          const latNumber = Number(locationInfo.latitude);
-          const lngNumber = Number(locationInfo.longitude);
-          const hasCoordinates =
-            Number.isFinite(latNumber) && Number.isFinite(lngNumber);
-          const latDisplay = hasCoordinates
-            ? latNumber.toFixed(5)
-            : String(locationInfo.latitude ?? "");
-          const lngDisplay = hasCoordinates
-            ? lngNumber.toFixed(5)
-            : String(locationInfo.longitude ?? "");
-          const accuracyDisplay =
-            typeof locationInfo.accuracy === "number"
-              ? `Accuracy: ±${Math.round(locationInfo.accuracy)}m`
-              : null;
-          const mapLink = hasCoordinates
-            ? buildMapsLink(latNumber, lngNumber)
-            : null;
+          const latText =
+            latDisplay ??
+            (locationInfo.latitude !== undefined &&
+            locationInfo.latitude !== null
+              ? String(locationInfo.latitude)
+              : "Unknown");
+          const lngText =
+            lngDisplay ??
+            (locationInfo.longitude !== undefined &&
+            locationInfo.longitude !== null
+              ? String(locationInfo.longitude)
+              : "Unknown");
 
           messageText = [
             "🚨 Emergency SOS activated by patient.",
             `Time: ${timestampLabel}`,
-            `Coordinates: ${latDisplay}, ${lngDisplay}`,
+            `Coordinates: ${latText}, ${lngText}`,
             accuracyDisplay,
             mapLink ? `Map: ${mapLink}` : null,
             options.notes ? `Notes: ${options.notes}` : null,
@@ -2294,6 +2405,50 @@ export default function MessagesContact() {
             .filter(Boolean)
             .join("\n");
         }
+      }
+
+      const locationLabel =
+        options.locationLabel ??
+        locationInfo?.label ??
+        locationInfo?.name ??
+        locationInfo?.displayName ??
+        (latDisplay && lngDisplay ? `${latDisplay}, ${lngDisplay}` : null);
+
+      const emergencyPayload = {
+        type: "sos",
+        triggered_at: triggeredAt,
+        description: messageText,
+        incident_type: options.incidentType ?? "Emergency SOS",
+        auto_reply_text:
+          "Our responders have received your emergency alert and are preparing to assist you. Stay safe and provide any updates if your situation changes.",
+      };
+
+      if (Number.isFinite(latNumber)) {
+        emergencyPayload.latitude = latNumber;
+      }
+
+      if (Number.isFinite(lngNumber)) {
+        emergencyPayload.longitude = lngNumber;
+      }
+
+      if (accuracyValue !== null) {
+        emergencyPayload.accuracy = accuracyValue;
+      }
+
+      if (locationLabel) {
+        emergencyPayload.location_label = locationLabel;
+      }
+
+      if (mapLink) {
+        emergencyPayload.map_url = mapLink;
+      }
+
+      if (options.notes) {
+        emergencyPayload.notes = options.notes;
+      }
+
+      if (locationErrorMessage) {
+        emergencyPayload.location_error = locationErrorMessage;
       }
 
       const emergencyConversation = conversationsWithPresence.find(
@@ -2363,6 +2518,8 @@ export default function MessagesContact() {
         return;
       }
 
+      emergencyPayload.responder_id = receiverId;
+
       const responderName =
         options.receiverName ??
         targetConversation?.participant?.name ??
@@ -2370,6 +2527,9 @@ export default function MessagesContact() {
         presenceResponder?.user?.name ??
         presenceResponder?.user_info?.name ??
         "Emergency Dispatch";
+
+      emergencyPayload.responder_name = responderName;
+  emergencyPayload.patient_id = user.id;
 
       const participant =
         targetConversation?.participant ??
@@ -2439,7 +2599,9 @@ export default function MessagesContact() {
       setSelectedConversationId(preparedConversation.id);
 
       try {
-        await handleSendMessage(preparedConversation, messageText);
+        await handleSendMessage(preparedConversation, messageText, {
+          emergencyPayload,
+        });
         setEmergencyAction({
           status: "success",
           message: "Emergency alert sent to responders.",
