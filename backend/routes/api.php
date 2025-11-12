@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\IncidentApiController;
 use App\Http\Controllers\Api\RoadBlockadeController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\AllocationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -90,6 +91,15 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
 
     // Admin and Logistics routes
     Route::middleware(['role:admin,logistics'])->group(function () {
+        
+        // Allocation Request Routes
+        Route::get('/incoming-requests', [AllocationController::class, 'getIncomingRequests']);
+        Route::get('/outgoing-requests', [AllocationController::class, 'getOutgoingRequests']);
+        Route::get('/allocation-history', [AllocationController::class, 'getHistory']);
+        Route::post('/allocation-requests', [AllocationController::class, 'createRequest']);
+        Route::put('/incoming-requests/{id}/status', [AllocationController::class, 'updateIncomingStatus']);
+        Route::get('/supply-tracking', [AllocationController::class, 'getSupplyTracking']);
+
         // Calendar & History Routes (from your calendar feature)
         Route::get('/resources/calendar/events', [ResourceController::class, 'calendarEvents']);
         Route::get('/resources/calendar/events/{date}', [ResourceController::class, 'dateEvents']);

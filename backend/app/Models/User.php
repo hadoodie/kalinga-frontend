@@ -10,6 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Appointment;
 use App\Models\Notification;
+use App\Models\AllocationRequest; // <-- ADDED THIS IMPORT
 
 class User extends Authenticatable
 {
@@ -91,5 +92,13 @@ class User extends Authenticatable
     public function notifications(): HasMany 
     {
         return $this->hasMany(Notification::class);
+    }
+
+    /**
+     * Get all of the allocation requests made by the User.
+     */
+    public function outgoingAllocationRequests(): HasMany 
+    {
+        return $this->hasMany(AllocationRequest::class, 'requester_user_id');
     }
 }
