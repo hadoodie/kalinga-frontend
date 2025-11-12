@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             AppointmentsSeeder::class,
             LabResultSeeder::class,
             NotificationSeeder::class,
+            AllocationRequestSeeder::class,
         ]);
     }
 }

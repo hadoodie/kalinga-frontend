@@ -33,4 +33,10 @@ class Hospital extends Model
     {
         return $this->hasMany(Resource::class);
     }
+
+    // Incoming Allocation Requests
+    public function incomingAllocationRequests()
+    {
+        return $this->hasMany(AllocationRequest::class, 'requester_hospital_id');
+    }
 }
