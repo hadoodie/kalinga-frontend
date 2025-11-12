@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   Send,
   User,
@@ -30,7 +30,6 @@ import EchoClient, {
 } from "../../services/echo";
 import chatService from "../../services/chatService";
 import { useAuth } from "../../context/AuthContext";
-import { useRealtime } from "../../context/RealtimeContext";
 
 /**
  * Tab/View Selector for the Main Content Area
@@ -38,14 +37,12 @@ import { useRealtime } from "../../context/RealtimeContext";
 const MainContentTabs = {
   INBOX: "Inbox",
   COMPOSE: "Compose",
-  CONTACTS: "Contacts",
-  SUPPORT: "Support",
 };
 
 // Generate a deterministic avatar URL when the backend does not provide one.
 const buildAvatarUrl = (name, avatar) => {
   if (avatar) return avatar;
-  const fallbackName = name ? encodeURIComponent(name) : "Patient";
+  const fallbackName = name ? encodeURIComponent(name) : "Responder";
   return `https://ui-avatars.com/api/?background=118A7E&color=fff&name=${fallbackName}`;
 };
 const normalizePerson = (person = {}, fallbackName = "Unknown") => {
@@ -310,10 +307,7 @@ const buildConversationBufferKey = (
   return null;
 };
 
-const mergeConversationSnapshot = (
-  currentSnapshot = {},
-  incomingSnapshot = {}
-) => {
+const mergeConversationSnapshot = (currentSnapshot = {}, incomingSnapshot = {}) => {
   const mergedMessages = Array.isArray(incomingSnapshot.messages)
     ? incomingSnapshot.messages.length
       ? incomingSnapshot.messages
@@ -343,106 +337,13 @@ const mergeConversationSnapshot = (
     participant:
       incomingSnapshot.participant ?? currentSnapshot.participant ?? null,
     participants: mergedParticipants,
-    category:
-      incomingSnapshot.category ?? currentSnapshot.category ?? "General",
+    category: incomingSnapshot.category ?? currentSnapshot.category ?? "General",
     messages: mergedMessages,
-    lastMessage:
-      incomingSnapshot.lastMessage ?? currentSnapshot.lastMessage ?? "",
+    lastMessage: incomingSnapshot.lastMessage ?? currentSnapshot.lastMessage ?? "",
     lastMessageTime:
-      incomingSnapshot.lastMessageTime ??
-      currentSnapshot.lastMessageTime ??
-      null,
+      incomingSnapshot.lastMessageTime ?? currentSnapshot.lastMessageTime ?? null,
   };
 };
-
-const PATIENT_CARE_TEAM = [
-  {
-    name: "Dr. Leda Vance",
-    role: "Primary Care Provider (PCP)",
-    phone: "(555) 101-2000",
-    email: "leda.vance@clinic.org",
-    photo: "https://placehold.co/100x100/34D399/ffffff?text=LV",
-  },
-  {
-    name: "Clinical Nurse Sarah",
-    role: "RN, Patient Coordinator",
-    phone: "(555) 101-2001",
-    email: "sarah.rn@clinic.org",
-    photo: "https://placehold.co/100x100/60A5FA/ffffff?text=SN",
-  },
-  {
-    name: "Alex Chen",
-    role: "Billing Specialist",
-    phone: "(555) 101-2002",
-    email: "alex.chen@clinic.org",
-    photo: "https://placehold.co/100x100/FBBF24/ffffff?text=AC",
-  },
-];
-
-const HOSPITAL_CONTACTS = [
-  {
-    name: "Main Hospital Line",
-    number: "(555) 500-1234",
-    role: "General Inquiry",
-  },
-  {
-    name: "Scheduling Office",
-    number: "(555) 500-1235",
-    role: "Appointments",
-  },
-  {
-    name: "Billing & Insurance",
-    number: "(555) 500-1236",
-    role: "Payment Questions",
-  },
-];
-
-const getCurrentLocation = ({ timeout = 10000 } = {}) =>
-  new Promise((resolve) => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      resolve({
-        ok: false,
-        error: "Geolocation is not supported in this browser.",
-      });
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          ok: true,
-          coords: {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-            accuracy: position.coords.accuracy,
-          },
-        });
-      },
-      (error) => {
-        let message = error?.message || "Unable to acquire location.";
-
-        switch (error?.code) {
-          case error?.PERMISSION_DENIED:
-            message = "Location permission denied by the user.";
-            break;
-          case error?.POSITION_UNAVAILABLE:
-            message = "Location information is unavailable.";
-            break;
-          case error?.TIMEOUT:
-            message = "Location request timed out.";
-            break;
-          default:
-            break;
-        }
-
-        resolve({ ok: false, error: message });
-      },
-      { enableHighAccuracy: true, timeout, maximumAge: 0 }
-    );
-  });
-
-const buildMapsLink = (latitude, longitude) =>
-  `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
 
 /**
  * Component 1. Conversation List Item (Messenger-style)
@@ -1038,141 +939,11 @@ const MessageComposer = ({ initialSubject = "", onSend }) => {
   );
 };
 
-const ContactDirectory = () => (
-  <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border">
-    <h2 className="shrink-0 text-2xl font-bold text-gray-900 border-b p-6 pb-4 flex items-center gap-2">
-      <Phone size={24} className="text-primary" /> Contact Directory
-    </h2>
-
-    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-8">
-      <div className="space-y-4">
-        <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-1">
-          My Care Team
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-          {PATIENT_CARE_TEAM.map((member) => (
-            <div
-              key={member.email}
-              className="bg-green-50 p-4 rounded-xl border border-green-200 flex items-center gap-3 shadow-sm"
-            >
-              <img
-                src={member.photo}
-                alt={member.name}
-                className="w-12 h-12 rounded-full object-cover shrink-0"
-                onError={(e) => {
-                  const initials = member.name
-                    .split(" ")
-                    .map((part) => part[0] || "")
-                    .join("");
-                  e.currentTarget.src = `https://placehold.co/100x100/A5B4FC/374151?text=${initials}`;
-                }}
-              />
-              <div>
-                <p className="font-bold text-gray-900">{member.name}</p>
-                <p className="text-sm text-green-700 font-medium">
-                  {member.role}
-                </p>
-                <div className="text-xs text-gray-600 space-y-0.5 mt-1">
-                  <p className="flex items-center gap-1">
-                    <Phone size={12} /> {member.phone}
-                  </p>
-                  <p className="flex items-center gap-1">
-                    <Mail size={12} /> {member.email}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-4 pt-4 border-t text-left">
-        <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-1">
-          General Contact Numbers
-        </h3>
-        <div className="space-y-3">
-          {HOSPITAL_CONTACTS.map((contact) => (
-            <div
-              key={contact.name}
-              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border"
-            >
-              <div className="text-gray-800">
-                <p className="font-medium">{contact.name}</p>
-                <p className="text-xs text-gray-500">{contact.role}</p>
-              </div>
-              <a
-                href={`tel:${contact.number}`}
-                className="font-bold text-lg text-green-600 hover:text-green-800 transition"
-              >
-                {contact.number}
-              </a>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const SupportSection = () => (
-  <div className="flex flex-col h-full bg-white rounded-xl shadow-lg border">
-    <div className="shrink-0 p-6 border-b">
-      <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-        <HelpCircle size={24} className="text-green-600" /> Support & Self-Help
-      </h2>
-    </div>
-
-    <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4">
-      <p className="text-gray-600">
-        Find quick answers to common questions about billing, appointments, and
-        accessing your health records.
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
-        <a
-          href="#"
-          className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200 hover:bg-green-100 transition shadow-sm"
-        >
-          <FileText size={24} className="text-green-600 shrink-0" />
-          <div>
-            <p className="font-semibold text-gray-900">FAQ & Knowledge Base</p>
-            <p className="text-xs text-gray-600">
-              Common questions about the portal and services.
-            </p>
-          </div>
-        </a>
-        <a
-          href="#"
-          className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200 hover:bg-green-100 transition shadow-sm"
-        >
-          <Settings size={24} className="text-green-600 shrink-0" />
-          <div>
-            <p className="font-semibold text-gray-900">Technical Support</p>
-            <p className="text-xs text-gray-600">
-              Troubleshoot login and site issues.
-            </p>
-          </div>
-        </a>
-      </div>
-
-      <div className="pt-4 border-t mt-4">
-        <p className="text-sm text-gray-500 italic">
-          For medical emergencies, please call your local emergency number
-          immediately.
-        </p>
-      </div>
-    </div>
-  </div>
-);
-
 // --- Main App Component ---
 
 export default function MessagesContact() {
   const { user, loading: authLoading } = useAuth();
-  const { onlineUsers, presenceStatus, presenceError, ensureConnected } =
-    useRealtime();
   const location = useLocation();
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(MainContentTabs.INBOX);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [conversations, setConversations] = useState([]);
@@ -1180,33 +951,18 @@ export default function MessagesContact() {
   const [conversationsError, setConversationsError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
+  const [presenceStatus, setPresenceStatus] = useState("idle");
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [presenceError, setPresenceError] = useState(null);
   const inflightConversationFetch = useRef(new Set());
   const scheduledConversationRefreshes = useRef(new Map());
   const pendingIncomingMessages = useRef(new Map());
   const selectedConversationIdRef = useRef(null);
   const selectedConversationSnapshotRef = useRef(null);
-  const [emergencyAction, setEmergencyAction] = useState({
-    status: "idle",
-    message: null,
-  });
-  const emergencyInFlightRef = useRef(false);
-  const lastEmergencyTriggerRef = useRef(null);
 
   useEffect(() => {
     selectedConversationIdRef.current = selectedConversationId;
   }, [selectedConversationId]);
-
-  useEffect(() => {
-    if (emergencyAction.status !== "success") {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setEmergencyAction({ status: "idle", message: null });
-    }, 6000);
-
-    return () => clearTimeout(timer);
-  }, [emergencyAction.status]);
 
   useEffect(() => {
     if (!selectedConversationId) {
@@ -1395,161 +1151,154 @@ export default function MessagesContact() {
     [refreshConversationMessages]
   );
 
-  const applyBufferedMessageToState = useCallback(
-    (conversationSnapshot, message) => {
-      if (!conversationSnapshot || !message) {
-        return;
-      }
+  const applyBufferedMessageToState = useCallback((conversationSnapshot, message) => {
+    if (!conversationSnapshot || !message) {
+      return;
+    }
 
-      setConversations((prev) => {
-        let matchFound = false;
+    setConversations((prev) => {
+      let matchFound = false;
 
-        const updated = prev.map((conv) => {
-          if (!isSameConversation(conv, conversationSnapshot)) {
-            return conv;
-          }
-
-          matchFound = true;
-
-          const isActive = isConversationCurrentlyActive(
-            conversationSnapshot ?? conv
-          );
-          const preparedMessage = isActive
-            ? { ...message, isRead: true }
-            : message;
-
-          const existingIndex = conv.messages.findIndex(
-            (msg) => msg.id === preparedMessage.id
-          );
-
-          let nextMessages;
-          if (existingIndex !== -1) {
-            nextMessages = [
-              ...conv.messages.slice(0, existingIndex),
-              preparedMessage,
-              ...conv.messages.slice(existingIndex + 1),
-            ];
-          } else {
-            nextMessages = insertMessageChronologically(
-              conv.messages,
-              preparedMessage
-            );
-          }
-
-          const lastMessage = nextMessages[nextMessages.length - 1] ?? null;
-
-          return {
-            ...conv,
-            id: conversationSnapshot.id ?? conv.id,
-            conversationId:
-              conversationSnapshot.conversationId ?? conv.conversationId,
-            participant: conversationSnapshot.participant ?? conv.participant,
-            participants: conversationSnapshot.participants?.length
-              ? conversationSnapshot.participants
-              : conv.participants,
-            category: conversationSnapshot.category ?? conv.category,
-            lastMessage: lastMessage?.text ?? conv.lastMessage,
-            lastMessageTime: lastMessage?.timestamp ?? conv.lastMessageTime,
-            messages: nextMessages,
-            unreadCount: isActive
-              ? 0
-              : existingIndex !== -1
-              ? conv.unreadCount ?? 0
-              : (conv.unreadCount ?? 0) + 1,
-          };
-        });
-
-        if (!matchFound) {
-          const isActive = isConversationCurrentlyActive(conversationSnapshot);
-          const preparedMessage = isActive
-            ? { ...message, isRead: true }
-            : message;
-
-          const baseMessages = Array.isArray(conversationSnapshot.messages)
-            ? conversationSnapshot.messages.filter(Boolean)
-            : [];
-
-          const baseWithoutIncoming = baseMessages.filter(
-            (existing) => existing?.id !== preparedMessage.id
-          );
-
-          const nextMessages = insertMessageChronologically(
-            baseWithoutIncoming,
-            preparedMessage
-          );
-
-          const finalLastMessage =
-            nextMessages[nextMessages.length - 1] ?? preparedMessage ?? null;
-
-          updated.push({
-            ...conversationSnapshot,
-            messages: nextMessages,
-            lastMessage: finalLastMessage?.text ?? "",
-            lastMessageTime: finalLastMessage?.timestamp ?? null,
-            unreadCount: isActive ? 0 : 1,
-          });
+      const updated = prev.map((conv) => {
+        if (!isSameConversation(conv, conversationSnapshot)) {
+          return conv;
         }
 
-        return sortConversationsByRecency(updated);
+        matchFound = true;
+
+        const isActive = isConversationCurrentlyActive(
+          conversationSnapshot ?? conv
+        );
+        const preparedMessage = isActive
+          ? { ...message, isRead: true }
+          : message;
+
+        const existingIndex = conv.messages.findIndex(
+          (msg) => msg.id === preparedMessage.id
+        );
+
+        let nextMessages;
+        if (existingIndex !== -1) {
+          nextMessages = [
+            ...conv.messages.slice(0, existingIndex),
+            preparedMessage,
+            ...conv.messages.slice(existingIndex + 1),
+          ];
+        } else {
+          nextMessages = insertMessageChronologically(
+            conv.messages,
+            preparedMessage
+          );
+        }
+
+        const lastMessage = nextMessages[nextMessages.length - 1] ?? null;
+
+        return {
+          ...conv,
+          id: conversationSnapshot.id ?? conv.id,
+          conversationId:
+            conversationSnapshot.conversationId ?? conv.conversationId,
+          participant: conversationSnapshot.participant ?? conv.participant,
+          participants: conversationSnapshot.participants?.length
+            ? conversationSnapshot.participants
+            : conv.participants,
+          category: conversationSnapshot.category ?? conv.category,
+          lastMessage: lastMessage?.text ?? conv.lastMessage,
+          lastMessageTime: lastMessage?.timestamp ?? conv.lastMessageTime,
+          messages: nextMessages,
+          unreadCount: isActive
+            ? 0
+            : existingIndex !== -1
+            ? conv.unreadCount ?? 0
+            : (conv.unreadCount ?? 0) + 1,
+        };
       });
-    },
-    [isConversationCurrentlyActive]
-  );
 
-  const flushBufferedIncomingMessages = useCallback(
-    (conversationKey) => {
-      const entry = pendingIncomingMessages.current.get(conversationKey);
-      if (!entry) {
-        return;
+      if (!matchFound) {
+        const isActive = isConversationCurrentlyActive(conversationSnapshot);
+        const preparedMessage = isActive
+          ? { ...message, isRead: true }
+          : message;
+
+        const baseMessages = Array.isArray(conversationSnapshot.messages)
+          ? conversationSnapshot.messages.filter(Boolean)
+          : [];
+
+        const baseWithoutIncoming = baseMessages.filter(
+          (existing) => existing?.id !== preparedMessage.id
+        );
+
+        const nextMessages = insertMessageChronologically(
+          baseWithoutIncoming,
+          preparedMessage
+        );
+
+        const finalLastMessage =
+          nextMessages[nextMessages.length - 1] ?? preparedMessage ?? null;
+
+        updated.push({
+          ...conversationSnapshot,
+          messages: nextMessages,
+          lastMessage: finalLastMessage?.text ?? "",
+          lastMessageTime: finalLastMessage?.timestamp ?? null,
+          unreadCount: isActive ? 0 : 1,
+        });
       }
 
-      if (entry.timer) {
-        clearTimeout(entry.timer);
-        entry.timer = null;
-      }
+      return sortConversationsByRecency(updated);
+    });
+  }, [isConversationCurrentlyActive]);
 
-      entry.state = "processing";
+  const flushBufferedIncomingMessages = useCallback((conversationKey) => {
+    const entry = pendingIncomingMessages.current.get(conversationKey);
+    if (!entry) {
+      return;
+    }
 
-      const messagesOrdered = Array.from(entry.messages.values());
-      if (!messagesOrdered.length) {
-        entry.state = "idle";
-        pendingIncomingMessages.current.delete(conversationKey);
-        return;
-      }
+    if (entry.timer) {
+      clearTimeout(entry.timer);
+      entry.timer = null;
+    }
 
-      messagesOrdered.sort((a, b) => {
-        const timeA = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const timeB = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
-        return timeA - timeB;
-      });
+    entry.state = "processing";
 
-      const nextMessage = messagesOrdered[0];
-      entry.messages.delete(nextMessage.id);
+    const messagesOrdered = Array.from(entry.messages.values());
+    if (!messagesOrdered.length) {
+      entry.state = "idle";
+      pendingIncomingMessages.current.delete(conversationKey);
+      return;
+    }
 
-      const conversationSnapshot = entry.conversation;
-      const isActive = isConversationCurrentlyActive(conversationSnapshot);
+    messagesOrdered.sort((a, b) => {
+      const timeA = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeA - timeB;
+    });
 
-      applyBufferedMessageToState(conversationSnapshot, nextMessage);
+    const nextMessage = messagesOrdered[0];
+    entry.messages.delete(nextMessage.id);
 
-      if (entry.messages.size > 0) {
-        const backlogSize = entry.messages.size;
-        const delay =
-          backlogSize > INCOMING_QUEUE_HIGH_PRESSURE_THRESHOLD
-            ? INCOMING_QUEUE_AGGRESSIVE_INTERVAL_MS
-            : isActive
-            ? INCOMING_QUEUE_ACTIVE_DRAIN_INTERVAL_MS
-            : INCOMING_QUEUE_PASSIVE_DRAIN_INTERVAL_MS;
+    const conversationSnapshot = entry.conversation;
+    const isActive = isConversationCurrentlyActive(conversationSnapshot);
 
-        entry.timer = setTimeout(() => {
-          flushBufferedIncomingMessages(conversationKey);
-        }, Math.max(0, delay));
-      } else {
-        entry.state = "idle";
-        pendingIncomingMessages.current.delete(conversationKey);
-      }
-    },
-    [applyBufferedMessageToState, isConversationCurrentlyActive]
-  );
+    applyBufferedMessageToState(conversationSnapshot, nextMessage);
+
+    if (entry.messages.size > 0) {
+      const backlogSize = entry.messages.size;
+      const delay = backlogSize > INCOMING_QUEUE_HIGH_PRESSURE_THRESHOLD
+        ? INCOMING_QUEUE_AGGRESSIVE_INTERVAL_MS
+        : isActive
+        ? INCOMING_QUEUE_ACTIVE_DRAIN_INTERVAL_MS
+        : INCOMING_QUEUE_PASSIVE_DRAIN_INTERVAL_MS;
+
+      entry.timer = setTimeout(() => {
+        flushBufferedIncomingMessages(conversationKey);
+      }, Math.max(0, delay));
+    } else {
+      entry.state = "idle";
+      pendingIncomingMessages.current.delete(conversationKey);
+    }
+  }, [applyBufferedMessageToState, isConversationCurrentlyActive]);
 
   const bufferIncomingMessage = useCallback(
     (
@@ -1570,9 +1319,8 @@ export default function MessagesContact() {
         return;
       }
 
-      const isActiveConversation = isConversationCurrentlyActive(
-        normalizedConversation
-      );
+      const isActiveConversation =
+        isConversationCurrentlyActive(normalizedConversation);
 
       const existingEntry = pendingIncomingMessages.current.get(bufferKey);
 
@@ -1669,18 +1417,98 @@ export default function MessagesContact() {
         flushBufferedIncomingMessages(key);
       }, 0);
     });
-  }, [
-    selectedConversationId,
-    flushBufferedIncomingMessages,
-    isConversationCurrentlyActive,
-  ]);
+  }, [selectedConversationId, flushBufferedIncomingMessages, isConversationCurrentlyActive]);
 
-  // Ensure realtime presence connection is established when this view mounts
+  // Setup Echo presence channel for online status
   useEffect(() => {
-    ensureConnected().catch((error) => {
-      console.warn("Unable to establish realtime presence", error);
-    });
-  }, [ensureConnected]);
+    // Only connect if user is authenticated (has token)
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.log("No token found, skipping Echo connection");
+      setPresenceStatus("unauthenticated");
+      setOnlineUsers([]);
+      setPresenceError(null);
+      return;
+    }
+    const echoInstance = getEchoInstance?.() || EchoClient;
+
+    if (!echoInstance) {
+      console.warn(
+        "Echo instance is not available on window, skipping connection"
+      );
+      setPresenceStatus("error");
+      setPresenceError("Realtime client is not available in this session.");
+      return;
+    }
+
+    reconnectEcho();
+
+    const authHeader =
+      echoInstance.options?.auth?.headers?.Authorization || null;
+
+    if (!authHeader) {
+      console.warn("Echo auth header is missing, skipping connection");
+      setPresenceStatus("unauthenticated");
+      setPresenceError("Missing authentication token for realtime channel.");
+      return;
+    }
+
+    setPresenceStatus("connecting");
+    setPresenceError(null);
+    setOnlineUsers([]);
+
+    console.log("Connecting to Echo presence channel...");
+    echoInstance
+      .join("online")
+      .here((users) => {
+        const normalizedUsers = Array.isArray(users) ? [...users] : [];
+        setOnlineUsers(normalizedUsers);
+        setPresenceStatus("connected");
+        setPresenceError(null);
+        console.log("Users currently online:", normalizedUsers);
+      })
+      .joining((user) => {
+        setOnlineUsers((prev) => {
+          if (prev.some((existing) => existing?.id === user?.id)) {
+            return prev;
+          }
+          return [...prev, user];
+        });
+        setPresenceStatus("connected");
+        setPresenceError(null);
+        console.log("User joined:", user);
+      })
+      .leaving((user) => {
+        setOnlineUsers((prev) =>
+          prev.filter((existing) => existing?.id !== user?.id)
+        );
+        console.log("User left:", user);
+      })
+      .error((error) => {
+        console.error("Error with Echo channel:", error);
+        const message =
+          error?.message ??
+          (typeof error?.error === "string"
+            ? error.error
+            : typeof error?.error?.message === "string"
+            ? error.error.message
+            : typeof error === "string"
+            ? error
+            : null);
+        setPresenceStatus("error");
+        setPresenceError(message || "Unable to join realtime channel.");
+        setOnlineUsers([]);
+      });
+
+    // Cleanup: leave the channel when component unmounts
+    return () => {
+      console.log("Leaving Echo channel...");
+      echoInstance.leave("online");
+      setOnlineUsers([]);
+      setPresenceStatus("idle");
+      setPresenceError(null);
+    };
+  }, []);
 
   const conversationsWithPresence = useMemo(() => {
     if (!onlineUsers.length) {
@@ -2205,321 +2033,7 @@ export default function MessagesContact() {
     [user]
   );
 
-  const triggerEmergencyConversation = useCallback(
-    async (options = {}) => {
-      if (!user) {
-        setEmergencyAction({
-          status: "error",
-          message: "You must be signed in to send an emergency alert.",
-        });
-        return;
-      }
-
-      if (emergencyInFlightRef.current) {
-        return;
-      }
-
-      emergencyInFlightRef.current = true;
-      setEmergencyAction({
-        status: "loading",
-        message: "Contacting responders with your SOS...",
-      });
-      setCategoryFilter("Emergency");
-      setActiveTab(MainContentTabs.INBOX);
-
-      const realtimeResult = await ensureConnected();
-      if (!realtimeResult?.ok) {
-        console.warn("Realtime connection not ready for emergency alert", realtimeResult);
-      }
-
-      const triggeredAt = options.triggeredAt ?? new Date().toISOString();
-
-      let locationInfo = options.location ?? null;
-      let locationErrorMessage = options.locationError ?? null;
-
-      if (!locationInfo && !options.skipGeolocation) {
-        try {
-          const result = await getCurrentLocation({ timeout: 12000 });
-          if (result.ok) {
-            locationInfo = result.coords;
-          } else {
-            locationErrorMessage = result.error;
-          }
-        } catch (error) {
-          locationErrorMessage =
-            error?.message || "Unable to retrieve location automatically.";
-        }
-      }
-
-      const timestampLabel = new Date(triggeredAt).toLocaleString();
-      let messageText = options.message ?? "";
-
-      if (!messageText) {
-        if (locationInfo) {
-          const latNumber = Number(locationInfo.latitude);
-          const lngNumber = Number(locationInfo.longitude);
-          const hasCoordinates =
-            Number.isFinite(latNumber) && Number.isFinite(lngNumber);
-          const latDisplay = hasCoordinates
-            ? latNumber.toFixed(5)
-            : String(locationInfo.latitude ?? "");
-          const lngDisplay = hasCoordinates
-            ? lngNumber.toFixed(5)
-            : String(locationInfo.longitude ?? "");
-          const accuracyDisplay =
-            typeof locationInfo.accuracy === "number"
-              ? `Accuracy: ±${Math.round(locationInfo.accuracy)}m`
-              : null;
-          const mapLink = hasCoordinates
-            ? buildMapsLink(latNumber, lngNumber)
-            : null;
-
-          messageText = [
-            "🚨 Emergency SOS activated by patient.",
-            `Time: ${timestampLabel}`,
-            `Coordinates: ${latDisplay}, ${lngDisplay}`,
-            accuracyDisplay,
-            mapLink ? `Map: ${mapLink}` : null,
-            options.notes ? `Notes: ${options.notes}` : null,
-          ]
-            .filter(Boolean)
-            .join("\n");
-        } else {
-          messageText = [
-            "🚨 Emergency SOS activated by patient.",
-            `Time: ${timestampLabel}`,
-            "Location: Unable to determine automatically.",
-            locationErrorMessage ? `Details: ${locationErrorMessage}` : null,
-            options.notes ? `Notes: ${options.notes}` : null,
-          ]
-            .filter(Boolean)
-            .join("\n");
-        }
-      }
-
-      const emergencyConversation = conversationsWithPresence.find(
-        (conv) => conv.category === "Emergency"
-      );
-      const responderConversation = conversationsWithPresence.find(
-        (conv) =>
-          typeof conv.participant?.role === "string" &&
-          conv.participant.role.toLowerCase() === "responder"
-      );
-
-      const presenceResponder = onlineUsers.find((candidate) => {
-        const roleValue =
-          typeof candidate?.role === "string"
-            ? candidate.role
-            : typeof candidate?.user_info?.role === "string"
-            ? candidate.user_info.role
-            : typeof candidate?.user?.role === "string"
-            ? candidate.user.role
-            : null;
-        return roleValue?.toLowerCase() === "responder";
-      });
-
-      let targetConversation = null;
-      if (options.conversationId) {
-        targetConversation = conversationsWithPresence.find(
-          (conv) => conv.id === options.conversationId
-        );
-      }
-      if (!targetConversation) {
-        targetConversation =
-          emergencyConversation ?? responderConversation ?? null;
-      }
-
-      const envReceiverIdRaw = import.meta.env
-        .VITE_EMERGENCY_DISPATCH_RECEIVER_ID;
-      const envReceiverId = envReceiverIdRaw ? Number(envReceiverIdRaw) : null;
-
-      const presenceResponderId = presenceResponder
-        ? Number(
-            presenceResponder.id ??
-              presenceResponder.user_id ??
-              presenceResponder.userId ??
-              presenceResponder.user?.id ??
-              presenceResponder.user_info?.id
-          )
-        : null;
-      const sanitizedPresenceResponderId = Number.isFinite(presenceResponderId)
-        ? presenceResponderId
-        : null;
-
-      const candidateReceiverId =
-        options.receiverId ??
-        targetConversation?.participant?.id ??
-        sanitizedPresenceResponderId ??
-        envReceiverId;
-
-      const receiverId = Number(candidateReceiverId);
-
-      if (!Number.isFinite(receiverId) || receiverId <= 0) {
-        setEmergencyAction({
-          status: "error",
-          message:
-            "No responder contact is available. Please call your local emergency number.",
-        });
-        emergencyInFlightRef.current = false;
-        return;
-      }
-
-      const responderName =
-        options.receiverName ??
-        targetConversation?.participant?.name ??
-        presenceResponder?.name ??
-        presenceResponder?.user?.name ??
-        presenceResponder?.user_info?.name ??
-        "Emergency Dispatch";
-
-      const participant =
-        targetConversation?.participant ??
-        normalizePerson(
-          {
-            id: receiverId,
-            name: responderName,
-            role: "Responder",
-            profile_image:
-              presenceResponder?.profile_image ??
-              presenceResponder?.user?.profile_image ??
-              presenceResponder?.user_info?.profile_image,
-          },
-          responderName
-        );
-
-      const responderParticipant = { ...participant, id: receiverId };
-
-      const patientParticipant = normalizePerson(
-        {
-          id: user.id,
-          name: user.name,
-          role: user.role,
-          profile_image: user.profile_image,
-        },
-        user.name
-      );
-
-      if (targetConversation && targetConversation.category !== "Emergency") {
-        const updatedConversation = {
-          ...targetConversation,
-          category: "Emergency",
-        };
-        setConversations((prev) =>
-          prev.map((conv) =>
-            conv.id === targetConversation.id ? updatedConversation : conv
-          )
-        );
-        targetConversation = updatedConversation;
-      }
-
-      const stubConversation = targetConversation ?? {
-        id: `emergency-${receiverId}`,
-        conversationId: null,
-        participant: responderParticipant,
-        participants: [responderParticipant, patientParticipant],
-        category: "Emergency",
-        messages: [],
-        lastMessage: null,
-        lastMessageTime: null,
-        unreadCount: 0,
-      };
-
-      const preparedConversation = {
-        ...stubConversation,
-        participant: responderParticipant,
-        participants:
-          Array.isArray(stubConversation.participants) &&
-          stubConversation.participants.length
-            ? stubConversation.participants
-            : [responderParticipant, patientParticipant],
-        category: "Emergency",
-      };
-
-      selectedConversationIdRef.current = preparedConversation.id;
-      selectedConversationSnapshotRef.current = preparedConversation;
-      setSelectedConversationId(preparedConversation.id);
-
-      try {
-        await handleSendMessage(preparedConversation, messageText);
-        setEmergencyAction({
-          status: "success",
-          message: "Emergency alert sent to responders.",
-        });
-      } catch (error) {
-        console.error("Failed to dispatch emergency SOS", error);
-        setEmergencyAction({
-          status: "error",
-          message:
-            error?.response?.data?.message ||
-            error?.message ||
-            "Unable to send emergency alert. Please try again.",
-        });
-      } finally {
-        emergencyInFlightRef.current = false;
-      }
-    },
-    [
-      user,
-      conversationsWithPresence,
-      onlineUsers,
-      handleSendMessage,
-      ensureConnected,
-      setConversations,
-      setCategoryFilter,
-      setActiveTab,
-      setSelectedConversationId,
-      setEmergencyAction,
-    ]
-  );
-
   // Handlers for navigation
-  const navigateToCompose = () => {
-    setActiveTab(MainContentTabs.COMPOSE);
-    setSelectedConversationId(null);
-    selectedConversationIdRef.current = null;
-    selectedConversationSnapshotRef.current = null;
-  };
-
-  useEffect(() => {
-    const emergencyState = location.state?.startEmergencyChat;
-    if (!emergencyState) {
-      return;
-    }
-
-    const triggerId =
-      emergencyState.triggeredAt ?? JSON.stringify(emergencyState);
-
-    if (lastEmergencyTriggerRef.current === triggerId) {
-      return;
-    }
-
-    lastEmergencyTriggerRef.current = triggerId;
-
-    triggerEmergencyConversation({
-      ...emergencyState,
-      skipGeolocation: Boolean(emergencyState.location),
-    });
-
-    const nextState = location.state?.filterCategory
-      ? { filterCategory: location.state.filterCategory }
-      : null;
-
-    navigate(location.pathname, {
-      replace: true,
-      state: nextState,
-    });
-  }, [location, navigate, triggerEmergencyConversation]);
-
-  const navigateToContacts = () => {
-    setActiveTab(MainContentTabs.CONTACTS);
-    setSelectedConversationId(null);
-  };
-
-  const navigateToSupport = () => {
-    setActiveTab(MainContentTabs.SUPPORT);
-    setSelectedConversationId(null);
-  };
-
   const navigateToInbox = () => {
     setActiveTab(MainContentTabs.INBOX);
     setSelectedConversationId(null);
@@ -2568,10 +2082,6 @@ export default function MessagesContact() {
     switch (activeTab) {
       case MainContentTabs.COMPOSE:
         return <MessageComposer initialSubject="" onSend={navigateToInbox} />;
-      case MainContentTabs.CONTACTS:
-        return <ContactDirectory />;
-      case MainContentTabs.SUPPORT:
-        return <SupportSection />;
       case MainContentTabs.INBOX:
       default:
         // Show chat thread if a conversation is selected
@@ -2620,93 +2130,6 @@ export default function MessagesContact() {
           }`}
         >
           <div className="bg-white p-4 rounded-xl shadow-xl border flex flex-col min-h-0 flex-1">
-            <button
-              onClick={navigateToCompose}
-              className="shrink-0 w-full bg-primary hover:bg-green-700 text-white font-bold py-3 rounded-xl mb-4 flex items-center justify-center gap-2 transition shadow-md shadow-green-200"
-            >
-              <Plus size={20} /> New Message
-            </button>
-
-            {emergencyAction.status !== "idle" && (
-              <div
-                className={`shrink-0 mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${
-                  emergencyAction.status === "error"
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : emergencyAction.status === "loading"
-                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                    : "border-green-200 bg-green-50 text-green-700"
-                }`}
-              >
-                {emergencyAction.status === "loading" ? (
-                  <Loader2 size={18} className="mt-1 animate-spin" />
-                ) : (
-                  <Zap
-                    size={18}
-                    className={`mt-1 ${
-                      emergencyAction.status === "error"
-                        ? "text-red-500"
-                        : "text-green-600"
-                    }`}
-                  />
-                )}
-                <div>
-                  <p className="font-semibold mb-0.5">
-                    {emergencyAction.status === "loading"
-                      ? "Dispatching emergency alert..."
-                      : emergencyAction.status === "success"
-                      ? "Emergency alert sent"
-                      : "Emergency alert failed"}
-                  </p>
-                  <p className="text-xs leading-snug">
-                    {emergencyAction.message ||
-                      (emergencyAction.status === "loading"
-                        ? "Contacting responders with your emergency details."
-                        : emergencyAction.status === "success"
-                        ? "A responder has been notified and will follow up shortly."
-                        : "Unable to notify responders automatically. Please try again or call your local emergency hotline.")}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <div className="shrink-0 space-y-2 mb-4">
-              <button
-                onClick={navigateToInbox}
-                className={`w-full text-left flex items-center gap-3 p-3 rounded-xl font-semibold transition ${
-                  activeTab === MainContentTabs.INBOX
-                    ? "bg-green-100 text-green-700"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <MessageSquare size={20} /> Messages
-                {totalUnread > 0 && (
-                  <span className="ml-auto bg-green-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                    {totalUnread}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={navigateToContacts}
-                className={`w-full text-left flex items-center gap-3 p-3 rounded-xl font-semibold transition ${
-                  activeTab === MainContentTabs.CONTACTS
-                    ? "bg-green-100 text-green-700"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <Phone size={20} /> Contact Directory
-              </button>
-              <button
-                onClick={navigateToSupport}
-                className={`w-full text-left flex items-center gap-3 p-3 rounded-xl font-semibold transition ${
-                  activeTab === MainContentTabs.SUPPORT
-                    ? "bg-green-100 text-green-700"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <HelpCircle size={20} /> Support & FAQ
-              </button>
-            </div>
-
             {activeTab === MainContentTabs.INBOX && (
               <>
                 <h3 className="shrink-0 text-lg font-bold text-gray-800 border-t pt-4 mb-2">
@@ -2733,52 +2156,7 @@ export default function MessagesContact() {
                   </div>
                 </div>
 
-                <div className="shrink-0 flex gap-2 mb-3 flex-wrap">
-                  {["All", "Emergency", "Medical", "Billing"].map(
-                    (category) => {
-                      const count =
-                        category === "All"
-                          ? conversationsWithPresence.length
-                          : conversationsWithPresence.filter(
-                              (c) => c.category === category
-                            ).length;
-                      const isEmergency = category === "Emergency";
-                      const emergencyUnread = isEmergency
-                        ? conversationsWithPresence
-                            .filter((c) => c.category === "Emergency")
-                            .reduce((sum, c) => sum + c.unreadCount, 0)
-                        : 0;
-
-                      return (
-                        <button
-                          key={category}
-                          onClick={() => setCategoryFilter(category)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
-                            categoryFilter === category
-                              ? isEmergency
-                                ? "bg-red-600 text-white"
-                                : "bg-primary text-white"
-                              : isEmergency
-                              ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-300"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {isEmergency && (
-                            <AlertCircle
-                              size={14}
-                              className={
-                                emergencyUnread > 0 ? "animate-pulse" : ""
-                              }
-                            />
-                          )}
-                          {category}
-                          {count > 0 && ` (${count})`}
-                        </button>
-                      );
-                    }
-                  )}
-                </div>
-
+                {/* Search Bar */}
                 <div className="shrink-0 relative mb-3">
                   <Search
                     size={16}
@@ -2793,6 +2171,7 @@ export default function MessagesContact() {
                   />
                 </div>
 
+                {/* Conversation List */}
                 <ul className="flex-1 min-h-0 space-y-1 overflow-y-auto">
                   {isLoadingConversations ? (
                     <p className="text-center text-sm text-gray-500 p-4">

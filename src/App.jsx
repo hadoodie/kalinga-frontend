@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Context & Components
 import { AuthProvider } from "./context/AuthContext";
+import { RealtimeProvider } from "./context/RealtimeContext";
 import { Toaster } from "./components/ui/toaster";
 
 // Route Modules
@@ -29,7 +30,8 @@ function App() {
       <Toaster />
       <BrowserRouter>
         <AuthProvider>
-          <Suspense fallback={<PageLoader />}>
+          <RealtimeProvider>
+            <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public Routes */}
               {PublicRoutes()}
@@ -66,7 +68,8 @@ function App() {
                 }
               />
             </Routes>
-          </Suspense>
+            </Suspense>
+          </RealtimeProvider>
         </AuthProvider>
       </BrowserRouter>
     </>

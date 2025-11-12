@@ -4,8 +4,8 @@ import { Search, Bell, UserCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api"; 
-import { formatDistanceToNow } from 'date-fns'; 
+import api from "../services/api";
+import { formatDistanceToNow } from "date-fns";
 
 // Remove the notifications prop
 export const NavbarB = () => {
@@ -37,10 +37,10 @@ export const NavbarB = () => {
   useEffect(() => {
     const fetchNotifications = async () => {
       if (!user) return; // Don't fetch if no user
-      
+
       setIsLoading(true);
       try {
-        const response = await api.get('/notifications');
+        const response = await api.get("/notifications");
         setNotifications(response.data.slice(0, 5)); // Get 5 most recent
       } catch (error) {
         console.error("Failed to fetch navbar notifications:", error);
@@ -74,7 +74,7 @@ export const NavbarB = () => {
         {/* Logo */}
         <HashLink
           smooth
-          to="/dashboard"
+          to="/patient/dashboard"
           className="flex items-center space-x-2 text-xl font-bold text-primary"
         >
           <img src={logo} alt="Kalinga Logo" className="h-10 w-auto" />
@@ -140,10 +140,16 @@ export const NavbarB = () => {
                         key={notif.id}
                         className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b last:border-b-0"
                       >
-                        <p className="text-sm font-semibold text-gray-800">{notif.title}</p>
-                        <p className="text-sm text-gray-600 truncate">{notif.description}</p>
+                        <p className="text-sm font-semibold text-gray-800">
+                          {notif.title}
+                        </p>
+                        <p className="text-sm text-gray-600 truncate">
+                          {notif.description}
+                        </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                          {formatDistanceToNow(new Date(notif.created_at), {
+                            addSuffix: true,
+                          })}
                         </p>
                       </li>
                     ))

@@ -8,9 +8,11 @@ use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\IncidentApiController;
 use App\Http\Controllers\Api\RoadBlockadeController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AllocationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,17 +25,55 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Public routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+// Broadcasting authentication route
+Route::post('/broadcasting/auth', function (Request $request) {
+    try {
+        $response = Broadcast::auth($request);
+
+        if ($response instanceof \Symfony\Component\HttpFoundation\Response) {
+            \Log::debug('Broadcast auth response (response object)', [
+                'user_id' => optional($request->user())->id,
+                'channel_name' => $request->input('channel_name'),
+                'status' => $response->getStatusCode(),
+            ]);
+
+            return $response;
+        }
+
+        \Log::debug('Broadcast auth response (array)', [
+            'user_id' => optional($request->user())->id,
+            'channel_name' => $request->input('channel_name'),
+            'payload' => $response,
+        ]);
+
+        return response()->json($response);
+    } catch (\Exception $e) {
+        \Log::error('Broadcasting auth error', [
+            'message' => $e->getMessage(),
+            'exception' => get_class($e),
+        ]);
+
+        return response()->json([
+            'error' => $e->getMessage() ?: get_class($e),
+        ], 403);
+    }
+})->middleware('auth:sanctum');
+
+// Public routes with rate limiting
+Route::middleware(['throttle:10,1'])->group(function () {
+    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+});
 
 // Public read-only routes for testing
-Route::get('/hospitals', [HospitalController::class, 'index']);
-Route::get('/resources', [ResourceController::class, 'index']);
+Route::middleware(['throttle:60,1'])->group(function () {
+    Route::get('/hospitals', [HospitalController::class, 'index']);
+    Route::get('/resources', [ResourceController::class, 'index']);
+});
 
-// Protected routes (require authentication)
-Route::middleware('auth:sanctum')->group(function () {
+// Protected routes (require authentication + rate limiting)
+Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Common authenticated routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -95,6 +135,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/lab-results', [LabResultController::class, 'index']);
         Route::get('/appointments', [AppointmentController::class, 'index']);
         Route::get('/notifications', [NotificationController::class, 'index']);
+    });
+
+    // Chat routes (all authenticated users)
+    Route::prefix('chat')->group(function () {
+        Route::get('/conversations', [ChatController::class, 'getConversations']);
+        Route::get('/messages/{userId}', [ChatController::class, 'getMessages']);
+        Route::post('/messages', [ChatController::class, 'sendMessage']);
+        Route::delete('/messages/{messageId}', [ChatController::class, 'deleteMessage']);
     });
 });
 
