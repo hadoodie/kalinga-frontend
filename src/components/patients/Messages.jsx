@@ -30,6 +30,7 @@ import EchoClient, {
 } from "../../services/echo";
 import chatService from "../../services/chatService";
 import { useAuth } from "../../context/AuthContext";
+import { useRealtime } from "../../context/RealtimeContext";
 
 /**
  * Tab/View Selector for the Main Content Area
@@ -1168,6 +1169,8 @@ const SupportSection = () => (
 
 export default function MessagesContact() {
   const { user, loading: authLoading } = useAuth();
+  const { onlineUsers, presenceStatus, presenceError, ensureConnected } =
+    useRealtime();
   const location = useLocation();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(MainContentTabs.INBOX);
@@ -1177,9 +1180,6 @@ export default function MessagesContact() {
   const [conversationsError, setConversationsError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [presenceStatus, setPresenceStatus] = useState("idle");
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [presenceError, setPresenceError] = useState(null);
   const inflightConversationFetch = useRef(new Set());
   const scheduledConversationRefreshes = useRef(new Map());
   const pendingIncomingMessages = useRef(new Map());
@@ -1675,96 +1675,12 @@ export default function MessagesContact() {
     isConversationCurrentlyActive,
   ]);
 
-  // Setup Echo presence channel for online status
+  // Ensure realtime presence connection is established when this view mounts
   useEffect(() => {
-    // Only connect if user is authenticated (has token)
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.log("No token found, skipping Echo connection");
-      setPresenceStatus("unauthenticated");
-      setOnlineUsers([]);
-      setPresenceError(null);
-      return;
-    }
-    const echoInstance = getEchoInstance?.() || EchoClient;
-
-    if (!echoInstance) {
-      console.warn(
-        "Echo instance is not available on window, skipping connection"
-      );
-      setPresenceStatus("error");
-      setPresenceError("Realtime client is not available in this session.");
-      return;
-    }
-
-    reconnectEcho();
-
-    const authHeader =
-      echoInstance.options?.auth?.headers?.Authorization || null;
-
-    if (!authHeader) {
-      console.warn("Echo auth header is missing, skipping connection");
-      setPresenceStatus("unauthenticated");
-      setPresenceError("Missing authentication token for realtime channel.");
-      return;
-    }
-
-    setPresenceStatus("connecting");
-    setPresenceError(null);
-    setOnlineUsers([]);
-
-    console.log("Connecting to Echo presence channel...");
-    echoInstance
-      .join("online")
-      .here((users) => {
-        const normalizedUsers = Array.isArray(users) ? [...users] : [];
-        setOnlineUsers(normalizedUsers);
-        setPresenceStatus("connected");
-        setPresenceError(null);
-        console.log("Users currently online:", normalizedUsers);
-      })
-      .joining((user) => {
-        setOnlineUsers((prev) => {
-          if (prev.some((existing) => existing?.id === user?.id)) {
-            return prev;
-          }
-          return [...prev, user];
-        });
-        setPresenceStatus("connected");
-        setPresenceError(null);
-        console.log("User joined:", user);
-      })
-      .leaving((user) => {
-        setOnlineUsers((prev) =>
-          prev.filter((existing) => existing?.id !== user?.id)
-        );
-        console.log("User left:", user);
-      })
-      .error((error) => {
-        console.error("Error with Echo channel:", error);
-        const message =
-          error?.message ??
-          (typeof error?.error === "string"
-            ? error.error
-            : typeof error?.error?.message === "string"
-            ? error.error.message
-            : typeof error === "string"
-            ? error
-            : null);
-        setPresenceStatus("error");
-        setPresenceError(message || "Unable to join realtime channel.");
-        setOnlineUsers([]);
-      });
-
-    // Cleanup: leave the channel when component unmounts
-    return () => {
-      console.log("Leaving Echo channel...");
-      echoInstance.leave("online");
-      setOnlineUsers([]);
-      setPresenceStatus("idle");
-      setPresenceError(null);
-    };
-  }, []);
+    ensureConnected().catch((error) => {
+      console.warn("Unable to establish realtime presence", error);
+    });
+  }, [ensureConnected]);
 
   const conversationsWithPresence = useMemo(() => {
     if (!onlineUsers.length) {
@@ -2311,6 +2227,11 @@ export default function MessagesContact() {
       setCategoryFilter("Emergency");
       setActiveTab(MainContentTabs.INBOX);
 
+      const realtimeResult = await ensureConnected();
+      if (!realtimeResult?.ok) {
+        console.warn("Realtime connection not ready for emergency alert", realtimeResult);
+      }
+
       const triggeredAt = options.triggeredAt ?? new Date().toISOString();
 
       let locationInfo = options.location ?? null;
@@ -2542,6 +2463,7 @@ export default function MessagesContact() {
       conversationsWithPresence,
       onlineUsers,
       handleSendMessage,
+      ensureConnected,
       setConversations,
       setCategoryFilter,
       setActiveTab,
