@@ -573,6 +573,10 @@ export default function ResponseMap() {
           }
         ).addTo(leafletMap);
 
+        const formattedDescription = incident.description
+          ? incident.description.replace(/(?:\r\n|\r|\n)/g, "<br />")
+          : "";
+
         marker.bindPopup(`
                     <div>
                         <h4 style="margin: 0 0 8px 0; color: #2c3e50;">${
@@ -582,7 +586,7 @@ export default function ResponseMap() {
                           incident.location
                         }</p>
                         <p style="margin: 0 0 8px 0; font-size: 12px; color: #555;">${
-                          incident.description || ""
+                          formattedDescription
                         }</p>
                         <button onclick="drawRouteToIncident(${incident.lat}, ${
           incident.lng
@@ -1392,7 +1396,7 @@ export default function ResponseMap() {
                         <div className="text-sm text-gray-600">
                           {incident.location}
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-gray-500 mt-1 whitespace-pre-line">
                           {incident.description}
                         </div>
                       </div>
@@ -1923,7 +1927,7 @@ export default function ResponseMap() {
                           {incident.type}
                         </div>
                         <div className="text-sm">{incident.location}</div>
-                        <div className="text-xs text-gray-600 mt-1">
+                        <div className="text-xs text-gray-600 mt-1 whitespace-pre-line">
                           {incident.description}
                         </div>
                       </div>

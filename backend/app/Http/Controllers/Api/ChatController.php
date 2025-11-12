@@ -9,8 +9,10 @@ use App\Models\Incident;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ChatController extends Controller
@@ -332,6 +334,8 @@ class ChatController extends Controller
         $longitude = is_numeric($longitudeRaw) ? (float) $longitudeRaw : null;
 
         $locationLabel = Arr::get($emergencyPayload, 'location_label');
+        $locationLabel = $locationLabel !== null ? trim((string) $locationLabel) : null;
+
         if (!$locationLabel) {
             if ($latitude !== null && $longitude !== null) {
                 $locationLabel = sprintf('Coordinates: %.5f, %.5f', $latitude, $longitude);
@@ -340,19 +344,34 @@ class ChatController extends Controller
             }
         }
 
-        $description = Arr::get($emergencyPayload, 'description')
+        $rawDescription = Arr::get($emergencyPayload, 'description')
             ?? $patientMessage->message
             ?? 'Emergency SOS triggered.';
 
         $incidentType = Arr::get($emergencyPayload, 'incident_type', 'Emergency SOS');
 
+        $latlngValue = ($latitude !== null && $longitude !== null)
+            ? sprintf('%.6f,%.6f', $latitude, $longitude)
+            : null;
+
+        $formattedDescription = $this->formatIncidentDescription([
+            'incident_type' => $incidentType,
+            'location_label' => $locationLabel,
+            'latlng' => $latlngValue,
+            'raw_description' => $rawDescription,
+            'triggered_at' => Arr::get($emergencyPayload, 'triggered_at'),
+            'reported_at' => $patientMessage->created_at,
+            'accuracy' => Arr::get($emergencyPayload, 'accuracy'),
+            'map_url' => Arr::get($emergencyPayload, 'map_url'),
+            'notes' => Arr::get($emergencyPayload, 'notes'),
+            'location_error' => Arr::get($emergencyPayload, 'location_error'),
+        ]);
+
         $incidentData = [
             'type' => $incidentType,
             'location' => $locationLabel,
-            'latlng' => ($latitude !== null && $longitude !== null)
-                ? sprintf('%s,%s', $latitude, $longitude)
-                : null,
-            'description' => $description,
+            'latlng' => $latlngValue,
+            'description' => $formattedDescription ?? $rawDescription,
             'user_id' => $sender->id,
             'status' => 'available',
             'assigned_responder_id' => null,
@@ -478,6 +497,158 @@ class ChatController extends Controller
             'user_id1' => $ids[0],
             'user_id2' => $ids[1],
         ]);
+    }
+
+    private function formatIncidentDescription(array $metadata): ?string
+    {
+        $incidentType = trim((string) ($metadata['incident_type'] ?? ''));
+        if ($incidentType === '') {
+            $incidentType = 'Emergency Alert';
+        }
+
+        $headline = '🚨 ' . $incidentType;
+        if (!Str::contains(Str::lower($incidentType), 'report')) {
+            $headline .= ' reported';
+        }
+
+        $locationLabel = trim((string) ($metadata['location_label'] ?? ''));
+        if ($locationLabel === '') {
+            $locationLine = 'Address: Unknown location';
+        } else {
+            $addressPrefix = Str::contains(Str::lower($locationLabel), ['street', 'road', 'ave', 'barangay', 'city', 'province'])
+                ? 'Address: '
+                : 'Location: ';
+            $locationLine = $addressPrefix . $locationLabel;
+        }
+
+        $latlng = trim((string) ($metadata['latlng'] ?? ''));
+        $coordinateLine = $latlng !== '' ? 'Coordinates: ' . $latlng : null;
+
+        $timestampLine = null;
+        $timestampCandidate = $metadata['triggered_at'] ?? null;
+
+        if ($timestampCandidate instanceof Carbon) {
+            $timestamp = $timestampCandidate->copy();
+        } elseif (is_string($timestampCandidate) && $timestampCandidate !== '') {
+            try {
+                $timestamp = Carbon::parse($timestampCandidate);
+            } catch (\Throwable $exception) {
+                $timestamp = null;
+            }
+        } else {
+            $timestamp = null;
+        }
+
+        if (!$timestamp) {
+            $reportedAt = $metadata['reported_at'] ?? null;
+            if ($reportedAt instanceof Carbon) {
+                $timestamp = $reportedAt->copy();
+            } elseif ($reportedAt) {
+                try {
+                    $timestamp = Carbon::parse((string) $reportedAt);
+                } catch (\Throwable $exception) {
+                    $timestamp = null;
+                }
+            }
+        }
+
+        if ($timestamp) {
+            $timezone = config('app.timezone') ?: 'UTC';
+            $timestampLine = 'Reported: ' . $timestamp->setTimezone($timezone)->format('M j, Y g:i A T');
+        }
+
+        $accuracyValue = $metadata['accuracy'] ?? null;
+        $accuracyLine = is_numeric($accuracyValue)
+            ? 'Accuracy: ±' . (int) round($accuracyValue) . 'm'
+            : null;
+
+        $mapUrl = trim((string) ($metadata['map_url'] ?? ''));
+        $mapLine = $mapUrl !== '' ? 'Map: ' . $mapUrl : null;
+
+        $rawDescription = trim((string) ($metadata['raw_description'] ?? ''));
+        $notes = trim((string) ($metadata['notes'] ?? ''));
+        $locationError = trim((string) ($metadata['location_error'] ?? ''));
+
+        $detailSegments = $this->extractIncidentDetails($rawDescription);
+
+        if ($notes !== '') {
+            $detailSegments[] = 'Notes: ' . $notes;
+        }
+
+        if ($locationError !== '') {
+            $detailSegments[] = 'Location error: ' . $locationError;
+        }
+
+        $detailSegments = array_values(array_unique(array_filter($detailSegments)));
+
+        $lines = array_values(array_filter([
+            $headline,
+            $locationLine,
+            $coordinateLine,
+            $timestampLine,
+            $accuracyLine,
+            $mapLine,
+        ]));
+
+        if (count($detailSegments) === 1) {
+            $lines[] = 'Details: ' . $detailSegments[0];
+        } elseif (count($detailSegments) > 1) {
+            $lines[] = 'Details:';
+            foreach ($detailSegments as $detail) {
+                $lines[] = '- ' . $detail;
+            }
+        }
+
+        if (empty($lines)) {
+            return null;
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function extractIncidentDetails(?string $rawDescription): array
+    {
+        if (!$rawDescription) {
+            return [];
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $rawDescription) ?: [];
+        $details = [];
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            $lower = Str::lower($trimmed);
+
+            if (Str::startsWith($trimmed, '🚨')) {
+                continue;
+            }
+
+            if (Str::startsWith($lower, [
+                'time:',
+                'coordinates:',
+                'accuracy:',
+                'map:',
+                'notes:',
+                'location:',
+                'address:',
+                'reported:',
+                'details:',
+            ])) {
+                continue;
+            }
+
+            $details[] = $trimmed;
+        }
+
+        if (empty($details) && count($lines) === 1) {
+            return [trim($lines[0])];
+        }
+
+        return $details;
     }
 
     private function mapCategory(?string $role): string
