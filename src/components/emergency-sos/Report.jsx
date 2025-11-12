@@ -7,11 +7,58 @@ export const EmergencyReport = () => {
   const [showPopup, setShowPopup] = useState(false);
   const navigate = useNavigate();
 
-  const handleSendNow = () => {
+  const resolveLocation = () =>
+    new Promise((resolve) => {
+      if (typeof navigator === "undefined" || !navigator.geolocation) {
+        resolve({ error: "Geolocation is not supported on this device." });
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) =>
+          resolve({
+            location: {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+            },
+          }),
+        (error) =>
+          resolve({
+            error:
+              error?.message ||
+              "Unable to access location automatically. Please share it manually if prompted.",
+          }),
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+      );
+    });
+
+  const handleSendNow = async () => {
     setShowPopup(false);
-    // TODO: Here you would send the emergency report to the backend
-    // After successful report, navigate to Messages page
-    navigate("/patient/messages", { state: { filterCategory: "Emergency" } });
+    const triggeredAt = new Date().toISOString();
+
+    let locationPayload = { location: null, error: null };
+
+    try {
+      locationPayload = await resolveLocation();
+    } catch (error) {
+      locationPayload = {
+        error:
+          error?.message ||
+          "Unable to access location automatically. Please share it manually if prompted.",
+      };
+    }
+
+    navigate("/patient/messages", {
+      state: {
+        filterCategory: "Emergency",
+        startEmergencyChat: {
+          triggeredAt,
+          ...(locationPayload.location ? { location: locationPayload.location } : {}),
+          ...(locationPayload.error ? { locationError: locationPayload.error } : {}),
+        },
+      },
+    });
   };
 
   const handleCancel = () => {
