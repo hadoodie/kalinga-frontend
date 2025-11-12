@@ -718,13 +718,12 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
                 />
               )}
             </div>
-            <p className="text-sm text-gray-600">
-              {conversation.participant.role}
+            <p className="text-sm text-gray-600 text-left">
               {conversation.participant.isOnline && !isArchived && (
-                <span className="text-green-600 ml-2">● Online</span>
+                <span className="text-green-600">● Online</span>
               )}
               {isArchived && (
-                <span className="text-gray-500 ml-2">● Archived</span>
+                <span className="text-gray-500">● Archived</span>
               )}
             </p>
           </div>
@@ -794,7 +793,7 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
                       : "bg-white text-gray-900 border border-gray-200"
                   }`}
                 >
-                  <p className="text-sm whitespace-pre-wrap break-words">
+                  <p className="text-sm whitespace-pre-wrap break-words text-left">
                     {msg.text}
                   </p>
                 </div>
@@ -1959,19 +1958,19 @@ export default function MessagesContact() {
       presenceContainerClass = "border-amber-200 bg-amber-50";
       presenceLabelClass = "text-amber-700";
       presenceIcon = <Zap size={16} className="text-amber-600" />;
-      presenceLabel = "Connecting to responders channel...";
+      presenceLabel = "Connecting...";
       presenceDescription = "Authenticating and joining presence channel.";
       break;
     case "connected":
       presenceContainerClass = "border-green-200 bg-green-50";
       presenceLabelClass = "text-green-700";
       presenceIcon = <Check size={16} className="text-green-600" />;
-      presenceLabel = `Connected (${visibleOnlineNames.length} online)`;
+      presenceLabel = `Online (${visibleOnlineNames.length})`;
       presenceDescription = displayedNames.length
         ? `${displayedNames.join(", ")}${
             hiddenCount > 0 ? ` +${hiddenCount}` : ""
           }`
-        : "Waiting for other responders to connect.";
+        : "Waiting for others to connect.";
       break;
     case "error":
       presenceContainerClass = "border-red-200 bg-red-50";
