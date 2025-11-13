@@ -4,6 +4,8 @@
 // - Preserves compatibility with existing method names & return shapes
 // - Keeps console logs and artificial async delays for realistic behaviour
 
+import { useState, useEffect } from "react";
+
 // --------------------
 // MOCK DATA - ASSETS
 // --------------------
@@ -13,7 +15,7 @@ const mockAssets = [
     type: "Ambulance",
     category: "Medical Vehicle",
     capacity: "6 patients",
-    status: "Active",
+    status: "Operational",
     location: "Central Hospital",
     personnel: "Dr. Sarah Chen",
     lastMaintenance: "2024-01-15",
@@ -33,7 +35,7 @@ const mockAssets = [
     type: "Fire Truck",
     category: "Emergency Vehicle",
     capacity: "5000L water",
-    status: "Active",
+    status: "Operational",
     location: "North Station",
     personnel: "Capt. Mike Rodriguez",
     lastMaintenance: "2024-01-20",
@@ -87,7 +89,7 @@ const mockAssets = [
     type: "Mobile Command",
     category: "Communication",
     capacity: "10 operators",
-    status: "Active",
+    status: "Operational",
     location: "HQ Operations",
     personnel: "Cmdr. Robert Brown",
     lastMaintenance: "2024-01-25",
@@ -105,7 +107,7 @@ const mockAssets = [
     type: "Water Purifier",
     category: "Water Equipment",
     capacity: "1000L/hour",
-    status: "Active",
+    status: "Operational",
     location: "Central Hospital",
     personnel: "Tech. Lisa Wang",
     lastMaintenance: "2024-01-18",
@@ -157,7 +159,7 @@ const mockAssets = [
     type: "Ambulance",
     category: "Medical Vehicle",
     capacity: "4 patients",
-    status: "Active",
+    status: "Operational",
     location: "West Medical Center",
     personnel: "EMT David Kim",
     lastMaintenance: "2024-02-01",
@@ -175,7 +177,7 @@ const mockAssets = [
     type: "Mobile ICU",
     category: "Medical Vehicle",
     capacity: "2 critical patients",
-    status: "Active",
+    status: "Operational",
     location: "Central Hospital",
     personnel: "Dr. Emily Carter",
     lastMaintenance: "2024-01-30",
@@ -211,7 +213,7 @@ const mockAssets = [
     type: "Fire Engine",
     category: "Emergency Vehicle",
     capacity: "3000L water",
-    status: "Active",
+    status: "Operational",
     location: "South Station",
     personnel: "Lt. Carlos Mendez",
     lastMaintenance: "2024-02-10",
@@ -229,7 +231,7 @@ const mockAssets = [
     type: "Rescue Truck",
     category: "Emergency Vehicle",
     capacity: "6 rescuers",
-    status: "Active",
+    status: "Operational",
     location: "East Station",
     personnel: "Capt. Jennifer Walsh",
     lastMaintenance: "2024-02-08",
@@ -265,7 +267,7 @@ const mockAssets = [
     type: "Generator",
     category: "Power Equipment",
     capacity: "25kW",
-    status: "Active",
+    status: "Operational",
     location: "West Medical Center",
     personnel: "Tech. Kevin Patel",
     lastMaintenance: "2024-02-12",
@@ -283,7 +285,7 @@ const mockAssets = [
     type: "Generator",
     category: "Power Equipment",
     capacity: "100kW",
-    status: "Active",
+    status: "Operational",
     location: "Central Hospital",
     personnel: "Tech. James Wilson",
     lastMaintenance: "2024-01-22",
@@ -318,7 +320,7 @@ const mockAssets = [
     type: "Rescue Boat",
     category: "Watercraft",
     capacity: "6 persons",
-    status: "Active",
+    status: "Operational",
     location: "River Station",
     personnel: "Lt. Anna Kowalski",
     lastMaintenance: "2024-02-14",
@@ -354,7 +356,7 @@ const mockAssets = [
     type: "Satellite Trailer",
     category: "Communication",
     capacity: "8 operators",
-    status: "Active",
+    status: "Operational",
     location: "HQ Operations",
     personnel: "Comms Specialist",
     lastMaintenance: "2024-02-03",
@@ -371,7 +373,7 @@ const mockAssets = [
     type: "Radio Repeater",
     category: "Communication",
     capacity: "50 mile range",
-    status: "Active",
+    status: "Operational",
     location: "North Tower",
     personnel: "Tech. Sarah Johnson",
     lastMaintenance: "2024-02-07",
@@ -388,7 +390,7 @@ const mockAssets = [
     type: "ATV",
     category: "All-Terrain Vehicle",
     capacity: "2 persons",
-    status: "Active",
+    status: "Operational",
     location: "Mountain Base",
     personnel: "Ranger Alex Chen",
     lastMaintenance: "2024-02-09",
@@ -406,7 +408,7 @@ const mockAssets = [
     type: "UTV",
     category: "All-Terrain Vehicle",
     capacity: "4 persons",
-    status: "Active",
+    status: "Operational",
     location: "Forest Station",
     personnel: "Ranger Maria Lopez",
     lastMaintenance: "2024-02-11",
@@ -424,7 +426,7 @@ const mockAssets = [
     type: "Water Purifier",
     category: "Water Equipment",
     capacity: "500L/hour",
-    status: "Active",
+    status: "Operational",
     location: "Field Camp Alpha",
     personnel: "Tech. Ryan Brooks",
     lastMaintenance: "2024-02-06",
@@ -459,7 +461,7 @@ const mockAssets = [
     type: "Portable Ventilator",
     category: "Medical Equipment",
     capacity: "1 patient",
-    status: "Active",
+    status: "Operational",
     location: "Central Hospital",
     personnel: "Respiratory Therapist",
     lastMaintenance: "2024-02-13",
@@ -476,7 +478,7 @@ const mockAssets = [
     type: "Defibrillator",
     category: "Medical Equipment",
     capacity: "Portable",
-    status: "Active",
+    status: "Operational",
     location: "All Ambulances",
     personnel: "EMT Staff",
     lastMaintenance: "2024-02-04",
@@ -511,7 +513,7 @@ const mockAssets = [
     type: "Fuel Truck",
     category: "Support Vehicle",
     capacity: "8,000L",
-    status: "Active",
+    status: "Operational",
     location: "HQ Operations",
     personnel: "Fuel Specialist",
     lastMaintenance: "2024-02-15",
@@ -529,7 +531,7 @@ const mockAssets = [
     type: "Light Tower",
     category: "Support Equipment",
     capacity: "4x1000W LED",
-    status: "Active",
+    status: "Operational",
     location: "Event Site Bravo",
     personnel: "Setup Crew",
     lastMaintenance: "2024-02-02",
@@ -563,7 +565,7 @@ const mockAssets = [
     type: "Ambulance Bus",
     category: "Medical Vehicle",
     capacity: "12 patients",
-    status: "Active",
+    status: "Operational",
     location: "Regional Center",
     personnel: "EMT Supervisor",
     lastMaintenance: "2024-02-16",
@@ -616,7 +618,7 @@ const mockAssets = [
     type: "Search & Rescue Truck",
     category: "Emergency Vehicle",
     capacity: "8 rescuers",
-    status: "Active",
+    status: "Operational",
     location: "Mountain Base",
     personnel: "SAR Team Lead",
     lastMaintenance: "2024-02-17",
@@ -634,7 +636,7 @@ const mockAssets = [
     type: "Thermal Camera",
     category: "Search Equipment",
     capacity: "Portable",
-    status: "Active",
+    status: "Operational",
     location: "All Rescue Units",
     personnel: "SAR Technician",
     lastMaintenance: "2024-02-18",
@@ -651,7 +653,7 @@ const mockAssets = [
     type: "Command Trailer",
     category: "Communication",
     capacity: "12 operators",
-    status: "Active",
+    status: "Operational",
     location: "Incident Site Charlie",
     personnel: "Incident Commander",
     lastMaintenance: "2024-02-19",
@@ -668,7 +670,7 @@ const mockAssets = [
     type: "Helicopter",
     category: "Aircraft",
     capacity: "6 persons",
-    status: "Active",
+    status: "Operational",
     location: "Air Operations",
     personnel: "Pilot Chris Mitchell",
     lastMaintenance: "2024-02-20",
@@ -686,7 +688,7 @@ const mockAssets = [
     type: "Drone",
     category: "Aircraft",
     capacity: "5kg payload",
-    status: "Active",
+    status: "Operational",
     location: "Air Operations",
     personnel: "UAV Operator",
     lastMaintenance: "2024-02-21",
@@ -704,7 +706,7 @@ const mockAssets = [
     type: "Mobile Workshop",
     category: "Support Vehicle",
     capacity: "4 technicians",
-    status: "Active",
+    status: "Operational",
     location: "Field Operations",
     personnel: "Lead Technician",
     lastMaintenance: "2024-02-22",
@@ -722,7 +724,7 @@ const mockAssets = [
     type: "Patient Transport",
     category: "Medical Vehicle",
     capacity: "3 wheelchair",
-    status: "Active",
+    status: "Operational",
     location: "Central Hospital",
     personnel: "Transport Coordinator",
     lastMaintenance: "2024-02-23",
@@ -740,7 +742,7 @@ const mockAssets = [
     type: "Oxygen Concentrator",
     category: "Medical Equipment",
     capacity: "10L/min",
-    status: "Active",
+    status: "Operational",
     location: "All Medical Units",
     personnel: "Medical Staff",
     lastMaintenance: "2024-02-24",
@@ -774,7 +776,7 @@ const mockAssets = [
     type: "Utility Truck",
     category: "Support Vehicle",
     capacity: "2,000 kg",
-    status: "Active",
+    status: "Operational",
     location: "HQ Operations",
     personnel: "Facilities Manager",
     lastMaintenance: "2024-02-25",
@@ -827,7 +829,7 @@ const mockAssets = [
     type: "Incident Response",
     category: "Emergency Vehicle",
     capacity: "6 responders",
-    status: "Active",
+    status: "Operational",
     location: "Regional Center",
     personnel: "Response Team Lead",
     lastMaintenance: "2024-02-26",
@@ -845,7 +847,7 @@ const mockAssets = [
     type: "Gas Detector",
     category: "Safety Equipment",
     capacity: "4-gas monitor",
-    status: "Active",
+    status: "Operational",
     location: "All Response Units",
     personnel: "Safety Officer",
     lastMaintenance: "2024-02-27",
@@ -879,7 +881,7 @@ const mockAssets = [
     type: "Ambulance",
     category: "Medical Vehicle",
     capacity: "5 patients",
-    status: "Active",
+    status: "Operational",
     location: "South Medical Center",
     personnel: "EMT Jessica Brown",
     lastMaintenance: "2024-02-28",
@@ -935,8 +937,6 @@ const mockMaintenanceDataSimple = [
 // --------------------
 const mockMaintenanceDataEnhanced = {
   upcoming: [
-    
-
     {
       id: 1,
       assetId: "AST-001",
@@ -996,6 +996,76 @@ const mockMaintenanceDataEnhanced = {
       priority: "low",
       technician: "Tech. Tom Harris",
       cost: 120
+    },
+    {
+      id: 51,
+      assetId: "AST-001",
+      scheduledDate: "2025-10-15",
+      description: "Annual comprehensive inspection",
+      status: "scheduled",
+      priority: "high",
+      technician: "Tech. James Wilson",
+      cost: 1200
+    },
+    {
+      id: 52,
+      assetId: "VHL-002", 
+      scheduledDate: "2025-10-20",
+      description: "Engine overhaul and system update",
+      status: "scheduled",
+      priority: "high",
+      technician: "Tech. Maria Garcia",
+      cost: 8500
+    },
+    {
+      id: 53,
+      assetId: "AST-010",
+      scheduledDate: "2025-11-05",
+      description: "ICU equipment certification",
+      status: "scheduled", 
+      priority: "high",
+      technician: "Medical Tech",
+      cost: 3200
+    },
+    {
+      id: 54,
+      assetId: "VHL-038",
+      scheduledDate: "2025-11-15",
+      description: "Helicopter annual maintenance",
+      status: "scheduled",
+      priority: "high", 
+      technician: "Aviation Tech",
+      cost: 45000
+    },
+    {
+      id: 55,
+      assetId: "AST-005",
+      scheduledDate: "2025-12-01",
+      description: "End-of-year communication system update",
+      status: "scheduled",
+      priority: "medium",
+      technician: "Tech. Maria Garcia", 
+      cost: 2800
+    },
+    {
+      id: 56,
+      assetId: "EQP-016",
+      scheduledDate: "2025-12-10",
+      description: "Generator winter preparation",
+      status: "scheduled",
+      priority: "medium",
+      technician: "Tech. James Wilson",
+      cost: 1500
+    },
+    {
+      id: 57,
+      assetId: "VHL-032",
+      scheduledDate: "2025-12-20",
+      description: "Ambulance bus safety inspection",
+      status: "scheduled",
+      priority: "high",
+      technician: "EMT Supervisor",
+      cost: 3200
     }
   ],
   overdue: [
@@ -1104,81 +1174,7 @@ const mockMaintenanceDataEnhanced = {
       status: "completed",
       technician: "Medical Tech",
       cost: 600
-    }, 
-
-    // In mockMaintenanceDataEnhanced - ADD these to the upcoming array:
-{
-  id: 51,
-  assetId: "AST-001",
-  scheduledDate: "2025-10-15",
-  description: "Annual comprehensive inspection",
-  status: "scheduled",
-  priority: "high",
-  technician: "Tech. James Wilson",
-  cost: 1200
-},
-{
-  id: 52,
-  assetId: "VHL-002", 
-  scheduledDate: "2025-10-20",
-  description: "Engine overhaul and system update",
-  status: "scheduled",
-  priority: "high",
-  technician: "Tech. Maria Garcia",
-  cost: 8500
-},
-{
-  id: 53,
-  assetId: "AST-010",
-  scheduledDate: "2025-11-05",
-  description: "ICU equipment certification",
-  status: "scheduled", 
-  priority: "high",
-  technician: "Medical Tech",
-  cost: 3200
-},
-{
-  id: 54,
-  assetId: "VHL-038",
-  scheduledDate: "2025-11-15",
-  description: "Helicopter annual maintenance",
-  status: "scheduled",
-  priority: "high", 
-  technician: "Aviation Tech",
-  cost: 45000
-},
-{
-  id: 55,
-  assetId: "AST-005",
-  scheduledDate: "2025-12-01",
-  description: "End-of-year communication system update",
-  status: "scheduled",
-  priority: "medium",
-  technician: "Tech. Maria Garcia", 
-  cost: 2800
-},
-{
-  id: 56,
-  assetId: "EQP-016",
-  scheduledDate: "2025-12-10",
-  description: "Generator winter preparation",
-  status: "scheduled",
-  priority: "medium",
-  technician: "Tech. James Wilson",
-  cost: 1500
-},
-{
-  id: 57,
-  assetId: "VHL-032",
-  scheduledDate: "2025-12-20",
-  description: "Ambulance bus safety inspection",
-  status: "scheduled",
-  priority: "high",
-  technician: "EMT Supervisor",
-  cost: 3200
-}
-
-    
+    }
   ]
 };
 
@@ -1439,6 +1435,50 @@ export const mockAssetTemplates = {
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 // --------------------
+// Custom hook for using assets
+// --------------------
+export const useAssets = () => {
+  const [assets, setAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchAssets = async () => {
+      try {
+        setLoading(true);
+        const data = await mockAssetService.getAssets();
+        setAssets(data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssets();
+  }, []);
+
+  const refresh = async () => {
+    try {
+      setLoading(true);
+      const data = await mockAssetService.getAssets();
+      setAssets(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return {
+    assets,
+    loading,
+    error,
+    refresh
+  };
+};
+
+// --------------------
 // Exported mockAssetService (combined & compatible)
 // --------------------
 export const mockAssetService = {
@@ -1447,16 +1487,16 @@ export const mockAssetService = {
     await delay(800);
     let filtered = [...mockAssets];
 
-    if (filters.status) {
+    if (filters.status && filters.status !== "All Status") {
       filtered = filtered.filter(a => a.status === filters.status);
     }
-    if (filters.location) {
-      filtered = filtered.filter(a => a.location && a.location.includes(filters.location));
+    if (filters.location && filters.location !== "All Locations") {
+      filtered = filtered.filter(a => a.location === filters.location);
     }
     if (filters.type) {
       filtered = filtered.filter(a => a.type === filters.type);
     }
-    if (filters.category) {
+    if (filters.category && filters.category !== "All Categories") {
       filtered = filtered.filter(a => a.category === filters.category);
     }
     if (filters.search) {
@@ -1575,7 +1615,7 @@ export const mockAssetService = {
 
     const analytics = {
       statusDistribution: [
-        { status: "Active", count: 42, percentage: 84 },
+        { status: "Operational", count: 42, percentage: 84 },
         { status: "Under Repair", count: 5, percentage: 10 },
         { status: "Standby", count: 3, percentage: 6 }
       ],
@@ -1672,7 +1712,7 @@ export const mockAssetService = {
     await delay(1500);
 
     // Generate content
-    const content = `Asset Registry Report\nGenerated: ${new Date().toLocaleDateString()}\nFormat: ${exportConfig.format}\nType: ${exportConfig.reportType}\nDate Range: ${exportConfig.dateRange}\nTotal Assets: ${mockAssets.length}\nActive Assets: ${mockAssets.filter(a => a.status === 'Active').length}\nTotal Value: ${mockMetrics.total_value || '$15.8M'}`;
+    const content = `Asset Registry Report\nGenerated: ${new Date().toLocaleDateString()}\nFormat: ${exportConfig.format}\nType: ${exportConfig.reportType}\nDate Range: ${exportConfig.dateRange}\nTotal Assets: ${mockAssets.length}\nOperational Assets: ${mockAssets.filter(a => a.status === 'Operational').length}\nTotal Value: ${mockMetrics.total_value || '$15.8M'}`;
 
     // Create blob and trigger download in browser (if running in browser)
     try {

@@ -26,6 +26,34 @@ const resourceCalendarService = {
     return response.data;
   },
 
+// resourceCalendarService.js - Temporary fix
+updateStockMovement: async (movementId, updateData) => {
+  console.log('Sending update data:', { movementId, updateData });
+  
+  // Get the current user ID - you'll need to implement this
+  const getCurrentUserId = () => {
+    // This depends on how you store user info
+    // Option 1: From localStorage/token
+    const user = JSON.parse(localStorage.getItem('user'));
+    return user?.id || 1; // Fallback to admin ID
+    
+    // Option 2: From your auth context
+    // return authContext.user.id;
+  };
+
+  const backendData = {
+    quantity: updateData.quantity,
+    reason: updateData.reason,
+    performed_by: updateData.performed_by, // Keep the display name
+    performed_by_id: getCurrentUserId(), // Add the user ID for the foreign key
+  };
+
+  console.log('Sending to backend:', backendData);
+  
+  const response = await api.put(`/resources/stock-movements/${movementId}`, backendData);
+  return response.data;
+},
+
   // Get all stock movements
   getStockMovements: async (filters = {}) => {
     const params = new URLSearchParams();

@@ -187,6 +187,7 @@ private function formatCalendarEvent(StockMovement $movement)
     $typeConfig = $eventTypes[$movement->movement_type] ?? $eventTypes['adjustment'];
     
     return [
+        'id' => $movement->id, // ← CRITICAL: Include the ID
         'type' => $typeConfig['type'],
         'resource' => $movement->resource->name,
         'quantity' => $movement->quantity,
@@ -195,14 +196,65 @@ private function formatCalendarEvent(StockMovement $movement)
         'facility' => $movement->resource->location,
         'reason' => $movement->reason,
         'performed_by' => $movement->performedBy ? $movement->performedBy->name : 'System',
+        'performed_by_id' => $movement->performed_by, // Include user ID for updates
         'color' => $typeConfig['color'],
         'icon' => $typeConfig['icon'],
         'timestamp' => $movement->created_at->toISOString()
     ];
 }
 
+    /**
+ * Update stock movement
+ */
+public function updateStockMovement(Request $request, $id)
+{
+    try {
+        \Log::info('Updating stock movement', [
+            'id' => $id,
+            'request_data' => $request->all(),
+            'auth_user' => auth()->user() // Log who's making the request
+        ]);
 
+        $validated = $request->validate([
+            'quantity' => 'required|numeric',
+            'reason' => 'required|string|max:255',
+            'performed_by' => 'sometimes|string', // Make optional
+            'performed_by_id' => 'required|exists:users,id',
+        ]);
 
+        $stockMovement = StockMovement::findOrFail($id);
+        
+        \Log::info('Found stock movement to update', [
+            'current_movement' => $stockMovement->toArray()
+        ]);
+
+        // Update the stock movement - use performed_by_id for the foreign key
+        $stockMovement->update([
+            'quantity' => $validated['quantity'],
+            'reason' => $validated['reason'],
+            'performed_by' => $validated['performed_by_id'], // This should be the user ID
+        ]);
+
+        \Log::info('Stock movement updated successfully', [
+            'updated_movement' => $stockMovement->fresh()->toArray()
+        ]);
+
+        return response()->json([
+            'message' => 'Stock movement updated successfully',
+            'stock_movement' => $stockMovement->fresh()->load(['resource', 'performedBy'])
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error updating stock movement: ' . $e->getMessage());
+        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        
+        return response()->json([
+            'message' => 'Failed to update stock movement',
+            'error' => $e->getMessage(),
+            'trace' => config('app.debug') ? $e->getTraceAsString() : null
+        ], 500);
+    }
+}
 
     /**
      * Store a newly created resource

@@ -1,3 +1,5 @@
+//src/routes/LogisticsRoutes.jsx
+
 import { lazy } from "react";
 import { Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "../components/ProtectedRoute";
@@ -34,6 +36,13 @@ const SettingsLogistics = lazy(() =>
     default: module.SettingsLogistics,
   }))
 );
+
+const OperationalAssets = lazy(() => import("../components/logistics/registry/overview/MetricCards/OperationalAssets"));
+const UnderRepairAssets = lazy(() => import("../components/logistics/registry/overview/MetricCards/UnderRepairAssets"));
+const UnassignedAssets = lazy(() => import("../components/logistics/registry/overview/MetricCards/UnassignedAssets"));
+const AssetDetailPage = lazy(() => import("../components/logistics/registry/overview/AssetDetailPage"));
+const AddAssetPage = lazy(() => import("../components/logistics/registry/overview/AddAssetPage"));
+
 
 const logisticsRoles = [ROLES.LOGISTICS, ROLES.ADMIN];
 
@@ -93,5 +102,49 @@ export const LogisticsRoutes = () => (
         </ProtectedRoute>
       }
     />
+    
+    {/* ASSET STATUS PAGES */}
+    <Route
+      path="/logistics/assets/operational"
+      element={
+        <ProtectedRoute allowedRoles={logisticsRoles}>
+          <OperationalAssets />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/logistics/assets/under-repair"
+      element={
+        <ProtectedRoute allowedRoles={logisticsRoles}>
+          <UnderRepairAssets />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/logistics/assets/unassigned"
+      element={
+        <ProtectedRoute allowedRoles={logisticsRoles}>
+          <unassignedAssets />
+        </ProtectedRoute>
+      }
+    />
+
+    {/* ASSET DETAIL PAGE */}
+    <Route
+      path="/logistics/assets/:assetId"
+      element={
+        <ProtectedRoute allowedRoles={logisticsRoles}>
+          <AssetDetailPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+  path="/logistics/assets/add"
+  element={
+    <ProtectedRoute allowedRoles={logisticsRoles}>
+      <AddAssetPage />
+    </ProtectedRoute>
+  }
+/>
   </>
 );

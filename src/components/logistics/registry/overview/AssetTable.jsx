@@ -1,539 +1,497 @@
 // src/components/logistics/registry/overview/AssetTable.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
-  Tablet, 
-  LayoutGrid, 
-  Package, 
-  MoreHorizontal, 
-  ChevronLeft, 
-  ChevronRight 
+  Truck, Plus, Home, Car, Bus, Zap, Shield, 
+  Ship, Radio, Package, Users, MapPin,
+  Edit, Trash2, Download, Archive, Send, MoreVertical,
+  Tablet, LayoutGrid, ChevronLeft, ChevronRight, Eye
 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
-import AddAssetDrawer from "./AddAssetDrawer";
-import BulkActionsPanel from "./BulkActionsPanel";
+import { useNavigate } from "react-router-dom";
 
-export default function AssetTable({ assets, loading, onRefresh }) {
+// Responsive CSS
+const assetTableStyles = `
+.asset-table-row {
+  transition: all 0.3s ease;
+}
+
+.asset-table-row:hover {
+  background: #f0fdf4;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+}
+
+.asset-card {
+  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.asset-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #10b981;
+}
+
+.asset-btn {
+  transition: all 0.2s ease;
+}
+
+.asset-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+  .desktop-table {
+    display: none;
+  }
+  
+  .mobile-cards {
+    display: block;
+  }
+}
+
+@media (min-width: 769px) {
+  .desktop-table {
+    display: block;
+  }
+  
+  .mobile-cards {
+    display: none;
+  }
+}
+`;
+
+if (!document.querySelector('#asset-table-styles')) {
+  const styleElement = document.createElement('style');
+  styleElement.id = 'asset-table-styles';
+  styleElement.textContent = assetTableStyles;
+  document.head.appendChild(styleElement);
+}
+
+export default function AssetTable({ assets, loading, onRefresh, filters = {} }) {
+  const navigate = useNavigate(); // ← ADD THIS
   const [viewMode, setViewMode] = useState("table");
   const [selectedAssets, setSelectedAssets] = useState(new Set());
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editingAsset, setEditingAsset] = useState(null);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(null);
-  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [showBulkOptions, setShowBulkOptions] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [showCheckboxes, setShowCheckboxes] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const itemsPerPage = 12;
+
+  // Detect mobile screen
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Apply filters if provided
+  const filteredAssets = filters.status && filters.status !== "All Status" 
+    ? assets.filter(asset => asset.status === filters.status)
+    : assets;
 
   // Pagination
-  const totalPages = Math.ceil(assets.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredAssets.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentAssets = assets.slice(startIndex, startIndex + itemsPerPage);
+  const currentAssets = filteredAssets.slice(startIndex, startIndex + itemsPerPage);
 
-  // Mock functions
-  const handleSaveAsset = (assetData) => {
-    console.log("Saving asset:", assetData);
-    setIsDrawerOpen(false);
-    setEditingAsset(null);
-    onRefresh();
+  // Working Icon Mapping
+  const getAssetIcon = (category) => {
+    const iconClass = "h-4 w-4";
+    
+    const iconMap = {
+      'ambulance': <Truck className={`${iconClass} text-red-600`} />,
+      'medical vehicle': <Truck className={`${iconClass} text-red-600`} />,
+      'medical equipment': <Plus className={`${iconClass} text-green-600`} />,
+      'medical facility': <Home className={`${iconClass} text-pink-600`} />,
+      'fire truck': <Truck className={`${iconClass} text-red-500`} />,
+      'emergency vehicle': <Truck className={`${iconClass} text-red-500`} />,
+      'support vehicle': <Car className={`${iconClass} text-gray-600`} />,
+      'all-terrain vehicle': <Bus className={`${iconClass} text-orange-600`} />,
+      'generator': <Zap className={`${iconClass} text-yellow-600`} />,
+      'power equipment': <Zap className={`${iconClass} text-yellow-600`} />,
+      'safety equipment': <Shield className={`${iconClass} text-amber-600`} />,
+      'rescue boat': <Ship className={`${iconClass} text-blue-600`} />,
+      'watercraft': <Ship className={`${iconClass} text-blue-600`} />,
+      'command unit': <Shield className={`${iconClass} text-purple-600`} />,
+      'communication': <Radio className={`${iconClass} text-teal-600`} />
+    };
+
+    return iconMap[category?.toLowerCase()] || <Package className={`${iconClass} text-gray-600`} />;
   };
 
-  const handleEdit = (assetId) => {
-    const asset = assets.find(a => a.id === assetId);
-    setEditingAsset(asset);
-    setIsDrawerOpen(true);
-  };
+  // Core Functions
+const handleViewDetails = (asset) => {
+  navigate(`/logistics/assets/${asset.id}`);
+};
 
-  const handleView = (assetId) => {
-    console.log("Viewing asset:", assetId);
-  };
 
-  const handleDelete = (assetId) => {
-    if (confirm("Are you sure you want to delete this asset?")) {
-      console.log("Deleting asset:", assetId);
-      onRefresh();
-    }
-  };
 
-  const handleBulkStatusUpdate = (status) => {
-    console.log("Updating status for", selectedAssets.size, "assets to:", status);
-    setSelectedAssets(new Set());
-    setShowBulkActions(false);
-  };
-
-  const handleBulkExport = () => {
-    console.log("Exporting", selectedAssets.size, "assets");
-  };
-
-  const handleBulkAssign = () => {
-    console.log("Assigning", selectedAssets.size, "assets");
-  };
-
+  // Bulk Operations
   const toggleSelectAsset = (assetId) => {
     const newSelected = new Set(selectedAssets);
-    if (newSelected.has(assetId)) {
-      newSelected.delete(assetId);
-    } else {
-      newSelected.add(assetId);
-    }
+    newSelected.has(assetId) ? newSelected.delete(assetId) : newSelected.add(assetId);
     setSelectedAssets(newSelected);
-    setShowBulkActions(newSelected.size > 0);
   };
 
-  const toggleSelectAll = () => {
-    if (selectedAssets.size === currentAssets.length) {
-      setSelectedAssets(new Set());
-      setShowBulkActions(false);
-    } else {
-      setSelectedAssets(new Set(currentAssets.map(asset => asset.id)));
-      setShowBulkActions(true);
-    }
+  const toggleCheckboxes = () => {
+    setShowCheckboxes(!showCheckboxes);
+    if (!showCheckboxes) setSelectedAssets(new Set());
+    setShowBulkOptions(false);
   };
 
-  // Pagination handlers
-  const goToPage = (page) => {
-    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  // Pagination
+  const goToPage = (page) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
+  const nextPage = () => currentPage < totalPages && setCurrentPage(currentPage + 1);
+  const prevPage = () => currentPage > 1 && setCurrentPage(currentPage - 1);
+
+  // Button Component
+  const ActionButton = ({ children, onClick, variant = "primary", icon: Icon, className = "" }) => {
+    const variants = {
+      primary: "bg-green-800 hover:bg-green-700 text-white",
+      secondary: "bg-gray-100 hover:bg-gray-200 text-green-900",
+      accent: "bg-yellow-500 hover:bg-yellow-600 text-gray-800",
+      danger: "bg-red-600 hover:bg-red-700 text-white"
+    };
+
+    return (
+      <button
+        onClick={onClick}
+        className={`asset-btn px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2 ${variants[variant]} ${className}`}
+      >
+        {Icon && <Icon className="h-4 w-4" />}
+        {children}
+      </button>
+    );
   };
 
-  const nextPage = () => {
-    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
-  };
+  // Mobile Card Component
+  const MobileAssetCard = ({ asset }) => (
+    <div 
+      className="asset-card bg-white rounded-lg p-4 mb-3 cursor-pointer"
+      onClick={() => !showCheckboxes && handleViewDetails(asset)}
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div className="flex items-center gap-2">
+          {getAssetIcon(asset.category)}
+          <div>
+            <h3 className="font-bold text-green-900 text-sm">{asset.id}</h3>
+            <p className="text-gray-600 text-xs">{asset.type}</p>
+          </div>
+        </div>
+        {showCheckboxes && (
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            checked={selectedAssets.has(asset.id)}
+            onChange={(e) => {
+              e.stopPropagation();
+              toggleSelectAsset(asset.id);
+            }}
+          />
+        )}
+      </div>
+      
+      <div className="space-y-2 text-sm mb-4">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-500">Category:</span>
+          <span className="font-medium text-green-900">{asset.category}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-500">Status:</span>
+          <StatusBadge status={asset.status} />
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-500">Location:</span>
+          <span className="font-medium text-green-900 text-right">{asset.location}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-500">Personnel:</span>
+          <span className="font-medium text-green-900 text-right">{asset.personnel}</span>
+        </div>
+      </div>
 
-  const prevPage = () => {
-    if (currentPage > 1) setCurrentPage(currentPage - 1);
-  };
+      <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+        <div className="flex items-center gap-1 text-xs text-gray-500">
+          <MapPin className="h-3 w-3" />
+          {asset.location}
+        </div>
+        {!showCheckboxes && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewDetails(asset);
+            }}
+            className="text-green-700 hover:text-green-900 text-xs font-medium asset-btn px-3 py-1 rounded-md"
+          >
+            View Details
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   if (loading) {
     return (
-      <div className="text-center py-8">
-        <div className="inline-flex items-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-yellow-500 mr-3"></div>
-          Loading assets...
+      <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+        <div className="flex items-center gap-3 justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-600"></div>
+          <span className="text-green-900 font-medium">Loading assets...</span>
         </div>
       </div>
     );
   }
 
-  if (assets.length === 0) {
+  if (filteredAssets.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
-        <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No assets found</h3>
-        <p className="text-gray-500 mb-4">Try adjusting your filters or add a new asset.</p>
-        <button 
-          onClick={() => {
-            setEditingAsset(null);
-            setIsDrawerOpen(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2 bg-yellow-500 text-gray-800 rounded-lg font-semibold hover:bg-yellow-600 transition mx-auto"
-        >
-          <Plus className="h-4 w-4" />
-          Add Your First Asset
-        </button>
+      <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
+        <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h3 className="text-xl font-bold text-green-900 mb-2">No assets found</h3>
+        <p className="text-gray-600 mb-6">
+          {filters.status ? `No ${filters.status.toLowerCase()} assets` : 'Get started by adding your first asset'}
+        </p>
+
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 relative">
-      {/* Bulk Actions Panel */}
-      {showBulkActions && selectedAssets.size > 0 && (
-        <BulkActionsPanel
-          selectedCount={selectedAssets.size}
-          onStatusUpdate={handleBulkStatusUpdate}
-          onExport={handleBulkExport}
-          onAssign={handleBulkAssign}
-          onClearSelection={() => {
-            setSelectedAssets(new Set());
-            setShowBulkActions(false);
-          }}
-        />
-      )}
-
-      {/* Table Header with Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-4">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex gap-1 flex-1 sm:flex-initial">
-            <button
-              onClick={() => setViewMode("table")}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition flex-1 justify-center ${
-                viewMode === "table" 
-                  ? "bg-yellow-500 text-gray-800" 
-                  : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-              }`}
-            >
-              <Tablet className="h-4 w-4" />
-              <span className="hidden xs:inline">Table</span>
-            </button>
-            <button
-              onClick={() => setViewMode("card")}
-              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition flex-1 justify-center ${
-                viewMode === "card" 
-                  ? "bg-yellow-500 text-gray-800" 
-                  : "bg-gray-200 text-gray-600 hover:bg-gray-300"
-              }`}
-            >
-              <LayoutGrid className="h-4 w-4" />
-              <span className="hidden xs:inline">Cards</span>
-            </button>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold text-green-900 mb-1">
+              {filters.status ? `${filters.status} Assets` : 'Asset Registry'}
+            </h2>
+            <p className="text-gray-600">
+              {filteredAssets.length} assets found
+              {selectedAssets.size > 0 && ` • ${selectedAssets.size} selected`}
+            </p>
           </div>
+          
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Bulk Actions */}
+            {!isMobile && (
+              <div className="relative">
+                <ActionButton
+                  onClick={toggleCheckboxes}
+                  variant={showCheckboxes ? "accent" : "secondary"}
+                  icon={Users}
+                >
+                  {showCheckboxes ? "Cancel Selection" : "Select Assets"}
+                </ActionButton>
+              </div>
+            )}
 
-          {selectedAssets.size > 0 && (
-            <div className="text-xs text-gray-600 bg-blue-50 px-2 py-1 rounded-lg whitespace-nowrap">
-              {selectedAssets.size} selected
-            </div>
-          )}
-        </div>
+            {/* View Toggle - Hidden on mobile since it's always cards */}
+            {!isMobile && (
+              <div className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`asset-btn flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium ${
+                    viewMode === "table" ? "bg-green-800 text-white" : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  <Tablet className="h-4 w-4" /> Table
+                </button>
+                <button
+                  onClick={() => setViewMode("card")}
+                  className={`asset-btn flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium ${
+                    viewMode === "card" ? "bg-green-800 text-white" : "text-gray-600 hover:text-gray-800"
+                  }`}
+                >
+                  <LayoutGrid className="h-4 w-4" /> Cards
+                </button>
+              </div>
+            )}
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button 
-            onClick={() => {
-              setEditingAsset(null);
-              setIsDrawerOpen(true);
-            }}
-            className="flex items-center gap-1 px-3 py-2 bg-yellow-500 text-gray-800 rounded-lg font-semibold hover:bg-yellow-600 transition text-sm whitespace-nowrap flex-1 sm:flex-initial justify-center"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Asset</span>
-          </button>
+<ActionButton 
+  onClick={() => navigate('/logistics/assets/add')} 
+  variant="primary" 
+  icon={Plus}
+>
+  Add Asset
+</ActionButton>
+          </div>
         </div>
       </div>
 
-      {/* Table View */}
-      {viewMode === "table" && (
-        <div className="bg-white overflow-hidden">
-          <div className="overflow-x-auto">
-            {/* Desktop Table - Hidden on mobile */}
-            <table className="min-w-full divide-y divide-gray-200 hidden md:table">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th scope="col" className="w-12 px-2 py-3">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 mx-auto"
-                      checked={selectedAssets.size === currentAssets.length && currentAssets.length > 0}
-                      onChange={toggleSelectAll}
-                    />
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-24">
-                    ID
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-32">
-                    Type
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-40">
-                    Category
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-28">
-                    Capacity
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-28">
-                    Status
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-40">
-                    Location
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-40">
-                    Personnel
-                  </th>
-                  <th scope="col" className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap w-32">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {currentAssets.map((asset) => (
-                  <tr 
-                    key={asset.id} 
-                    className={`hover:bg-gray-50 transition ${
-                      selectedAssets.has(asset.id) ? 'bg-blue-50' : ''
-                    } ${asset.status === "Under Repair" ? "bg-red-50" : ""}`}
-                  >
-                    <td className="px-2 py-3">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 mx-auto"
-                        checked={selectedAssets.has(asset.id)}
-                        onChange={() => toggleSelectAsset(asset.id)}
-                      />
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {asset.id}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {asset.type}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {asset.category}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {asset.capacity}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap">
-                      <StatusBadge status={asset.status} />
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-900">
-                      {asset.location}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-600">
-                      {asset.personnel}
-                    </td>
-                    <td className="px-3 py-3 whitespace-nowrap text-center text-sm font-medium">
-                      <div className="flex justify-center gap-1">
-                        <button
-                          onClick={() => handleView(asset.id)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded transition"
-                          title="View Details"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(asset.id)}
-                          className="text-green-600 hover:text-green-900 p-1 rounded transition"
-                          title="Edit"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(asset.id)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded transition"
-                          title="Delete"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+      {/* Desktop Table View */}
+      <div className="desktop-table">
+        {viewMode === "table" && (
+          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full divide-y divide-gray-200">
+                <thead className="bg-green-800 text-white">
+                  <tr>
+                    {showCheckboxes && (
+                      <th className="w-12 px-4 py-4 text-left">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          checked={selectedAssets.size === currentAssets.length && currentAssets.length > 0}
+                          onChange={() => selectedAssets.size === currentAssets.length ? setSelectedAssets(new Set()) : setSelectedAssets(new Set(currentAssets.map(asset => asset.id)))}
+                        />
+                      </th>
+                    )}
+                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Asset Details</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Category</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Capacity</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Status</th>
+                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Location</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Mobile Table - Visible only on mobile */}
-            <div className="md:hidden space-y-2">
-              {currentAssets.map((asset) => (
-                <div 
-                  key={asset.id} 
-                  className={`bg-white rounded-lg border border-gray-200 p-3 ${
-                    selectedAssets.has(asset.id) ? 'bg-blue-50 border-blue-200' : ''
-                  } ${asset.status === "Under Repair" ? "border-l-4 border-l-red-500" : ""}`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2 flex-1">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 flex-shrink-0"
-                        checked={selectedAssets.has(asset.id)}
-                        onChange={() => toggleSelectAsset(asset.id)}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-bold text-gray-900 text-sm truncate">{asset.id}</h3>
-                        <p className="text-xs text-gray-600 truncate">{asset.type}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
-                      <StatusBadge status={asset.status} />
-                      <button
-                        onClick={() => setMobileMenuOpen(mobileMenuOpen === asset.id ? null : asset.id)}
-                        className="p-1 text-gray-400 hover:text-gray-600 rounded"
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mb-2">
-                    <div className="truncate">
-                      <span className="text-gray-500">Category:</span>
-                      <span className="font-medium ml-1 truncate">{asset.category}</span>
-                    </div>
-                    <div className="truncate">
-                      <span className="text-gray-500">Capacity:</span>
-                      <span className="font-medium ml-1 truncate">{asset.capacity}</span>
-                    </div>
-                    <div className="truncate">
-                      <span className="text-gray-500">Location:</span>
-                      <span className="font-medium ml-1 truncate">{asset.location}</span>
-                    </div>
-                    <div className="truncate">
-                      <span className="text-gray-500">Personnel:</span>
-                      <span className="font-medium ml-1 truncate">{asset.personnel}</span>
-                    </div>
-                  </div>
-
-                  {/* Mobile Action Menu */}
-                  {mobileMenuOpen === asset.id && (
-                    <div className="flex gap-1 border-t border-gray-200 pt-2 mt-2">
-                      <button
-                        onClick={() => handleView(asset.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-blue-500 text-white rounded text-xs font-semibold hover:bg-blue-600 transition"
-                      >
-                        <Eye className="h-3 w-3" />
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleEdit(asset.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-green-500 text-white rounded text-xs font-semibold hover:bg-green-600 transition"
-                      >
-                        <Edit className="h-3 w-3" />
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(asset.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 bg-red-500 text-white rounded text-xs font-semibold hover:bg-red-600 transition"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              ))}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {currentAssets.map((asset) => (
+                    <tr 
+                      key={asset.id} 
+                      className="asset-table-row cursor-pointer"
+                      onClick={() => !showCheckboxes && handleViewDetails(asset)}
+                    >
+                      {showCheckboxes && (
+                        <td className="px-4 py-4 text-left" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            checked={selectedAssets.has(asset.id)}
+                            onChange={() => toggleSelectAsset(asset.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="px-4 py-4 text-left">
+                        <div className="flex items-center gap-3">
+                          {getAssetIcon(asset.category)}
+                          <div>
+                            <div className="font-semibold text-green-900 text-sm">{asset.id}</div>
+                            <div className="text-gray-600 text-sm">{asset.type}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4 text-sm text-gray-900 text-left">{asset.category}</td>
+                      <td className="px-4 py-4 text-sm text-gray-900 text-left">{asset.capacity}</td>
+                      <td className="px-4 py-4 text-left"><StatusBadge status={asset.status} /></td>
+                      <td className="px-4 py-4 text-sm text-gray-900 text-left">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3 text-gray-400" /> {asset.location}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Card View - FIXED MOBILE LAYOUT */}
-      {viewMode === "card" && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {currentAssets.map((asset) => (
-            <div 
-              key={asset.id} 
-              className={`bg-white rounded-lg border border-gray-200 p-3 hover:shadow-md transition ${
-                asset.status === "Under Repair" ? "border-l-4 border-l-red-500" : ""
-              }`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500 flex-shrink-0"
-                    checked={selectedAssets.has(asset.id)}
-                    onChange={() => toggleSelectAsset(asset.id)}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-bold text-gray-900 text-sm truncate">{asset.id}</h3>
-                    <p className="text-xs text-gray-600 truncate">{asset.type}</p>
+        {/* Desktop Card View */}
+        {viewMode === "card" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {currentAssets.map((asset) => (
+              <div 
+                key={asset.id} 
+                className="asset-card bg-white rounded-lg p-4 cursor-pointer"
+                onClick={() => !showCheckboxes && handleViewDetails(asset)}
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-2">
+                    {getAssetIcon(asset.category)}
+                    <div>
+                      <h3 className="font-bold text-green-900 text-sm">{asset.id}</h3>
+                      <p className="text-gray-600 text-xs">{asset.type}</p>
+                    </div>
+                  </div>
+                  <StatusBadge status={asset.status} />
+                </div>
+                
+                <div className="space-y-2 text-sm mb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Category:</span>
+                    <span className="font-medium text-green-900">{asset.category}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Location:</span>
+                    <span className="font-medium text-green-900">{asset.location}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Personnel:</span>
+                    <span className="font-medium text-green-900">{asset.personnel}</span>
                   </div>
                 </div>
-                <StatusBadge status={asset.status} />
-              </div>
-              
-              <div className="space-y-1.5 text-xs mb-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Category:</span>
-                  <span className="font-medium text-right truncate ml-2">{asset.category}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Capacity:</span>
-                  <span className="font-medium text-right truncate ml-2">{asset.capacity}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Location:</span>
-                  <span className="font-medium text-right truncate ml-2 max-w-[60%]">{asset.location}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-500">Personnel:</span>
-                  <span className="font-medium text-right truncate ml-2 max-w-[60%]">{asset.personnel}</span>
-                </div>
-              </div>
 
-              <div className="flex gap-1 pt-2 border-t border-gray-200">
-                <button
-                  onClick={() => handleView(asset.id)}
-                  className="flex-1 flex items-center justify-center gap-1 px-1 py-1.5 bg-blue-500 text-white rounded text-xs font-semibold hover:bg-blue-600 transition min-h-[32px]"
-                >
-                  <Eye className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">View</span>
-                </button>
-                <button
-                  onClick={() => handleEdit(asset.id)}
-                  className="flex-1 flex items-center justify-center gap-1 px-1 py-1.5 bg-green-500 text-white rounded text-xs font-semibold hover:bg-green-600 transition min-h-[32px]"
-                >
-                  <Edit className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">Edit</span>
-                </button>
-                <button
-                  onClick={() => handleDelete(asset.id)}
-                  className="flex-1 flex items-center justify-center gap-1 px-1 py-1.5 bg-red-500 text-white rounded text-xs font-semibold hover:bg-red-600 transition min-h-[32px]"
-                >
-                  <Trash2 className="h-3 w-3 flex-shrink-0" />
-                  <span className="truncate">Delete</span>
-                </button>
+                <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <MapPin className="h-3 w-3" />
+                    {asset.location}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDetails(asset);
+                    }}
+                    className="text-green-700 hover:text-green-900 text-xs font-medium asset-btn px-3 py-1 rounded-md"
+                  >
+                    View Details
+                  </button>
+                </div>
               </div>
-            </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Card View - Always shows cards on mobile */}
+      <div className="mobile-cards">
+        <div className="space-y-3">
+          {currentAssets.map((asset) => (
+            <MobileAssetCard key={asset.id} asset={asset} />
           ))}
         </div>
-      )}
+      </div>
 
       {/* Pagination */}
-      {assets.length > itemsPerPage && (
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-gray-600 bg-white p-4 rounded-lg border border-gray-200">
-          <div className="text-xs sm:text-sm">
-            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, assets.length)} of {assets.length} assets
+      {filteredAssets.length > itemsPerPage && (
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
+          <div className="text-sm text-gray-600">
+            Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredAssets.length)} of {filteredAssets.length} assets
           </div>
+          
           <div className="flex items-center gap-2">
-            <span className="text-xs hidden sm:inline">Page {currentPage} of {totalPages}</span>
+            <ActionButton onClick={prevPage} disabled={currentPage === 1} variant="secondary" icon={ChevronLeft} className="p-2" />
+            
             <div className="flex gap-1">
-              <button 
-                onClick={prevPage}
-                disabled={currentPage === 1}
-                className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </button>
-              
-              {/* Page numbers - show limited on mobile */}
               {[...Array(totalPages)].map((_, index) => {
                 const page = index + 1;
-                const showOnMobile = 
-                  page === 1 || 
-                  page === totalPages || 
-                  Math.abs(page - currentPage) <= 1;
+                const showPage = page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
                 
-                if (showOnMobile) {
+                if (showPage) {
                   return (
-                    <button
+                    <ActionButton
                       key={page}
                       onClick={() => goToPage(page)}
-                      className={`px-3 py-1 rounded text-xs ${
-                        currentPage === page
-                          ? "bg-yellow-500 text-gray-800 font-medium"
-                          : "border border-gray-300 hover:bg-gray-50"
-                      }`}
+                      variant={currentPage === page ? "primary" : "secondary"}
+                      className="px-3 py-1"
                     >
                       {page}
-                    </button>
+                    </ActionButton>
                   );
                 } else if (page === 2 || page === totalPages - 1) {
                   return <span key={page} className="px-1 text-gray-400">...</span>;
                 }
                 return null;
               })}
-              
-              <button 
-                onClick={nextPage}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
-              >
-                <ChevronRight className="h-3 w-3" />
-              </button>
             </div>
+            
+            <ActionButton onClick={nextPage} disabled={currentPage === totalPages} variant="secondary" icon={ChevronRight} className="p-2" />
           </div>
         </div>
       )}
 
-      {/* Add/Edit Asset Drawer */}
-      <AddAssetDrawer
-        isOpen={isDrawerOpen}
-        onClose={() => {
-          setIsDrawerOpen(false);
-          setEditingAsset(null);
-        }}
-        onSave={handleSaveAsset}
-        editingAsset={editingAsset}
-      />
+   
+
+
     </div>
   );
 }
