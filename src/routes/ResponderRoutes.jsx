@@ -5,6 +5,7 @@ import { ROUTES, ROLES } from "../config/routes";
 
 // Responder Pages
 const Dashboard = lazy(() => import("../pages-responders/Dashboard"));
+const DashboardV2 = lazy(() => import("../pages-responders/DashboardV2"));
 const IncidentLogs = lazy(() => import("../pages-responders/IncidentLogs"));
 const EmergencySOS = lazy(() => import("../pages-responders/EmergencySOS"));
 const TriageSystem = lazy(() => import("../pages-responders/TriageSystem"));
@@ -57,6 +58,14 @@ export const ResponderRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
           <Dashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.RESPONDER.DASHBOARD_V2}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <DashboardV2 />
         </ProtectedRoute>
       }
     />

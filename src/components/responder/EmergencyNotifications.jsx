@@ -13,36 +13,12 @@ import { fetchResponderIncidents, assignToIncident, updateIncidentStatus } from 
 import { useAuth } from "../../context/AuthContext";
 import { useRealtime } from "../../context/RealtimeContext";
 import { getEchoInstance } from "../../services/echo";
-
-const STATUS_OPTIONS = [
-  { value: "reported", label: "Waiting Dispatch" },
-  { value: "acknowledged", label: "Acknowledged" },
-  { value: "en_route", label: "En Route" },
-  { value: "on_scene", label: "On Scene" },
-  { value: "needs_support", label: "Needs Support" },
-  { value: "resolved", label: "Resolved" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
-const STATUS_COLORS = {
-  reported: "bg-red-100 text-red-700 border border-red-200",
-  acknowledged: "bg-orange-100 text-orange-700 border border-orange-200",
-  en_route: "bg-blue-100 text-blue-700 border border-blue-200",
-  on_scene: "bg-purple-100 text-purple-700 border border-purple-200",
-  needs_support: "bg-yellow-100 text-yellow-700 border border-yellow-200",
-  resolved: "bg-emerald-100 text-emerald-700 border border-emerald-200",
-  cancelled: "bg-gray-100 text-gray-600 border border-gray-200",
-};
-
-const INCIDENT_PRIORITIES = {
-  reported: 1,
-  acknowledged: 2,
-  en_route: 3,
-  needs_support: 4,
-  on_scene: 5,
-  resolved: 6,
-  cancelled: 7,
-};
+import {
+  INCIDENT_STATUS_OPTIONS,
+  INCIDENT_STATUS_COLORS,
+  INCIDENT_STATUS_PRIORITIES,
+  INCIDENT_STATUS_LABELS,
+} from "../../constants/incidentStatus";
 
 const emptyHistoryMessage = "No updates recorded yet. Log a status change so everyone stays aligned.";
 
@@ -58,17 +34,12 @@ export default function EmergencyNotifications() {
   const [filter, setFilter] = useState("active");
   const [notesDraft, setNotesDraft] = useState({});
 
-  const statusLookup = useMemo(() => {
-    return STATUS_OPTIONS.reduce((acc, option) => {
-      acc[option.value] = option.label;
-      return acc;
-    }, {});
-  }, []);
+  const statusLookup = INCIDENT_STATUS_LABELS;
 
   const sortIncidents = useCallback((list) => {
     return [...list].sort((a, b) => {
-      const priorityA = INCIDENT_PRIORITIES[a.status] ?? 99;
-      const priorityB = INCIDENT_PRIORITIES[b.status] ?? 99;
+      const priorityA = INCIDENT_STATUS_PRIORITIES[a.status] ?? 99;
+      const priorityB = INCIDENT_STATUS_PRIORITIES[b.status] ?? 99;
       if (priorityA !== priorityB) {
         return priorityA - priorityB;
       }
@@ -294,25 +265,25 @@ export default function EmergencyNotifications() {
   }
 
   return (
-    <section className="bg-white shadow-sm rounded-2xl border border-gray-100">
-      <header className="border-b border-gray-100 px-6 py-4 flex flex-wrap gap-4 justify-between items-center">
+    <section className="bg-white shadow-sm rounded-xl border border-gray-200">
+      <header className="border-b border-gray-100 px-6 py-5 flex flex-wrap gap-4 justify-between items-center">
         <div>
-          <p className="text-sm uppercase tracking-wide text-primary font-semibold">Live incidents</p>
-          <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ShieldPlus className="h-6 w-6 text-primary" /> Emergency Notifications
+          <p className="text-xs uppercase tracking-wide text-primary font-bold">Live incidents</p>
+          <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mt-1">
+            <ShieldPlus className="h-5 w-5 text-primary" /> Emergency Notifications
           </h2>
-          <p className="text-sm text-gray-500 max-w-2xl">
-            Track every emergency in real time. Assign responders, log status updates, and review history so no incident loses visibility.
+          <p className="text-sm text-gray-600 max-w-2xl mt-1.5">
+            Monitor active emergencies in real-time and coordinate response efforts
           </p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => setFilter("active")}
-            className={`px-3 py-1.5 text-sm rounded-full border ${
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
               filter === "active"
-                ? "border-primary text-primary bg-primary/10"
-                : "border-gray-200 text-gray-600 hover:border-primary/40"
+                ? "bg-primary text-white shadow-sm"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Active
@@ -320,10 +291,10 @@ export default function EmergencyNotifications() {
           <button
             type="button"
             onClick={() => setFilter("resolved")}
-            className={`px-3 py-1.5 text-sm rounded-full border ${
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
               filter === "resolved"
-                ? "border-emerald-500 text-emerald-600 bg-emerald-50"
-                : "border-gray-200 text-gray-600 hover:border-emerald-300"
+                ? "bg-emerald-500 text-white shadow-sm"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Resolved
@@ -331,10 +302,10 @@ export default function EmergencyNotifications() {
           <button
             type="button"
             onClick={() => setFilter("all")}
-            className={`px-3 py-1.5 text-sm rounded-full border ${
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition ${
               filter === "all"
-                ? "border-gray-700 text-gray-800 bg-gray-100"
-                : "border-gray-200 text-gray-600 hover:border-gray-400"
+                ? "bg-gray-700 text-white shadow-sm"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             All
@@ -344,55 +315,55 @@ export default function EmergencyNotifications() {
 
       <div className="divide-y divide-gray-100">
         {filteredIncidents.length === 0 ? (
-          <div className="px-6 py-12 text-center text-gray-500">
-            <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-400 mb-3" />
-            <p className="font-medium">No incidents in this view.</p>
-            <p className="text-sm">Switch filters to review past responses.</p>
+          <div className="px-6 py-16 text-center text-gray-500">
+            <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-400 mb-4" />
+            <p className="text-base font-semibold">No incidents in this view</p>
+            <p className="text-sm text-gray-400 mt-1">Switch filters to review past responses</p>
           </div>
         ) : (
           filteredIncidents.map((incident) => {
             const joining = updating[incident.id];
-            const statusClass = STATUS_COLORS[incident.status] ?? "bg-gray-100 text-gray-600 border border-gray-200";
+            const statusClass = INCIDENT_STATUS_COLORS[incident.status] ?? "bg-gray-100 text-gray-600 border border-gray-200";
             const assignedLabel = responderNameList(incident);
             const responderCountLabel = `${incident.responders_assigned ?? 0} / ${incident.responders_required ?? 1}`;
 
             return (
-              <article key={incident.id} className="px-6 py-5">
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold ${statusClass}`}>
-                        <Activity className="h-3 w-3" />
+              <article key={incident.id} className="px-6 py-6 hover:bg-gray-50/50 transition-colors">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${statusClass}`}>
+                        <Activity className="h-3.5 w-3.5" />
                         {statusLookup[incident.status] ?? incident.status}
                       </span>
-                      <span className="text-xs text-gray-500 inline-flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                      <span className="text-xs text-gray-500 inline-flex items-center gap-1.5">
+                        <Clock className="h-3.5 w-3.5" />
                         {incident.reported_at_human || "Just now"}
                       </span>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-primary" />
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-red-500" />
                       {incident.type}
                     </h3>
-                    <p className="text-gray-600 text-sm flex items-center gap-2">
+                    <p className="text-gray-700 text-sm flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-gray-400" /> {incident.location}
                     </p>
                     {incident.description ? (
-                      <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                      <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-4">
                         {incident.description}
                       </p>
                     ) : null}
                   </div>
 
-                  <div className="flex flex-col gap-3 min-w-[220px]">
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-700">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold flex items-center gap-1">
-                          <Users className="h-4 w-4 text-primary" /> Responders
+                  <div className="flex flex-col gap-3 lg:min-w-[280px]">
+                    <div className="bg-gradient-to-br from-gray-50 to-white border border-gray-200 rounded-lg p-4 text-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-gray-800 flex items-center gap-1.5">
+                          <Users className="h-4 w-4 text-primary" /> Team Status
                         </span>
-                        <span className="font-semibold text-gray-900">{responderCountLabel}</span>
+                        <span className="font-bold text-gray-900">{responderCountLabel}</span>
                       </div>
-                      <p className="mt-1 text-xs text-gray-500">{assignedLabel}</p>
+                      <p className="text-xs text-gray-600">{assignedLabel}</p>
                     </div>
 
                     <textarea
@@ -400,8 +371,9 @@ export default function EmergencyNotifications() {
                       onChange={(event) =>
                         setNotesDraft((prev) => ({ ...prev, [incident.id]: event.target.value }))
                       }
-                      placeholder="Add a note for the team (optional)"
-                      className="border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 resize-y min-h-[60px]"
+                      placeholder="Add coordination notes (optional)"
+                      className="border border-gray-300 rounded-lg text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
+                      rows={2}
                     />
 
                     <div className="flex gap-2">
@@ -410,10 +382,10 @@ export default function EmergencyNotifications() {
                         onChange={(event) =>
                           setSelectedStatus((prev) => ({ ...prev, [incident.id]: event.target.value }))
                         }
-                        className="flex-1 border border-gray-200 rounded-lg text-sm px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40"
+                        className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                       >
                         <option value="">Update status…</option>
-                        {STATUS_OPTIONS.map((option) => (
+                        {INCIDENT_STATUS_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>
@@ -423,9 +395,9 @@ export default function EmergencyNotifications() {
                         type="button"
                         onClick={() => handleStatusChange(incident.id)}
                         disabled={!selectedStatus[incident.id] || joining}
-                        className="px-3 py-2 bg-primary text-white text-sm font-medium rounded-lg shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="px-4 py-2.5 bg-primary text-white text-sm font-bold rounded-lg shadow-sm hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Update
+                        Save
                       </button>
                     </div>
 
@@ -434,20 +406,20 @@ export default function EmergencyNotifications() {
                         type="button"
                         onClick={() => handleJoinIncident(incident.id)}
                         disabled={joining}
-                        className="px-3 py-2 border border-primary text-primary rounded-lg text-sm font-medium hover:bg-primary/10 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full px-4 py-2.5 border-2 border-primary text-primary rounded-lg text-sm font-bold hover:bg-primary/10 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Join incident
+                        {joining ? "Joining..." : "Join Response"}
                       </button>
                     ) : null}
                   </div>
                 </div>
 
                 <details className="mt-5 group">
-                  <summary className="cursor-pointer text-sm text-gray-600 flex items-center gap-2 select-none">
-                    <History className="h-4 w-4 text-gray-400" />
+                  <summary className="cursor-pointer text-sm text-gray-700 font-medium flex items-center gap-2 select-none hover:text-primary">
+                    <History className="h-4 w-4" />
                     View status history
                   </summary>
-                  <div className="mt-3 text-sm text-gray-700">
+                  <div className="mt-4 text-sm text-gray-700">
                     {renderHistory(incident)}
                   </div>
                 </details>

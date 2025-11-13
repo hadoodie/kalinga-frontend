@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import ResponderTopbar from "../../components/responder/Topbar";
 import ResponderSidebar from "../../components/responder/Sidebar";
 
-export default function HospitalMap() {
+export default function HospitalMap({ embedded = false, className = "" }) {
   const { user } = useAuth();
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
@@ -1500,20 +1500,14 @@ export default function HospitalMap() {
     };
   }, [removeBlockade, drawRoute]);
 
-  return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
-      <ResponderSidebar />
+  const mapShellClass = embedded
+    ? `relative w-full h-full overflow-hidden ${className}`.trim()
+    : "relative flex-1 w-full overflow-hidden";
 
-      {/* Main Content Area - Full screen map */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Topbar */}
-        <ResponderTopbar />
-
-        {/* Map Content - No padding, full height */}
-        <div className="relative flex-1 w-full overflow-hidden">
-          {/* Mobile Bottom Interface - Google Maps Style */}
-          <div className="md:hidden">
+  const mapShell = (
+    <div className={mapShellClass}>
+      {/* Mobile Bottom Interface - Google Maps Style */}
+      <div className="md:hidden">
             {/* User Info Dropdown */}
             {showUserInfo && (
               <div className="fixed top-4 left-4 right-4 z-50 bg-white rounded-lg shadow-xl p-4 max-h-48 overflow-y-auto">
@@ -2174,10 +2168,21 @@ export default function HospitalMap() {
               </div>
             </div>
           </div>
+      {/* Map Container */}
+      <div ref={mapRef} className="absolute inset-0 w-full h-full" />
+    </div>
+  );
 
-          {/* Map Container */}
-          <div ref={mapRef} className="absolute inset-0 w-full h-full" />
-        </div>
+  if (embedded) {
+    return <div className="flex flex-col h-full">{mapShell}</div>;
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden">
+      <ResponderSidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <ResponderTopbar />
+        {mapShell}
       </div>
     </div>
   );
