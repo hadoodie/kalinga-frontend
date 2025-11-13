@@ -457,7 +457,7 @@ export default function ResourceMngmt() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <List className="h-4 w-4" />
+              <div className="align-left h-4 w-4" />
               Inventory Management
             </button>
             <button
@@ -468,7 +468,7 @@ export default function ResourceMngmt() {
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Calendar className="h-4 w-4" />
+              <div className="align-left h-4 w-4" />
               History Calendar
             </button>
           </div>
