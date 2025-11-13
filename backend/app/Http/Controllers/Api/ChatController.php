@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\IncidentUpdated;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
 use App\Models\Incident;
+use App\Models\IncidentStatusUpdate;
 use App\Models\Message;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -367,18 +369,33 @@ class ChatController extends Controller
             'location_error' => Arr::get($emergencyPayload, 'location_error'),
         ]);
 
+        $respondersRequired = (int) ($emergencyPayload['responders_required'] ?? 1);
+        if ($respondersRequired < 1) {
+            $respondersRequired = 1;
+        }
+
         $incidentData = [
             'type' => $incidentType,
             'location' => $locationLabel,
             'latlng' => $latlngValue,
             'description' => $formattedDescription ?? $rawDescription,
             'user_id' => $sender->id,
-            'status' => 'available',
+            'status' => Incident::STATUS_REPORTED,
+            'responders_required' => $respondersRequired,
             'assigned_responder_id' => null,
             'assigned_at' => null,
         ];
 
-        Incident::create($incidentData);
+        $incident = Incident::create($incidentData);
+
+        IncidentStatusUpdate::create([
+            'incident_id' => $incident->id,
+            'user_id' => $sender->id,
+            'status' => Incident::STATUS_REPORTED,
+            'notes' => 'Emergency SOS created via responder chat.',
+        ]);
+
+        broadcast(new IncidentUpdated($incident))->toOthers();
 
         $conversationId = $conversationPayload['conversationId'] ?? null;
 

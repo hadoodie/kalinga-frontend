@@ -710,16 +710,38 @@ export default function HospitalMap() {
 
     const newMarkers = [];
     blockadeData.forEach((blockade) => {
-      const marker = L.circleMarker(
-        [parseFloat(blockade.start_lat), parseFloat(blockade.start_lng)],
-        {
-          radius: 10,
-          color: severityColors[blockade.severity] || "#dc3545",
-          weight: 3,
-          fillColor: severityColors[blockade.severity] || "#dc3545",
-          fillOpacity: 0.7,
-        }
-      ).addTo(leafletMap);
+      const lat = parseFloat(blockade.start_lat);
+      const lng = parseFloat(blockade.start_lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+
+      const background = severityColors[blockade.severity] || "#f97316";
+      const iconHtml = `
+                <div style="
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: ${background};
+                    color: #fff;
+                    border: 2px solid #fff;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+                    font-size: 18px;
+                ">🚧</div>`;
+
+      const barrierIcon = L.divIcon({
+        className: "blockade-marker",
+        html: iconHtml,
+        iconSize: [34, 34],
+        iconAnchor: [17, 30],
+      });
+
+      const marker = L.marker([lat, lng], {
+        icon: barrierIcon,
+      }).addTo(leafletMap);
 
       marker.bindPopup(`
                 <div style="min-width: 200px;">

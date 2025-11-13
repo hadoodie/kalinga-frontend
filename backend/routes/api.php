@@ -123,6 +123,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware(['role:admin,responder'])->group(function () {
         // Pathfinding routes
         Route::get('/incidents', [IncidentApiController::class, 'index']);
+        Route::get('/incidents/{incident}/history', [IncidentApiController::class, 'history']);
+        Route::post('/incidents/{incident}/assign', [IncidentApiController::class, 'assign']);
+        Route::post('/incidents/{incident}/status', [IncidentApiController::class, 'updateStatus']);
         Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);
         
         Route::apiResource('road-blockades', RoadBlockadeController::class);

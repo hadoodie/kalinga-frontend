@@ -6,6 +6,16 @@ import ResponderSidebar from "../../components/responder/Sidebar";
 
 // Leaflet CSS is imported in index.css
 
+const INCIDENT_STATUS_STYLES = {
+  reported: { color: "#dc2626", fillColor: "#fee2e2" },
+  acknowledged: { color: "#f97316", fillColor: "#ffedd5" },
+  en_route: { color: "#2563eb", fillColor: "#dbeafe" },
+  on_scene: { color: "#7c3aed", fillColor: "#ede9fe" },
+  needs_support: { color: "#ca8a04", fillColor: "#fef08a" },
+  resolved: { color: "#16a34a", fillColor: "#dcfce7" },
+  cancelled: { color: "#6b7280", fillColor: "#e5e7eb" },
+};
+
 export default function ResponseMap() {
   const { user } = useAuth();
   const mapRef = useRef(null);
@@ -497,9 +507,13 @@ export default function ResponseMap() {
           },
         }
       );
-      const data = await response.json();
-      setIncidents(data);
-      displayIncidentsOnMap(data, leafletMap, L);
+      const payload = await response.json();
+      const incidentList = Array.isArray(payload?.data)
+        ? payload.data
+        : payload;
+      const normalized = Array.isArray(incidentList) ? incidentList : [];
+      setIncidents(normalized);
+      displayIncidentsOnMap(normalized, leafletMap, L);
     } catch (error) {
       console.error("Error fetching incidents:", error);
       setIncidents([]);
@@ -560,51 +574,86 @@ export default function ResponseMap() {
     incidentMarkers.forEach((marker) => leafletMap.removeLayer(marker));
 
     const newMarkers = [];
+    const statusLabelMap = {
+      reported: "Waiting Dispatch",
+      acknowledged: "Acknowledged",
+      en_route: "En Route",
+      on_scene: "On Scene",
+      needs_support: "Needs Support",
+      resolved: "Resolved",
+      cancelled: "Cancelled",
+    };
+
     incidentData.forEach((incident) => {
-      if (incident.lat && incident.lng) {
-        const marker = L.circleMarker(
-          [parseFloat(incident.lat), parseFloat(incident.lng)],
-          {
-            radius: 8,
-            color: "#e74c3c",
-            weight: 2,
-            fillColor: "#e74c3c",
-            fillOpacity: 0.9,
-          }
-        ).addTo(leafletMap);
+      const lat =
+        typeof incident.lat === "number"
+          ? incident.lat
+          : parseFloat(incident?.lat);
+      const lng =
+        typeof incident.lng === "number"
+          ? incident.lng
+          : parseFloat(incident?.lng);
+
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        const style = INCIDENT_STATUS_STYLES[incident.status] ?? {
+          color: "#4b5563",
+          fillColor: "#e5e7eb",
+        };
+
+        const marker = L.circleMarker([lat, lng], {
+          radius: 9,
+          color: style.color,
+          weight: 3,
+          fillColor: style.fillColor,
+          fillOpacity: 0.85,
+        }).addTo(leafletMap);
 
         const formattedDescription = incident.description
           ? incident.description.replace(/(?:\r\n|\r|\n)/g, "<br />")
           : "";
 
+        const respondersAssigned = incident.responders_assigned ?? 0;
+        const respondersRequired = incident.responders_required ?? 1;
+        const assignedNames = Array.isArray(incident.assignments)
+          ? incident.assignments
+              .map((assignment) => assignment?.responder?.name)
+              .filter(Boolean)
+              .join(", ") || "Unassigned"
+          : "Unassigned";
+
         marker.bindPopup(`
                     <div>
-                        <h4 style="margin: 0 0 8px 0; color: #2c3e50;">${
+                        <h4 style="margin: 0 0 8px 0; color: #111827; font-size: 15px;">${
                           incident.type
                         }</h4>
-                        <p style="margin: 0 0 4px 0;"><strong>Location:</strong> ${
-                          incident.location
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Status:</strong> ${
+                          statusLabelMap[incident.status] ?? incident.status
                         }</p>
-                        <p style="margin: 0 0 8px 0; font-size: 12px; color: #555;">${
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Responders:</strong> ${respondersAssigned} / ${respondersRequired}</p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Assigned to:</strong> ${assignedNames}</p>
+                        <p style="margin: 0 0 6px 0; font-size: 12px; color: #4b5563;">
+                            <strong>Location:</strong> ${incident.location}
+                        </p>
+                        ${
                           formattedDescription
-                        }</p>
-                        <button onclick="drawRouteToIncident(${incident.lat}, ${
-          incident.lng
-        })" 
-                                style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-right: 4px;">
-                            Get Route
-                        </button>
-                        <button onclick="startNavigationToIncident(${
-                          incident.lat
-                        }, ${incident.lng})" 
-                                style="background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
-                            🧭 Navigate
-                        </button>
+                            ? `<p style="margin: 0 0 8px 0; font-size: 11px; color: #6b7280;">${formattedDescription}</p>`
+                            : ""
+                        }
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="drawRouteToIncident(${lat}, ${lng})"
+                                style="background: #2563eb; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                                Get Route
+                            </button>
+                            <button onclick="startNavigationToIncident(${lat}, ${lng})"
+                                style="background: #16a34a; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                                🧭 Navigate
+                            </button>
+                        </div>
                     </div>
                 `);
 
         marker.on("click", () => {
-          drawRoute(parseFloat(incident.lat), parseFloat(incident.lng), false);
+          drawRoute(parseFloat(lat), parseFloat(lng), false);
         });
 
         newMarkers.push(marker);
@@ -629,16 +678,38 @@ export default function ResponseMap() {
 
     const newMarkers = [];
     blockadeData.forEach((blockade) => {
-      const marker = L.circleMarker(
-        [parseFloat(blockade.start_lat), parseFloat(blockade.start_lng)],
-        {
-          radius: 10,
-          color: severityColors[blockade.severity] || "#dc3545",
-          weight: 3,
-          fillColor: severityColors[blockade.severity] || "#dc3545",
-          fillOpacity: 0.7,
-        }
-      ).addTo(leafletMap);
+      const lat = parseFloat(blockade.start_lat);
+      const lng = parseFloat(blockade.start_lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+
+      const background = severityColors[blockade.severity] || "#f97316";
+      const iconHtml = `
+                <div style="
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: ${background};
+                    color: #fff;
+                    border: 2px solid #fff;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+                    font-size: 18px;
+                ">🚧</div>`;
+
+      const barrierIcon = L.divIcon({
+        className: "blockade-marker",
+        html: iconHtml,
+        iconSize: [34, 34],
+        iconAnchor: [17, 30],
+      });
+
+      const marker = L.marker([lat, lng], {
+        icon: barrierIcon,
+      }).addTo(leafletMap);
 
       marker.bindPopup(`
                 <div style="min-width: 200px;">
