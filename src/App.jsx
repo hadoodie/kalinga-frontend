@@ -12,6 +12,7 @@ import { PatientRoutes } from "./routes/PatientRoutes";
 import { AdminRoutes } from "./routes/AdminRoutes";
 import { ResponderRoutes } from "./routes/ResponderRoutes";
 import { LogisticsRoutes } from "./routes/LogisticsRoutes";
+import './styles/leaflet-fixes.css';
 
 // Loading component for Suspense fallback
 const PageLoader = () => (

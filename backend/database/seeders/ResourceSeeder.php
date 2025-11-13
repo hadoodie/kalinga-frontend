@@ -116,6 +116,36 @@ class ResourceSeeder extends Seeder
                 'significant_quantity_date' => null,
                 'expiry_alert_date' => null,
             ],
+                        [
+                'name' => 'Medyas na may butas', 'category' => 'First Aid Kit', 'unit' => 'pieces', 
+                'received' => 20, 'distributed' => 0, 'quantity' => 20, 
+                'minimum_stock' => 10, 'location' => 'Central General Hospital', 
+                'hospital_id' => $central?->id,
+                'last_stock_movement_date' => now()->subDays(12),
+                'last_status_change_date' => now()->subDays(25),
+                'significant_quantity_date' => null,
+                'expiry_alert_date' => null,
+            ],
+                        [
+                'name' => 'Magic Sarap', 'category' => 'First Aid Kit', 'unit' => 'pieces', 
+                'received' => 20, 'distributed' => 0, 'quantity' => 20, 
+                'minimum_stock' => 10, 'location' => 'Central General Hospital', 
+                'hospital_id' => $central?->id,
+                'last_stock_movement_date' => now()->subDays(12),
+                'last_status_change_date' => now()->subDays(25),
+                'significant_quantity_date' => null,
+                'expiry_alert_date' => null,
+            ],
+                        [
+                'name' => 'Manok isang kilo', 'category' => 'First Aid Kit', 'unit' => 'pieces', 
+                'received' => 20, 'distributed' => 0, 'quantity' => 20, 
+                'minimum_stock' => 10, 'location' => 'Central General Hospital', 
+                'hospital_id' => $central?->id,
+                'last_stock_movement_date' => now()->subDays(12),
+                'last_status_change_date' => now()->subDays(25),
+                'significant_quantity_date' => null,
+                'expiry_alert_date' => null,
+            ],
             [
                 'name' => 'Adhesive Bandage', 'category' => 'First Aid Kit', 'unit' => 'pieces', 
                 'received' => 20, 'distributed' => 10, 'quantity' => 10, 
@@ -208,54 +238,54 @@ class ResourceSeeder extends Seeder
     /**
      * Create extensive stock movements throughout 2025
      */
-    private function createExtensiveStockMovements(Resource $resource, $userId = null)
-    {
-        $movements = [];
-        $currentQuantity = $resource->quantity;
+private function createExtensiveStockMovements(Resource $resource, $userId = null)
+{
+    $movements = [];
+    $currentQuantity = $resource->quantity;
+    
+    // Create 8-12 movements per resource spread throughout 2025
+    $movementCount = rand(8, 12);
+    
+    // Start from January 2025
+    $startDate = Carbon::create(2025, 1, 1);
+    
+    for ($i = 0; $i < $movementCount; $i++) {
+        // Spread movements throughout 2025 (Jan to Dec)
+        $daysOffset = rand(0, 364); // Random day in 2025
+        $movementDate = $startDate->copy()->addDays($daysOffset);
         
-        // Create 8-12 movements per resource spread throughout 2025
-        $movementCount = rand(8, 12);
+        // Alternate between in and out movements
+        $movementType = $i % 2 === 0 ? 'in' : 'out';
         
-        // Start from January 2025
-        $startDate = Carbon::create(2025, 1, 1);
-        
-        for ($i = 0; $i < $movementCount; $i++) {
-            // Spread movements throughout 2025 (Jan to Dec)
-            $daysOffset = rand(0, 364); // Random day in 2025
-            $movementDate = $startDate->copy()->addDays($daysOffset);
-            
-            // Alternate between in and out movements
-            $movementType = $i % 2 === 0 ? 'in' : 'out';
-            
-            // Generate realistic quantities based on resource type
-            if ($movementType === 'in') {
-                $quantity = $this->getStockInQuantity($resource->category);
-                $reason = $this->getStockInReason();
-                $newQuantity = $currentQuantity + $quantity;
-            } else {
-                $quantity = $this->getStockOutQuantity($resource->category, $currentQuantity);
-                $reason = $this->getStockOutReason();
-                $newQuantity = max(0, $currentQuantity - $quantity);
-            }
-            
-            $movements[] = [
-                'resource_id' => $resource->id,
-                'movement_type' => $movementType,
-                'quantity' => $quantity,
-                'previous_quantity' => $currentQuantity,
-                'new_quantity' => $newQuantity,
-                'reason' => $reason,
-                'performed_by' => $userId,
-                'created_at' => $movementDate,
-                'updated_at' => $movementDate,
-            ];
-            
-            $currentQuantity = $newQuantity;
+        // Generate realistic quantities based on resource type
+        if ($movementType === 'in') {
+            $quantity = $this->getStockInQuantity($resource->category);
+            $reason = $this->getStockInReason();
+            $newQuantity = $currentQuantity + $quantity;
+        } else {
+            $quantity = $this->getStockOutQuantity($resource->category, $currentQuantity);
+            $reason = $this->getStockOutReason();
+            $newQuantity = max(0, $currentQuantity - $quantity);
         }
-
-        // Insert all movements
-        StockMovement::insert($movements);
+        
+        $movements[] = [
+            'resource_id' => $resource->id,
+            'movement_type' => $movementType,
+            'quantity' => $quantity,
+            'previous_quantity' => $currentQuantity,
+            'new_quantity' => $newQuantity,
+            'reason' => $reason,
+            'performed_by' => $userId,
+            'created_at' => $movementDate,
+            'updated_at' => $movementDate,
+        ];
+        
+        $currentQuantity = $newQuantity;
     }
+
+    // Insert all movements
+    StockMovement::insert($movements);
+}
 
     /**
      * Get realistic stock in quantities based on category
@@ -304,6 +334,38 @@ class ResourceSeeder extends Seeder
         return $reasons[array_rand($reasons)];
     }
 
+    // After creating the resource, add specific November movements
+private function addNovemberMovements(Resource $resource, $userId = null)
+{
+    $novemberDate = Carbon::create(2025, 11, 1);
+    
+    $movements = [
+        [
+            'resource_id' => $resource->id,
+            'movement_type' => 'in',
+            'quantity' => 25,
+            'previous_quantity' => $resource->quantity,
+            'new_quantity' => $resource->quantity + 25,
+            'reason' => 'November stock replenishment',
+            'performed_by' => $userId,
+            'created_at' => $novemberDate,
+            'updated_at' => $novemberDate,
+        ],
+        [
+            'resource_id' => $resource->id,
+            'movement_type' => 'out',
+            'quantity' => 10,
+            'previous_quantity' => $resource->quantity + 25,
+            'new_quantity' => $resource->quantity + 15,
+            'reason' => 'Emergency distribution',
+            'performed_by' => $userId,
+            'created_at' => $novemberDate->copy()->addHours(6),
+            'updated_at' => $novemberDate->copy()->addHours(6),
+        ]
+    ];
+
+    StockMovement::insert($movements);
+}
     /**
      * Get realistic stock out reasons
      */

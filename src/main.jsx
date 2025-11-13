@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "leaflet/dist/leaflet.css";
 import "./index.css";
 import App from "./App.jsx";
+import './styles/leaflet-fixes.css';
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
