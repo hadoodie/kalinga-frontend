@@ -1,49 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import Layout from "../layouts/Layout";
 import EmergencyNotifications from "../components/responder/EmergencyNotifications";
 import ResponseMap from "./pathfinding/ResponseMap";
 import HospitalMap from "./pathfinding/HospitalMap";
 import AssignedIncidentStatusPanel from "../components/responder/AssignedIncidentStatusPanel";
 import LatestResponseMessages from "../components/responder/LatestResponseMessages";
-import { fetchResponderIncidents } from "../services/incidents";
 import { useAuth } from "../context/AuthContext";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { useIncidents } from "../context/IncidentContext";
 
 const DashboardV2 = () => {
   const { user } = useAuth();
-  const [incidents, setIncidents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const {
+    incidents,
+    loading,
+    refreshing,
+    error,
+    refresh,
+    mergeIncident,
+  } = useIncidents();
   const [refreshKey, setRefreshKey] = useState(0);
-
-  const loadIncidents = useCallback(async () => {
-    if (!user) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetchResponderIncidents({ include_resolved: true });
-      const data = response?.data?.data ?? response?.data ?? [];
-      setIncidents(Array.isArray(data) ? data : []);
-    } catch (fetchError) {
-      console.error("Failed to load incidents", fetchError);
-      const message =
-        fetchError?.response?.data?.message ||
-        fetchError?.message ||
-        "Unable to load incidents.";
-      setError(message);
-      setIncidents([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (user?.id) {
-      loadIncidents();
-    }
-  }, [user, loadIncidents]);
 
   const assignedIncidents = useMemo(() => {
     if (!user?.id) return [];
@@ -70,24 +46,22 @@ const DashboardV2 = () => {
     })[0];
   }, [assignedIncidents]);
 
-  const handleIncidentUpdated = useCallback((updatedIncident) => {
-    setIncidents((prev) => {
-      const next = [...prev];
-      const index = next.findIndex((incident) => incident.id === updatedIncident.id);
-      if (index >= 0) {
-        next[index] = { ...next[index], ...updatedIncident };
-      } else {
-        next.unshift(updatedIncident);
-      }
-      return next;
-    });
-    setRefreshKey((previous) => previous + 1);
-  }, []);
+  const isBusy = loading || refreshing;
+  const panelLoading = loading && incidents.length === 0;
+
+  const handleIncidentUpdated = useCallback(
+    (updatedIncident) => {
+      if (!updatedIncident) return;
+      mergeIncident(updatedIncident);
+      setRefreshKey((previous) => previous + 1);
+    },
+    [mergeIncident]
+  );
 
   const handleRefresh = useCallback(() => {
-    loadIncidents();
+    refresh();
     setRefreshKey((previous) => previous + 1);
-  }, [loadIncidents]);
+  }, [refresh]);
 
   return (
     <Layout>
@@ -96,15 +70,19 @@ const DashboardV2 = () => {
           {/* Header Section */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Response Dashboard</h1>
-              <p className="mt-1 text-sm text-gray-600">Monitor incidents and coordinate emergency response</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Response Dashboard
+              </h1>
+              <p className="mt-1 text-sm text-gray-600">
+                Monitor incidents and coordinate emergency response
+              </p>
             </div>
             <button
               onClick={handleRefresh}
-              disabled={loading}
+              disabled={isBusy}
               className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-gray-200 hover:bg-gray-50 disabled:opacity-50"
             >
-              <Loader2 className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <Loader2 className={`h-4 w-4 ${isBusy ? "animate-spin" : ""}`} />
               Refresh
             </button>
           </div>
@@ -118,22 +96,30 @@ const DashboardV2 = () => {
 
           {/* Emergency Notifications - Priority Section */}
           <section>
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Active Emergencies</h2>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              Active Emergencies
+            </h2>
             <EmergencyNotifications />
           </section>
 
           {/* Maps Section - Side by Side on Large Screens */}
           <section>
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Tactical Maps</h2>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              Tactical Maps
+            </h2>
             <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
               <div className="flex flex-col">
-                <h3 className="mb-3 text-sm font-medium text-gray-700">Emergency Response Map</h3>
+                <h3 className="mb-3 text-sm font-medium text-gray-700">
+                  Emergency Response Map
+                </h3>
                 <div className="h-[480px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                   <ResponseMap embedded className="rounded-xl" />
                 </div>
               </div>
               <div className="flex flex-col">
-                <h3 className="mb-3 text-sm font-medium text-gray-700">Hospital Navigation</h3>
+                <h3 className="mb-3 text-sm font-medium text-gray-700">
+                  Hospital Navigation
+                </h3>
                 <div className="h-[480px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
                   <HospitalMap embedded className="rounded-xl" />
                 </div>
@@ -143,11 +129,13 @@ const DashboardV2 = () => {
 
           {/* Action Panel Section */}
           <section>
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">Response Actions</h2>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+              Response Actions
+            </h2>
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
               <AssignedIncidentStatusPanel
                 incidents={incidents}
-                loading={loading}
+                loading={panelLoading}
                 error={error}
                 onRefresh={handleRefresh}
                 onIncidentUpdated={handleIncidentUpdated}

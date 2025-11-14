@@ -55,16 +55,16 @@ const IncidentCard = ({
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-bold text-gray-900">
-              {incident.type}
-            </h3>
+            <h3 className="text-lg font-bold text-gray-900">{incident.type}</h3>
           </div>
           <p className="text-sm text-gray-600 flex items-center gap-1.5">
             <Clock className="h-4 w-4 text-gray-400" />
             Assigned {formatDateTime(assignment?.assigned_at)}
           </p>
         </div>
-        <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-full ${statusBadge}`}>
+        <span
+          className={`inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold rounded-full ${statusBadge}`}
+        >
           {INCIDENT_STATUS_LABELS[incident.status] ?? incident.status}
         </span>
       </div>
@@ -76,7 +76,8 @@ const IncidentCard = ({
               <Users className="h-5 w-5 text-primary" /> Responders
             </div>
             <p className="mt-2 text-base font-semibold text-gray-900">
-              {incident.responders_assigned ?? 0} of {incident.responders_required ?? 1} assigned
+              {incident.responders_assigned ?? 0} of{" "}
+              {incident.responders_required ?? 1} assigned
             </p>
             <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-gray-600">
               Required count
@@ -225,7 +226,8 @@ const AssignedIncidentStatusPanel = ({
     setRespondersDraft((prev) => {
       const next = { ...prev };
       assignedIncidents.forEach((incident) => {
-        next[incident.id] = prev[incident.id] ?? incident.responders_required ?? 1;
+        next[incident.id] =
+          prev[incident.id] ?? incident.responders_required ?? 1;
       });
       return next;
     });
@@ -245,7 +247,10 @@ const AssignedIncidentStatusPanel = ({
           ? incident.responders_required ?? 1
           : Number(rawValue);
 
-      if (!Number.isFinite(respondersRequiredValue) || respondersRequiredValue < 1) {
+      if (
+        !Number.isFinite(respondersRequiredValue) ||
+        respondersRequiredValue < 1
+      ) {
         window.alert("Responders required must be at least 1.");
         return;
       }
@@ -339,7 +344,10 @@ const AssignedIncidentStatusPanel = ({
                   assignment={assignment}
                   statusValue={selectedStatus[incident.id]}
                   onStatusChange={(value) =>
-                    setSelectedStatus((prev) => ({ ...prev, [incident.id]: value }))
+                    setSelectedStatus((prev) => ({
+                      ...prev,
+                      [incident.id]: value,
+                    }))
                   }
                   noteValue={notesDraft[incident.id]}
                   onNoteChange={(value) =>
@@ -347,7 +355,10 @@ const AssignedIncidentStatusPanel = ({
                   }
                   respondersRequired={respondersDraft[incident.id]}
                   onRespondersChange={(value) =>
-                    setRespondersDraft((prev) => ({ ...prev, [incident.id]: value }))
+                    setRespondersDraft((prev) => ({
+                      ...prev,
+                      [incident.id]: value,
+                    }))
                   }
                   onUpdate={() => handleStatusUpdate(incident)}
                   updating={!!updating[incident.id]}

@@ -1,6 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, Loader2, MessageSquare, Send } from "lucide-react";
 import chatService from "../../services/chatService";
+import {
+  conversationStore,
+  subscribeToConversationStore,
+  updateConversationStore,
+} from "../../context/conversationStore";
+import {
+  isSameConversation,
+  normalizeConversation,
+  normalizeMessage,
+  sortConversationsByRecency,
+} from "../../lib/chatUtils";
 
 const formatTimestamp = (value) => {
   if (!value) return "";
@@ -16,62 +27,150 @@ const formatTimestamp = (value) => {
   }
 };
 
+const selectConversationFromList = (list = []) => {
+  if (!Array.isArray(list) || list.length === 0) {
+    return { conversation: null, messages: [] };
+  }
+
+  const sorted = sortConversationsByRecency(list);
+  const emergencyConversation = sorted.find(
+    (item) =>
+      item.category === "Emergency" ||
+      item.participant?.role === "patient" ||
+      item.participant?.role === "resident"
+  );
+
+  const selected = emergencyConversation ?? sorted[0];
+
+  return {
+    conversation: selected,
+    messages: Array.isArray(selected?.messages)
+      ? [...selected.messages]
+      : [],
+  };
+};
+
+const buildInitialStateFromCache = () => {
+  const { conversation, messages } = selectConversationFromList(
+    conversationStore.conversations
+  );
+
+  return {
+    conversation,
+    messages,
+    hydrated: conversationStore.hydrated,
+    error: conversationStore.error ?? null,
+  };
+};
+
 const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
-  const [conversation, setConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const cacheSeedRef = useRef(buildInitialStateFromCache());
+  const [conversation, setConversation] = useState(
+    cacheSeedRef.current.conversation
+  );
+  const [messages, setMessages] = useState(cacheSeedRef.current.messages);
+  const [loading, setLoading] = useState(
+    () => !cacheSeedRef.current.hydrated
+  );
+  const [error, setError] = useState(() => cacheSeedRef.current.error);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+
+  const conversationRef = useRef(conversation);
+  const messagesRef = useRef(messages);
+
+  useEffect(() => {
+    conversationRef.current = conversation;
+  }, [conversation]);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const incidentTitle = incident
     ? `${incident.type} • ${incident.location ?? "Unknown location"}`
     : null;
 
   const loadConversation = useCallback(async () => {
-    setLoading(true);
+    setLoading((prev) => (prev || !conversationRef.current));
     setError(null);
 
     try {
       const data = await chatService.getConversations();
-      const sorted = [...data]
-        .map((conversation) => ({
-          ...conversation,
-          lastMessageTime:
-            conversation.lastMessageTime ||
-            conversation.lastMessage?.timestamp ||
-            null,
-        }))
-        .sort((a, b) => {
-          const aTime = a.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
-          const bTime = b.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
-          return bTime - aTime;
-        });
+      const normalizedConversations = sortConversationsByRecency(
+        data.map((conversation) =>
+          normalizeConversation(conversation, currentUserId ?? null)
+        )
+      );
 
-      if (sorted.length === 0) {
+      const { conversation: selectedConversation } =
+        selectConversationFromList(normalizedConversations);
+
+      if (!selectedConversation) {
         setConversation(null);
         setMessages([]);
+        updateConversationStore({
+          conversations: normalizedConversations,
+          hydrated: true,
+          error: null,
+          lastFetchedAt: Date.now(),
+        });
+        setLoading(false);
         return;
       }
 
-      const emergencyConversation = sorted.find(
-        (item) =>
-          item.category === "Emergency" ||
-          item.participant?.role === "patient" ||
-          item.participant?.role === "resident"
-      );
+      let historyMessages = Array.isArray(selectedConversation.messages)
+        ? [...selectedConversation.messages]
+        : [];
 
-      const selectedConversation = emergencyConversation ?? sorted[0];
-      setConversation(selectedConversation);
-
-      if (selectedConversation?.participant?.id) {
+      if (selectedConversation.participant?.id) {
         const history = await chatService.getMessages(
           selectedConversation.participant.id
         );
-        setMessages(history);
-      } else {
-        setMessages([]);
+        historyMessages = Array.isArray(history)
+          ? history.map((msg) =>
+              normalizeMessage(
+                msg,
+                selectedConversation.participant?.name ?? "",
+                currentUserId ?? null
+              )
+            )
+          : [];
       }
+
+      const enrichedConversations = normalizedConversations.map((conv) => {
+        if (!isSameConversation(conv, selectedConversation)) {
+          return conv;
+        }
+
+        const lastMessage =
+          historyMessages[historyMessages.length - 1]?.text ?? conv.lastMessage;
+        const lastMessageTime =
+          historyMessages[historyMessages.length - 1]?.timestamp ??
+          conv.lastMessageTime;
+
+        return {
+          ...conv,
+          messages: historyMessages,
+          lastMessage,
+          lastMessageTime,
+        };
+      });
+
+      const updatedSelectedConversation =
+        enrichedConversations.find((conv) =>
+          isSameConversation(conv, selectedConversation)
+        ) ?? selectedConversation;
+
+      setConversation(updatedSelectedConversation);
+      setMessages(historyMessages);
+
+      updateConversationStore({
+        conversations: enrichedConversations,
+        hydrated: true,
+        error: null,
+        lastFetchedAt: Date.now(),
+      });
     } catch (conversationError) {
       console.error("Failed to load responder messages", conversationError);
       const message =
@@ -81,9 +180,64 @@ const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
       setError(message);
       setConversation(null);
       setMessages([]);
+      updateConversationStore({ error: message });
     } finally {
       setLoading(false);
     }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToConversationStore((store) => {
+      if (!store) {
+        return;
+      }
+
+      setError(store.error ?? null);
+
+      if (store.error && !store.hydrated) {
+        setLoading(false);
+      }
+
+      if (!store.hydrated) {
+        return;
+      }
+
+      const { conversation: nextConversation, messages: nextMessages } =
+        selectConversationFromList(store.conversations);
+
+      if (!nextConversation) {
+        setConversation(null);
+        setMessages([]);
+        setLoading(false);
+        return;
+      }
+
+      const currentConversation = conversationRef.current;
+
+      if (
+        !currentConversation ||
+        !isSameConversation(currentConversation, nextConversation)
+      ) {
+        setConversation(nextConversation);
+        setMessages(nextMessages);
+      } else {
+        const currentMessages = messagesRef.current;
+        const hasDifferentLength =
+          nextMessages.length !== currentMessages.length;
+        const lastCurrent = currentMessages[currentMessages.length - 1]?.id;
+        const lastNext = nextMessages[nextMessages.length - 1]?.id;
+
+        if (hasDifferentLength || lastCurrent !== lastNext) {
+          setMessages(nextMessages);
+        }
+      }
+
+      setLoading(false);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -122,6 +276,26 @@ const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
             }
           : prev
       );
+      updateConversationStore((prev) => ({
+        ...prev,
+        conversations: prev.conversations.map((existing) => {
+          if (!isSameConversation(existing, conversation)) {
+            return existing;
+          }
+
+          const nextMessages = Array.isArray(existing.messages)
+            ? [...existing.messages, newMessage]
+            : [newMessage];
+
+          return {
+            ...existing,
+            messages: nextMessages,
+            lastMessage: newMessage.text,
+            lastMessageTime: newMessage.timestamp,
+          };
+        }),
+        hydrated: true,
+      }));
     } catch (sendError) {
       console.error("Failed to send message", sendError);
       const message =
@@ -154,7 +328,8 @@ const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
           No direct messages found for your latest response yet.
         </p>
         <p className="text-xs text-gray-400">
-          Conversations will appear here once you start coordinating with the caller.
+          Conversations will appear here once you start coordinating with the
+          caller.
         </p>
       </div>
     );
@@ -191,7 +366,9 @@ const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
                 return (
                   <div
                     key={message.id}
-                    className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                    className={`flex ${
+                      isOwn ? "justify-end" : "justify-start"
+                    }`}
                   >
                     <div
                       className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm shadow-sm ${

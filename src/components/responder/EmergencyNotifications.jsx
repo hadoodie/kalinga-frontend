@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -9,126 +9,28 @@ import {
   ShieldPlus,
   Users,
 } from "lucide-react";
-import { fetchResponderIncidents, assignToIncident, updateIncidentStatus } from "../../services/incidents";
+import { assignToIncident, updateIncidentStatus } from "../../services/incidents";
 import { useAuth } from "../../context/AuthContext";
-import { useRealtime } from "../../context/RealtimeContext";
-import { getEchoInstance } from "../../services/echo";
+import { useIncidents } from "../../context/IncidentContext";
 import {
   INCIDENT_STATUS_OPTIONS,
   INCIDENT_STATUS_COLORS,
-  INCIDENT_STATUS_PRIORITIES,
   INCIDENT_STATUS_LABELS,
 } from "../../constants/incidentStatus";
 
-const emptyHistoryMessage = "No updates recorded yet. Log a status change so everyone stays aligned.";
+const emptyHistoryMessage =
+  "No updates recorded yet. Log a status change so everyone stays aligned.";
 
 export default function EmergencyNotifications() {
   const { user } = useAuth();
-  const { ensureConnected } = useRealtime();
-
-  const [incidents, setIncidents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { incidents, loading, refreshing, error, refresh, mergeIncident } =
+    useIncidents();
   const [selectedStatus, setSelectedStatus] = useState({});
   const [updating, setUpdating] = useState({});
   const [filter, setFilter] = useState("active");
   const [notesDraft, setNotesDraft] = useState({});
 
   const statusLookup = INCIDENT_STATUS_LABELS;
-
-  const sortIncidents = useCallback((list) => {
-    return [...list].sort((a, b) => {
-      const priorityA = INCIDENT_STATUS_PRIORITIES[a.status] ?? 99;
-      const priorityB = INCIDENT_STATUS_PRIORITIES[b.status] ?? 99;
-      if (priorityA !== priorityB) {
-        return priorityA - priorityB;
-      }
-
-      const createdA = a.reported_at ? new Date(a.reported_at).getTime() : 0;
-      const createdB = b.reported_at ? new Date(b.reported_at).getTime() : 0;
-      return createdB - createdA;
-    });
-  }, []);
-
-  const mergeIncident = useCallback(
-    (incoming) => {
-      setIncidents((prev) => {
-        const next = [...prev];
-        const index = next.findIndex((item) => item.id === incoming.id);
-        if (index >= 0) {
-          next[index] = { ...next[index], ...incoming };
-        } else {
-          next.unshift(incoming);
-        }
-        return sortIncidents(next);
-      });
-    },
-    [sortIncidents]
-  );
-
-  const loadIncidents = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetchResponderIncidents({ include_resolved: true });
-      const data = Array.isArray(response.data?.data)
-        ? response.data.data
-        : response.data;
-      setIncidents(sortIncidents(data ?? []));
-    } catch (err) {
-      console.error("Failed to load incidents", err);
-      setError("Unable to load incidents right now. Please retry in a moment.");
-    } finally {
-      setLoading(false);
-    }
-  }, [sortIncidents]);
-
-  useEffect(() => {
-    loadIncidents();
-  }, [loadIncidents]);
-
-  useEffect(() => {
-    let isMounted = true;
-    let channel = null;
-
-    const subscribe = async () => {
-      try {
-        const result = await ensureConnected();
-        if (!result?.ok || !isMounted) return;
-
-        const echo = getEchoInstance?.();
-        if (!echo) return;
-
-        try {
-          echo.leave("incidents");
-        } catch (leaveError) {
-          console.warn("Unable to leave incidents channel before rejoining", leaveError);
-        }
-
-        channel = echo.join("incidents").listen(".IncidentUpdated", (payload) => {
-          if (!payload?.incident || !isMounted) return;
-          mergeIncident(payload.incident);
-        });
-      } catch (subscribeError) {
-        console.error("Failed to subscribe to incident channel", subscribeError);
-      }
-    };
-
-    subscribe();
-
-    return () => {
-      isMounted = false;
-      if (channel) {
-        try {
-          const echo = getEchoInstance?.();
-          echo?.leave("incidents");
-        } catch (cleanupError) {
-          console.warn("Unable to cleanup incidents channel", cleanupError);
-        }
-      }
-    };
-  }, [ensureConnected, mergeIncident]);
 
   const handleJoinIncident = async (incidentId) => {
     if (!user) return;
@@ -138,7 +40,8 @@ export default function EmergencyNotifications() {
       const response = await assignToIncident(incidentId, {
         notes: notesDraft[incidentId] || undefined,
       });
-      const updatedIncident = response.data?.data ?? response.data?.incident ?? response.data;
+      const updatedIncident =
+        response.data?.data ?? response.data?.incident ?? response.data;
       if (updatedIncident) {
         mergeIncident(updatedIncident);
       }
@@ -192,7 +95,10 @@ export default function EmergencyNotifications() {
   }, [filter, incidents]);
 
   const responderNameList = (incident) => {
-    if (!Array.isArray(incident.assignments) || incident.assignments.length === 0) {
+    if (
+      !Array.isArray(incident.assignments) ||
+      incident.assignments.length === 0
+    ) {
       return "Unassigned";
     }
 
@@ -204,7 +110,9 @@ export default function EmergencyNotifications() {
 
   const isUserAssigned = (incident) => {
     if (!user) return false;
-    return incident.assignments?.some((assignment) => assignment?.responder?.id === user.id);
+    return incident.assignments?.some(
+      (assignment) => assignment?.responder?.id === user.id
+    );
   };
 
   const renderHistory = (incident) => {
@@ -215,17 +123,24 @@ export default function EmergencyNotifications() {
     return (
       <ul className="space-y-3">
         {incident.history.map((item) => (
-          <li key={item.id} className="border border-gray-200 rounded-lg p-3 bg-gray-50">
+          <li
+            key={item.id}
+            className="border border-gray-200 rounded-lg p-3 bg-gray-50"
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
                 <History className="h-4 w-4 text-gray-500" />
                 <span>{statusLookup[item.status] ?? item.status}</span>
               </div>
-              <span className="text-xs text-gray-500">{item.created_at_human}</span>
+              <span className="text-xs text-gray-500">
+                {item.created_at_human}
+              </span>
             </div>
             <div className="mt-1 text-xs text-gray-600">
               <span className="font-medium">{item.user?.name ?? "System"}</span>
-              {item.notes ? <span className="text-gray-500"> — {item.notes}</span> : null}
+              {item.notes ? (
+                <span className="text-gray-500"> — {item.notes}</span>
+              ) : null}
             </div>
           </li>
         ))}
@@ -234,11 +149,16 @@ export default function EmergencyNotifications() {
   };
 
   if (loading) {
+    if (incidents.length > 0) {
+      return null;
+    }
     return (
       <section className="bg-white shadow-sm rounded-2xl border border-gray-100 p-6">
         <div className="flex gap-3 items-center">
           <AlertTriangle className="h-5 w-5 text-primary animate-pulse" />
-          <p className="text-sm text-gray-600">Loading emergency notifications…</p>
+          <p className="text-sm text-gray-600">
+            Loading emergency notifications…
+          </p>
         </div>
       </section>
     );
@@ -252,7 +172,7 @@ export default function EmergencyNotifications() {
           <div>
             <p className="font-medium">{error}</p>
             <button
-              onClick={loadIncidents}
+              onClick={() => refresh()}
               className="mt-2 text-sm text-red-600 hover:text-red-700 font-medium"
               type="button"
             >
@@ -268,15 +188,24 @@ export default function EmergencyNotifications() {
     <section className="bg-white shadow-sm rounded-xl border border-gray-200">
       <header className="border-b border-gray-100 px-6 py-5 flex flex-wrap gap-4 justify-between items-center">
         <div>
-          <p className="text-xs uppercase tracking-wide text-primary font-bold">Live incidents</p>
+          <p className="text-xs uppercase tracking-wide text-primary font-bold">
+            Live incidents
+          </p>
           <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mt-1">
-            <ShieldPlus className="h-5 w-5 text-primary" /> Emergency Notifications
+            <ShieldPlus className="h-5 w-5 text-primary" /> Emergency
+            Notifications
           </h2>
           <p className="text-sm text-gray-600 max-w-2xl mt-1.5">
-            Monitor active emergencies in real-time and coordinate response efforts
+            Monitor active emergencies in real-time and coordinate response
+            efforts
           </p>
         </div>
         <div className="flex gap-2">
+          {refreshing ? (
+            <p className="text-xs text-gray-500 hidden sm:block">
+              Syncing latest updates…
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => setFilter("active")}
@@ -318,21 +247,32 @@ export default function EmergencyNotifications() {
           <div className="px-6 py-16 text-center text-gray-500">
             <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-400 mb-4" />
             <p className="text-base font-semibold">No incidents in this view</p>
-            <p className="text-sm text-gray-400 mt-1">Switch filters to review past responses</p>
+            <p className="text-sm text-gray-400 mt-1">
+              Switch filters to review past responses
+            </p>
           </div>
         ) : (
           filteredIncidents.map((incident) => {
             const joining = updating[incident.id];
-            const statusClass = INCIDENT_STATUS_COLORS[incident.status] ?? "bg-gray-100 text-gray-600 border border-gray-200";
+            const statusClass =
+              INCIDENT_STATUS_COLORS[incident.status] ??
+              "bg-gray-100 text-gray-600 border border-gray-200";
             const assignedLabel = responderNameList(incident);
-            const responderCountLabel = `${incident.responders_assigned ?? 0} / ${incident.responders_required ?? 1}`;
+            const responderCountLabel = `${
+              incident.responders_assigned ?? 0
+            } / ${incident.responders_required ?? 1}`;
 
             return (
-              <article key={incident.id} className="px-6 py-6 hover:bg-gray-50/50 transition-colors">
+              <article
+                key={incident.id}
+                className="px-6 py-6 hover:bg-gray-50/50 transition-colors"
+              >
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
                   <div className="space-y-3 flex-1">
                     <div className="flex flex-wrap items-center gap-3">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${statusClass}`}>
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${statusClass}`}
+                      >
                         <Activity className="h-3.5 w-3.5" />
                         {statusLookup[incident.status] ?? incident.status}
                       </span>
@@ -346,7 +286,8 @@ export default function EmergencyNotifications() {
                       {incident.type}
                     </h3>
                     <p className="text-gray-700 text-sm flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-gray-400" /> {incident.location}
+                      <MapPin className="h-4 w-4 text-gray-400" />{" "}
+                      {incident.location}
                     </p>
                     {incident.description ? (
                       <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-4">
@@ -361,7 +302,9 @@ export default function EmergencyNotifications() {
                         <span className="font-bold text-gray-800 flex items-center gap-1.5">
                           <Users className="h-4 w-4 text-primary" /> Team Status
                         </span>
-                        <span className="font-bold text-gray-900">{responderCountLabel}</span>
+                        <span className="font-bold text-gray-900">
+                          {responderCountLabel}
+                        </span>
                       </div>
                       <p className="text-xs text-gray-600">{assignedLabel}</p>
                     </div>
@@ -369,7 +312,10 @@ export default function EmergencyNotifications() {
                     <textarea
                       value={notesDraft[incident.id] ?? ""}
                       onChange={(event) =>
-                        setNotesDraft((prev) => ({ ...prev, [incident.id]: event.target.value }))
+                        setNotesDraft((prev) => ({
+                          ...prev,
+                          [incident.id]: event.target.value,
+                        }))
                       }
                       placeholder="Add coordination notes (optional)"
                       className="border border-gray-300 rounded-lg text-sm px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none"
@@ -380,7 +326,10 @@ export default function EmergencyNotifications() {
                       <select
                         value={selectedStatus[incident.id] ?? ""}
                         onChange={(event) =>
-                          setSelectedStatus((prev) => ({ ...prev, [incident.id]: event.target.value }))
+                          setSelectedStatus((prev) => ({
+                            ...prev,
+                            [incident.id]: event.target.value,
+                          }))
                         }
                         className="flex-1 border border-gray-300 rounded-lg text-sm px-3 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                       >

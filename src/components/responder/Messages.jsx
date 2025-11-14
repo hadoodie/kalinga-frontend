@@ -30,6 +30,21 @@ import EchoClient, {
 } from "../../services/echo";
 import chatService from "../../services/chatService";
 import { useAuth } from "../../context/AuthContext";
+import { useRealtime } from "../../context/RealtimeContext";
+import {
+  conversationStore,
+  updateConversationStore,
+  resetConversationStore,
+} from "../../context/conversationStore";
+import {
+  buildConversationBufferKey,
+  insertMessageChronologically,
+  isSameConversation,
+  mergeConversationSnapshot,
+  normalizeConversation,
+  normalizeMessage,
+  sortConversationsByRecency,
+} from "../../lib/chatUtils";
 
 /**
  * Tab/View Selector for the Main Content Area
@@ -39,311 +54,11 @@ const MainContentTabs = {
   COMPOSE: "Compose",
 };
 
-// Generate a deterministic avatar URL when the backend does not provide one.
-const buildAvatarUrl = (name, avatar) => {
-  if (avatar) return avatar;
-  const fallbackName = name ? encodeURIComponent(name) : "Responder";
-  return `https://ui-avatars.com/api/?background=118A7E&color=fff&name=${fallbackName}`;
-};
-const normalizePerson = (person = {}, fallbackName = "Unknown") => {
-  const name =
-    person.name || person.fullName || person.displayName || fallbackName;
-  const avatarSource =
-    person.avatar ||
-    person.profile_image ||
-    person.profile_image_url ||
-    person.profileImage;
-
-  return {
-    id: person.id ?? null,
-    name,
-    role: person.role ?? person.category ?? "General",
-    avatar: buildAvatarUrl(name, avatarSource),
-    isOnline: person.isOnline ?? false,
-  };
-};
-
-const normalizeMessage = (
-  message = {},
-  fallbackSenderName = "",
-  currentUserId = null
-) => {
-  const timestamp =
-    message.timestamp || message.created_at || new Date().toISOString();
-
-  const senderSource =
-    message.sender ?? message.sender_info ?? message.senderDetails ?? null;
-  const receiverSource =
-    message.receiver ??
-    message.receiver_info ??
-    message.receiverDetails ??
-    null;
-
-  const senderObject =
-    senderSource && typeof senderSource === "object" ? senderSource : null;
-  const receiverObject =
-    receiverSource && typeof receiverSource === "object"
-      ? receiverSource
-      : null;
-
-  const senderId =
-    message.senderId ?? message.sender_id ?? senderObject?.id ?? null;
-  const receiverId =
-    message.receiverId ?? message.receiver_id ?? receiverObject?.id ?? null;
-
-  const senderName =
-    (typeof senderSource === "string" && senderSource) ||
-    senderObject?.name ||
-    message.sender_name ||
-    message.senderName ||
-    fallbackSenderName ||
-    "";
-
-  const receiverName =
-    (typeof receiverSource === "string" && receiverSource) ||
-    receiverObject?.name ||
-    message.receiver_name ||
-    message.receiverName ||
-    "";
-
-  const senderInfo = senderObject
-    ? normalizePerson(senderObject, senderName || fallbackSenderName)
-    : null;
-
-  const receiverInfo = receiverObject
-    ? normalizePerson(receiverObject, receiverName)
-    : null;
-
-  const isOwnMessage =
-    message.isOwn ??
-    (currentUserId !== null && senderId !== null
-      ? senderId === currentUserId
-      : undefined);
-
-  return {
-    id: message.id ?? `msg-${Math.random().toString(36).slice(2)}`,
-    text: message.text ?? message.message ?? "",
-    senderId,
-    receiverId,
-    sender: senderName,
-    receiver: receiverName,
-    senderInfo,
-    receiverInfo,
-    timestamp,
-    isRead: message.isRead ?? false,
-    isSystemMessage: message.isSystemMessage ?? false,
-    isOwn: isOwnMessage,
-    deliveryStatus:
-      message.deliveryStatus ??
-      (typeof isOwnMessage === "boolean"
-        ? isOwnMessage
-          ? "sent"
-          : "delivered"
-        : undefined),
-    sendError: message.sendError ?? null,
-  };
-};
-
-// Normalize API responses into a consistent shape for the UI components.
-const normalizeConversation = (conversation = {}, currentUserId = null) => {
-  const participantsRaw = Array.isArray(conversation.participants)
-    ? conversation.participants
-    : [];
-  const senderRaw = conversation.sender ?? conversation.from;
-  const receiverRaw = conversation.receiver ?? conversation.to;
-
-  const participantFromPayload = conversation.participant ?? null;
-
-  const findOtherParticipant = () => {
-    if (currentUserId === null) {
-      return (
-        participantFromPayload ??
-        participantsRaw[0] ??
-        senderRaw ??
-        receiverRaw ??
-        {}
-      );
-    }
-
-    const fromArray = participantsRaw.find(
-      (person) => person?.id && person.id !== currentUserId
-    );
-
-    if (fromArray) {
-      return fromArray;
-    }
-
-    if (
-      participantFromPayload?.id &&
-      participantFromPayload.id !== currentUserId
-    ) {
-      return participantFromPayload;
-    }
-
-    if (senderRaw?.id && senderRaw.id !== currentUserId) {
-      return senderRaw;
-    }
-
-    if (receiverRaw?.id && receiverRaw.id !== currentUserId) {
-      return receiverRaw;
-    }
-
-    return (
-      participantFromPayload ??
-      participantsRaw[0] ??
-      senderRaw ??
-      receiverRaw ??
-      {}
-    );
-  };
-
-  const rawParticipant = findOtherParticipant() ?? {};
-  const participant = normalizePerson(rawParticipant);
-
-  const normalizedParticipants = participantsRaw
-    .map((person) => normalizePerson(person))
-    .filter((person) => person.id !== null);
-
-  const participantName = participant.name ?? "Unknown";
-  const normalizedMessages = Array.isArray(conversation.messages)
-    ? conversation.messages.map((msg) =>
-        normalizeMessage(msg, participantName, currentUserId)
-      )
-    : [];
-  const lastMessage = normalizedMessages[normalizedMessages.length - 1];
-
-  return {
-    id:
-      conversation.id ??
-      conversation.conversationId ??
-      (participant.id ? `user-${participant.id}` : "conversation-unknown"),
-    conversationId: conversation.conversationId ?? conversation.id ?? null,
-    participant,
-    participants: normalizedParticipants,
-    category: conversation.category ?? participant.role ?? "General",
-    unreadCount: conversation.unreadCount ?? 0,
-    isArchived: conversation.isArchived ?? false,
-    lastMessage: conversation.lastMessage ?? lastMessage?.text ?? "",
-    lastMessageTime:
-      conversation.lastMessageTime ?? lastMessage?.timestamp ?? null,
-    messages: normalizedMessages,
-  };
-};
-
-const sortConversationsByRecency = (list = []) => {
-  return [...list].sort((a, b) => {
-    const timeA = a?.lastMessageTime
-      ? new Date(a.lastMessageTime).getTime()
-      : 0;
-    const timeB = b?.lastMessageTime
-      ? new Date(b.lastMessageTime).getTime()
-      : 0;
-    return timeB - timeA;
-  });
-};
-
-const isSameConversation = (conv, other) => {
-  if (!conv || !other) return false;
-
-  if (conv.conversationId && other.conversationId) {
-    return conv.conversationId === other.conversationId;
-  }
-
-  if (conv.participant?.id && other.participant?.id) {
-    return conv.participant.id === other.participant.id;
-  }
-
-  return conv.id === other.id;
-};
-
 const INCOMING_QUEUE_INITIAL_DELAY_MS = 60;
 const INCOMING_QUEUE_ACTIVE_DRAIN_INTERVAL_MS = 4;
 const INCOMING_QUEUE_PASSIVE_DRAIN_INTERVAL_MS = 12;
 const INCOMING_QUEUE_HIGH_PRESSURE_THRESHOLD = 40;
 const INCOMING_QUEUE_AGGRESSIVE_INTERVAL_MS = 2;
-
-const insertMessageChronologically = (messages, newMessage) => {
-  if (!newMessage?.timestamp) {
-    return [...messages, newMessage];
-  }
-
-  const newMessageTime = new Date(newMessage.timestamp).getTime();
-
-  const insertIndex = messages.findIndex((existing) => {
-    if (!existing?.timestamp) {
-      return false;
-    }
-
-    return new Date(existing.timestamp).getTime() > newMessageTime;
-  });
-
-  if (insertIndex === -1) {
-    return [...messages, newMessage];
-  }
-
-  return [
-    ...messages.slice(0, insertIndex),
-    newMessage,
-    ...messages.slice(insertIndex),
-  ];
-};
-
-const buildConversationBufferKey = (
-  conversation,
-  fallbackParticipantId = null
-) => {
-  if (conversation?.conversationId) {
-    return `cid:${conversation.conversationId}`;
-  }
-
-  if (conversation?.id) {
-    return `id:${conversation.id}`;
-  }
-
-  if (fallbackParticipantId) {
-    return `participant:${fallbackParticipantId}`;
-  }
-
-  return null;
-};
-
-const mergeConversationSnapshot = (currentSnapshot = {}, incomingSnapshot = {}) => {
-  const mergedMessages = Array.isArray(incomingSnapshot.messages)
-    ? incomingSnapshot.messages.length
-      ? incomingSnapshot.messages
-      : Array.isArray(currentSnapshot.messages)
-      ? currentSnapshot.messages
-      : incomingSnapshot.messages
-    : Array.isArray(currentSnapshot.messages)
-    ? currentSnapshot.messages
-    : [];
-
-  const mergedParticipants = Array.isArray(incomingSnapshot.participants)
-    ? incomingSnapshot.participants.length
-      ? incomingSnapshot.participants
-      : Array.isArray(currentSnapshot.participants)
-      ? currentSnapshot.participants
-      : incomingSnapshot.participants
-    : Array.isArray(currentSnapshot.participants)
-    ? currentSnapshot.participants
-    : [];
-
-  return {
-    ...currentSnapshot,
-    ...incomingSnapshot,
-    id: incomingSnapshot.id ?? currentSnapshot.id ?? null,
-    conversationId:
-      incomingSnapshot.conversationId ?? currentSnapshot.conversationId ?? null,
-    participant:
-      incomingSnapshot.participant ?? currentSnapshot.participant ?? null,
-    participants: mergedParticipants,
-    category: incomingSnapshot.category ?? currentSnapshot.category ?? "General",
-    messages: mergedMessages,
-    lastMessage: incomingSnapshot.lastMessage ?? currentSnapshot.lastMessage ?? "",
-    lastMessageTime:
-      incomingSnapshot.lastMessageTime ?? currentSnapshot.lastMessageTime ?? null,
-  };
-};
 
 /**
  * Component 1. Conversation List Item (Messenger-style)
@@ -945,14 +660,18 @@ export default function MessagesContact() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(MainContentTabs.INBOX);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
-  const [conversations, setConversations] = useState([]);
-  const [isLoadingConversations, setIsLoadingConversations] = useState(false);
-  const [conversationsError, setConversationsError] = useState(null);
+  const [conversations, setConversations] = useState(() => conversationStore.conversations);
+  const [isLoadingConversations, setIsLoadingConversations] = useState(
+    () => !conversationStore.hydrated
+  );
+  const [isRefreshingConversations, setIsRefreshingConversations] = useState(false);
+  const [conversationsError, setConversationsError] = useState(
+    () => conversationStore.error
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("All");
-  const [presenceStatus, setPresenceStatus] = useState("idle");
-  const [onlineUsers, setOnlineUsers] = useState([]);
-  const [presenceError, setPresenceError] = useState(null);
+  const { presenceStatus, presenceError, onlineUsers, ensureConnected } =
+    useRealtime();
   const inflightConversationFetch = useRef(new Set());
   const scheduledConversationRefreshes = useRef(new Map());
   const pendingIncomingMessages = useRef(new Map());
@@ -1005,6 +724,7 @@ export default function MessagesContact() {
     if (!user) {
       setConversations([]);
       setSelectedConversationId(null);
+      resetConversationStore();
     }
   }, [authLoading, user]);
 
@@ -1013,8 +733,14 @@ export default function MessagesContact() {
 
     let isCancelled = false;
 
+    const hasCachedData = conversationStore.hydrated && conversationStore.conversations.length > 0;
+
     const loadConversations = async () => {
-      setIsLoadingConversations(true);
+      if (!hasCachedData) {
+        setIsLoadingConversations(true);
+      } else {
+        setIsRefreshingConversations(true);
+      }
       setConversationsError(null);
 
       try {
@@ -1027,6 +753,12 @@ export default function MessagesContact() {
           );
 
           setConversations(normalized);
+          updateConversationStore({
+            conversations: normalized,
+            error: null,
+            hydrated: true,
+            lastFetchedAt: Date.now(),
+          });
         }
       } catch (error) {
         if (!isCancelled) {
@@ -1036,10 +768,12 @@ export default function MessagesContact() {
             error?.message ||
             "Unable to load conversations.";
           setConversationsError(message);
+          updateConversationStore({ error: message });
         }
       } finally {
         if (!isCancelled) {
           setIsLoadingConversations(false);
+          setIsRefreshingConversations(false);
         }
       }
     };
@@ -1066,6 +800,21 @@ export default function MessagesContact() {
       bufferedMessagesRef.clear();
     };
   }, []);
+
+  useEffect(() => {
+    updateConversationStore((prev) => ({
+      ...prev,
+      conversations,
+      hydrated: true,
+    }));
+  }, [conversations]);
+
+  useEffect(() => {
+    updateConversationStore((prev) => ({
+      ...prev,
+      error: conversationsError ?? null,
+    }));
+  }, [conversationsError]);
 
   const refreshConversationMessages = useCallback(
     async (participantId, meta = {}) => {
@@ -1418,96 +1167,25 @@ export default function MessagesContact() {
     });
   }, [selectedConversationId, flushBufferedIncomingMessages, isConversationCurrentlyActive]);
 
-  // Setup Echo presence channel for online status
   useEffect(() => {
-    // Only connect if user is authenticated (has token)
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.log("No token found, skipping Echo connection");
-      setPresenceStatus("unauthenticated");
-      setOnlineUsers([]);
-      setPresenceError(null);
-      return;
-    }
-    const echoInstance = getEchoInstance?.() || EchoClient;
+    let isActive = true;
 
-    if (!echoInstance) {
-      console.warn(
-        "Echo instance is not available on window, skipping connection"
-      );
-      setPresenceStatus("error");
-      setPresenceError("Realtime client is not available in this session.");
-      return;
-    }
-
-    reconnectEcho();
-
-    const authHeader =
-      echoInstance.options?.auth?.headers?.Authorization || null;
-
-    if (!authHeader) {
-      console.warn("Echo auth header is missing, skipping connection");
-      setPresenceStatus("unauthenticated");
-      setPresenceError("Missing authentication token for realtime channel.");
-      return;
-    }
-
-    setPresenceStatus("connecting");
-    setPresenceError(null);
-    setOnlineUsers([]);
-
-    console.log("Connecting to Echo presence channel...");
-    echoInstance
-      .join("online")
-      .here((users) => {
-        const normalizedUsers = Array.isArray(users) ? [...users] : [];
-        setOnlineUsers(normalizedUsers);
-        setPresenceStatus("connected");
-        setPresenceError(null);
-        console.log("Users currently online:", normalizedUsers);
+    ensureConnected()
+      .then((result) => {
+        if (!isActive) return;
+        if (!result?.ok) {
+          console.warn("Presence channel connection not established", result);
+        }
       })
-      .joining((user) => {
-        setOnlineUsers((prev) => {
-          if (prev.some((existing) => existing?.id === user?.id)) {
-            return prev;
-          }
-          return [...prev, user];
-        });
-        setPresenceStatus("connected");
-        setPresenceError(null);
-        console.log("User joined:", user);
-      })
-      .leaving((user) => {
-        setOnlineUsers((prev) =>
-          prev.filter((existing) => existing?.id !== user?.id)
-        );
-        console.log("User left:", user);
-      })
-      .error((error) => {
-        console.error("Error with Echo channel:", error);
-        const message =
-          error?.message ??
-          (typeof error?.error === "string"
-            ? error.error
-            : typeof error?.error?.message === "string"
-            ? error.error.message
-            : typeof error === "string"
-            ? error
-            : null);
-        setPresenceStatus("error");
-        setPresenceError(message || "Unable to join realtime channel.");
-        setOnlineUsers([]);
+      .catch((error) => {
+        if (!isActive) return;
+        console.error("Failed to ensure realtime presence connection", error);
       });
 
-    // Cleanup: leave the channel when component unmounts
     return () => {
-      console.log("Leaving Echo channel...");
-      echoInstance.leave("online");
-      setOnlineUsers([]);
-      setPresenceStatus("idle");
-      setPresenceError(null);
+      isActive = false;
     };
-  }, []);
+  }, [ensureConnected]);
 
   const conversationsWithPresence = useMemo(() => {
     if (!onlineUsers.length) {
@@ -2166,6 +1844,11 @@ export default function MessagesContact() {
                 </div>
 
                 {/* Conversation List */}
+                {isRefreshingConversations && !isLoadingConversations ? (
+                  <p className="text-center text-xs text-gray-400 pb-2">
+                    Syncing latest messages…
+                  </p>
+                ) : null}
                 <ul className="flex-1 min-h-0 space-y-1 overflow-y-auto">
                   {isLoadingConversations ? (
                     <p className="text-center text-sm text-gray-500 p-4">

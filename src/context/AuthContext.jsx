@@ -56,9 +56,11 @@ export const AuthProvider = ({ children }) => {
                   // Only log out if it's explicitly a 401 Unauthorized (invalid token)
                   if (bgError.response?.status === 401) {
                     console.warn(
-                      "Token is invalid, will use cached data but may need re-login"
+                      "Cached auth token rejected by API, clearing auth state"
                     );
-                    // Don't clear immediately - let the API interceptor handle it
+                    cleanupAuthStorage();
+                    setUser(null);
+                    setToken(null);
                   } else {
                     console.log(
                       "Background user refresh failed (network issue), using cached data"
@@ -95,6 +97,25 @@ export const AuthProvider = ({ children }) => {
     };
 
     initAuth();
+  }, []);
+
+  // Listen for forced logout events triggered by the API layer
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+
+    const handleForcedLogout = () => {
+      cleanupAuthStorage();
+      setUser(null);
+      setToken(null);
+      setLoading(false);
+    };
+
+    window.addEventListener("auth:logout", handleForcedLogout);
+    return () => {
+      window.removeEventListener("auth:logout", handleForcedLogout);
+    };
   }, []);
 
   // Keep session alive with periodic heartbeat
