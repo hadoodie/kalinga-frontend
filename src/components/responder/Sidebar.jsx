@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Home,
+  LayoutDashboard,
   FileText,
   AlertCircle,
   Activity,
@@ -68,6 +69,11 @@ export default function ResponderSidebar() {
       label: "Dashboard",
       path: "/responder/dashboard",
       icon: <Home size={25} />,
+    },
+    {
+      label: "Dashboard V2",
+      path: "/responder/dashboard-v2",
+      icon: <LayoutDashboard size={25} />,
     },
     {
       label: "Incident Logs",

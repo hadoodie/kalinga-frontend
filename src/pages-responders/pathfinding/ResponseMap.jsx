@@ -6,7 +6,642 @@ import ResponderSidebar from "../../components/responder/Sidebar";
 
 // Leaflet CSS is imported in index.css
 
-export default function ResponseMap() {
+const INCIDENT_STATUS_STYLES = {
+  reported: { color: "#dc2626", fillColor: "#fee2e2" },
+  acknowledged: { color: "#f97316", fillColor: "#ffedd5" },
+  en_route: { color: "#2563eb", fillColor: "#dbeafe" },
+  on_scene: { color: "#7c3aed", fillColor: "#ede9fe" },
+  needs_support: { color: "#ca8a04", fillColor: "#fef08a" },
+  resolved: { color: "#16a34a", fillColor: "#dcfce7" },
+  cancelled: { color: "#6b7280", fillColor: "#e5e7eb" },
+};
+
+const ROUTE_PROXIMITY_THRESHOLD_METERS = 45;
+const ROUTE_ALERT_TIMEOUT_MS = 12000;
+const MAX_ROUTE_SAMPLE_POINTS = 220;
+const DETOUR_OFFSETS_METERS = [160, 260, 360];
+const DETOUR_MAX_DISTANCE_MULTIPLIER = 1.55;
+const DETOUR_MAX_CANDIDATES = 12;
+const DETOUR_SNAP_DISTANCE_METERS = 600;
+
+const DEGREE_IN_RADIANS = Math.PI / 180;
+const EARTH_RADIUS_METERS = 6378137;
+
+const ROUTE_ALERT_STYLES = {
+  info: "bg-blue-600 text-white",
+  warning: "bg-yellow-500 text-gray-900",
+  danger: "bg-red-600 text-white",
+};
+
+const formatBlockadeDescriptor = (blockade) => {
+  if (!blockade) {
+    return "the reported blockade";
+  }
+
+  const title = typeof blockade.title === "string" ? blockade.title.trim() : "";
+  const road =
+    typeof blockade.road_name === "string" ? blockade.road_name.trim() : "";
+
+  if (title && road) {
+    return title.toLowerCase().includes(road.toLowerCase())
+      ? title
+      : `${title} (${road})`;
+  }
+
+  return title || road || "the reported blockade";
+};
+
+const calculateDistance = (lat1, lng1, lat2, lng2) => {
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const sampleRouteCoordinates = (coords) => {
+  if (!Array.isArray(coords) || coords.length === 0) {
+    return [];
+  }
+
+  if (coords.length <= MAX_ROUTE_SAMPLE_POINTS) {
+    return coords;
+  }
+
+  const step = Math.ceil(coords.length / MAX_ROUTE_SAMPLE_POINTS);
+  const sampled = [];
+
+  for (let i = 0; i < coords.length; i += step) {
+    sampled.push(coords[i]);
+  }
+
+  const lastPoint = coords[coords.length - 1];
+  const lastSample = sampled[sampled.length - 1];
+  if (
+    !lastSample ||
+    lastSample[0] !== lastPoint[0] ||
+    lastSample[1] !== lastPoint[1]
+  ) {
+    sampled.push(lastPoint);
+  }
+
+  return sampled;
+};
+
+const normalizeBlockadePosition = (blockade) => {
+  if (!blockade) {
+    return null;
+  }
+
+  const latValue =
+    blockade.start_lat ?? blockade.latitude ?? blockade.lat ?? null;
+  const lngValue =
+    blockade.start_lng ?? blockade.longitude ?? blockade.lng ?? null;
+
+  const lat = typeof latValue === "number" ? latValue : parseFloat(latValue);
+  const lng = typeof lngValue === "number" ? lngValue : parseFloat(lngValue);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+    label: formatBlockadeDescriptor(blockade),
+    raw: blockade,
+  };
+};
+
+const analyzeRouteAgainstBlockades = (coords, normalizedBlockades) => {
+  if (!coords.length || !normalizedBlockades.length) {
+    return { closestDistance: Infinity, conflicts: [] };
+  }
+
+  let closestDistance = Infinity;
+  const conflicts = [];
+
+  normalizedBlockades.forEach((blockade) => {
+    let nearestToBlockade = Infinity;
+
+    for (let index = 0; index < coords.length; index += 1) {
+      const [lat, lng] = coords[index];
+      const distanceMeters =
+        calculateDistance(blockade.lat, blockade.lng, lat, lng) * 1000;
+
+      if (distanceMeters < nearestToBlockade) {
+        nearestToBlockade = distanceMeters;
+      }
+
+      if (nearestToBlockade <= ROUTE_PROXIMITY_THRESHOLD_METERS) {
+        break;
+      }
+    }
+
+    if (nearestToBlockade < closestDistance) {
+      closestDistance = nearestToBlockade;
+    }
+
+    if (nearestToBlockade <= ROUTE_PROXIMITY_THRESHOLD_METERS) {
+      conflicts.push({
+        blockade: blockade.raw,
+        distance: nearestToBlockade,
+        label: blockade.label,
+      });
+    }
+  });
+
+  return { closestDistance, conflicts };
+};
+
+const evaluateRoutesAgainstBlockades = (routes, normalizedBlockades) =>
+  routes.map((route, index) => {
+    const coords = Array.isArray(route?.geometry?.coordinates)
+      ? route.geometry.coordinates.map((point) => [point[1], point[0]])
+      : [];
+
+    const analysis = analyzeRouteAgainstBlockades(
+      sampleRouteCoordinates(coords),
+      normalizedBlockades
+    );
+
+    return {
+      index,
+      route,
+      coords,
+      closestDistance: analysis.closestDistance,
+      conflicts: analysis.conflicts,
+    };
+  });
+
+const selectBestRouteVariant = (routes, normalizedBlockades) => {
+  if (!Array.isArray(routes) || routes.length === 0) {
+    return null;
+  }
+
+  const evaluations = evaluateRoutesAgainstBlockades(
+    routes,
+    normalizedBlockades
+  );
+  const original = evaluations[0];
+  const alternativesAvailable = evaluations.length > 1;
+  const blockadesPresent = normalizedBlockades.length > 0;
+
+  if (!blockadesPresent) {
+    return {
+      selected: original,
+      original,
+      rerouted: false,
+      alternativesAvailable,
+      blockadesPresent,
+    };
+  }
+
+  const blockadeFreeRoutes = evaluations.filter(
+    (evaluation) => evaluation.conflicts.length === 0
+  );
+
+  if (blockadeFreeRoutes.length > 0) {
+    const best = blockadeFreeRoutes.reduce((currentBest, candidate) => {
+      if (!currentBest) {
+        return candidate;
+      }
+
+      const currentDistance = candidate.route?.distance ?? Infinity;
+      const bestDistance = currentBest.route?.distance ?? Infinity;
+
+      return currentDistance < bestDistance ? candidate : currentBest;
+    }, null);
+
+    return {
+      selected: best,
+      original,
+      rerouted: best.index !== original.index,
+      alternativesAvailable,
+      blockadesPresent,
+    };
+  }
+
+  const bestAvailable = evaluations.reduce((currentBest, candidate) => {
+    if (!currentBest) {
+      return candidate;
+    }
+
+    if (candidate.closestDistance === currentBest.closestDistance) {
+      const candidateDistance = candidate.route?.distance ?? Infinity;
+      const bestDistance = currentBest.route?.distance ?? Infinity;
+      return candidateDistance < bestDistance ? candidate : currentBest;
+    }
+
+    return candidate.closestDistance > currentBest.closestDistance
+      ? candidate
+      : currentBest;
+  }, null);
+
+  return {
+    selected: bestAvailable,
+    original,
+    rerouted: bestAvailable.index !== original.index,
+    alternativesAvailable,
+    blockadesPresent,
+  };
+};
+
+const deriveRouteAlert = (selection) => {
+  if (!selection || !selection.blockadesPresent) {
+    return null;
+  }
+
+  const { selected, original, rerouted, alternativesAvailable } = selection;
+  const originalConflicts = original?.conflicts ?? [];
+  const selectedConflicts = selected?.conflicts ?? [];
+
+  if (
+    !rerouted &&
+    originalConflicts.length === 0 &&
+    selectedConflicts.length === 0
+  ) {
+    return null;
+    const normalizeBearing = (bearing) => {
+      const normalized = bearing % 360;
+      return normalized < 0 ? normalized + 360 : normalized;
+    };
+
+    const bearingBetweenPoints = (start, end) => {
+      if (!start || !end) {
+        return 0;
+      }
+
+      if (
+        Math.abs(start.lat - end.lat) < 1e-6 &&
+        Math.abs(start.lng - end.lng) < 1e-6
+      ) {
+        return 0;
+      }
+
+      const φ1 = start.lat * DEGREE_IN_RADIANS;
+      const φ2 = end.lat * DEGREE_IN_RADIANS;
+      const Δλ = (end.lng - start.lng) * DEGREE_IN_RADIANS;
+
+      const y = Math.sin(Δλ) * Math.cos(φ2);
+      const x =
+        Math.cos(φ1) * Math.sin(φ2) -
+        Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+
+      const θ = Math.atan2(y, x);
+      return normalizeBearing(θ / DEGREE_IN_RADIANS);
+    };
+
+    const offsetPointByBearing = (origin, distanceMeters, bearingDegrees) => {
+      const φ1 = origin.lat * DEGREE_IN_RADIANS;
+      const λ1 = origin.lng * DEGREE_IN_RADIANS;
+      const θ = bearingDegrees * DEGREE_IN_RADIANS;
+      const δ = distanceMeters / EARTH_RADIUS_METERS;
+
+      const sinφ1 = Math.sin(φ1);
+      const cosφ1 = Math.cos(φ1);
+      const sinδ = Math.sin(δ);
+      const cosδ = Math.cos(δ);
+
+      const sinφ2 = sinφ1 * cosδ + cosφ1 * sinδ * Math.cos(θ);
+      const φ2 = Math.asin(sinφ2);
+
+      const λ2Raw =
+        λ1 + Math.atan2(Math.sin(θ) * sinδ * cosφ1, cosδ - sinφ1 * sinφ2);
+
+      const λ2 = ((λ2Raw + Math.PI) % (2 * Math.PI)) - Math.PI;
+
+      return {
+        lat: φ2 / DEGREE_IN_RADIANS,
+        lng: λ2 / DEGREE_IN_RADIANS,
+      };
+    };
+
+    const generateDetourWaypoints = (start, end, blockade) => {
+      if (!start || !end || !blockade) {
+        return [];
+      }
+
+      const baseBearing = bearingBetweenPoints(start, end);
+      const perpendicularBearings = [
+        normalizeBearing(baseBearing + 90),
+        normalizeBearing(baseBearing - 90),
+        normalizeBearing(baseBearing + 135),
+        normalizeBearing(baseBearing - 135),
+      ];
+
+      const candidatePoints = [];
+
+      perpendicularBearings.forEach((bearing) => {
+        DETOUR_OFFSETS_METERS.forEach((offset) => {
+          const offsetPoint = offsetPointByBearing(blockade, offset, bearing);
+          candidatePoints.push({
+            lat: offsetPoint.lat,
+            lng: offsetPoint.lng,
+            bearing,
+            offset,
+          });
+        });
+      });
+
+      // Add forward/backward offsets to encourage bypassing by overshooting blockade
+      DETOUR_OFFSETS_METERS.forEach((offset) => {
+        const forward = offsetPointByBearing(blockade, offset, baseBearing);
+        const backward = offsetPointByBearing(
+          blockade,
+          offset,
+          normalizeBearing(baseBearing + 180)
+        );
+        candidatePoints.push({
+          lat: forward.lat,
+          lng: forward.lng,
+          bearing: baseBearing,
+          offset,
+        });
+        candidatePoints.push({
+          lat: backward.lat,
+          lng: backward.lng,
+          bearing: normalizeBearing(baseBearing + 180),
+          offset,
+        });
+      });
+
+      const seen = new Set();
+      const unique = [];
+
+      candidatePoints.forEach((candidate) => {
+        const key = `${candidate.lat.toFixed(5)}_${candidate.lng.toFixed(5)}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(candidate);
+        }
+      });
+
+      return unique.slice(0, DETOUR_MAX_CANDIDATES);
+    };
+
+    const snapWaypointToRoad = async (osrmServer, waypoint) => {
+      try {
+        const response = await fetch(
+          `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`
+        );
+        if (!response.ok) {
+          return null;
+        }
+        const data = await response.json();
+        if (!data?.waypoints?.length) {
+          return null;
+        }
+
+        const nearest = data.waypoints[0];
+        return {
+          lat: nearest.location[1],
+          lng: nearest.location[0],
+          distance: nearest.distance ?? 0,
+          meta: waypoint,
+        };
+      } catch (error) {
+        console.warn("Failed snapping waypoint to road", error);
+        return null;
+      }
+    };
+
+    const requestOsrmRoute = async (osrmServer, coordinates, paramsString) => {
+      if (!Array.isArray(coordinates) || coordinates.length < 2) {
+        return null;
+      }
+
+      const coordinatePath = coordinates
+        .map((coord) => `${coord.lng},${coord.lat}`)
+        .join(";");
+
+      const url = `${osrmServer}/route/v1/driving/${coordinatePath}?${paramsString}`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          return null;
+        }
+        const data = await response.json();
+        if (!data?.routes?.length) {
+          return null;
+        }
+        return data.routes;
+      } catch (error) {
+        console.warn("OSRM route request failed", error);
+        return null;
+      }
+    };
+
+    const tryResolveRouteWithDynamicDetours = async ({
+      osrmServer,
+      baseParamOptions,
+      start,
+      end,
+      normalizedBlockades,
+      currentSelection,
+    }) => {
+      if (!currentSelection?.selected?.conflicts?.length || !start || !end) {
+        return null;
+      }
+
+      const primaryConflict = currentSelection.selected.conflicts[0];
+      const normalizedConflict = normalizeBlockadePosition(
+        primaryConflict?.blockade
+      );
+
+      if (!normalizedConflict) {
+        return null;
+      }
+
+      const candidates = generateDetourWaypoints(
+        start,
+        end,
+        normalizedConflict
+      );
+
+      if (!candidates.length) {
+        return null;
+      }
+
+      const originalDistance =
+        currentSelection.selected?.route?.distance ??
+        currentSelection.original?.route?.distance ??
+        null;
+
+      let bestImproved = null;
+
+      for (const candidate of candidates) {
+        const snapped = await snapWaypointToRoad(osrmServer, candidate);
+        if (!snapped) {
+          continue;
+        }
+
+        if (snapped.distance > DETOUR_SNAP_DISTANCE_METERS) {
+          continue;
+        }
+
+        const detourParams = {
+          ...baseParamOptions,
+          alternatives: "1",
+        };
+
+        const paramString = new URLSearchParams(detourParams).toString();
+        const routes = await requestOsrmRoute(
+          osrmServer,
+          [start, snapped, end],
+          paramString
+        );
+
+        if (!routes || !routes.length) {
+          continue;
+        }
+
+        const evaluationEntry = evaluateRoutesAgainstBlockades(
+          [routes[0]],
+          normalizedBlockades
+        )[0];
+
+        if (!evaluationEntry) {
+          continue;
+        }
+
+        if (
+          originalDistance &&
+          evaluationEntry.route?.distance &&
+          evaluationEntry.route.distance >
+            originalDistance * DETOUR_MAX_DISTANCE_MULTIPLIER
+        ) {
+          continue;
+        }
+
+        if (evaluationEntry.conflicts.length === 0) {
+          return {
+            selected: evaluationEntry,
+            original: currentSelection.original,
+            rerouted: true,
+            blockadesPresent: true,
+            alternativesAvailable: currentSelection.alternativesAvailable,
+            detourMeta: {
+              label: normalizedConflict.label,
+              waypoint: snapped,
+              strategy: "dynamic",
+            },
+          };
+        }
+
+        if (
+          !bestImproved ||
+          evaluationEntry.closestDistance >
+            bestImproved.evaluation.closestDistance
+        ) {
+          bestImproved = {
+            evaluation: evaluationEntry,
+            snapped,
+          };
+        }
+      }
+
+      if (
+        bestImproved &&
+        bestImproved.evaluation.closestDistance >
+          (currentSelection.selected?.closestDistance ?? 0) + 10
+      ) {
+        return {
+          selected: bestImproved.evaluation,
+          original: currentSelection.original,
+          rerouted: true,
+          blockadesPresent: true,
+          alternativesAvailable: currentSelection.alternativesAvailable,
+          detourMeta: {
+            label: normalizedConflict.label,
+            waypoint: bestImproved.snapped,
+            strategy: "dynamic-improved",
+          },
+        };
+      }
+
+      return null;
+    };
+  }
+
+  const conflictSource =
+    (rerouted && originalConflicts.length > 0 ? originalConflicts[0] : null) ||
+    (selectedConflicts.length > 0 ? selectedConflicts[0] : null);
+
+  const detourDescriptor = selection.detourMeta?.label;
+
+  const descriptor =
+    conflictSource?.label ||
+    detourDescriptor ||
+    formatBlockadeDescriptor(conflictSource?.blockade);
+
+  if (selection.detourMeta && selectedConflicts.length === 0) {
+    return {
+      type: "info",
+      icon: "✅",
+      message: `Detour plotted to keep you clear of ${descriptor}.`,
+    };
+  }
+
+  if (
+    rerouted &&
+    originalConflicts.length > 0 &&
+    selectedConflicts.length === 0
+  ) {
+    return {
+      type: "info",
+      icon: "✅",
+      message: `Alternate route selected to avoid a blockade near ${descriptor}.`,
+    };
+  }
+
+  if (selectedConflicts.length > 0) {
+    const severity =
+      selected.closestDistance <= ROUTE_PROXIMITY_THRESHOLD_METERS / 2
+        ? "danger"
+        : "warning";
+
+    const intro = rerouted
+      ? "Limited detours available."
+      : alternativesAvailable
+      ? "No clear detour available."
+      : "Blockade ahead.";
+
+    return {
+      type: severity,
+      icon: severity === "danger" ? "⛔" : "⚠️",
+      message: `${intro} Blockade near ${descriptor}. Proceed with caution.`,
+    };
+  }
+
+  if (rerouted) {
+    return {
+      type: "info",
+      icon: "ℹ️",
+      message: "Alternate path selected to keep you clear of nearby blockades.",
+    };
+  }
+
+  if (originalConflicts.length > 0) {
+    return {
+      type: "warning",
+      icon: "⚠️",
+      message: `Blockade reported near ${descriptor}. We're showing the best available route.`,
+    };
+  }
+
+  return null;
+};
+
+export default function ResponseMap({ embedded = false, className = "" }) {
   const { user } = useAuth();
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
@@ -30,6 +665,7 @@ export default function ResponseMap() {
   const [currentLocationDisplay, setCurrentLocationDisplay] = useState(
     "Getting location..."
   );
+  const [, setLocationError] = useState(null);
   const [locationWatchId, setLocationWatchId] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isDrawingRoute, setIsDrawingRoute] = useState(false);
@@ -50,6 +686,7 @@ export default function ResponseMap() {
   const [highAccuracyWatchId, setHighAccuracyWatchId] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [routeAlert, setRouteAlert] = useState(null);
 
   // Initialize map when component mounts
   useEffect(() => {
@@ -392,17 +1029,16 @@ export default function ResponseMap() {
         if (leafletMap) {
           // Import Leaflet to create marker for last known location
           import("leaflet").then((L) => {
-            const lastKnownMarker = L.default.marker(
-              [lastKnown.lat, lastKnown.lng],
-              {
+            const lastKnownMarker = L.default
+              .marker([lastKnown.lat, lastKnown.lng], {
                 icon: L.default.divIcon({
                   html: `<div class="w-4 h-4 bg-yellow-500 rounded-full border-2 border-white shadow-lg"></div>`,
                   className: "last-known-location-marker",
                   iconSize: [16, 16],
                   iconAnchor: [8, 8],
                 }),
-              }
-            ).addTo(leafletMap);
+              })
+              .addTo(leafletMap);
 
             setUserMarker(lastKnownMarker);
           });
@@ -422,17 +1058,16 @@ export default function ResponseMap() {
         if (leafletMap) {
           // Import Leaflet to create marker for default location
           import("leaflet").then((L) => {
-            const defaultMarker = L.default.marker(
-              [fallback.lat, fallback.lng],
-              {
+            const defaultMarker = L.default
+              .marker([fallback.lat, fallback.lng], {
                 icon: L.default.divIcon({
                   html: `<div class="w-4 h-4 bg-gray-500 rounded-full border-2 border-white shadow-lg"></div>`,
                   className: "default-location-marker",
                   iconSize: [16, 16],
                   iconAnchor: [8, 8],
                 }),
-              }
-            ).addTo(leafletMap);
+              })
+              .addTo(leafletMap);
 
             setUserMarker(defaultMarker);
           });
@@ -497,9 +1132,17 @@ export default function ResponseMap() {
           },
         }
       );
-      const data = await response.json();
-      setIncidents(data);
-      displayIncidentsOnMap(data, leafletMap, L);
+      const payload = await response.json();
+      const incidentList = Array.isArray(payload?.data)
+        ? payload.data
+        : payload;
+      const normalized = Array.isArray(incidentList) ? incidentList : [];
+      const activeIncidents = normalized.filter(
+        (incident) =>
+          incident && !["resolved", "cancelled"].includes(incident.status)
+      );
+      setIncidents(activeIncidents);
+      displayIncidentsOnMap(activeIncidents, leafletMap, L);
     } catch (error) {
       console.error("Error fetching incidents:", error);
       setIncidents([]);
@@ -508,6 +1151,7 @@ export default function ResponseMap() {
 
   // Debounced fetch for blockades to reduce API calls
   const debounceTimerRef = useRef(null);
+  const routeAlertTimerRef = useRef(null);
   const debouncedFetchBlockades = useCallback((leafletMap, L) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -560,47 +1204,86 @@ export default function ResponseMap() {
     incidentMarkers.forEach((marker) => leafletMap.removeLayer(marker));
 
     const newMarkers = [];
+    const statusLabelMap = {
+      reported: "Waiting Dispatch",
+      acknowledged: "Acknowledged",
+      en_route: "En Route",
+      on_scene: "On Scene",
+      needs_support: "Needs Support",
+      resolved: "Resolved",
+      cancelled: "Cancelled",
+    };
+
     incidentData.forEach((incident) => {
-      if (incident.lat && incident.lng) {
-        const marker = L.circleMarker(
-          [parseFloat(incident.lat), parseFloat(incident.lng)],
-          {
-            radius: 8,
-            color: "#e74c3c",
-            weight: 2,
-            fillColor: "#e74c3c",
-            fillOpacity: 0.9,
-          }
-        ).addTo(leafletMap);
+      const lat =
+        typeof incident.lat === "number"
+          ? incident.lat
+          : parseFloat(incident?.lat);
+      const lng =
+        typeof incident.lng === "number"
+          ? incident.lng
+          : parseFloat(incident?.lng);
+
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        const style = INCIDENT_STATUS_STYLES[incident.status] ?? {
+          color: "#4b5563",
+          fillColor: "#e5e7eb",
+        };
+
+        const marker = L.circleMarker([lat, lng], {
+          radius: 9,
+          color: style.color,
+          weight: 3,
+          fillColor: style.fillColor,
+          fillOpacity: 0.85,
+        }).addTo(leafletMap);
+
+        const formattedDescription = incident.description
+          ? incident.description.replace(/(?:\r\n|\r|\n)/g, "<br />")
+          : "";
+
+        const respondersAssigned = incident.responders_assigned ?? 0;
+        const respondersRequired = incident.responders_required ?? 1;
+        const assignedNames = Array.isArray(incident.assignments)
+          ? incident.assignments
+              .map((assignment) => assignment?.responder?.name)
+              .filter(Boolean)
+              .join(", ") || "Unassigned"
+          : "Unassigned";
 
         marker.bindPopup(`
                     <div>
-                        <h4 style="margin: 0 0 8px 0; color: #2c3e50;">${
+                        <h4 style="margin: 0 0 8px 0; color: #111827; font-size: 15px;">${
                           incident.type
                         }</h4>
-                        <p style="margin: 0 0 4px 0;"><strong>Location:</strong> ${
-                          incident.location
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Status:</strong> ${
+                          statusLabelMap[incident.status] ?? incident.status
                         }</p>
-                        <p style="margin: 0 0 8px 0; font-size: 12px; color: #555;">${
-                          incident.description || ""
-                        }</p>
-                        <button onclick="drawRouteToIncident(${incident.lat}, ${
-          incident.lng
-        })" 
-                                style="background: #007bff; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; margin-right: 4px;">
-                            Get Route
-                        </button>
-                        <button onclick="startNavigationToIncident(${
-                          incident.lat
-                        }, ${incident.lng})" 
-                                style="background: #28a745; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
-                            🧭 Navigate
-                        </button>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Responders:</strong> ${respondersAssigned} / ${respondersRequired}</p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Assigned to:</strong> ${assignedNames}</p>
+                        <p style="margin: 0 0 6px 0; font-size: 12px; color: #4b5563;">
+                            <strong>Location:</strong> ${incident.location}
+                        </p>
+                        ${
+                          formattedDescription
+                            ? `<p style="margin: 0 0 8px 0; font-size: 11px; color: #6b7280;">${formattedDescription}</p>`
+                            : ""
+                        }
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="drawRouteToIncident(${lat}, ${lng})"
+                                style="background: #2563eb; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                                Get Route
+                            </button>
+                            <button onclick="startNavigationToIncident(${lat}, ${lng})"
+                                style="background: #16a34a; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                                🧭 Navigate
+                            </button>
+                        </div>
                     </div>
                 `);
 
         marker.on("click", () => {
-          drawRoute(parseFloat(incident.lat), parseFloat(incident.lng), false);
+          drawRoute(parseFloat(lat), parseFloat(lng), false);
         });
 
         newMarkers.push(marker);
@@ -625,16 +1308,38 @@ export default function ResponseMap() {
 
     const newMarkers = [];
     blockadeData.forEach((blockade) => {
-      const marker = L.circleMarker(
-        [parseFloat(blockade.start_lat), parseFloat(blockade.start_lng)],
-        {
-          radius: 10,
-          color: severityColors[blockade.severity] || "#dc3545",
-          weight: 3,
-          fillColor: severityColors[blockade.severity] || "#dc3545",
-          fillOpacity: 0.7,
-        }
-      ).addTo(leafletMap);
+      const lat = parseFloat(blockade.start_lat);
+      const lng = parseFloat(blockade.start_lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+
+      const background = severityColors[blockade.severity] || "#f97316";
+      const iconHtml = `
+                <div style="
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: ${background};
+                    color: #fff;
+                    border: 2px solid #fff;
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+                    font-size: 18px;
+                ">🚧</div>`;
+
+      const barrierIcon = L.divIcon({
+        className: "blockade-marker",
+        html: iconHtml,
+        iconSize: [34, 34],
+        iconAnchor: [17, 30],
+      });
+
+      const marker = L.marker([lat, lng], {
+        icon: barrierIcon,
+      }).addTo(leafletMap);
 
       marker.bindPopup(`
                 <div style="min-width: 200px;">
@@ -691,6 +1396,35 @@ export default function ResponseMap() {
     }
   };
 
+  const dismissRouteAlert = useCallback(() => {
+    if (routeAlertTimerRef.current) {
+      clearTimeout(routeAlertTimerRef.current);
+      routeAlertTimerRef.current = null;
+    }
+    setRouteAlert(null);
+  }, [setRouteAlert]);
+
+  const pushRouteAlert = useCallback(
+    (alertPayload) => {
+      if (routeAlertTimerRef.current) {
+        clearTimeout(routeAlertTimerRef.current);
+        routeAlertTimerRef.current = null;
+      }
+
+      if (!alertPayload) {
+        setRouteAlert(null);
+        return;
+      }
+
+      setRouteAlert(alertPayload);
+      routeAlertTimerRef.current = setTimeout(() => {
+        setRouteAlert(null);
+        routeAlertTimerRef.current = null;
+      }, ROUTE_ALERT_TIMEOUT_MS);
+    },
+    [setRouteAlert]
+  );
+
   const drawRoute = async (
     destLat,
     destLng,
@@ -705,6 +1439,7 @@ export default function ResponseMap() {
     try {
       // Clear all existing routes first
       clearAllRoutes();
+      dismissRouteAlert();
 
       // Import Leaflet for markers
       const L = await import("leaflet");
@@ -718,17 +1453,58 @@ export default function ResponseMap() {
 
       // Enhanced OSRM query with step details for navigation
       const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${userLocation.lng},${userLocation.lat};${destLng},${destLat}`;
-      const params = enableNavigation
-        ? "?overview=full&geometries=geojson&steps=true&annotations=true"
-        : "?overview=full&geometries=geojson";
+      const baseParamOptions = {
+        overview: "full",
+        geometries: "geojson",
+        alternatives: "3",
+      };
 
-      const url = baseUrl + params;
-      const response = await fetch(url);
+      if (enableNavigation) {
+        baseParamOptions.steps = "true";
+        baseParamOptions.annotations = "true";
+      }
+
+      const paramString = new URLSearchParams(baseParamOptions).toString();
+      const response = await fetch(`${baseUrl}?${paramString}`);
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const coords = route.geometry.coordinates.map((c) => [c[1], c[0]]);
+        const normalizedBlockades = blockades
+          .map(normalizeBlockadePosition)
+          .filter(Boolean);
+
+        let selection = selectBestRouteVariant(
+          data.routes,
+          normalizedBlockades
+        );
+
+        if (
+          selection?.selected?.conflicts?.length &&
+          normalizedBlockades.length
+        ) {
+          const detourSelection = await tryResolveRouteWithDynamicDetours({
+            osrmServer: KALINGA_CONFIG.OSRM_SERVER,
+            baseParamOptions,
+            start: { lat: userLocation.lat, lng: userLocation.lng },
+            end: { lat: destLat, lng: destLng },
+            normalizedBlockades,
+            currentSelection: selection,
+          });
+
+          if (detourSelection) {
+            selection = detourSelection;
+          }
+        }
+
+        const chosenRoute = selection?.selected?.route || data.routes[0];
+        const coords =
+          selection?.selected?.coords ||
+          (Array.isArray(chosenRoute.geometry?.coordinates)
+            ? chosenRoute.geometry.coordinates.map((point) => [
+                point[1],
+                point[0],
+              ])
+            : []);
         const lineColor = isAssigned ? "#28a745" : "#007bff";
 
         // Store route coordinates for navigation
@@ -739,14 +1515,21 @@ export default function ResponseMap() {
           .addTo(map);
         setRouteLine(newRouteLine);
 
+        const alertDetails = deriveRouteAlert(selection);
+        if (alertDetails) {
+          pushRouteAlert(alertDetails);
+        }
+
         // If navigation is enabled, process turn-by-turn instructions
         if (
           enableNavigation &&
-          route.legs &&
-          route.legs[0] &&
-          route.legs[0].steps
+          chosenRoute.legs &&
+          chosenRoute.legs[0] &&
+          chosenRoute.legs[0].steps
         ) {
-          const instructions = processRouteInstructions(route.legs[0].steps);
+          const instructions = processRouteInstructions(
+            chosenRoute.legs[0].steps
+          );
           setRouteInstructions(instructions);
           setCurrentInstructionIndex(0);
 
@@ -999,6 +1782,8 @@ export default function ResponseMap() {
     if (map) {
       map.setBearing(0);
     }
+
+    dismissRouteAlert();
 
     // Clear route from map
     clearAllRoutes();
@@ -1309,666 +2094,686 @@ export default function ResponseMap() {
     };
   }, [removeBlockade, drawRoute]);
 
+  useEffect(() => {
+    return () => {
+      if (routeAlertTimerRef.current) {
+        clearTimeout(routeAlertTimerRef.current);
+      }
+    };
+  }, []);
+
+  const mapShellClass = embedded
+    ? `relative w-full h-full overflow-hidden ${className}`.trim()
+    : "relative flex-1 w-full overflow-hidden";
+
+  const mapShell = (
+    <div className={mapShellClass}>
+      {routeAlert && (
+        <div className="absolute top-4 left-1/2 z-50 flex -translate-x-1/2 transform">
+          <div
+            className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold shadow-lg ${
+              ROUTE_ALERT_STYLES[routeAlert.type] || ROUTE_ALERT_STYLES.info
+            }`}
+          >
+            {routeAlert.icon && (
+              <span className="text-lg" aria-hidden="true">
+                {routeAlert.icon}
+              </span>
+            )}
+            <span className="max-w-xs md:max-w-sm leading-snug">
+              {routeAlert.message}
+            </span>
+          </div>
+        </div>
+      )}
+      {/* Mobile Bottom Interface - Google Maps Style */}
+      <div className="md:hidden">
+        {/* User Info Dropdown */}
+        {showUserInfo && (
+          <div className="fixed top-4 left-4 right-4 z-50 bg-white rounded-lg shadow-xl p-4 max-h-48 overflow-y-auto">
+            <div className="flex items-center mb-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-3">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold">{user.name}</div>
+                <div className="text-sm text-gray-600">{user.email}</div>
+              </div>
+              <button
+                onClick={() => setShowUserInfo(false)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-3 bg-blue-50 rounded text-sm">
+              <div className="font-semibold text-blue-800">
+                📍 Current Location
+              </div>
+              <div
+                className="text-blue-700 mt-1"
+                style={{ whiteSpace: "pre-line" }}
+              >
+                {currentLocationDisplay}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Incidents List Dropdown */}
+        {showIncidentsList && (
+          <div
+            className={`absolute left-4 right-4 z-40 bg-white rounded-lg shadow-lg flex flex-col ${
+              isNavigating
+                ? "bottom-36 max-h-96" // Higher positioning with more height when navigating
+                : "bottom-24 max-h-80" // Original positioning when not navigating
+            }`}
+          >
+            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+              <h3 className="font-semibold text-lg">🚨 Incidents</h3>
+              <button
+                onClick={() => setShowIncidentsList(false)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-2 flex-1 overflow-y-auto">
+              {incidents.length > 0 ? (
+                incidents.map((incident, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer mb-2"
+                    onClick={() => {
+                      if (incident.lat && incident.lng) {
+                        drawRoute(incident.lat, incident.lng, true);
+                      }
+                      setShowIncidentsList(false);
+                    }}
+                  >
+                    <div className="font-semibold text-red-600">
+                      {incident.type}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {incident.location}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 whitespace-pre-line">
+                      {incident.description}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-gray-500 text-center">
+                  No incidents available
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Road Issues List Dropdown */}
+        {showBlockadesList && (
+          <div
+            className={`absolute left-4 right-4 z-40 bg-white rounded-lg shadow-lg flex flex-col ${
+              isNavigating
+                ? "bottom-36 max-h-96" // Higher positioning with more height when navigating
+                : "bottom-24 max-h-80" // Original positioning when not navigating
+            }`}
+          >
+            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+              <h3 className="font-semibold text-lg">🚧 Road Issues</h3>
+              <button
+                onClick={() => setShowBlockadesList(false)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-2 flex-1 overflow-y-auto">
+              {blockades.length > 0 ? (
+                blockades.map((blockade, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer mb-2"
+                    onClick={() => {
+                      centerMapOnLocation(
+                        blockade.start_lat,
+                        blockade.start_lng
+                      );
+                      setShowBlockadesList(false);
+                    }}
+                  >
+                    <div className="font-semibold text-red-600">
+                      {blockade.title}
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {blockade.road_name} • {blockade.severity.toUpperCase()}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {blockade.description}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      By: {blockade.reported_by} • {blockade.reported_at_human}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-gray-500 text-center">
+                  No road issues in this area
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Blockade Reporting Form Dropdown */}
+        {blockadeReportingMode && (
+          <div
+            className={`absolute left-4 right-4 z-40 bg-white rounded-lg shadow-lg flex flex-col ${
+              isNavigating
+                ? "bottom-36 max-h-96" // Higher positioning with more height when navigating
+                : "bottom-24 max-h-80" // Original positioning when not navigating
+            }`}
+          >
+            <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
+              <h3 className="font-semibold text-lg">🚧 Report Road Issue</h3>
+              <button
+                onClick={cancelBlockadeReport}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 flex-1 overflow-y-auto">
+              <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-sm">
+                <strong>📍 Click anywhere on the map</strong>
+                <br />
+                The system will automatically snap to the nearest road.
+              </div>
+
+              <input
+                type="text"
+                placeholder="Brief description"
+                value={blockadeForm.title}
+                onChange={(e) =>
+                  setBlockadeForm((prev) => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+                className="w-full mb-3 p-3 border rounded-lg"
+              />
+
+              <textarea
+                placeholder="Detailed description"
+                value={blockadeForm.description}
+                onChange={(e) =>
+                  setBlockadeForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                className="w-full mb-3 p-3 border rounded-lg h-20 resize-none"
+              />
+
+              <select
+                value={blockadeForm.severity}
+                onChange={(e) =>
+                  setBlockadeForm((prev) => ({
+                    ...prev,
+                    severity: e.target.value,
+                  }))
+                }
+                className="w-full mb-4 p-3 border rounded-lg"
+              >
+                <option value="low">Low Severity</option>
+                <option value="medium">Medium Severity</option>
+                <option value="high">High Severity</option>
+                <option value="critical">Critical</option>
+              </select>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={submitBlockadeReport}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium"
+                >
+                  Submit Report
+                </button>
+                <button
+                  onClick={cancelBlockadeReport}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bottom Action Bar with Navigation (Connected) */}
+        <div className="absolute bottom-4 left-4 right-4 z-40">
+          {/* Navigation Bar - Show when navigation is active */}
+          {isNavigating && currentInstruction && (
+            <div className="bg-blue-600 text-white rounded-t-lg shadow-lg p-4 mb-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{currentInstruction.icon}</span>
+                  <div>
+                    <div className="text-lg font-bold">
+                      {currentInstruction.instruction}
+                    </div>
+                    {currentInstruction.distance && (
+                      <div className="text-sm opacity-90">
+                        In {currentInstruction.distance}m
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={stopNavigation}
+                  className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
+                  title="Stop Navigation"
+                >
+                  <span className="text-lg">❌</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Action Bar */}
+          <div
+            className={`bg-white shadow-lg p-3 ${
+              isNavigating ? "rounded-b-lg" : "rounded-lg"
+            }`}
+          >
+            <div className="flex justify-around items-center">
+              {/* User Info Button */}
+              <button
+                onClick={() => {
+                  setShowUserInfo(!showUserInfo);
+                  setShowIncidentsList(false);
+                  setShowBlockadesList(false);
+                  setBlockadeReportingMode(false);
+                }}
+                className={`flex flex-col items-center p-2 rounded-lg ${
+                  showUserInfo ? "bg-blue-100 text-blue-600" : "text-gray-600"
+                }`}
+              >
+                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold mb-1">
+                  {user.name.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-xs">Profile</span>
+              </button>
+
+              {/* Incidents Button */}
+              <button
+                onClick={() => {
+                  setShowIncidentsList(!showIncidentsList);
+                  setShowUserInfo(false);
+                  setShowBlockadesList(false);
+                  setBlockadeReportingMode(false);
+                }}
+                className={`flex flex-col items-center p-2 rounded-lg ${
+                  showIncidentsList
+                    ? "bg-blue-100 text-blue-600"
+                    : "text-gray-600"
+                }`}
+              >
+                <span className="text-lg mb-1">🚨</span>
+                <span className="text-xs">Incidents</span>
+              </button>
+
+              {/* Auto-Assign Nearest */}
+              <button
+                onClick={() => {
+                  assignNearestIncident();
+                  setBlockadeReportingMode(false);
+                }}
+                className="flex flex-col items-center p-2 rounded-lg text-gray-600 hover:bg-green-50"
+              >
+                <span className="text-lg mb-1">🎯</span>
+                <span className="text-xs">Assign</span>
+              </button>
+
+              {/* Road Issues Button */}
+              <button
+                onClick={() => {
+                  setShowBlockadesList(!showBlockadesList);
+                  setShowUserInfo(false);
+                  setShowIncidentsList(false);
+                  setBlockadeReportingMode(false);
+                }}
+                className={`flex flex-col items-center p-2 rounded-lg ${
+                  showBlockadesList
+                    ? "bg-red-100 text-red-600"
+                    : "text-gray-600"
+                }`}
+              >
+                <span className="text-lg mb-1">🚧</span>
+                <span className="text-xs">Issues</span>
+              </button>
+
+              {/* Report Issue */}
+              <button
+                onClick={() => {
+                  toggleBlockadeReporting();
+                  setShowUserInfo(false);
+                  setShowIncidentsList(false);
+                  setShowBlockadesList(false);
+                }}
+                className={`flex flex-col items-center p-2 rounded-lg ${
+                  blockadeReportingMode
+                    ? "bg-red-100 text-red-600"
+                    : "text-gray-600 hover:bg-red-50"
+                }`}
+              >
+                <span className="text-lg mb-1">
+                  {blockadeReportingMode ? "❌" : "📍"}
+                </span>
+                <span className="text-xs">
+                  {blockadeReportingMode ? "Cancel" : "Report"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Recenter Button - Always visible */}
+        <button
+          onClick={() => {
+            if (userLocation) {
+              centerMapOnLocation(userLocation.lat, userLocation.lng);
+            }
+          }}
+          className="absolute top-20 right-4 z-40 bg-white p-3 rounded-full shadow-lg hover:bg-gray-100"
+          title="Recenter map to current location"
+          style={{ display: userLocation ? "block" : "none" }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            stroke="currentColor"
+            className="w-6 h-6 text-blue-600"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* Map Controls */}
+      <div className="absolute bottom-4 right-4 z-30 flex flex-row gap-3 mobile-controls">
+        {userLocation && (
+          <button
+            onClick={recenterMap}
+            className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg mobile-touch-button flex items-center justify-center transition-colors duration-200"
+            title="Recenter map to current location"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+              />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </button>
+        )}
+
+        <button
+          onClick={refreshData}
+          className="w-12 h-12 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg mobile-touch-button flex items-center justify-center transition-colors duration-200"
+          title="Refresh all map data (incidents and road issues)"
+        >
+          <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+            />
+          </svg>
+        </button>
+      </div>
+
+      {/* Desktop Sidebar - Hidden on Mobile */}
+      <div className="hidden md:block absolute left-0 top-0 h-full bg-white shadow-lg z-35 w-80 overflow-y-auto">
+        <div className="p-4">
+          <h3 className="text-lg font-semibold mb-4">Response Map</h3>
+
+          {/* User Info */}
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+            <div className="flex items-center mb-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-2">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <div className="font-semibold text-sm">{user.name}</div>
+                <div className="text-xs text-gray-600">{user.email}</div>
+              </div>
+            </div>
+            <div className="mt-2 p-2 bg-blue-100 rounded text-xs">
+              <div className="font-semibold text-blue-800">
+                📍 Current Location
+              </div>
+              <div
+                className="text-blue-700 mt-1"
+                style={{ whiteSpace: "pre-line" }}
+              >
+                {currentLocationDisplay}
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mb-4 space-y-2">
+            <button
+              onClick={assignNearestIncident}
+              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm"
+            >
+              🚨 Auto-Assign Nearest
+            </button>
+            <button
+              onClick={toggleBlockadeReporting}
+              className={`w-full px-4 py-3 rounded-lg text-sm ${
+                blockadeReportingMode
+                  ? "bg-gray-600 hover:bg-gray-700 text-white"
+                  : "bg-red-600 hover:bg-red-700 text-white"
+              }`}
+            >
+              {blockadeReportingMode ? "❌ Cancel" : "🚧 Report Issue"}
+            </button>
+          </div>
+
+          {/* Desktop Blockade Form */}
+          {blockadeReportingMode && (
+            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+              <h4 className="font-semibold text-sm mb-2">Report Road Issue</h4>
+              <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-xs">
+                <strong>📍 Click anywhere on the map</strong>
+                <br />
+                The system will automatically snap to the nearest road.
+              </div>
+              <input
+                type="text"
+                placeholder="Brief description"
+                value={blockadeForm.title}
+                onChange={(e) =>
+                  setBlockadeForm((prev) => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+                className="w-full mb-2 p-2 border rounded text-sm"
+              />
+              <textarea
+                placeholder="Detailed description"
+                value={blockadeForm.description}
+                onChange={(e) =>
+                  setBlockadeForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                className="w-full mb-2 p-2 border rounded text-sm h-16 resize-none"
+              />
+              <select
+                value={blockadeForm.severity}
+                onChange={(e) =>
+                  setBlockadeForm((prev) => ({
+                    ...prev,
+                    severity: e.target.value,
+                  }))
+                }
+                className="w-full mb-3 p-2 border rounded text-sm"
+              >
+                <option value="low">Low Severity</option>
+                <option value="medium">Medium Severity</option>
+                <option value="high">High Severity</option>
+                <option value="critical">Critical</option>
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={submitBlockadeReport}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
+                >
+                  Submit
+                </button>
+                <button
+                  onClick={cancelBlockadeReport}
+                  className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Tab Buttons */}
+          <div className="flex mb-4 border-b">
+            <button
+              onClick={() => setSelectedTab("incidents")}
+              className={`flex-1 py-2 px-4 text-sm ${
+                selectedTab === "incidents"
+                  ? "border-b-2 border-blue-500 text-blue-600 bg-blue-50"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              🚨 Incidents
+            </button>
+            <button
+              onClick={() => setSelectedTab("blockades")}
+              className={`flex-1 py-2 px-4 text-sm ${
+                selectedTab === "blockades"
+                  ? "border-b-2 border-red-500 text-red-600 bg-red-50"
+                  : "text-gray-600 hover:text-gray-800"
+              }`}
+            >
+              🚧 Road Issues
+            </button>
+          </div>
+
+          {/* Items List */}
+          <div className="space-y-2">
+            {selectedTab === "incidents" ? (
+              incidents.length > 0 ? (
+                incidents.map((incident, index) => (
+                  <div
+                    key={index}
+                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                    onClick={() => {
+                      if (incident.lat && incident.lng) {
+                        drawRoute(incident.lat, incident.lng, true);
+                      }
+                    }}
+                  >
+                    <div className="font-semibold text-red-600 text-sm">
+                      {incident.type}
+                    </div>
+                    <div className="text-sm">{incident.location}</div>
+                    <div className="text-xs text-gray-600 mt-1 whitespace-pre-line">
+                      {incident.description}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-3 text-gray-500 text-sm">
+                  No incidents available
+                </div>
+              )
+            ) : blockades.length > 0 ? (
+              blockades.map((blockade, index) => (
+                <div
+                  key={index}
+                  className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                  onClick={() =>
+                    drawRoute(blockade.latitude, blockade.longitude)
+                  }
+                >
+                  <div className="font-semibold text-red-600 text-sm">
+                    {blockade.title}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {blockade.road_name} • {blockade.severity.toUpperCase()}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {blockade.description}
+                  </div>
+                  <div className="text-xs text-gray-400 mt-1">
+                    By: {blockade.reported_by} • {blockade.reported_at_human}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-3 text-gray-500 text-sm">
+                No road blockades in this area
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      {/* Map Container */}
+      <div ref={mapRef} className="absolute inset-0 w-full h-full" />
+    </div>
+  );
+
+  if (embedded) {
+    return <div className="flex flex-col h-full">{mapShell}</div>;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
       <ResponderSidebar />
-
-      {/* Main Content Area - Full screen map */}
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Topbar */}
         <ResponderTopbar />
-
-        {/* Map Content - No padding, full height */}
-        <div className="relative flex-1 w-full overflow-hidden">
-          {/* Mobile Bottom Interface - Google Maps Style */}
-          <div className="md:hidden">
-            {/* User Info Dropdown */}
-            {showUserInfo && (
-              <div className="fixed top-4 left-4 right-4 z-50 bg-white rounded-lg shadow-xl p-4 max-h-48 overflow-y-auto">
-                <div className="flex items-center mb-3">
-                  <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-3">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold">{user.name}</div>
-                    <div className="text-sm text-gray-600">{user.email}</div>
-                  </div>
-                  <button
-                    onClick={() => setShowUserInfo(false)}
-                    className="p-2 hover:bg-gray-100 rounded-full"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="p-3 bg-blue-50 rounded text-sm">
-                  <div className="font-semibold text-blue-800">
-                    📍 Current Location
-                  </div>
-                  <div
-                    className="text-blue-700 mt-1"
-                    style={{ whiteSpace: "pre-line" }}
-                  >
-                    {currentLocationDisplay}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Incidents List Dropdown */}
-            {showIncidentsList && (
-              <div
-                className={`absolute left-4 right-4 z-40 bg-white rounded-lg shadow-lg flex flex-col ${
-                  isNavigating
-                    ? "bottom-36 max-h-96" // Higher positioning with more height when navigating
-                    : "bottom-24 max-h-80" // Original positioning when not navigating
-                }`}
-              >
-                <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-                  <h3 className="font-semibold text-lg">🚨 Incidents</h3>
-                  <button
-                    onClick={() => setShowIncidentsList(false)}
-                    className="p-2 hover:bg-gray-100 rounded-full"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="p-2 flex-1 overflow-y-auto">
-                  {incidents.length > 0 ? (
-                    incidents.map((incident, index) => (
-                      <div
-                        key={index}
-                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer mb-2"
-                        onClick={() => {
-                          if (incident.lat && incident.lng) {
-                            drawRoute(incident.lat, incident.lng, true);
-                          }
-                          setShowIncidentsList(false);
-                        }}
-                      >
-                        <div className="font-semibold text-red-600">
-                          {incident.type}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {incident.location}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {incident.description}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-gray-500 text-center">
-                      No incidents available
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Road Issues List Dropdown */}
-            {showBlockadesList && (
-              <div
-                className={`absolute left-4 right-4 z-40 bg-white rounded-lg shadow-lg flex flex-col ${
-                  isNavigating
-                    ? "bottom-36 max-h-96" // Higher positioning with more height when navigating
-                    : "bottom-24 max-h-80" // Original positioning when not navigating
-                }`}
-              >
-                <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-                  <h3 className="font-semibold text-lg">🚧 Road Issues</h3>
-                  <button
-                    onClick={() => setShowBlockadesList(false)}
-                    className="p-2 hover:bg-gray-100 rounded-full"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="p-2 flex-1 overflow-y-auto">
-                  {blockades.length > 0 ? (
-                    blockades.map((blockade, index) => (
-                      <div
-                        key={index}
-                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer mb-2"
-                        onClick={() => {
-                          centerMapOnLocation(
-                            blockade.start_lat,
-                            blockade.start_lng
-                          );
-                          setShowBlockadesList(false);
-                        }}
-                      >
-                        <div className="font-semibold text-red-600">
-                          {blockade.title}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {blockade.road_name} •{" "}
-                          {blockade.severity.toUpperCase()}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {blockade.description}
-                        </div>
-                        <div className="text-xs text-gray-400 mt-1">
-                          By: {blockade.reported_by} •{" "}
-                          {blockade.reported_at_human}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-gray-500 text-center">
-                      No road issues in this area
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Blockade Reporting Form Dropdown */}
-            {blockadeReportingMode && (
-              <div
-                className={`absolute left-4 right-4 z-40 bg-white rounded-lg shadow-lg flex flex-col ${
-                  isNavigating
-                    ? "bottom-36 max-h-96" // Higher positioning with more height when navigating
-                    : "bottom-24 max-h-80" // Original positioning when not navigating
-                }`}
-              >
-                <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-                  <h3 className="font-semibold text-lg">
-                    🚧 Report Road Issue
-                  </h3>
-                  <button
-                    onClick={cancelBlockadeReport}
-                    className="p-2 hover:bg-gray-100 rounded-full"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <div className="p-4 flex-1 overflow-y-auto">
-                  <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-sm">
-                    <strong>📍 Click anywhere on the map</strong>
-                    <br />
-                    The system will automatically snap to the nearest road.
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="Brief description"
-                    value={blockadeForm.title}
-                    onChange={(e) =>
-                      setBlockadeForm((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
-                    }
-                    className="w-full mb-3 p-3 border rounded-lg"
-                  />
-
-                  <textarea
-                    placeholder="Detailed description"
-                    value={blockadeForm.description}
-                    onChange={(e) =>
-                      setBlockadeForm((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
-                    }
-                    className="w-full mb-3 p-3 border rounded-lg h-20 resize-none"
-                  />
-
-                  <select
-                    value={blockadeForm.severity}
-                    onChange={(e) =>
-                      setBlockadeForm((prev) => ({
-                        ...prev,
-                        severity: e.target.value,
-                      }))
-                    }
-                    className="w-full mb-4 p-3 border rounded-lg"
-                  >
-                    <option value="low">Low Severity</option>
-                    <option value="medium">Medium Severity</option>
-                    <option value="high">High Severity</option>
-                    <option value="critical">Critical</option>
-                  </select>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={submitBlockadeReport}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-3 rounded-lg font-medium"
-                    >
-                      Submit Report
-                    </button>
-                    <button
-                      onClick={cancelBlockadeReport}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-3 rounded-lg font-medium"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Bottom Action Bar with Navigation (Connected) */}
-            <div className="absolute bottom-4 left-4 right-4 z-40">
-              {/* Navigation Bar - Show when navigation is active */}
-              {isNavigating && currentInstruction && (
-                <div className="bg-blue-600 text-white rounded-t-lg shadow-lg p-4 mb-0">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">
-                        {currentInstruction.icon}
-                      </span>
-                      <div>
-                        <div className="text-lg font-bold">
-                          {currentInstruction.instruction}
-                        </div>
-                        {currentInstruction.distance && (
-                          <div className="text-sm opacity-90">
-                            In {currentInstruction.distance}m
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={stopNavigation}
-                      className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
-                      title="Stop Navigation"
-                    >
-                      <span className="text-lg">❌</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Bar */}
-              <div
-                className={`bg-white shadow-lg p-3 ${
-                  isNavigating ? "rounded-b-lg" : "rounded-lg"
-                }`}
-              >
-                <div className="flex justify-around items-center">
-                  {/* User Info Button */}
-                  <button
-                    onClick={() => {
-                      setShowUserInfo(!showUserInfo);
-                      setShowIncidentsList(false);
-                      setShowBlockadesList(false);
-                      setBlockadeReportingMode(false);
-                    }}
-                    className={`flex flex-col items-center p-2 rounded-lg ${
-                      showUserInfo
-                        ? "bg-blue-100 text-blue-600"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold mb-1">
-                      {user.name.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="text-xs">Profile</span>
-                  </button>
-
-                  {/* Incidents Button */}
-                  <button
-                    onClick={() => {
-                      setShowIncidentsList(!showIncidentsList);
-                      setShowUserInfo(false);
-                      setShowBlockadesList(false);
-                      setBlockadeReportingMode(false);
-                    }}
-                    className={`flex flex-col items-center p-2 rounded-lg ${
-                      showIncidentsList
-                        ? "bg-blue-100 text-blue-600"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    <span className="text-lg mb-1">🚨</span>
-                    <span className="text-xs">Incidents</span>
-                  </button>
-
-                  {/* Auto-Assign Nearest */}
-                  <button
-                    onClick={() => {
-                      assignNearestIncident();
-                      setBlockadeReportingMode(false);
-                    }}
-                    className="flex flex-col items-center p-2 rounded-lg text-gray-600 hover:bg-green-50"
-                  >
-                    <span className="text-lg mb-1">🎯</span>
-                    <span className="text-xs">Assign</span>
-                  </button>
-
-                  {/* Road Issues Button */}
-                  <button
-                    onClick={() => {
-                      setShowBlockadesList(!showBlockadesList);
-                      setShowUserInfo(false);
-                      setShowIncidentsList(false);
-                      setBlockadeReportingMode(false);
-                    }}
-                    className={`flex flex-col items-center p-2 rounded-lg ${
-                      showBlockadesList
-                        ? "bg-red-100 text-red-600"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    <span className="text-lg mb-1">🚧</span>
-                    <span className="text-xs">Issues</span>
-                  </button>
-
-                  {/* Report Issue */}
-                  <button
-                    onClick={() => {
-                      toggleBlockadeReporting();
-                      setShowUserInfo(false);
-                      setShowIncidentsList(false);
-                      setShowBlockadesList(false);
-                    }}
-                    className={`flex flex-col items-center p-2 rounded-lg ${
-                      blockadeReportingMode
-                        ? "bg-red-100 text-red-600"
-                        : "text-gray-600 hover:bg-red-50"
-                    }`}
-                  >
-                    <span className="text-lg mb-1">
-                      {blockadeReportingMode ? "❌" : "📍"}
-                    </span>
-                    <span className="text-xs">
-                      {blockadeReportingMode ? "Cancel" : "Report"}
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Recenter Button - Always visible */}
-            <button
-              onClick={() => {
-                if (userLocation) {
-                  centerMapOnLocation(userLocation.lat, userLocation.lng);
-                }
-              }}
-              className="absolute top-20 right-4 z-40 bg-white p-3 rounded-full shadow-lg hover:bg-gray-100"
-              title="Recenter map to current location"
-              style={{ display: userLocation ? "block" : "none" }}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className="w-6 h-6 text-blue-600"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Map Controls */}
-          <div className="absolute bottom-4 right-4 z-30 flex flex-row gap-3 mobile-controls">
-            {userLocation && (
-              <button
-                onClick={recenterMap}
-                className="w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg mobile-touch-button flex items-center justify-center transition-colors duration-200"
-                title="Recenter map to current location"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-              </button>
-            )}
-
-            <button
-              onClick={refreshData}
-              className="w-12 h-12 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg mobile-touch-button flex items-center justify-center transition-colors duration-200"
-              title="Refresh all map data (incidents and road issues)"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Desktop Sidebar - Hidden on Mobile */}
-          <div className="hidden md:block absolute left-0 top-0 h-full bg-white shadow-lg z-35 w-80 overflow-y-auto">
-            <div className="p-4">
-              <h3 className="text-lg font-semibold mb-4">Response Map</h3>
-
-              {/* User Info */}
-              <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-                <div className="flex items-center mb-2">
-                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-2">
-                    {user.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">{user.name}</div>
-                    <div className="text-xs text-gray-600">{user.email}</div>
-                  </div>
-                </div>
-                <div className="mt-2 p-2 bg-blue-100 rounded text-xs">
-                  <div className="font-semibold text-blue-800">
-                    📍 Current Location
-                  </div>
-                  <div
-                    className="text-blue-700 mt-1"
-                    style={{ whiteSpace: "pre-line" }}
-                  >
-                    {currentLocationDisplay}
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="mb-4 space-y-2">
-                <button
-                  onClick={assignNearestIncident}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm"
-                >
-                  🚨 Auto-Assign Nearest
-                </button>
-                <button
-                  onClick={toggleBlockadeReporting}
-                  className={`w-full px-4 py-3 rounded-lg text-sm ${
-                    blockadeReportingMode
-                      ? "bg-gray-600 hover:bg-gray-700 text-white"
-                      : "bg-red-600 hover:bg-red-700 text-white"
-                  }`}
-                >
-                  {blockadeReportingMode ? "❌ Cancel" : "🚧 Report Issue"}
-                </button>
-              </div>
-
-              {/* Desktop Blockade Form */}
-              {blockadeReportingMode && (
-                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                  <h4 className="font-semibold text-sm mb-2">
-                    Report Road Issue
-                  </h4>
-                  <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-xs">
-                    <strong>📍 Click anywhere on the map</strong>
-                    <br />
-                    The system will automatically snap to the nearest road.
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Brief description"
-                    value={blockadeForm.title}
-                    onChange={(e) =>
-                      setBlockadeForm((prev) => ({
-                        ...prev,
-                        title: e.target.value,
-                      }))
-                    }
-                    className="w-full mb-2 p-2 border rounded text-sm"
-                  />
-                  <textarea
-                    placeholder="Detailed description"
-                    value={blockadeForm.description}
-                    onChange={(e) =>
-                      setBlockadeForm((prev) => ({
-                        ...prev,
-                        description: e.target.value,
-                      }))
-                    }
-                    className="w-full mb-2 p-2 border rounded text-sm h-16 resize-none"
-                  />
-                  <select
-                    value={blockadeForm.severity}
-                    onChange={(e) =>
-                      setBlockadeForm((prev) => ({
-                        ...prev,
-                        severity: e.target.value,
-                      }))
-                    }
-                    className="w-full mb-3 p-2 border rounded text-sm"
-                  >
-                    <option value="low">Low Severity</option>
-                    <option value="medium">Medium Severity</option>
-                    <option value="high">High Severity</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={submitBlockadeReport}
-                      className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
-                    >
-                      Submit
-                    </button>
-                    <button
-                      onClick={cancelBlockadeReport}
-                      className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab Buttons */}
-              <div className="flex mb-4 border-b">
-                <button
-                  onClick={() => setSelectedTab("incidents")}
-                  className={`flex-1 py-2 px-4 text-sm ${
-                    selectedTab === "incidents"
-                      ? "border-b-2 border-blue-500 text-blue-600 bg-blue-50"
-                      : "text-gray-600 hover:text-gray-800"
-                  }`}
-                >
-                  🚨 Incidents
-                </button>
-                <button
-                  onClick={() => setSelectedTab("blockades")}
-                  className={`flex-1 py-2 px-4 text-sm ${
-                    selectedTab === "blockades"
-                      ? "border-b-2 border-red-500 text-red-600 bg-red-50"
-                      : "text-gray-600 hover:text-gray-800"
-                  }`}
-                >
-                  🚧 Road Issues
-                </button>
-              </div>
-
-              {/* Items List */}
-              <div className="space-y-2">
-                {selectedTab === "incidents" ? (
-                  incidents.length > 0 ? (
-                    incidents.map((incident, index) => (
-                      <div
-                        key={index}
-                        className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                        onClick={() => {
-                          if (incident.lat && incident.lng) {
-                            drawRoute(incident.lat, incident.lng, true);
-                          }
-                        }}
-                      >
-                        <div className="font-semibold text-red-600 text-sm">
-                          {incident.type}
-                        </div>
-                        <div className="text-sm">{incident.location}</div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          {incident.description}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-3 text-gray-500 text-sm">
-                      No incidents available
-                    </div>
-                  )
-                ) : blockades.length > 0 ? (
-                  blockades.map((blockade, index) => (
-                    <div
-                      key={index}
-                      className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                      onClick={() =>
-                        drawRoute(blockade.latitude, blockade.longitude)
-                      }
-                    >
-                      <div className="font-semibold text-red-600 text-sm">
-                        {blockade.title}
-                      </div>
-                      <div className="text-xs text-gray-600">
-                        {blockade.road_name} • {blockade.severity.toUpperCase()}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {blockade.description}
-                      </div>
-                      <div className="text-xs text-gray-400 mt-1">
-                        By: {blockade.reported_by} •{" "}
-                        {blockade.reported_at_human}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-3 text-gray-500 text-sm">
-                    No road blockades in this area
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Map Container */}
-          <div ref={mapRef} className="absolute inset-0 w-full h-full" />
-        </div>
+        {mapShell}
       </div>
     </div>
   );

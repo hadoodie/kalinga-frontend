@@ -1,6 +1,7 @@
 // src/services/api.js
 import axios from "axios";
 import { getEchoInstance } from "./echo";
+import { cleanupAuthStorage } from "../utils/storage";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -71,6 +72,27 @@ api.interceptors.request.use(
   }
 );
 
+// Helper to clear auth state and notify listeners when session expires
+const forceLogout = () => {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
+    cleanupAuthStorage();
+  } catch (storageError) {
+    console.warn("Failed to clear auth storage", storageError);
+  }
+
+  try {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("auth:logout"));
+    }
+  } catch (eventError) {
+    console.warn("Failed to dispatch auth:logout event", eventError);
+  }
+};
+
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
@@ -99,20 +121,19 @@ api.interceptors.response.use(
         originalRequest.url?.includes("/register") ||
         originalRequest.url?.includes("/me");
 
-      // Only logout if:
-      // 1. This is an auth verification endpoint (like /me)
-      // 2. OR we've already retried
-      // 3. AND we're not already on the login page
-      if (isAuthEndpoint && originalRequest._authRetry) {
-        console.warn("Authentication failed - logging out");
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
+      // Always clear stale auth data on 401s
+      forceLogout();
 
-        if (!window.location.pathname.includes("/login")) {
+      if (isAuthEndpoint) {
+        // Redirect back to login so the user can authenticate again
+        if (
+          typeof window !== "undefined" &&
+          !window.location.pathname.includes("/login")
+        ) {
           window.location.href = "/login";
         }
-      } else if (!originalRequest._authRetry && !isAuthEndpoint) {
-        // For other endpoints, try refreshing CSRF and retry once
+      } else if (!originalRequest._authRetry) {
+        // For non-auth endpoints try a single retry after refreshing CSRF cookie
         console.log("401 error - attempting to refresh auth and retry");
         originalRequest._authRetry = true;
         await getCsrfCookie();

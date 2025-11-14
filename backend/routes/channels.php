@@ -9,6 +9,16 @@ Broadcast::channel('online', function ($user) {
     return $user ? new UserResource($user) : null;
 });
 
+Broadcast::channel('incidents', function ($user) {
+    if (!$user) {
+        return false;
+    }
+
+    return in_array($user->role, ['admin', 'responder'], true)
+        ? new UserResource($user)
+        : false;
+});
+
 Broadcast::channel('chat.user.{userId}', function ($user, $userId) {
     if ((int) $user->id !== (int) $userId) {
         return false;

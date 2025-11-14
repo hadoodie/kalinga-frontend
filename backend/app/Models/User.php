@@ -101,4 +101,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(AllocationRequest::class, 'requester_user_id');
     }
+
+    public function responderAssignments(): HasMany
+    {
+        return $this->hasMany(IncidentResponderAssignment::class, 'responder_id');
+    }
+
+    public function incidentStatusUpdates(): HasMany
+    {
+        return $this->hasMany(IncidentStatusUpdate::class);
+    }
 }

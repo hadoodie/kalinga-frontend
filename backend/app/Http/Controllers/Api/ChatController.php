@@ -2,12 +2,19 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\IncidentUpdated;
 use App\Events\MessageSent;
 use App\Http\Controllers\Controller;
 use App\Models\Conversation;
+use App\Models\Incident;
+use App\Models\IncidentStatusUpdate;
 use App\Models\Message;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ChatController extends Controller
@@ -188,6 +195,7 @@ class ChatController extends Controller
             'receiver_id' => ['required', 'integer', 'exists:users,id'],
             'message' => ['required_without:group_id', 'nullable', 'string'],
             'group_id' => ['nullable', 'integer', 'exists:groups,id'],
+            'emergency_payload' => ['nullable', 'array'],
         ]);
 
         if ((int) $validated['receiver_id'] === $user->id && empty($validated['group_id'])) {
@@ -195,9 +203,9 @@ class ChatController extends Controller
                 'receiver_id' => 'You cannot send a direct message to yourself.',
             ]);
         }
-
         $receiverId = (int) $validated['receiver_id'];
         $groupId = $validated['group_id'] ?? null;
+        $emergencyPayload = $validated['emergency_payload'] ?? null;
 
         $conversationId = null;
 
@@ -280,16 +288,204 @@ class ChatController extends Controller
             groupId: $groupId,
         ));
 
+        $autoReplyPayload = $this->handleEmergencyEscalation(
+            sender: $user,
+            patientMessage: $message,
+            conversationPayload: $conversationPayload,
+            receiverPayload: $receiverPayload,
+            emergencyPayload: $emergencyPayload,
+        );
+
+        $responseData = array_merge($messagePayload, [
+            'isOwn' => true,
+            'conversationId' => $conversationId,
+            'participant' => $conversationPayload['participant'],
+            'participants' => $conversationPayload['participants'],
+            'receiver' => $receiverPayload,
+            'sender' => $senderPayload,
+        ]);
+
+        if ($autoReplyPayload) {
+            $responseData['autoReply'] = $autoReplyPayload;
+        }
+
         return response()->json([
-            'data' => array_merge($messagePayload, [
-                'isOwn' => true,
-                'conversationId' => $conversationId,
-                'participant' => $conversationPayload['participant'],
-                'participants' => $conversationPayload['participants'],
-                'receiver' => $receiverPayload,
-                'sender' => $senderPayload,
-            ]),
+            'data' => $responseData,
         ], 201);
+    }
+
+    private function handleEmergencyEscalation(
+        \App\Models\User $sender,
+        Message $patientMessage,
+        array $conversationPayload,
+        ?array $receiverPayload,
+        ?array $emergencyPayload
+    ): ?array {
+        if (empty($emergencyPayload) || $sender->role !== 'patient') {
+            return null;
+        }
+
+        if (!$receiverPayload || !isset($receiverPayload['id'])) {
+            return null;
+        }
+
+        $latitudeRaw = Arr::get($emergencyPayload, 'latitude');
+        $longitudeRaw = Arr::get($emergencyPayload, 'longitude');
+
+        $latitude = is_numeric($latitudeRaw) ? (float) $latitudeRaw : null;
+        $longitude = is_numeric($longitudeRaw) ? (float) $longitudeRaw : null;
+
+        $locationLabel = Arr::get($emergencyPayload, 'location_label');
+        $locationLabel = $locationLabel !== null ? trim((string) $locationLabel) : null;
+
+        if (!$locationLabel) {
+            if ($latitude !== null && $longitude !== null) {
+                $locationLabel = sprintf('Coordinates: %.5f, %.5f', $latitude, $longitude);
+            } else {
+                $locationLabel = 'Location not provided';
+            }
+        }
+
+        $rawDescription = Arr::get($emergencyPayload, 'description')
+            ?? $patientMessage->message
+            ?? 'Emergency SOS triggered.';
+
+        $incidentType = Arr::get($emergencyPayload, 'incident_type', 'Emergency SOS');
+
+        $latlngValue = ($latitude !== null && $longitude !== null)
+            ? sprintf('%.6f,%.6f', $latitude, $longitude)
+            : null;
+
+        $formattedDescription = $this->formatIncidentDescription([
+            'incident_type' => $incidentType,
+            'location_label' => $locationLabel,
+            'latlng' => $latlngValue,
+            'raw_description' => $rawDescription,
+            'triggered_at' => Arr::get($emergencyPayload, 'triggered_at'),
+            'reported_at' => $patientMessage->created_at,
+            'accuracy' => Arr::get($emergencyPayload, 'accuracy'),
+            'map_url' => Arr::get($emergencyPayload, 'map_url'),
+            'notes' => Arr::get($emergencyPayload, 'notes'),
+            'location_error' => Arr::get($emergencyPayload, 'location_error'),
+        ]);
+
+        $respondersRequired = (int) ($emergencyPayload['responders_required'] ?? 1);
+        if ($respondersRequired < 1) {
+            $respondersRequired = 1;
+        }
+
+        $incidentData = [
+            'type' => $incidentType,
+            'location' => $locationLabel,
+            'latlng' => $latlngValue,
+            'description' => $formattedDescription ?? $rawDescription,
+            'user_id' => $sender->id,
+            'status' => Incident::STATUS_REPORTED,
+            'responders_required' => $respondersRequired,
+            'assigned_responder_id' => null,
+            'assigned_at' => null,
+        ];
+
+        $incident = Incident::create($incidentData);
+
+        IncidentStatusUpdate::create([
+            'incident_id' => $incident->id,
+            'user_id' => $sender->id,
+            'status' => Incident::STATUS_REPORTED,
+            'notes' => 'Emergency SOS created via responder chat.',
+        ]);
+
+        broadcast(new IncidentUpdated($incident))->toOthers();
+
+        $conversationId = $conversationPayload['conversationId'] ?? null;
+
+        if (!$conversationId) {
+            return null;
+        }
+
+        $autoReplyText = Arr::get($emergencyPayload, 'auto_reply_text')
+            ?? 'Responder has received your emergency alert and is preparing to assist you. Stay safe and provide any updates if your situation changes.';
+
+        $autoMessage = Message::create([
+            'message' => $autoReplyText,
+            'sender_id' => $receiverPayload['id'],
+            'receiver_id' => $sender->id,
+            'group_id' => null,
+            'conversation_id' => $conversationId,
+        ]);
+
+        Conversation::whereKey($conversationId)->update([
+            'last_message_id' => $autoMessage->id,
+        ]);
+
+        $autoMessage->load(['sender:id,name,role,profile_image', 'receiver:id,name,role,profile_image']);
+
+        $autoSenderPayload = $autoMessage->sender ? [
+            'id' => $autoMessage->sender->id,
+            'name' => $autoMessage->sender->name,
+            'role' => $autoMessage->sender->role,
+            'avatar' => $autoMessage->sender->profile_image,
+            'profile_image' => $autoMessage->sender->profile_image,
+        ] : null;
+
+        $autoReceiverPayload = $autoMessage->receiver ? [
+            'id' => $autoMessage->receiver->id,
+            'name' => $autoMessage->receiver->name,
+            'role' => $autoMessage->receiver->role,
+            'avatar' => $autoMessage->receiver->profile_image,
+            'profile_image' => $autoMessage->receiver->profile_image,
+        ] : null;
+
+        $autoTimestamp = optional($autoMessage->created_at)->toIso8601String();
+
+        $autoMessagePayload = [
+            'id' => $autoMessage->id,
+            'text' => $autoMessage->message,
+            'senderId' => $autoMessage->sender_id,
+            'receiverId' => $autoMessage->receiver_id,
+            'sender' => $autoMessage->sender?->name,
+            'timestamp' => $autoTimestamp,
+            'isRead' => false,
+            'isSystemMessage' => false,
+        ];
+
+        $participants = $conversationPayload['participants']
+            ?? collect([$autoSenderPayload, $autoReceiverPayload])
+                ->filter()
+                ->values()
+                ->all();
+
+        $participant = $conversationPayload['participant']
+            ?? ($autoReceiverPayload ?? $autoSenderPayload);
+
+        $autoConversationPayload = [
+            'id' => $conversationPayload['id'],
+            'conversationId' => $conversationId,
+            'participant' => $participant,
+            'participants' => $participants,
+            'sender' => $autoSenderPayload,
+            'receiver' => $autoReceiverPayload,
+            'category' => $conversationPayload['category'] ?? 'Emergency',
+            'unreadCount' => 0,
+            'isArchived' => false,
+            'lastMessage' => $autoMessage->message,
+            'lastMessageTime' => $autoTimestamp,
+            'messages' => [$autoMessagePayload],
+        ];
+
+        broadcast(new MessageSent(
+            message: $autoMessagePayload,
+            conversation: $autoConversationPayload,
+            senderId: $autoMessage->sender_id,
+            receiverId: $autoMessage->receiver_id,
+            groupId: null,
+            suppressCurrentUser: false,
+        ));
+
+        return [
+            'message' => $autoMessagePayload,
+            'conversation' => $autoConversationPayload,
+        ];
     }
 
     public function deleteMessage(Request $request, int $messageId)
@@ -318,6 +514,158 @@ class ChatController extends Controller
             'user_id1' => $ids[0],
             'user_id2' => $ids[1],
         ]);
+    }
+
+    private function formatIncidentDescription(array $metadata): ?string
+    {
+        $incidentType = trim((string) ($metadata['incident_type'] ?? ''));
+        if ($incidentType === '') {
+            $incidentType = 'Emergency Alert';
+        }
+
+        $headline = '🚨 ' . $incidentType;
+        if (!Str::contains(Str::lower($incidentType), 'report')) {
+            $headline .= ' reported';
+        }
+
+        $locationLabel = trim((string) ($metadata['location_label'] ?? ''));
+        if ($locationLabel === '') {
+            $locationLine = 'Address: Unknown location';
+        } else {
+            $addressPrefix = Str::contains(Str::lower($locationLabel), ['street', 'road', 'ave', 'barangay', 'city', 'province'])
+                ? 'Address: '
+                : 'Location: ';
+            $locationLine = $addressPrefix . $locationLabel;
+        }
+
+        $latlng = trim((string) ($metadata['latlng'] ?? ''));
+        $coordinateLine = $latlng !== '' ? 'Coordinates: ' . $latlng : null;
+
+        $timestampLine = null;
+        $timestampCandidate = $metadata['triggered_at'] ?? null;
+
+        if ($timestampCandidate instanceof Carbon) {
+            $timestamp = $timestampCandidate->copy();
+        } elseif (is_string($timestampCandidate) && $timestampCandidate !== '') {
+            try {
+                $timestamp = Carbon::parse($timestampCandidate);
+            } catch (\Throwable $exception) {
+                $timestamp = null;
+            }
+        } else {
+            $timestamp = null;
+        }
+
+        if (!$timestamp) {
+            $reportedAt = $metadata['reported_at'] ?? null;
+            if ($reportedAt instanceof Carbon) {
+                $timestamp = $reportedAt->copy();
+            } elseif ($reportedAt) {
+                try {
+                    $timestamp = Carbon::parse((string) $reportedAt);
+                } catch (\Throwable $exception) {
+                    $timestamp = null;
+                }
+            }
+        }
+
+        if ($timestamp) {
+            $timezone = config('app.timezone') ?: 'UTC';
+            $timestampLine = 'Reported: ' . $timestamp->setTimezone($timezone)->format('M j, Y g:i A T');
+        }
+
+        $accuracyValue = $metadata['accuracy'] ?? null;
+        $accuracyLine = is_numeric($accuracyValue)
+            ? 'Accuracy: ±' . (int) round($accuracyValue) . 'm'
+            : null;
+
+        $mapUrl = trim((string) ($metadata['map_url'] ?? ''));
+        $mapLine = $mapUrl !== '' ? 'Map: ' . $mapUrl : null;
+
+        $rawDescription = trim((string) ($metadata['raw_description'] ?? ''));
+        $notes = trim((string) ($metadata['notes'] ?? ''));
+        $locationError = trim((string) ($metadata['location_error'] ?? ''));
+
+        $detailSegments = $this->extractIncidentDetails($rawDescription);
+
+        if ($notes !== '') {
+            $detailSegments[] = 'Notes: ' . $notes;
+        }
+
+        if ($locationError !== '') {
+            $detailSegments[] = 'Location error: ' . $locationError;
+        }
+
+        $detailSegments = array_values(array_unique(array_filter($detailSegments)));
+
+        $lines = array_values(array_filter([
+            $headline,
+            $locationLine,
+            $coordinateLine,
+            $timestampLine,
+            $accuracyLine,
+            $mapLine,
+        ]));
+
+        if (count($detailSegments) === 1) {
+            $lines[] = 'Details: ' . $detailSegments[0];
+        } elseif (count($detailSegments) > 1) {
+            $lines[] = 'Details:';
+            foreach ($detailSegments as $detail) {
+                $lines[] = '- ' . $detail;
+            }
+        }
+
+        if (empty($lines)) {
+            return null;
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private function extractIncidentDetails(?string $rawDescription): array
+    {
+        if (!$rawDescription) {
+            return [];
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $rawDescription) ?: [];
+        $details = [];
+
+        foreach ($lines as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+
+            $lower = Str::lower($trimmed);
+
+            if (Str::startsWith($trimmed, '🚨')) {
+                continue;
+            }
+
+            if (Str::startsWith($lower, [
+                'time:',
+                'coordinates:',
+                'accuracy:',
+                'map:',
+                'notes:',
+                'location:',
+                'address:',
+                'reported:',
+                'details:',
+            ])) {
+                continue;
+            }
+
+            $details[] = $trimmed;
+        }
+
+        if (empty($details) && count($lines) === 1) {
+            return [trim($lines[0])];
+        }
+
+        return $details;
     }
 
     private function mapCategory(?string $role): string

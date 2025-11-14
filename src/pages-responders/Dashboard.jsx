@@ -8,6 +8,7 @@ import MapCard from "../components/responder/MapCard";
 import ResourcesCard from "../components/responder/ResourcesCard";
 import TriageCard from "../components/responder/TriageCard";
 import Footer from "../components/responder/Footer";
+import EmergencyNotifications from "../components/responder/EmergencyNotifications";
 
 const Dashboard = () => {
   const [selectedCity, setSelectedCity] = useState("Metro Manila (All)");
@@ -23,6 +24,10 @@ const Dashboard = () => {
       />
 
       <Cards />
+
+      <div className="mt-6">
+        <EmergencyNotifications />
+      </div>
 
       <div className="cards-grid mt-4">
         <Reports selectedHospital={selectedHospital} />
