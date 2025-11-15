@@ -2,24 +2,25 @@
 import { TrendingUp, TrendingDown, Package, DollarSign, Clock, CheckCircle } from "lucide-react";
 
 const MetricCard = ({ title, value, change, icon: Icon, trend, loading }) => (
-  <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm">
-    <div className="flex items-center justify-between">
-      <div className="flex-1 min-w-0">
-        <p className="text-xs sm:text-sm font-medium text-gray-600 truncate">{title}</p>
-        <p className={`text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 mt-1 ${loading ? 'animate-pulse bg-gray-200 text-transparent rounded' : ''}`}>
-          {loading ? '...' : value}
-        </p>
-        {change && (
-          <div className={`flex items-center gap-1 text-xs mt-1 ${
-            trend === 'up' ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {trend === 'up' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            <span>{change}</span>
-          </div>
-        )}
+  <div className="bg-white p-4 sm:p-5 rounded-lg border border-gray-200 shadow-sm">
+    <div className="flex items-center gap-3 ml-2 ">
+      <div className="p-3 bg-green-50 rounded-lg flex-shrink-0">
+        <Icon className="h-7 w-7 text-green-800" />
       </div>
-      <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0 ml-2">
-        <Icon className="h-4 w-4 sm:h-5 sm:w-5 lg:h-6 lg:w-6 text-blue-600" />
+      <div className="flex-1">
+        <div className="flex items-baseline gap-2">
+          <p className={`text-3xl sm:text-4xl font-bold text-green-800 ${loading ? 'animate-pulse bg-gray-200 text-transparent rounded' : ''}`}>
+            {loading ? '...' : value}
+          </p>
+          {change && (
+            <span className={`text-sm font-semibold ${
+              trend === 'up' ? 'text-green-600' : 'text-red-600'
+            }`}>
+              {change}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-left font-mediummt-1">{title}</p>
       </div>
     </div>
   </div>

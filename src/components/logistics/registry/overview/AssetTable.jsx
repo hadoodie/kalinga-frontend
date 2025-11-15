@@ -4,7 +4,7 @@ import {
   Truck, Plus, Home, Car, Bus, Zap, Shield, 
   Ship, Radio, Package, Users, MapPin,
   Edit, Trash2, Download, Archive, Send, MoreVertical,
-  Tablet, LayoutGrid, ChevronLeft, ChevronRight, Eye
+  Tablet, LayoutGrid, ChevronLeft, ChevronRight, Eye, X
 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import { useNavigate } from "react-router-dom";
@@ -102,24 +102,24 @@ export default function AssetTable({ assets, loading, onRefresh, filters = {} })
     const iconClass = "h-4 w-4";
     
     const iconMap = {
-      'ambulance': <Truck className={`${iconClass} text-red-600`} />,
-      'medical vehicle': <Truck className={`${iconClass} text-red-600`} />,
-      'medical equipment': <Plus className={`${iconClass} text-green-600`} />,
-      'medical facility': <Home className={`${iconClass} text-pink-600`} />,
-      'fire truck': <Truck className={`${iconClass} text-red-500`} />,
-      'emergency vehicle': <Truck className={`${iconClass} text-red-500`} />,
-      'support vehicle': <Car className={`${iconClass} text-gray-600`} />,
-      'all-terrain vehicle': <Bus className={`${iconClass} text-orange-600`} />,
-      'generator': <Zap className={`${iconClass} text-yellow-600`} />,
-      'power equipment': <Zap className={`${iconClass} text-yellow-600`} />,
-      'safety equipment': <Shield className={`${iconClass} text-amber-600`} />,
-      'rescue boat': <Ship className={`${iconClass} text-blue-600`} />,
-      'watercraft': <Ship className={`${iconClass} text-blue-600`} />,
-      'command unit': <Shield className={`${iconClass} text-purple-600`} />,
-      'communication': <Radio className={`${iconClass} text-teal-600`} />
+      'ambulance': <div className={`${iconClass} text-red-600`} />,
+      'medical vehicle': <div className={`${iconClass} text-red-600`} />,
+      'medical equipment': <div className={`${iconClass} text-green-600`} />,
+      'medical facility': <div className={`${iconClass} text-pink-600`} />,
+      'fire truck': <div className={`${iconClass} text-red-500`} />,
+      'emergency vehicle': <div className={`${iconClass} text-red-500`} />,
+      'support vehicle': <div className={`${iconClass} text-gray-600`} />,
+      'all-terrain vehicle': <div className={`${iconClass} text-orange-600`} />,
+      'generator': <div className={`${iconClass} text-yellow-600`} />,
+      'power equipment': <div className={`${iconClass} text-yellow-600`} />,
+      'safety equipment': <div className={`${iconClass} text-amber-600`} />,
+      'rescue boat': <div className={`${iconClass} text-blue-600`} />,
+      'watercraft': <div className={`${iconClass} text-blue-600`} />,
+      'command unit': <div className={`${iconClass} text-purple-600`} />,
+      'communication': <div className={`${iconClass} text-teal-600`} />
     };
 
-    return iconMap[category?.toLowerCase()] || <Package className={`${iconClass} text-gray-600`} />;
+    return iconMap[category?.toLowerCase()] || <div className={`${iconClass} text-gray-600`} />;
   };
 
   // Core Functions
@@ -213,7 +213,7 @@ const handleViewDetails = (asset) => {
         </div>
       </div>
 
-      <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+      <div className="flex justify-between items-center pt-3 ">
         <div className="flex items-center gap-1 text-xs text-gray-500">
           <MapPin className="h-3 w-3" />
           {asset.location}
@@ -258,18 +258,15 @@ const handleViewDetails = (asset) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-0">
       {/* Header */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white p-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-green-900 mb-1">
-              {filters.status ? `${filters.status} Assets` : 'Asset Registry'}
-            </h2>
-            <p className="text-gray-600">
+            <h2 className="text-xl font-bold text-green-900 mb-1">
               {filteredAssets.length} assets found
               {selectedAssets.size > 0 && ` • ${selectedAssets.size} selected`}
-            </p>
+            </h2>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-3">
@@ -291,30 +288,30 @@ const handleViewDetails = (asset) => {
               <div className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   onClick={() => setViewMode("table")}
-                  className={`asset-btn flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium ${
+                  className={`asset-btn flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium ${
                     viewMode === "table" ? "bg-green-800 text-white" : "text-gray-600 hover:text-gray-800"
                   }`}
                 >
-                  <Tablet className="h-4 w-4" /> Table
+                  <Tablet className="h-4 w-4" />
                 </button>
                 <button
                   onClick={() => setViewMode("card")}
-                  className={`asset-btn flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium ${
+                  className={`asset-btn flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium ${
                     viewMode === "card" ? "bg-green-800 text-white" : "text-gray-600 hover:text-gray-800"
                   }`}
                 >
-                  <LayoutGrid className="h-4 w-4" /> Cards
+                  <LayoutGrid className="h-4 w-4" />
                 </button>
               </div>
             )}
 
-<ActionButton 
-  onClick={() => navigate('/logistics/assets/add')} 
-  variant="primary" 
-  icon={Plus}
->
-  Add Asset
-</ActionButton>
+            <ActionButton 
+              onClick={() => navigate('/logistics/assets/add')} 
+              variant="primary" 
+              icon={Plus}
+            >
+              Add Asset
+            </ActionButton>
           </div>
         </div>
       </div>
@@ -322,37 +319,41 @@ const handleViewDetails = (asset) => {
       {/* Desktop Table View */}
       <div className="desktop-table">
         {viewMode === "table" && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="bg-white overflow-hidden px-4 mx-3 sm:mx-5 lg:mx-2">
             <div className="overflow-x-auto">
-              <table className="w-full divide-y divide-gray-200">
-                <thead className="bg-green-800 text-white">
+              <table className="w-full divide-y divide-gray-200 text-center"> 
+                <thead className="bg-transparent text-green-800">
                   <tr>
                     {showCheckboxes && (
-                      <th className="w-12 px-4 py-4 text-left">
+                      <th className="w-12 px-4 py-4 align-middle text-center">
                         <input
                           type="checkbox"
                           className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                           checked={selectedAssets.size === currentAssets.length && currentAssets.length > 0}
-                          onChange={() => selectedAssets.size === currentAssets.length ? setSelectedAssets(new Set()) : setSelectedAssets(new Set(currentAssets.map(asset => asset.id)))}
+                          onChange={() =>
+                            selectedAssets.size === currentAssets.length
+                              ? setSelectedAssets(new Set())
+                              : setSelectedAssets(new Set(currentAssets.map(asset => asset.id)))
+                          }
                         />
                       </th>
                     )}
-                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Asset Details</th>
-                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Category</th>
-                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Capacity</th>
-                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Status</th>
-                    <th className="px-4 py-4 text-left text-sm font-semibold uppercase">Location</th>
+                    <th className="px-4 py-4 text-sm font-semibold uppercase text-center">Asset Details</th>
+                    <th className="px-4 py-4 text-sm font-semibold uppercase text-center">Category</th>
+                    <th className="px-4 py-4 text-sm font-semibold uppercase text-center">Capacity</th>
+                    <th className="px-4 py-4 text-sm font-semibold uppercase text-center">Status</th>
+                    <th className="px-4 py-4 text-sm font-semibold uppercase text-center">Location</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {currentAssets.map((asset) => (
-                    <tr 
-                      key={asset.id} 
+                    <tr
+                      key={asset.id}
                       className="asset-table-row cursor-pointer"
                       onClick={() => !showCheckboxes && handleViewDetails(asset)}
                     >
                       {showCheckboxes && (
-                        <td className="px-4 py-4 text-left" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
@@ -361,8 +362,8 @@ const handleViewDetails = (asset) => {
                           />
                         </td>
                       )}
-                      <td className="px-4 py-4 text-left">
-                        <div className="flex items-center gap-3">
+                      <td className="px-4 py-4 text-center">
+                        <div className="flex items-center justify-center gap-3"> {/* justify-center added */}
                           {getAssetIcon(asset.category)}
                           <div>
                             <div className="font-semibold text-green-900 text-sm">{asset.id}</div>
@@ -370,11 +371,11 @@ const handleViewDetails = (asset) => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4 text-sm text-gray-900 text-left">{asset.category}</td>
-                      <td className="px-4 py-4 text-sm text-gray-900 text-left">{asset.capacity}</td>
-                      <td className="px-4 py-4 text-left"><StatusBadge status={asset.status} /></td>
-                      <td className="px-4 py-4 text-sm text-gray-900 text-left">
-                        <div className="flex items-center gap-1">
+                      <td className="px-4 py-4 text-center text-sm text-gray-900">{asset.category}</td>
+                      <td className="px-4 py-4 text-center text-sm text-gray-900">{asset.capacity}</td>
+                      <td className="px-4 py-4 text-center"><StatusBadge status={asset.status} /></td>
+                      <td className="px-4 py-4 text-center text-sm text-gray-900">
+                        <div className="flex items-center justify-center gap-1"> {/* justify-center added */}
                           <MapPin className="h-3 w-3 text-gray-400" /> {asset.location}
                         </div>
                       </td>
@@ -388,6 +389,7 @@ const handleViewDetails = (asset) => {
 
         {/* Desktop Card View */}
         {viewMode === "card" && (
+          <div className="bg-white rounded-b-lg border-b border-gray-200 p-3">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {currentAssets.map((asset) => (
               <div 
@@ -421,7 +423,7 @@ const handleViewDetails = (asset) => {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center pt-3 border-t border-gray-200">
+                <div className="flex justify-between items-center pt-3">
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <MapPin className="h-3 w-3" />
                     {asset.location}
@@ -439,6 +441,7 @@ const handleViewDetails = (asset) => {
               </div>
             ))}
           </div>
+          </div>
         )}
       </div>
 
@@ -453,7 +456,7 @@ const handleViewDetails = (asset) => {
 
       {/* Pagination */}
       {filteredAssets.length > itemsPerPage && (
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-lg border-b-lg border-gray-200">
           <div className="text-sm text-gray-600">
             Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, filteredAssets.length)} of {filteredAssets.length} assets
           </div>
@@ -488,10 +491,6 @@ const handleViewDetails = (asset) => {
           </div>
         </div>
       )}
-
-   
-
-
     </div>
   );
 }

@@ -173,7 +173,6 @@ const enhancedStyles = `
   overflow: hidden;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border: 2px solid transparent;
-  background: white;
   cursor: pointer;
 }
 
@@ -447,15 +446,12 @@ export default function OverviewTab({ loading }) {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header Section */}
-      <div className="bg-white rounded-xl p-4 sm:p-6 border border-gray-200">
+      <div className="rounded-xl p-4 sm:p-6 border border-gray-200">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 registry-header">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-4 mb-3">
-              <div className="p-3 bg-green-100 rounded-xl registry-header-icon">
-                <ClipboardClock className="h-8 w-8 sm:h-10 sm:w-10 text-green-800" />
-              </div>
               <div>
-                <h2 className="text-2xl sm:text-4xl font-bold text-green-900 mb-1">Asset Registry</h2>
+                <h2 className="text-2xl sm:text-2xl text-left font-bold text-green-900 mb-1">Asset Inventory</h2>
                 <p className="text-gray-600 text-sm sm:text-base">
                   Manage and track all emergency response assets efficiently in the asset registry
                 </p>
@@ -475,7 +471,7 @@ export default function OverviewTab({ loading }) {
               <button
                 onClick={fetchAssets}
                 disabled={loading || isRefreshing}
-                className={`enhanced-refresh-btn flex items-center gap-2 px-4 py-2 text-white rounded-lg font-semibold transition text-sm ${
+                className={`flex items-center gap-2 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-lg font-semibold transition text-sm  ${
                   isRefreshing ? 'loading' : ''
                 } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
@@ -654,114 +650,46 @@ export default function OverviewTab({ loading }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Assets */}
         <div 
-          className="enhanced-metric-card rounded-xl p-4 sm:p-6 aspect-square flex flex-col justify-between relative overflow-hidden"
+          className="enhanced-metric-card bg-white rounded-xl p-3 shadow-lg border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
           onClick={handleTotalAssetsClick}
         >
-          <div 
-            className="enhanced-metric-bg"
-            style={{ backgroundImage: `url(${metricImages.total})` }}
-          ></div>
           <div className="metric-tooltip">View All Assets</div>
-          
-          <div className="enhanced-metric-content flex items-center justify-between mb-4">
-            <div className="p-2 sm:p-3 bg-black/40 rounded-lg backdrop-blur-sm z-10">
-              <Boxes className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
-            </div>
-            <div className="text-right relative">
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md rounded-lg -m-2 z-0"></div>
-              <div className="relative z-10">
-                <p className="text-xs sm:text-xl font-medium text-green-600 mb-1">Total Assets</p>
-                <p className="text-3xl sm:text-8xl font-bold text-white">{assets.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="enhanced-metric-content bg-black/40 rounded-lg p-2 sm:p-3 mt-auto backdrop-blur-sm">
-            <p className="text-xs text-white font-medium">All registered assets</p>
-          </div>
+          <p className="text-5xl font-bold text-green-800 mb-2">{assets.length}</p>
+          <p className="text-base font-semibold text-gray-900 mb-2">Total Assets</p>
+
         </div>
 
         {/* Active / Deployed */}
         <div 
-          className="enhanced-metric-card rounded-xl p-4 sm:p-6 aspect-square flex flex-col justify-between relative overflow-hidden"
+          className="enhanced-metric-card bg-white rounded-xl p-3 shadow-lg border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
           onClick={handleActiveAssetsClick}
         >
-          <div 
-            className="enhanced-metric-bg"
-            style={{ backgroundImage: `url(${metricImages.active})` }}
-          ></div>
           <div className="metric-tooltip">View Operational Assets</div>
-          
-          <div className="enhanced-metric-content flex items-center justify-between mb-4">
-            <div className="p-2 sm:p-3 bg-black/40 rounded-lg backdrop-blur-sm z-10">
-              <Truck className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
-            </div>
-            <div className="text-right relative">
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md rounded-lg -m-2 z-0"></div>
-              <div className="relative z-10">
-                <p className="text-xs sm:text-xl font-medium text-green-600 mb-1">Operational</p>
-                <p className="text-3xl sm:text-8xl font-bold text-white">{activeAssets}</p>
-              </div>
-            </div>
-          </div>
-          <div className="enhanced-metric-content bg-black/20 rounded-lg p-2 sm:p-3 mt-auto backdrop-blur-sm">
-            <p className="text-xs text-white font-medium">Currently deployed</p>
-          </div>
+          <p className="text-5xl font-bold text-green-800 mb-2">{activeAssets}</p>
+          <p className="text-base font-semibold text-gray-900 mb-2">Operational</p>
+
         </div>
 
         {/* Under Repair */}
         <div 
-          className="enhanced-metric-card rounded-xl p-4 sm:p-6 aspect-square flex flex-col justify-between relative overflow-hidden"
+          className="enhanced-metric-card bg-white rounded-xl p-3 shadow-lg border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
           onClick={handleUnderRepairClick}
         >
-          <div 
-            className="enhanced-metric-bg"
-            style={{ backgroundImage: `url(${metricImages.maintenance})` }}
-          ></div>
           <div className="metric-tooltip">View Assets Under Repair</div>
-          
-          <div className="enhanced-metric-content flex items-center justify-between mb-4">
-            <div className="p-2 sm:p-3 bg-black/40 rounded-lg backdrop-blur-sm z-10">
-              <Wrench className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
-            </div>
-            <div className="text-right relative">
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md rounded-lg -m-2 z-0"></div>
-              <div className="relative z-10">
-                <p className="text-xs sm:text-xl font-medium text-green-600 mb-1">Under Repair</p>
-                <p className="text-3xl sm:text-8xl font-bold text-white">{underRepair}</p>
-              </div>
-            </div>
-          </div>
-          <div className="enhanced-metric-content bg-black/20 rounded-lg p-2 sm:p-3 mt-auto backdrop-blur-sm">
-            <p className="text-xs text-white font-medium">Maintenance needed</p>
-          </div>
+          <p className="text-5xl font-bold text-green-800 mb-2">{underRepair}</p>
+          <p className="text-base font-semibold text-gray-900 mb-2">Under Repair</p>
+
         </div>
 
         {/* Unassigned */}
         <div 
-          className="enhanced-metric-card rounded-xl p-4 sm:p-6 aspect-square flex flex-col justify-between relative overflow-hidden"
+          className="enhanced-metric-card bg-white rounded-xl p-3 shadow-lg border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
           onClick={handleUnassignedClick}
         >
-          <div 
-            className="enhanced-metric-bg"
-            style={{ backgroundImage: `url(${metricImages.unassigned})` }}
-          ></div>
           <div className="metric-tooltip">View Unassigned Assets</div>
-          
-          <div className="enhanced-metric-content flex items-center justify-between mb-4">
-            <div className="p-2 sm:p-3 bg-black/40 rounded-lg backdrop-blur-sm z-10">
-              <Users className="h-6 w-6 sm:h-8 sm:w-8 text-green-500" />
-            </div>
-            <div className="text-right relative">
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md rounded-lg -m-2 z-0"></div>
-              <div className="relative z-10">
-                <p className="text-xs sm:text-xl font-medium text-green-600 mb-1">Unassigned</p>
-                <p className="text-3xl sm:text-8xl font-bold text-white">{unassignedAssets}</p>
-              </div>
-            </div>
-          </div>
-          <div className="enhanced-metric-content bg-black/20 rounded-lg p-2 sm:p-3 mt-auto backdrop-blur-sm">
-            <p className="text-xs text-white font-medium">Available for assignment</p>
-          </div>
+          <p className="text-5xl font-bold text-green-800 mb-2">{unassignedAssets}</p>
+          <p className="text-base font-semibold text-gray-900 mb-2">Unassigned</p>
+
         </div>
       </div>
 
