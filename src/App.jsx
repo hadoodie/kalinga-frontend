@@ -33,44 +33,44 @@ function App() {
         <AuthProvider>
           <RealtimeProvider>
             <IncidentProvider>
-            <Suspense fallback={<PageLoader />}>
-            <Routes>
-              {/* Public Routes */}
-              {PublicRoutes()}
+              <Suspense fallback={<PageLoader />}>
+                <Routes>
+                  {/* Public Routes */}
+                  {PublicRoutes()}
 
-              {/* Account Creation Flow */}
-              {AccountRoutes()}
+                  {/* Account Creation Flow */}
+                  {AccountRoutes()}
 
-              {/* Patient Routes */}
-              {PatientRoutes()}
+                  {/* Patient Routes */}
+                  {PatientRoutes()}
 
-              {/* Admin Routes */}
-              {AdminRoutes()}
+                  {/* Admin Routes */}
+                  {AdminRoutes()}
 
-              {/* Responder Routes */}
-              {ResponderRoutes()}
+                  {/* Responder Routes */}
+                  {ResponderRoutes()}
 
-              {/* Logistics Routes */}
-              {LogisticsRoutes()}
+                  {/* Logistics Routes */}
+                  {LogisticsRoutes()}
 
-              {/* 404 Not Found */}
-              <Route
-                path="*"
-                element={
-                  <div className="flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                      <h1 className="text-6xl font-bold text-primary mb-4">
-                        404
-                      </h1>
-                      <p className="text-xl text-muted-foreground">
-                        Page Not Found
-                      </p>
-                    </div>
-                  </div>
-                }
-              />
-            </Routes>
-            </Suspense>
+                  {/* 404 Not Found */}
+                  <Route
+                    path="*"
+                    element={
+                      <div className="flex items-center justify-center min-h-screen">
+                        <div className="text-center">
+                          <h1 className="text-6xl font-bold text-primary mb-4">
+                            404
+                          </h1>
+                          <p className="text-xl text-muted-foreground">
+                            Page Not Found
+                          </p>
+                        </div>
+                      </div>
+                    }
+                  />
+                </Routes>
+              </Suspense>
             </IncidentProvider>
           </RealtimeProvider>
         </AuthProvider>

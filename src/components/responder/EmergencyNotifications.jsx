@@ -9,7 +9,10 @@ import {
   ShieldPlus,
   Users,
 } from "lucide-react";
-import { assignToIncident, updateIncidentStatus } from "../../services/incidents";
+import {
+  assignToIncident,
+  updateIncidentStatus,
+} from "../../services/incidents";
 import { useAuth } from "../../context/AuthContext";
 import { useIncidents } from "../../context/IncidentContext";
 import {

@@ -338,9 +338,7 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
               {conversation.participant.isOnline && !isArchived && (
                 <span className="text-green-600">● Online</span>
               )}
-              {isArchived && (
-                <span className="text-gray-500">● Archived</span>
-              )}
+              {isArchived && <span className="text-gray-500">● Archived</span>}
             </p>
           </div>
         </div>
@@ -660,11 +658,14 @@ export default function MessagesContact() {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(MainContentTabs.INBOX);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
-  const [conversations, setConversations] = useState(() => conversationStore.conversations);
+  const [conversations, setConversations] = useState(
+    () => conversationStore.conversations
+  );
   const [isLoadingConversations, setIsLoadingConversations] = useState(
     () => !conversationStore.hydrated
   );
-  const [isRefreshingConversations, setIsRefreshingConversations] = useState(false);
+  const [isRefreshingConversations, setIsRefreshingConversations] =
+    useState(false);
   const [conversationsError, setConversationsError] = useState(
     () => conversationStore.error
   );
@@ -733,7 +734,8 @@ export default function MessagesContact() {
 
     let isCancelled = false;
 
-    const hasCachedData = conversationStore.hydrated && conversationStore.conversations.length > 0;
+    const hasCachedData =
+      conversationStore.hydrated && conversationStore.conversations.length > 0;
 
     const loadConversations = async () => {
       if (!hasCachedData) {
@@ -899,154 +901,161 @@ export default function MessagesContact() {
     [refreshConversationMessages]
   );
 
-  const applyBufferedMessageToState = useCallback((conversationSnapshot, message) => {
-    if (!conversationSnapshot || !message) {
-      return;
-    }
-
-    setConversations((prev) => {
-      let matchFound = false;
-
-      const updated = prev.map((conv) => {
-        if (!isSameConversation(conv, conversationSnapshot)) {
-          return conv;
-        }
-
-        matchFound = true;
-
-        const isActive = isConversationCurrentlyActive(
-          conversationSnapshot ?? conv
-        );
-        const preparedMessage = isActive
-          ? { ...message, isRead: true }
-          : message;
-
-        const existingIndex = conv.messages.findIndex(
-          (msg) => msg.id === preparedMessage.id
-        );
-
-        let nextMessages;
-        if (existingIndex !== -1) {
-          nextMessages = [
-            ...conv.messages.slice(0, existingIndex),
-            preparedMessage,
-            ...conv.messages.slice(existingIndex + 1),
-          ];
-        } else {
-          nextMessages = insertMessageChronologically(
-            conv.messages,
-            preparedMessage
-          );
-        }
-
-        const lastMessage = nextMessages[nextMessages.length - 1] ?? null;
-
-        return {
-          ...conv,
-          id: conversationSnapshot.id ?? conv.id,
-          conversationId:
-            conversationSnapshot.conversationId ?? conv.conversationId,
-          participant: conversationSnapshot.participant ?? conv.participant,
-          participants: conversationSnapshot.participants?.length
-            ? conversationSnapshot.participants
-            : conv.participants,
-          category: conversationSnapshot.category ?? conv.category,
-          lastMessage: lastMessage?.text ?? conv.lastMessage,
-          lastMessageTime: lastMessage?.timestamp ?? conv.lastMessageTime,
-          messages: nextMessages,
-          unreadCount: isActive
-            ? 0
-            : existingIndex !== -1
-            ? conv.unreadCount ?? 0
-            : (conv.unreadCount ?? 0) + 1,
-        };
-      });
-
-      if (!matchFound) {
-        const isActive = isConversationCurrentlyActive(conversationSnapshot);
-        const preparedMessage = isActive
-          ? { ...message, isRead: true }
-          : message;
-
-        const baseMessages = Array.isArray(conversationSnapshot.messages)
-          ? conversationSnapshot.messages.filter(Boolean)
-          : [];
-
-        const baseWithoutIncoming = baseMessages.filter(
-          (existing) => existing?.id !== preparedMessage.id
-        );
-
-        const nextMessages = insertMessageChronologically(
-          baseWithoutIncoming,
-          preparedMessage
-        );
-
-        const finalLastMessage =
-          nextMessages[nextMessages.length - 1] ?? preparedMessage ?? null;
-
-        updated.push({
-          ...conversationSnapshot,
-          messages: nextMessages,
-          lastMessage: finalLastMessage?.text ?? "",
-          lastMessageTime: finalLastMessage?.timestamp ?? null,
-          unreadCount: isActive ? 0 : 1,
-        });
+  const applyBufferedMessageToState = useCallback(
+    (conversationSnapshot, message) => {
+      if (!conversationSnapshot || !message) {
+        return;
       }
 
-      return sortConversationsByRecency(updated);
-    });
-  }, [isConversationCurrentlyActive]);
+      setConversations((prev) => {
+        let matchFound = false;
 
-  const flushBufferedIncomingMessages = useCallback((conversationKey) => {
-    const entry = pendingIncomingMessages.current.get(conversationKey);
-    if (!entry) {
-      return;
-    }
+        const updated = prev.map((conv) => {
+          if (!isSameConversation(conv, conversationSnapshot)) {
+            return conv;
+          }
 
-    if (entry.timer) {
-      clearTimeout(entry.timer);
-      entry.timer = null;
-    }
+          matchFound = true;
 
-    entry.state = "processing";
+          const isActive = isConversationCurrentlyActive(
+            conversationSnapshot ?? conv
+          );
+          const preparedMessage = isActive
+            ? { ...message, isRead: true }
+            : message;
 
-    const messagesOrdered = Array.from(entry.messages.values());
-    if (!messagesOrdered.length) {
-      entry.state = "idle";
-      pendingIncomingMessages.current.delete(conversationKey);
-      return;
-    }
+          const existingIndex = conv.messages.findIndex(
+            (msg) => msg.id === preparedMessage.id
+          );
 
-    messagesOrdered.sort((a, b) => {
-      const timeA = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const timeB = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
-      return timeA - timeB;
-    });
+          let nextMessages;
+          if (existingIndex !== -1) {
+            nextMessages = [
+              ...conv.messages.slice(0, existingIndex),
+              preparedMessage,
+              ...conv.messages.slice(existingIndex + 1),
+            ];
+          } else {
+            nextMessages = insertMessageChronologically(
+              conv.messages,
+              preparedMessage
+            );
+          }
 
-    const nextMessage = messagesOrdered[0];
-    entry.messages.delete(nextMessage.id);
+          const lastMessage = nextMessages[nextMessages.length - 1] ?? null;
 
-    const conversationSnapshot = entry.conversation;
-    const isActive = isConversationCurrentlyActive(conversationSnapshot);
+          return {
+            ...conv,
+            id: conversationSnapshot.id ?? conv.id,
+            conversationId:
+              conversationSnapshot.conversationId ?? conv.conversationId,
+            participant: conversationSnapshot.participant ?? conv.participant,
+            participants: conversationSnapshot.participants?.length
+              ? conversationSnapshot.participants
+              : conv.participants,
+            category: conversationSnapshot.category ?? conv.category,
+            lastMessage: lastMessage?.text ?? conv.lastMessage,
+            lastMessageTime: lastMessage?.timestamp ?? conv.lastMessageTime,
+            messages: nextMessages,
+            unreadCount: isActive
+              ? 0
+              : existingIndex !== -1
+              ? conv.unreadCount ?? 0
+              : (conv.unreadCount ?? 0) + 1,
+          };
+        });
 
-    applyBufferedMessageToState(conversationSnapshot, nextMessage);
+        if (!matchFound) {
+          const isActive = isConversationCurrentlyActive(conversationSnapshot);
+          const preparedMessage = isActive
+            ? { ...message, isRead: true }
+            : message;
 
-    if (entry.messages.size > 0) {
-      const backlogSize = entry.messages.size;
-      const delay = backlogSize > INCOMING_QUEUE_HIGH_PRESSURE_THRESHOLD
-        ? INCOMING_QUEUE_AGGRESSIVE_INTERVAL_MS
-        : isActive
-        ? INCOMING_QUEUE_ACTIVE_DRAIN_INTERVAL_MS
-        : INCOMING_QUEUE_PASSIVE_DRAIN_INTERVAL_MS;
+          const baseMessages = Array.isArray(conversationSnapshot.messages)
+            ? conversationSnapshot.messages.filter(Boolean)
+            : [];
 
-      entry.timer = setTimeout(() => {
-        flushBufferedIncomingMessages(conversationKey);
-      }, Math.max(0, delay));
-    } else {
-      entry.state = "idle";
-      pendingIncomingMessages.current.delete(conversationKey);
-    }
-  }, [applyBufferedMessageToState, isConversationCurrentlyActive]);
+          const baseWithoutIncoming = baseMessages.filter(
+            (existing) => existing?.id !== preparedMessage.id
+          );
+
+          const nextMessages = insertMessageChronologically(
+            baseWithoutIncoming,
+            preparedMessage
+          );
+
+          const finalLastMessage =
+            nextMessages[nextMessages.length - 1] ?? preparedMessage ?? null;
+
+          updated.push({
+            ...conversationSnapshot,
+            messages: nextMessages,
+            lastMessage: finalLastMessage?.text ?? "",
+            lastMessageTime: finalLastMessage?.timestamp ?? null,
+            unreadCount: isActive ? 0 : 1,
+          });
+        }
+
+        return sortConversationsByRecency(updated);
+      });
+    },
+    [isConversationCurrentlyActive]
+  );
+
+  const flushBufferedIncomingMessages = useCallback(
+    (conversationKey) => {
+      const entry = pendingIncomingMessages.current.get(conversationKey);
+      if (!entry) {
+        return;
+      }
+
+      if (entry.timer) {
+        clearTimeout(entry.timer);
+        entry.timer = null;
+      }
+
+      entry.state = "processing";
+
+      const messagesOrdered = Array.from(entry.messages.values());
+      if (!messagesOrdered.length) {
+        entry.state = "idle";
+        pendingIncomingMessages.current.delete(conversationKey);
+        return;
+      }
+
+      messagesOrdered.sort((a, b) => {
+        const timeA = a?.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b?.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeA - timeB;
+      });
+
+      const nextMessage = messagesOrdered[0];
+      entry.messages.delete(nextMessage.id);
+
+      const conversationSnapshot = entry.conversation;
+      const isActive = isConversationCurrentlyActive(conversationSnapshot);
+
+      applyBufferedMessageToState(conversationSnapshot, nextMessage);
+
+      if (entry.messages.size > 0) {
+        const backlogSize = entry.messages.size;
+        const delay =
+          backlogSize > INCOMING_QUEUE_HIGH_PRESSURE_THRESHOLD
+            ? INCOMING_QUEUE_AGGRESSIVE_INTERVAL_MS
+            : isActive
+            ? INCOMING_QUEUE_ACTIVE_DRAIN_INTERVAL_MS
+            : INCOMING_QUEUE_PASSIVE_DRAIN_INTERVAL_MS;
+
+        entry.timer = setTimeout(() => {
+          flushBufferedIncomingMessages(conversationKey);
+        }, Math.max(0, delay));
+      } else {
+        entry.state = "idle";
+        pendingIncomingMessages.current.delete(conversationKey);
+      }
+    },
+    [applyBufferedMessageToState, isConversationCurrentlyActive]
+  );
 
   const bufferIncomingMessage = useCallback(
     (
@@ -1067,8 +1076,9 @@ export default function MessagesContact() {
         return;
       }
 
-      const isActiveConversation =
-        isConversationCurrentlyActive(normalizedConversation);
+      const isActiveConversation = isConversationCurrentlyActive(
+        normalizedConversation
+      );
 
       const existingEntry = pendingIncomingMessages.current.get(bufferKey);
 
@@ -1165,7 +1175,11 @@ export default function MessagesContact() {
         flushBufferedIncomingMessages(key);
       }, 0);
     });
-  }, [selectedConversationId, flushBufferedIncomingMessages, isConversationCurrentlyActive]);
+  }, [
+    selectedConversationId,
+    flushBufferedIncomingMessages,
+    isConversationCurrentlyActive,
+  ]);
 
   useEffect(() => {
     let isActive = true;

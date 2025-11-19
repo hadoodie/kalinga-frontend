@@ -1,10 +1,16 @@
-import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { fetchResponderIncidents } from "../services/incidents";
 import { useRealtime } from "./RealtimeContext";
 import { getEchoInstance } from "../services/echo";
-import {
-  INCIDENT_STATUS_PRIORITIES,
-} from "../constants/incidentStatus";
+import { INCIDENT_STATUS_PRIORITIES } from "../constants/incidentStatus";
 
 const IncidentContext = createContext(null);
 
@@ -69,7 +75,10 @@ export const IncidentProvider = ({ children }) => {
     async ({ force = false, silent = false } = {}) => {
       if (!force && lastFetchedRef.current) {
         const elapsed = Date.now() - new Date(lastFetchedRef.current).getTime();
-        if (elapsed < INITIAL_REFRESH_INTERVAL_MS && incidentsRef.current.length > 0) {
+        if (
+          elapsed < INITIAL_REFRESH_INTERVAL_MS &&
+          incidentsRef.current.length > 0
+        ) {
           return;
         }
       }
@@ -83,7 +92,9 @@ export const IncidentProvider = ({ children }) => {
       setError(null);
 
       try {
-        const response = await fetchResponderIncidents({ include_resolved: true });
+        const response = await fetchResponderIncidents({
+          include_resolved: true,
+        });
         const data = Array.isArray(response.data?.data)
           ? response.data.data
           : response.data;
@@ -138,7 +149,10 @@ export const IncidentProvider = ({ children }) => {
         try {
           echo.leave("incidents");
         } catch (leaveError) {
-          console.warn("Unable to leave incidents channel before subscribing", leaveError);
+          console.warn(
+            "Unable to leave incidents channel before subscribing",
+            leaveError
+          );
         }
 
         subscriptionRef.current = echo
@@ -184,10 +198,22 @@ export const IncidentProvider = ({ children }) => {
       refresh: (options) => loadIncidents({ force: true, ...(options ?? {}) }),
       mergeIncident,
     }),
-    [incidents, loading, refreshing, error, lastFetchedAt, loadIncidents, mergeIncident]
+    [
+      incidents,
+      loading,
+      refreshing,
+      error,
+      lastFetchedAt,
+      loadIncidents,
+      mergeIncident,
+    ]
   );
 
-  return <IncidentContext.Provider value={value}>{children}</IncidentContext.Provider>;
+  return (
+    <IncidentContext.Provider value={value}>
+      {children}
+    </IncidentContext.Provider>
+  );
 };
 
 export default IncidentContext;

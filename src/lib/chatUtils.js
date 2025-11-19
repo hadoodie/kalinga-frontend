@@ -105,7 +105,10 @@ export const normalizeMessage = (
   };
 };
 
-export const normalizeConversation = (conversation = {}, currentUserId = null) => {
+export const normalizeConversation = (
+  conversation = {},
+  currentUserId = null
+) => {
   const participantsRaw = Array.isArray(conversation.participants)
     ? conversation.participants
     : [];
@@ -192,8 +195,12 @@ export const normalizeConversation = (conversation = {}, currentUserId = null) =
 
 export const sortConversationsByRecency = (list = []) => {
   return [...list].sort((a, b) => {
-    const timeA = a?.lastMessageTime ? new Date(a.lastMessageTime).getTime() : 0;
-    const timeB = b?.lastMessageTime ? new Date(b.lastMessageTime).getTime() : 0;
+    const timeA = a?.lastMessageTime
+      ? new Date(a.lastMessageTime).getTime()
+      : 0;
+    const timeB = b?.lastMessageTime
+      ? new Date(b.lastMessageTime).getTime()
+      : 0;
     return timeB - timeA;
   });
 };
@@ -257,7 +264,10 @@ export const buildConversationBufferKey = (
   return null;
 };
 
-export const mergeConversationSnapshot = (currentSnapshot = {}, incomingSnapshot = {}) => {
+export const mergeConversationSnapshot = (
+  currentSnapshot = {},
+  incomingSnapshot = {}
+) => {
   const mergedMessages = Array.isArray(incomingSnapshot.messages)
     ? incomingSnapshot.messages.length
       ? incomingSnapshot.messages
@@ -287,10 +297,14 @@ export const mergeConversationSnapshot = (currentSnapshot = {}, incomingSnapshot
     participant:
       incomingSnapshot.participant ?? currentSnapshot.participant ?? null,
     participants: mergedParticipants,
-    category: incomingSnapshot.category ?? currentSnapshot.category ?? "General",
+    category:
+      incomingSnapshot.category ?? currentSnapshot.category ?? "General",
     messages: mergedMessages,
-    lastMessage: incomingSnapshot.lastMessage ?? currentSnapshot.lastMessage ?? "",
+    lastMessage:
+      incomingSnapshot.lastMessage ?? currentSnapshot.lastMessage ?? "",
     lastMessageTime:
-      incomingSnapshot.lastMessageTime ?? currentSnapshot.lastMessageTime ?? null,
+      incomingSnapshot.lastMessageTime ??
+      currentSnapshot.lastMessageTime ??
+      null,
   };
 };

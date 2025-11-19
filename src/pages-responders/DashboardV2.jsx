@@ -11,14 +11,8 @@ import { useIncidents } from "../context/IncidentContext";
 
 const DashboardV2 = () => {
   const { user } = useAuth();
-  const {
-    incidents,
-    loading,
-    refreshing,
-    error,
-    refresh,
-    mergeIncident,
-  } = useIncidents();
+  const { incidents, loading, refreshing, error, refresh, mergeIncident } =
+    useIncidents();
   const [refreshKey, setRefreshKey] = useState(0);
 
   const assignedIncidents = useMemo(() => {
