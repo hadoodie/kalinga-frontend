@@ -120,8 +120,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::apiResource('hospitals', HospitalController::class);
     });
     
-    // Responder routes
-    Route::middleware(['role:admin,responder'])->group(function () {
+    // Responder (and Logistics) routes
+    Route::middleware(['role:admin,responder,logistics'])->group(function () {
         // Pathfinding routes
         Route::get('/incidents', [IncidentApiController::class, 'index']);
         Route::get('/incidents/{incident}/history', [IncidentApiController::class, 'history']);
