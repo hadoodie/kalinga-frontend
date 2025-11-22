@@ -74,6 +74,7 @@ const determineMode = (status) => {
 export default function NavigationPanel({
   incident,
   hospitals,
+  incidentAddress,
 }) {
   const [responderPosition, setResponderPosition] = useState(null);
 
@@ -174,7 +175,7 @@ export default function NavigationPanel({
           {incidentPosition ? (
             <Marker position={incidentPosition} icon={incidentIcon}>
               <Tooltip direction="top" offset={[0, -10]} opacity={1}>
-                Incident site
+                {incidentAddress || "Incident site"}
               </Tooltip>
             </Marker>
           ) : null}

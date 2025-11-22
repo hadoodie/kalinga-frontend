@@ -14,6 +14,7 @@ import { useRealtime } from "../context/RealtimeContext";
 import { getEchoInstance, reconnectEcho } from "../services/echo";
 import { insertMessageChronologically, normalizeMessage } from "../lib/chatUtils";
 import { useIncidents } from "../context/IncidentContext";
+import { useReverseGeocode } from "../hooks/useReverseGeocode";
 
 const LOCK_STATUSES = new Set(["on_scene", "hospital_transfer", "resolved"]);
 
@@ -29,17 +30,25 @@ export default function ResponseMode() {
   const { incidentId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { ensureConnected } = useRealtime();
-  const { incidents } = useIncidents();
-  const [incident, setIncident] = useState(null);
-  const [conversation, setConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [hospitals, setHospitals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { incidents } = useIncidents(); // Ensure incidents are available if needed, though we use params
+  
+  const {
+    messages,
+    setMessages,
+    loading,
+    error,
+    setError,
+    conversation,
+    setConversation,
+    hospitals,
+    setHospitals,
+    incident,
+  } = useResponseModeData(incidentId, user?.id, navigate);
 
-  const conversationRef = useRef(null);
-  const incidentRef = useRef(null);
+  // Extract coordinates for reverse geocoding
+  const incidentLat = incident?.latitude || incident?.location_lat;
+  const incidentLng = incident?.longitude || incident?.location_lng;
+  const { address: incidentAddress } = useReverseGeocode(incidentLat, incidentLng);
 
   const lockTimestamp = useMemo(
     () => timestampOfStatus(incident?.history, Array.from(LOCK_STATUSES)),
@@ -140,78 +149,9 @@ export default function ResponseMode() {
     [deriveParticipantName, hydrateMessages]
   );
 
-  const loadResponseModeData = useCallback(async () => {
-    if (!incidentId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const [incidentResult, conversationResult, hospitalResult] =
-        await Promise.allSettled([
-          responseModeService.getIncident(incidentId),
-          responseModeService.getConversation(incidentId),
-          responseModeService.getHospitalRecommendations(incidentId),
-        ]);
-
-      if (incidentResult.status !== "fulfilled" || !incidentResult.value) {
-        const message =
-          incidentResult.status === "rejected"
-            ? incidentResult.reason?.message || "Incident not found"
-            : "Incident not found";
-        throw new Error(message);
-      }
-
-      setIncident(incidentResult.value);
-
-      if (conversationResult.status === "fulfilled") {
-        const convoValue =
-          conversationResult.value?.conversation ?? conversationResult.value;
-        applyConversationPayload(convoValue);
-      } else {
-        applyConversationPayload(null);
-      }
-
-      if (hospitalResult.status === "fulfilled") {
-        setHospitals(hospitalResult.value ?? []);
-      } else {
-        setHospitals([]);
-      }
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Unable to load response mode data");
-    } finally {
-      setLoading(false);
-    }
-  }, [incidentId, applyConversationPayload]);
-
-  useEffect(() => {
-    loadResponseModeData();
-  }, [loadResponseModeData]);
-
   const handleExit = () => {
     navigate(ROUTES.RESPONDER.DASHBOARD);
   };
-
-  useEffect(() => {
-    conversationRef.current = conversation;
-  }, [conversation]);
-
-  useEffect(() => {
-    incidentRef.current = incident;
-  }, [incident]);
-
-  useEffect(() => {
-    if (!Array.isArray(incidents) || !incidentId) {
-      return;
-    }
-
-    const latest = incidents.find(
-      (item) => String(item.id) === String(incidentId)
-    );
-
-    if (latest) {
-      setIncident((prev) => ({ ...(prev ?? {}), ...latest }));
-    }
-  }, [incidents, incidentId]);
 
   useEffect(() => {
     if (!incidentId || !user?.id) {
@@ -417,7 +357,10 @@ export default function ResponseMode() {
                 </h1>
                 <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                  {incident?.location}
+                  {incidentAddress || incident?.location}
+                  {incidentAddress && incident?.location && incidentAddress !== incident.location && (
+                    <span className="text-xs text-gray-400">({incident.location})</span>
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-3">
@@ -452,7 +395,7 @@ export default function ResponseMode() {
             </section>
 
             <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <NavigationPanel incident={incident} hospitals={hospitals} />
+              <NavigationPanel incident={incident} hospitals={hospitals} incidentAddress={incidentAddress} />
               <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -508,4 +451,202 @@ export default function ResponseMode() {
       </div>
     </div>
   );
+}
+
+function useResponseModeData(incidentId, userId, navigate) {
+  const [messages, setMessages] = useState([]);
+  const [incident, setIncident] = useState(null);
+  const [conversation, setConversation] = useState(null);
+  const [hospitals, setHospitals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const conversationRef = useRef(null);
+  const incidentRef = useRef(null);
+
+  const lockTimestamp = useMemo(
+    () => timestampOfStatus(incident?.history, Array.from(LOCK_STATUSES)),
+    [incident]
+  );
+
+  const insights = useConversationInsights(messages, { lockTimestamp });
+
+  const deriveParticipantName = useCallback(
+    (conversationPayload) => {
+      if (!conversationPayload) {
+        return "Patient";
+      }
+
+      if (conversationPayload.participant?.name) {
+        return conversationPayload.participant.name;
+      }
+
+      if (Array.isArray(conversationPayload.participants)) {
+        const other = conversationPayload.participants.find((person) => {
+          if (!person) return false;
+          if (!userId) return true;
+          return person.id !== userId;
+        });
+        if (other?.name) {
+          return other.name;
+        }
+      }
+
+      return conversationPayload.participant?.name || "Patient";
+    },
+    [userId]
+  );
+
+  const formatMessageForDisplay = useCallback(
+    (rawMessage, fallbackName = "Patient") => {
+      if (!rawMessage) {
+        return null;
+      }
+
+      const normalized = normalizeMessage(
+        rawMessage,
+        fallbackName,
+        userId ?? null
+      );
+
+      return {
+        ...normalized,
+        body: normalized.text ?? normalized.body ?? "",
+        createdAt: normalized.timestamp,
+      };
+    },
+    [userId]
+  );
+
+  const hydrateMessages = useCallback(
+    (rawMessages, fallbackName) => {
+      if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
+        setMessages([]);
+        return;
+      }
+
+      const normalized = rawMessages
+        .map((message) => formatMessageForDisplay(message, fallbackName))
+        .filter(Boolean);
+      setMessages(normalized);
+    },
+    [formatMessageForDisplay]
+  );
+
+  const appendRealtimeMessage = useCallback(
+    (rawMessage, fallbackName) => {
+      const prepared = formatMessageForDisplay(rawMessage, fallbackName);
+      if (!prepared) return;
+
+      setMessages((prev) => {
+        if (prev.some((message) => message.id === prepared.id)) {
+          return prev;
+        }
+        return insertMessageChronologically(prev, prepared);
+      });
+    },
+    [formatMessageForDisplay]
+  );
+
+  const applyConversationPayload = useCallback(
+    (payload) => {
+      if (!payload) {
+        setConversation(null);
+        setMessages([]);
+        return;
+      }
+
+      setConversation(payload);
+      const fallbackName = deriveParticipantName(payload);
+      hydrateMessages(payload.messages ?? [], fallbackName);
+    },
+    [deriveParticipantName, hydrateMessages]
+  );
+
+  useEffect(() => {
+    if (!incidentId) return;
+
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [incidentResult, conversationResult, hospitalResult] =
+          await Promise.allSettled([
+            responseModeService.getIncident(incidentId),
+            responseModeService.getConversation(incidentId),
+            responseModeService.getHospitalRecommendations(incidentId),
+          ]);
+
+        if (incidentResult.status !== "fulfilled" || !incidentResult.value) {
+          const message =
+            incidentResult.status === "rejected"
+              ? incidentResult.reason?.message || "Incident not found"
+              : "Incident not found";
+          throw new Error(message);
+        }
+
+        setIncident(incidentResult.value);
+
+        if (conversationResult.status === "fulfilled") {
+          const convoValue =
+            conversationResult.value?.conversation ?? conversationResult.value;
+          applyConversationPayload(convoValue);
+        } else {
+          applyConversationPayload(null);
+        }
+
+        if (hospitalResult.status === "fulfilled") {
+          setHospitals(hospitalResult.value ?? []);
+        } else {
+          setHospitals([]);
+        }
+      } catch (err) {
+        console.error(err);
+        setError(err.message || "Unable to load response mode data");
+        if (err.message === "Incident not found") {
+          navigate(ROUTES.RESPONDER.DASHBOARD);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [incidentId, applyConversationPayload, navigate]);
+
+  useEffect(() => {
+    conversationRef.current = conversation;
+  }, [conversation]);
+
+  useEffect(() => {
+    incidentRef.current = incident;
+  }, [incident]);
+
+  useEffect(() => {
+    if (!Array.isArray(incidents) || !incidentId) {
+      return;
+    }
+
+    const latest = incidents.find(
+      (item) => String(item.id) === String(incidentId)
+    );
+
+    if (latest) {
+      setIncident((prev) => ({ ...(prev ?? {}), ...latest }));
+    }
+  }, [incidents, incidentId]);
+
+  return {
+    messages,
+    setMessages,
+    loading,
+    error,
+    setError,
+    conversation,
+    setConversation,
+    hospitals,
+    setHospitals,
+    incident,
+    setIncident,
+  };
 }

@@ -28,10 +28,10 @@ const MessageBubble = ({ message, currentUserId }) => {
             : "bg-white text-gray-900 rounded-bl-sm border-gray-200"
         }`}
       >
-        <p className={`text-xs mb-1 ${isOwn ? "text-white/80" : "text-gray-500"}`}>
+        <p className={`text-xs mb-1 ${isOwn ? "text-right text-white/80" : "text-left text-gray-500"}`}>
           {senderName} {timestamp ? `· ${timestamp}` : ""}
         </p>
-        <p className="leading-relaxed whitespace-pre-wrap">
+        <p className="leading-relaxed whitespace-pre-wrap text-left">
           {message.text || message.body}
         </p>
       </div>
