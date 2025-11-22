@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AlertTriangle, Loader2, Map } from "lucide-react";
+import { AlertTriangle, Clock, Loader2, Map } from "lucide-react";
 import ResponderSidebar from "../components/responder/Sidebar";
 import ResponderTopbar from "../components/responder/Topbar";
 import ContextGeneratorPanel from "../components/responder/response-mode/ContextGeneratorPanel";
