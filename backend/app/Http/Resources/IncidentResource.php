@@ -22,11 +22,16 @@ class IncidentResource extends JsonResource
             'type' => $this->type,
             'location' => $this->location,
             'description' => $this->description,
+            'conversation_id' => $this->conversation_id,
             'status' => $this->status,
             'reported_at' => optional($this->created_at)?->toIso8601String(),
             'reported_at_human' => optional($this->created_at)?->diffForHumans(),
             'lat' => $lat,
             'lng' => $lng,
+            'latitude' => $lat,
+            'longitude' => $lng,
+            'location_lat' => $lat,
+            'location_lng' => $lng,
             'responders_required' => (int) ($this->responders_required ?? 1),
             'responders_assigned' => (int) $this->assignments
                 ->where('status', '!=', IncidentResponderAssignment::STATUS_CANCELLED)

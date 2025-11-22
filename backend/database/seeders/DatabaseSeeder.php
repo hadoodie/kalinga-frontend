@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
             LabResultSeeder::class,
             NotificationSeeder::class,
             AllocationRequestSeeder::class,
+            IncidentSeeder::class,
+            MessagesSeeder::class,
         ]);
     }
 }

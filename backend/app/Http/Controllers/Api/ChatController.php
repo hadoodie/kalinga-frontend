@@ -22,53 +22,41 @@ class ChatController extends Controller
     public function getConversations(Request $request)
     {
         $user = $request->user();
-
-        $messages = Message::with([
-            'sender:id,name,role,profile_image',
-            'receiver:id,name,role,profile_image',
-        ])
-            ->whereNull('group_id')
-            ->where(function ($query) use ($user) {
-                $query->where('sender_id', $user->id)
-                    ->orWhere('receiver_id', $user->id);
-            })
-            ->orderBy('created_at')
-            ->get();
-
-        if ($messages->isEmpty()) {
-            return response()->json([
-                'data' => [],
-            ]);
-        }
-
-        $conversationRecords = Conversation::query()
+        $conversations = Conversation::query()
+            ->with([
+                'user1:id,name,role,profile_image',
+                'user2:id,name,role,profile_image',
+                'lastMessage:id,message,sender_id,receiver_id,conversation_id,created_at',
+            ])
             ->where(function ($query) use ($user) {
                 $query->where('user_id1', $user->id)
                     ->orWhere('user_id2', $user->id);
             })
+            ->orderByDesc('updated_at')
             ->get();
 
-        $conversationIndex = $conversationRecords->mapWithKeys(function ($conversation) {
-            $keyParts = collect([$conversation->user_id1, $conversation->user_id2])->sort()->implode('-');
+        $conversationIds = $conversations->pluck('id')->filter()->all();
 
-            return [$keyParts => $conversation->id];
-        });
+        $messagesByConversation = Message::query()
+            ->with([
+                'sender:id,name,role',
+                'receiver:id,name,role',
+            ])
+            ->whereIn('conversation_id', $conversationIds)
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('conversation_id');
 
-        $conversations = [];
+        $normalized = $conversations
+            ->map(function (Conversation $conversation) use ($user, $messagesByConversation) {
+                $otherUser = $conversation->user_id1 === $user->id
+                    ? $conversation->user2
+                    : $conversation->user1;
 
-        foreach ($messages as $message) {
-            $otherUser = $message->sender_id === $user->id
-                ? $message->receiver
-                : $message->sender;
+                if (!$otherUser) {
+                    return null;
+                }
 
-            if (!$otherUser) {
-                continue;
-            }
-
-            $conversationKey = collect([$user->id, $otherUser->id])->sort()->implode('-');
-            $conversationId = $conversationIndex[$conversationKey] ?? null;
-
-            if (!isset($conversations[$conversationKey])) {
                 $participantPayload = [
                     'id' => $otherUser->id,
                     'name' => $otherUser->name,
@@ -77,49 +65,27 @@ class ChatController extends Controller
                     'profile_image' => $otherUser->profile_image,
                 ];
 
-                $selfPayload = [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'role' => $user->role,
-                    'avatar' => $user->profile_image,
-                    'profile_image' => $user->profile_image,
-                ];
+                $selfUser = $conversation->user_id1 === $user->id
+                    ? $conversation->user1
+                    : $conversation->user2;
 
-                $conversations[$conversationKey] = [
-                    'id' => $conversationId ?? 'user-' . $otherUser->id,
-                    'conversationId' => $conversationId,
-                    'participant' => $participantPayload,
-                    'participants' => [$participantPayload, $selfPayload],
-                    'category' => $this->mapCategory($otherUser->role),
-                    'unreadCount' => 0,
-                    'isArchived' => false,
-                    'messages' => [],
-                ];
-            }
+                $selfPayload = $selfUser ? [
+                    'id' => $selfUser->id,
+                    'name' => $selfUser->name,
+                    'role' => $selfUser->role,
+                    'avatar' => $selfUser->profile_image,
+                    'profile_image' => $selfUser->profile_image,
+                ] : null;
 
-            $conversations[$conversationKey]['messages'][] = [
-                'id' => $message->id,
-                'text' => $message->message,
-                'senderId' => $message->sender_id,
-                'receiverId' => $message->receiver_id,
-                'sender' => $message->sender?->name,
-                'timestamp' => optional($message->created_at)->toIso8601String(),
-            ];
-        }
-
-        $normalized = collect($conversations)
-            ->map(function (array $conversation) {
-                $messages = collect($conversation['messages'])
-                    ->sortBy('timestamp')
-                    ->values()
-                    ->map(function (array $message) {
+                $messages = ($messagesByConversation[$conversation->id] ?? collect())
+                    ->map(function (Message $message) {
                         return [
-                            'id' => $message['id'],
-                            'text' => $message['text'],
-                            'senderId' => $message['senderId'],
-                            'receiverId' => $message['receiverId'],
-                            'sender' => $message['sender'],
-                            'timestamp' => $message['timestamp'],
+                            'id' => $message->id,
+                            'text' => $message->message,
+                            'senderId' => $message->sender_id,
+                            'receiverId' => $message->receiver_id,
+                            'sender' => $message->sender?->name,
+                            'timestamp' => optional($message->created_at)->toIso8601String(),
                             'isRead' => true,
                             'isSystemMessage' => false,
                         ];
@@ -129,22 +95,28 @@ class ChatController extends Controller
                 $lastMessage = $messages->last();
 
                 return [
-                    'id' => $conversation['id'],
-                    'conversationId' => $conversation['conversationId'],
-                    'participant' => $conversation['participant'],
-                    'category' => $conversation['category'],
-                    'unreadCount' => $conversation['unreadCount'],
-                    'isArchived' => $conversation['isArchived'],
-                    'lastMessage' => $lastMessage['text'] ?? null,
-                    'lastMessageTime' => $lastMessage['timestamp'] ?? null,
+                    'id' => $conversation->id,
+                    'conversationId' => $conversation->id,
+                    'participant' => $participantPayload,
+                    'participants' => array_values(array_filter([$participantPayload, $selfPayload])),
+                    'category' => $this->mapCategory($otherUser->role ?? null),
+                    'unreadCount' => 0,
+                    'isArchived' => (bool) $conversation->is_archived,
+                    'lastMessage' => $lastMessage['text'] ?? $conversation->lastMessage?->message,
+                    'lastMessageTime' => $lastMessage['timestamp']
+                        ?? optional($conversation->lastMessage?->created_at)->toIso8601String(),
                     'messages' => $messages,
                 ];
             })
-            ->sortByDesc('lastMessageTime')
+            ->filter()
             ->values();
 
+        if ($normalized->isEmpty()) {
+            return response()->json(['data' => []]);
+        }
+
         return response()->json([
-            'data' => $normalized,
+            'data' => $normalized->sortByDesc('lastMessageTime')->values(),
         ]);
     }
 
@@ -208,10 +180,11 @@ class ChatController extends Controller
         $emergencyPayload = $validated['emergency_payload'] ?? null;
 
         $conversationId = null;
+        $conversationModel = null;
 
         if (!$groupId) {
-            $conversation = $this->firstOrCreateConversation($user->id, $receiverId);
-            $conversationId = $conversation->id;
+            $conversationModel = $this->firstOrCreateConversation($user->id, $receiverId);
+            $conversationId = $conversationModel->id;
         }
 
         $message = Message::create([
@@ -274,7 +247,7 @@ class ChatController extends Controller
             'receiver' => $receiverPayload,
             'category' => $this->mapCategory($participant['role'] ?? null),
             'unreadCount' => 0,
-            'isArchived' => false,
+            'isArchived' => (bool) ($conversationModel?->is_archived ?? false),
             'lastMessage' => $message->message,
             'lastMessageTime' => $timestamp,
             'messages' => [$messagePayload],
@@ -385,6 +358,16 @@ class ChatController extends Controller
             'assigned_responder_id' => null,
             'assigned_at' => null,
         ];
+
+        $conversationId = $conversationPayload['conversationId'] ?? null;
+        if ($conversationId) {
+            $incidentData['conversation_id'] = $conversationId;
+
+            Conversation::whereKey($conversationId)->update([
+                'is_archived' => false,
+                'archived_at' => null,
+            ]);
+        }
 
         $incident = Incident::create($incidentData);
 
@@ -509,10 +492,20 @@ class ChatController extends Controller
     private function firstOrCreateConversation(int $userId, int $otherUserId): Conversation
     {
         $ids = collect([$userId, $otherUserId])->sort()->values();
+        $conversation = Conversation::query()
+            ->where('user_id1', $ids[0])
+            ->where('user_id2', $ids[1])
+            ->where('is_archived', false)
+            ->first();
 
-        return Conversation::firstOrCreate([
+        if ($conversation) {
+            return $conversation;
+        }
+
+        return Conversation::create([
             'user_id1' => $ids[0],
             'user_id2' => $ids[1],
+            'is_archived' => false,
         ]);
     }
 
