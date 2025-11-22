@@ -2452,12 +2452,15 @@ export default function MessagesContact() {
       }
 
       const emergencyConversation = conversationsWithPresence.find(
-        (conv) => conv.category === "Emergency"
+        (conv) =>
+          conv.category === "Emergency" &&
+          !conv.isArchived
       );
       const responderConversation = conversationsWithPresence.find(
         (conv) =>
           typeof conv.participant?.role === "string" &&
-          conv.participant.role.toLowerCase() === "responder"
+          conv.participant.role.toLowerCase() === "responder" &&
+          !conv.isArchived
       );
 
       const presenceResponder = onlineUsers.find((candidate) => {
@@ -2478,6 +2481,11 @@ export default function MessagesContact() {
           (conv) => conv.id === options.conversationId
         );
       }
+
+      if (targetConversation?.isArchived) {
+        targetConversation = null;
+      }
+
       if (!targetConversation) {
         targetConversation =
           emergencyConversation ?? responderConversation ?? null;
@@ -2562,6 +2570,7 @@ export default function MessagesContact() {
         const updatedConversation = {
           ...targetConversation,
           category: "Emergency",
+          isArchived: false,
         };
         setConversations((prev) =>
           prev.map((conv) =>
@@ -2577,6 +2586,7 @@ export default function MessagesContact() {
         participant: responderParticipant,
         participants: [responderParticipant, patientParticipant],
         category: "Emergency",
+        isArchived: false,
         messages: [],
         lastMessage: null,
         lastMessageTime: null,
@@ -2592,6 +2602,7 @@ export default function MessagesContact() {
             ? stubConversation.participants
             : [responderParticipant, patientParticipant],
         category: "Emergency",
+        isArchived: false,
       };
 
       selectedConversationIdRef.current = preparedConversation.id;

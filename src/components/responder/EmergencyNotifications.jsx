@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Activity,
   AlertTriangle,
@@ -20,14 +21,18 @@ import {
   INCIDENT_STATUS_COLORS,
   INCIDENT_STATUS_LABELS,
 } from "../../constants/incidentStatus";
+import { ROUTES } from "../../config/routes";
 
 const emptyHistoryMessage =
   "No updates recorded yet. Log a status change so everyone stays aligned.";
+
+const SUPPORT_STATUS = "needs_support";
 
 export default function EmergencyNotifications() {
   const { user } = useAuth();
   const { incidents, loading, refreshing, error, refresh, mergeIncident } =
     useIncidents();
+  const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState({});
   const [updating, setUpdating] = useState({});
   const [filter, setFilter] = useState("active");
@@ -47,6 +52,15 @@ export default function EmergencyNotifications() {
         response.data?.data ?? response.data?.incident ?? response.data;
       if (updatedIncident) {
         mergeIncident(updatedIncident);
+        const responseModePath = ROUTES.RESPONDER.RESPONSE_MODE.replace(
+          ":incidentId",
+          updatedIncident.id || incidentId
+        );
+        navigate(responseModePath, {
+          state: {
+            incident: updatedIncident,
+          },
+        });
       }
       setNotesDraft((prev) => ({ ...prev, [incidentId]: "" }));
     } catch (err) {
@@ -62,16 +76,44 @@ export default function EmergencyNotifications() {
     }
   };
 
-  const handleStatusChange = async (incidentId) => {
+  const handleStatusChange = async (incident) => {
+    if (!incident?.id) return;
+    const incidentId = incident.id;
     const status = selectedStatus[incidentId];
     if (!status) return;
 
+    const noteValue = (notesDraft[incidentId] || "").trim();
+    const requestingSupport = status === SUPPORT_STATUS;
+
+    if (requestingSupport && !noteValue) {
+      window.alert(
+        "Please describe the support or resources you need before requesting assistance."
+      );
+      return;
+    }
+
     setUpdating((prev) => ({ ...prev, [incidentId]: true }));
     try {
-      const response = await updateIncidentStatus(incidentId, {
+      const payload = {
         status,
-        notes: notesDraft[incidentId] || undefined,
-      });
+        notes: noteValue || undefined,
+      };
+
+      if (requestingSupport) {
+        const assignedCount =
+          typeof incident.responders_assigned === "number"
+            ? incident.responders_assigned
+            : Array.isArray(incident.assignments)
+            ? incident.assignments.length
+            : 0;
+        const baseRequired =
+          incident.responders_required ?? Math.max(1, assignedCount);
+        payload.responders_required = Math.max(baseRequired, assignedCount + 1);
+        payload.support_mode = true;
+        payload.support_details = noteValue;
+      }
+
+      const response = await updateIncidentStatus(incidentId, payload);
       const updatedIncident = response.data?.data ?? response.data;
       if (updatedIncident) {
         mergeIncident(updatedIncident);
@@ -345,7 +387,7 @@ export default function EmergencyNotifications() {
                       </select>
                       <button
                         type="button"
-                        onClick={() => handleStatusChange(incident.id)}
+                        onClick={() => handleStatusChange(incident)}
                         disabled={!selectedStatus[incident.id] || joining}
                         className="px-4 py-2.5 bg-primary text-white text-sm font-bold rounded-lg shadow-sm hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
                       >

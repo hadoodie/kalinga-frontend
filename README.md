@@ -68,6 +68,17 @@ Backend runs on: `http://localhost:8000`
 - Evacuation center management
 - Responder coordination
 - Emergency communication system
+- **Response Mode (new):** dedicated workspace that unlocks after a responder joins an incident, showing the patient conversation, live navigation, AI-generated patient context, and hospital handoff guidance. Response Mode remains active until the incident is resolved, then locks until the responder takes a new case, and it now stays synchronized via Laravel Echo so chat, timelines, and navigation update instantly without manual refreshes. When the environment lacks the new incident/conversation/hospital APIs, the UI now automatically falls back to cached incident data and surfaces inline notices so responders can keep operating without hard failures.
+
+#### AI-Assisted Context Generator
+- Streams every patient message prior to the responder marking "On Scene" and extracts symptoms, hazards, and environment clues using lightweight on-device heuristics.
+- Flags escalation cues (e.g., "can't breathe", "fire spreading") and surfaces the last five patient statements for quick reference.
+- Locks once the responder arrives so historical context is preserved even as new hospital navigation data loads.
+
+#### Response Navigation
+- Route view tracks the responder's live location versus the incident site, highlighting reported blockades.
+- When the incident status transitions to `on_scene` (or hospital transfer states), the map automatically pivots to the nearest capable hospital that matches the resource request coming from the AI context generator.
+- The responder can exit Response Mode anytime to return to the dashboard; re-opening an active incident resumes the same session state.
 
 ### 📦 Logistics & Resources
 - Hospital and resource management
