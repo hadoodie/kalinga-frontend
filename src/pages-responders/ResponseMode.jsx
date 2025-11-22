@@ -43,7 +43,7 @@ export default function ResponseMode() {
     hospitals,
     setHospitals,
     incident,
-  } = useResponseModeData(incidentId, user?.id, navigate);
+  } = useResponseModeData(incidentId, user?.id, navigate, incidents);
 
   // Extract coordinates for reverse geocoding
   const incidentLat = incident?.latitude || incident?.location_lat;
@@ -453,7 +453,7 @@ export default function ResponseMode() {
   );
 }
 
-function useResponseModeData(incidentId, userId, navigate) {
+function useResponseModeData(incidentId, userId, navigate, incidents) {
   const [messages, setMessages] = useState([]);
   const [incident, setIncident] = useState(null);
   const [conversation, setConversation] = useState(null);
