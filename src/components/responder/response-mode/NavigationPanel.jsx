@@ -181,11 +181,21 @@ export default function NavigationPanel({
         <MapContainer
           center={incidentPosition}
           zoom={13}
+          minZoom={5}
+          maxZoom={18}
           style={{ height: "100%", width: "100%" }}
         >
           <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            subdomains="abcd"
+            maxZoom={19}
+          />
+          <TileLayer
+            url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
+            attribution=""
+            subdomains="abcd"
+            maxZoom={19}
           />
           {responderPosition ? (
             <Marker position={responderPosition} icon={responderIcon}>

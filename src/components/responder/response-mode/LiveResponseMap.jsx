@@ -346,15 +346,6 @@ const responderIcon = iconFactory("blue");
 const incidentIcon = iconFactory("red");
 const hospitalIcon = iconFactory("green");
 
-const normalizeCoordinate = (value) => {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const parsed = parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-};
-
 const getIncidentPosition = (incident) => {
   if (!incident) return null;
   const lat =
