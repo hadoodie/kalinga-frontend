@@ -13,6 +13,7 @@ kalinga-hotfix-db/
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - PHP 8.2+
 - PostgreSQL 17.x
@@ -57,6 +58,7 @@ Backend runs on: `http://localhost:8000`
 ## 🎯 Features
 
 ### 🏥 Healthcare Management
+
 - Patient health records and medical history
 - Appointment scheduling and management
 - Lab results and test reports
@@ -64,6 +66,7 @@ Backend runs on: `http://localhost:8000`
 - Allergy and diagnosis management
 
 ### 🚨 Emergency Response
+
 - Real-time emergency reporting
 - Evacuation center management
 - Responder coordination
@@ -71,28 +74,33 @@ Backend runs on: `http://localhost:8000`
 - **Response Mode (new):** dedicated workspace that unlocks after a responder joins an incident, showing the patient conversation, live navigation, AI-generated patient context, and hospital handoff guidance. Response Mode remains active until the incident is resolved, then locks until the responder takes a new case, and it now stays synchronized via Laravel Echo so chat, timelines, and navigation update instantly without manual refreshes. When the environment lacks the new incident/conversation/hospital APIs, the UI now automatically falls back to cached incident data and surfaces inline notices so responders can keep operating without hard failures.
 
 #### AI-Assisted Context Generator
+
 - Streams every patient message prior to the responder marking "On Scene" and extracts symptoms, hazards, and environment clues using lightweight on-device heuristics.
 - Flags escalation cues (e.g., "can't breathe", "fire spreading") and surfaces the last five patient statements for quick reference.
 - Locks once the responder arrives so historical context is preserved even as new hospital navigation data loads.
 
 #### Response Navigation
+
 - Route view tracks the responder's live location versus the incident site, highlighting reported blockades.
 - When the incident status transitions to `on_scene` (or hospital transfer states), the map automatically pivots to the nearest capable hospital that matches the resource request coming from the AI context generator.
 - The responder can exit Response Mode anytime to return to the dashboard; re-opening an active incident resumes the same session state.
 
 ### 📦 Logistics & Resources
+
 - Hospital and resource management
 - Inventory tracking with alerts
 - Supply request management
 - Vehicle tracking
 
 ### 🔐 Authentication & Security
+
 - JWT token-based authentication
 - Role-based access control (RBAC)
 - 4 user roles: Admin, Logistics, Responder, Patient
 - Secure API endpoints
 
 ### 💾 Database Failover System
+
 - Automatic failover between cloud (Supabase) and local PostgreSQL
 - Bidirectional data synchronization
 - Zero downtime during outages
@@ -102,17 +110,18 @@ Backend runs on: `http://localhost:8000`
 
 All test accounts use password: `password123`
 
-| Role      | Email                          | Access Level                    |
-| --------- | ------------------------------ | ------------------------------- |
-| Admin     | admin@kalinga.com              | Full system access              |
-| Logistics | logistics@kalinga.com          | Resources & supply management   |
-| Responder | responder@kalinga.com          | Emergency response features     |
-| Patient   | patient@kalinga.com            | Health records & appointments   |
-| Patient   | patient_verified@kalinga.com   | Verified patient with full data |
+| Role      | Email                        | Access Level                    |
+| --------- | ---------------------------- | ------------------------------- |
+| Admin     | admin@kalinga.com            | Full system access              |
+| Logistics | logistics@kalinga.com        | Resources & supply management   |
+| Responder | responder@kalinga.com        | Emergency response features     |
+| Patient   | patient@kalinga.com          | Health records & appointments   |
+| Patient   | patient_verified@kalinga.com | Verified patient with full data |
 
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework**: React 19
 - **Build Tool**: Vite
 - **Styling**: TailwindCSS 4
@@ -123,6 +132,7 @@ All test accounts use password: `password123`
 - **Routing**: React Router v7
 
 ### Backend
+
 - **Framework**: Laravel 11
 - **Database**: PostgreSQL (Cloud: Supabase, Local: Failover)
 - **Authentication**: Laravel Sanctum (JWT)
@@ -176,17 +186,20 @@ For complete API documentation, see [backend/README.md](./backend/README.md)
 ### Running in Development
 
 **Terminal 1 - Frontend:**
+
 ```bash
 npm run dev
 ```
 
 **Terminal 2 - Backend:**
+
 ```bash
 cd backend
 php artisan serve
 ```
 
 **Terminal 3 - Scheduler (for database sync):**
+
 ```bash
 cd backend
 php artisan schedule:work
@@ -195,12 +208,14 @@ php artisan schedule:work
 ### Building for Production
 
 **Frontend:**
+
 ```bash
 npm run build
 npm run preview  # Test production build
 ```
 
 **Backend:**
+
 ```bash
 cd backend
 php artisan config:cache
@@ -211,11 +226,13 @@ php artisan view:cache
 ## 🧪 Testing
 
 ### Frontend
+
 ```bash
 npm run test
 ```
 
 ### Backend
+
 ```bash
 cd backend
 php artisan test
@@ -226,11 +243,13 @@ php artisan test
 ### Environment Variables
 
 **Frontend** (`.env`):
+
 ```env
 VITE_API_URL=http://localhost:8000
 ```
 
 **Backend** (`backend/.env`):
+
 ```env
 APP_URL=http://localhost:8000
 FRONTEND_URL=http://localhost:5173
@@ -254,11 +273,13 @@ LOCAL_DB_PASSWORD=your_local_password
 ### Frontend Issues
 
 **Error: "Cannot connect to API"**
+
 - Ensure backend is running on port 8000
 - Check `VITE_API_URL` in `.env`
 - Verify CORS settings in backend
 
 **Blank page after login**
+
 - Clear browser localStorage: `localStorage.clear()`
 - Check browser console for errors
 - Verify user token is stored
@@ -266,11 +287,13 @@ LOCAL_DB_PASSWORD=your_local_password
 ### Backend Issues
 
 **Database connection failed**
+
 - Ensure PostgreSQL is running
 - Verify credentials in `.env`
 - Run `php artisan db:status` to check connections
 
 **Scheduler not running**
+
 - Start scheduler: `php artisan schedule:work`
 - Verify schedule with: `php artisan schedule:list`
 
@@ -313,7 +336,7 @@ kalinga-hotfix-db/
 When cloning this repository:
 
 1. **Frontend**: Run `npm install` and `npm run dev`
-2. **Backend**: 
+2. **Backend**:
    - Install dependencies: `composer install`
    - Set up local database (see [backend/README.md](./backend/README.md))
    - Run migrations: `php artisan migrate`

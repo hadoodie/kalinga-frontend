@@ -13,7 +13,8 @@ const DEMO_SEQUENCE = [
   {
     key: "en_route",
     title: "Navigation Locked",
-    description: "Responder heads to the origin point with live turn-by-turn guidance.",
+    description:
+      "Responder heads to the origin point with live turn-by-turn guidance.",
     action: "Provide ETA updates via chat",
     mapFocus: "Responder trail & optimized route",
   },
@@ -72,10 +73,14 @@ export default function ResponseModeDemoPanel({ incident, hospitals }) {
   return (
     <section className="flex h-full min-h-[520px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
       <header className="border-b border-gray-100 px-6 py-4">
-        <p className="text-xs font-bold uppercase tracking-wide text-primary">Test / Demo</p>
+        <p className="text-xs font-bold uppercase tracking-wide text-primary">
+          Test / Demo
+        </p>
         <div className="mt-1 flex items-center gap-2">
           <Activity className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-black text-gray-900">Response Mode Walkthrough</h2>
+          <h2 className="text-lg font-black text-gray-900">
+            Response Mode Walkthrough
+          </h2>
         </div>
         <p className="mt-1 text-xs text-gray-500">
           Use this scripted flow to show stakeholders how the live map, control
@@ -106,7 +111,9 @@ export default function ResponseModeDemoPanel({ incident, hospitals }) {
           <h3 className="mt-1 text-2xl font-black text-gray-900">
             {currentStep.title}
           </h3>
-          <p className="mt-2 text-sm text-gray-700">{currentStep.description}</p>
+          <p className="mt-2 text-sm text-gray-700">
+            {currentStep.description}
+          </p>
 
           <dl className="mt-4 grid grid-cols-1 gap-4 text-sm">
             <div className="rounded-xl border border-white/80 bg-white px-4 py-3 shadow-sm">
@@ -148,7 +155,8 @@ export default function ResponseModeDemoPanel({ incident, hospitals }) {
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
         <div className="text-xs text-gray-500">
-          Step {stepIndex + 1} of {DEMO_SEQUENCE.length} · {statusLabel(currentStep.key)}
+          Step {stepIndex + 1} of {DEMO_SEQUENCE.length} ·{" "}
+          {statusLabel(currentStep.key)}
         </div>
         <div className="flex gap-2">
           <button

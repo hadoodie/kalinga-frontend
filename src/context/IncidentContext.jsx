@@ -11,6 +11,7 @@ import { fetchResponderIncidents } from "../services/incidents";
 import { useRealtime } from "./RealtimeContext";
 import { getEchoInstance } from "../services/echo";
 import { INCIDENT_STATUS_PRIORITIES } from "../constants/incidentStatus";
+import { useAuth } from "./AuthContext";
 
 const IncidentContext = createContext(null);
 
@@ -40,6 +41,7 @@ const sortIncidents = (list) => {
 
 export const IncidentProvider = ({ children }) => {
   const { ensureConnected } = useRealtime();
+  const { isAuthenticated, loading: authLoading } = useAuth();
 
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,6 +75,16 @@ export const IncidentProvider = ({ children }) => {
 
   const loadIncidents = useCallback(
     async ({ force = false, silent = false } = {}) => {
+      if (authLoading || !isAuthenticated) {
+        if (!authLoading) {
+          setIncidents([]);
+          incidentsRef.current = [];
+        }
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
+
       if (!force && lastFetchedRef.current) {
         const elapsed = Date.now() - new Date(lastFetchedRef.current).getTime();
         if (
@@ -123,20 +135,32 @@ export const IncidentProvider = ({ children }) => {
         }, INITIAL_REFRESH_INTERVAL_MS);
       }
     },
-    []
+    [authLoading, isAuthenticated]
   );
 
   useEffect(() => {
+    if (authLoading || !isAuthenticated) {
+      setLoading(false);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      return;
+    }
+
     loadIncidents({ force: true });
     return () => {
       if (refreshTimerRef.current) {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, [loadIncidents]);
+  }, [authLoading, isAuthenticated, loadIncidents]);
 
   useEffect(() => {
     let isMounted = true;
+
+    if (authLoading || !isAuthenticated) {
+      return;
+    }
 
     const subscribe = async () => {
       try {
@@ -186,7 +210,13 @@ export const IncidentProvider = ({ children }) => {
         subscriptionRef.current = null;
       }
     };
-  }, [ensureConnected, mergeIncident, loadIncidents]);
+  }, [
+    authLoading,
+    ensureConnected,
+    isAuthenticated,
+    mergeIncident,
+    loadIncidents,
+  ]);
 
   const value = useMemo(
     () => ({

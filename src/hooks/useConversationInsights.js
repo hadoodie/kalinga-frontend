@@ -16,7 +16,7 @@ const KEYWORD_GROUPS = {
     flood: ["flood", "water level", "rising water"],
     structural: ["collapse", "debris", "building", "structure"],
     chemical: ["chemical", "tox", "leak", "hazmat"],
-    violence: ["attack", "weapon", "threat"]
+    violence: ["attack", "weapon", "threat"],
   },
   location: {
     materials: ["wood", "gas", "fuel", "chemical"],

@@ -6,7 +6,13 @@ import {
   Route,
   Stethoscope,
 } from "lucide-react";
-import { MapContainer, Marker, Polyline, TileLayer, Tooltip } from "react-leaflet";
+import {
+  MapContainer,
+  Marker,
+  Polyline,
+  TileLayer,
+  Tooltip,
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -132,11 +138,23 @@ export default function NavigationPanel({
     <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm h-[600px] flex flex-col">
       <header className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${showHospitalMode ? 'bg-emerald-50' : 'bg-blue-50'}`}>
+          <div
+            className={`p-2 rounded-lg ${
+              showHospitalMode ? "bg-emerald-50" : "bg-blue-50"
+            }`}
+          >
             {showHospitalMode ? (
-              <Stethoscope className={`h-6 w-6 ${showHospitalMode ? 'text-emerald-600' : 'text-blue-600'}`} />
+              <Stethoscope
+                className={`h-6 w-6 ${
+                  showHospitalMode ? "text-emerald-600" : "text-blue-600"
+                }`}
+              />
             ) : (
-              <Navigation2 className={`h-6 w-6 ${showHospitalMode ? 'text-emerald-600' : 'text-blue-600'}`} />
+              <Navigation2
+                className={`h-6 w-6 ${
+                  showHospitalMode ? "text-emerald-600" : "text-blue-600"
+                }`}
+              />
             )}
           </div>
           <div>
@@ -148,9 +166,13 @@ export default function NavigationPanel({
             </h3>
           </div>
         </div>
-        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-          showHospitalMode ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
-        }`}>
+        <span
+          className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+            showHospitalMode
+              ? "bg-emerald-100 text-emerald-700"
+              : "bg-blue-100 text-blue-700"
+          }`}
+        >
           {incident?.status ? incident.status.replace(/_/g, " ") : "unknown"}
         </span>
       </header>
@@ -187,7 +209,10 @@ export default function NavigationPanel({
             </Marker>
           ) : null}
           {polylinePoints ? (
-            <Polyline positions={polylinePoints} color={showHospitalMode ? "green" : "#2563eb"} />
+            <Polyline
+              positions={polylinePoints}
+              color={showHospitalMode ? "green" : "#2563eb"}
+            />
           ) : null}
         </MapContainer>
       </div>
@@ -198,7 +223,8 @@ export default function NavigationPanel({
           <div>
             <p className="font-semibold">{selectedHospital.name}</p>
             <p className="text-xs text-emerald-700">
-              {selectedHospital.capabilities?.join(", ") || "Awaiting resource match"}
+              {selectedHospital.capabilities?.join(", ") ||
+                "Awaiting resource match"}
             </p>
           </div>
         </div>
@@ -217,7 +243,8 @@ export default function NavigationPanel({
         <div className="mt-3 bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-900 flex items-start gap-3">
           <AlertTriangle className="h-4 w-4 mt-0.5" />
           <p>
-            Blockades reported nearby: {incident.blockades.map((b) => b.title || b.road_name).join(", ")}.
+            Blockades reported nearby:{" "}
+            {incident.blockades.map((b) => b.title || b.road_name).join(", ")}.
           </p>
         </div>
       ) : null}

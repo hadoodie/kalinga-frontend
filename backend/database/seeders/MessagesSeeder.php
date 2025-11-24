@@ -18,13 +18,20 @@ class MessagesSeeder extends Seeder
      */
     public function run(): void
     {
+        $ownerUser = User::where('email', 'admin@kalinga.com')->first() ?? User::first();
+        if (!$ownerUser) {
+            $this->command?->warn('MessagesSeeder skipped because no users are available to own groups.');
+            return;
+        }
+
         for ($i = 0; $i < 5; $i++) {
             $group = Group::factory()->create([
-                'owner_id' => 1,
+                'owner_id' => $ownerUser->id,
             ]);
 
-            $users = User::inRandomOrder()->limit(rand(2,5))->pluck('id');
-            $group->users()->attach(array_unique([1, ...$users]));
+            $users = User::inRandomOrder()->limit(rand(2,5))->pluck('id')->toArray();
+            $participants = array_unique([$ownerUser->id, ...$users]);
+            $group->users()->attach($participants);
 
             Message::factory(1000)->create();
             $messages = Message::whereNull('group_id')->orderBy('created_at')->get();

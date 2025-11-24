@@ -22,16 +22,21 @@ const MessageBubble = ({ message, currentUserId }) => {
   return (
     <div className={`flex ${isOwn ? "flex-row-reverse" : "flex-row"}`}>
       <div
-        className={`max-w-[78%] rounded-2xl px-4 py-2 text-sm shadow-sm border ${
+        className={`max-w-[78%] rounded-2xl px-4 py-2 text-sm shadow-sm border break-words whitespace-pre-wrap ${
           isOwn
-            ? "bg-primary text-white rounded-br-sm border-primary"
-            : "bg-white text-gray-900 rounded-bl-sm border-gray-200"
+            ? "bg-primary text-white rounded-br-sm border-primary self-end"
+            : "bg-white text-gray-900 rounded-bl-sm border-gray-200 self-start"
         }`}
+        style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
       >
-        <p className={`text-xs mb-1 ${isOwn ? "text-right text-white/80" : "text-left text-gray-500"}`}>
+        <p
+          className={`text-xs mb-1 ${
+            isOwn ? "text-right text-white/80" : "text-left text-gray-500"
+          }`}
+        >
           {senderName} {timestamp ? `· ${timestamp}` : ""}
         </p>
-        <p className="leading-relaxed whitespace-pre-wrap text-left">
+        <p className="leading-relaxed text-left break-words whitespace-pre-wrap">
           {message.text || message.body}
         </p>
       </div>

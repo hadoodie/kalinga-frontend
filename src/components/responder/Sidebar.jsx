@@ -18,9 +18,11 @@ import {
   MessageSquare,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
+
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useIncidents } from "../../context/IncidentContext";
+import { useReverseGeocode } from "../../hooks/useReverseGeocode";
 
 export default function ResponderSidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -40,6 +42,11 @@ export default function ResponderSidebar() {
     const isActive = !["resolved", "cancelled"].includes(inc.status);
     return isAssigned && isActive;
   });
+
+  const { address: activeAddress } = useReverseGeocode(
+    activeAssignment?.latitude,
+    activeAssignment?.longitude
+  );
 
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
@@ -194,23 +201,37 @@ export default function ResponderSidebar() {
 
         {/* Active Assignment Quick Link */}
         {activeAssignment && (
-          <div className={`mb-2 px-2 ${collapsed ? 'flex justify-center' : ''}`}>
+          <div
+            className={`mb-2 px-2 ${collapsed ? "flex justify-center" : ""}`}
+          >
             <button
-              onClick={() => navigate(`/responder/response-mode/${activeAssignment.id}`)}
+              onClick={() =>
+                navigate(`/responder/response-mode/${activeAssignment.id}`)
+              }
               className={`
                 flex items-center gap-3 rounded-xl border border-red-400/30 bg-red-500/20 text-white hover:bg-red-500/30 transition-all
-                ${collapsed ? 'p-2 justify-center' : 'px-3 py-3 w-full'}
+                ${collapsed ? "p-2 justify-center" : "px-3 py-3 w-full"}
               `}
               title="Return to Active Response"
             >
               <div className="relative">
                 <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-                <AlertCircle size={collapsed ? 24 : 20} className="text-red-200" />
+                <AlertCircle
+                  size={collapsed ? 24 : 20}
+                  className="text-red-200"
+                />
               </div>
               {!collapsed && (
                 <div className="text-left overflow-hidden">
-                  <p className="text-[10px] font-bold uppercase text-red-200 tracking-wider">Active Response</p>
-                  <p className="text-xs font-semibold truncate">Incident #{activeAssignment.id}</p>
+                  <p className="text-[10px] font-bold uppercase text-red-200 tracking-wider">
+                    Active Response
+                  </p>
+                  <p
+                    className="text-xs font-semibold truncate"
+                    title={activeAddress || `Incident #${activeAssignment.id}`}
+                  >
+                    {activeAddress || `Incident #${activeAssignment.id}`}
+                  </p>
                 </div>
               )}
             </button>
@@ -392,43 +413,6 @@ export default function ResponderSidebar() {
               </ul>
             )}
           </li>
-
-          {/* Active Assignment Quick Link */}
-          {activeAssignment && (
-            <li className="group relative">
-              <div
-                className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
-                  ${collapsed ? "justify-center" : "gap-2"}
-                  ${"bg-white/20 font-bold"}
-                `}
-                onClick={() => navigate(`/responder/incident-logs/${activeAssignment.id}`)}
-              >
-                {collapsed && (
-                  <span className="transition-transform duration-300">
-                    <FileText size={25} />
-                  </span>
-                )}
-                {!collapsed && (
-                  <span
-                    className={`transition-all duration-300 transform ${
-                      collapsed
-                        ? "opacity-0 -translate-x-2"
-                        : "opacity-100 translate-x-0"
-                    }`}
-                  >
-                    Active Assignment: {activeAssignment.title}
-                  </span>
-                )}
-              </div>
-
-              {/* Tooltip when collapsed */}
-              {collapsed && (
-                <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-green-950 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                  Active Assignment: {activeAssignment.title}
-                </span>
-              )}
-            </li>
-          )}
         </ul>
 
         {/* Settings & Logout pinned at bottom */}

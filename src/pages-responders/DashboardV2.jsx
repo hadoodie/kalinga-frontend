@@ -89,8 +89,12 @@ const DashboardV2 = () => {
                   <AlertCircle className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Active Assignments</p>
-                  <p className="text-2xl font-bold text-gray-900">{assignedIncidents.length}</p>
+                  <p className="text-sm font-medium text-gray-500">
+                    Active Assignments
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {assignedIncidents.length}
+                  </p>
                 </div>
               </div>
             </div>
@@ -103,7 +107,9 @@ const DashboardV2 = () => {
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Shift Status</p>
+                  <p className="text-sm font-medium text-gray-500">
+                    Shift Status
+                  </p>
                   <p className="text-lg font-bold text-gray-900">On Duty</p>
                 </div>
               </div>
@@ -114,7 +120,9 @@ const DashboardV2 = () => {
                   <Loader2 className="h-5 w-5 text-purple-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500">System Status</p>
+                  <p className="text-sm font-medium text-gray-500">
+                    System Status
+                  </p>
                   <p className="text-lg font-bold text-gray-900">Operational</p>
                 </div>
               </div>
@@ -144,9 +152,7 @@ const DashboardV2 = () => {
           {/* Maps Section - Side by Side on Large Screens */}
           <section>
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-lg font-bold text-gray-900">
-                Tactical Maps
-              </h2>
+              <h2 className="text-lg font-bold text-gray-900">Tactical Maps</h2>
               <span className="text-xs text-gray-500 font-medium px-2 py-1 bg-gray-100 rounded-md">
                 Real-time Tracking
               </span>

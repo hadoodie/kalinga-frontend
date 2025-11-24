@@ -14,7 +14,10 @@ import { useAuth } from "../context/AuthContext";
 import useConversationInsights from "../hooks/useConversationInsights";
 import { useRealtime } from "../context/RealtimeContext";
 import { getEchoInstance, reconnectEcho } from "../services/echo";
-import { insertMessageChronologically, normalizeMessage } from "../lib/chatUtils";
+import {
+  insertMessageChronologically,
+  normalizeMessage,
+} from "../lib/chatUtils";
 import { useIncidents } from "../context/IncidentContext";
 import { useReverseGeocode } from "../hooks/useReverseGeocode";
 import { updateIncidentStatus } from "../services/incidents";
@@ -77,7 +80,10 @@ export default function ResponseMode() {
   // Extract coordinates for reverse geocoding
   const incidentLat = incident?.latitude || incident?.location_lat;
   const incidentLng = incident?.longitude || incident?.location_lng;
-  const { address: incidentAddress } = useReverseGeocode(incidentLat, incidentLng);
+  const { address: incidentAddress } = useReverseGeocode(
+    incidentLat,
+    incidentLng
+  );
 
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusError, setStatusError] = useState(null);
@@ -111,7 +117,9 @@ export default function ResponseMode() {
       return null;
     }
     return (
-      hospitals.find((hospital) => String(hospital.id) === String(selectedHospitalId)) || null
+      hospitals.find(
+        (hospital) => String(hospital.id) === String(selectedHospitalId)
+      ) || null
     );
   }, [hospitals, selectedHospitalId]);
 
@@ -326,9 +334,7 @@ export default function ResponseMode() {
             ? String(incidentId)
             : null;
           const activeConversationIdString = activeConversation
-            ? String(
-                activeConversation.conversationId ?? activeConversation.id
-              )
+            ? String(activeConversation.conversationId ?? activeConversation.id)
             : null;
 
           const payloadIncidentId =
@@ -402,7 +408,10 @@ export default function ResponseMode() {
           setIncident((prev) => ({ ...(prev ?? {}), ...payload.incident }));
         });
       } catch (error) {
-        console.error("Failed to subscribe to incident realtime channel", error);
+        console.error(
+          "Failed to subscribe to incident realtime channel",
+          error
+        );
       }
     };
 
@@ -427,7 +436,13 @@ export default function ResponseMode() {
         }
       }
     };
-  }, [incidentId, user?.id, ensureConnected, appendRealtimeMessage, deriveParticipantName]);
+  }, [
+    incidentId,
+    user?.id,
+    ensureConnected,
+    appendRealtimeMessage,
+    deriveParticipantName,
+  ]);
 
   if (loading) {
     return (
@@ -491,9 +506,13 @@ export default function ResponseMode() {
                 <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                   {incidentAddress || incident?.location}
-                  {incidentAddress && incident?.location && incidentAddress !== incident.location && (
-                    <span className="text-xs text-gray-400">({incident.location})</span>
-                  )}
+                  {incidentAddress &&
+                    incident?.location &&
+                    incidentAddress !== incident.location && (
+                      <span className="text-xs text-gray-400">
+                        ({incident.location})
+                      </span>
+                    )}
                 </p>
                 {selectedHospital && (
                   <p className="mt-2 flex items-center gap-2 text-xs text-gray-500">
@@ -514,9 +533,12 @@ export default function ResponseMode() {
               </div>
               <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">Status</p>
+                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+                    Status
+                  </p>
                   <p className="text-sm font-bold text-gray-900">
-                    {incident?.status?.replace(/_/g, " ").toUpperCase() || "UNKNOWN"}
+                    {incident?.status?.replace(/_/g, " ").toUpperCase() ||
+                      "UNKNOWN"}
                   </p>
                 </div>
                 <div className="h-8 w-px bg-gray-200 hidden sm:block" />
@@ -602,7 +624,10 @@ export default function ResponseMode() {
                 )}
 
                 {activeTab === "demo" && (
-                  <ResponseModeDemoPanel incident={incident} hospitals={hospitals} />
+                  <ResponseModeDemoPanel
+                    incident={incident}
+                    hospitals={hospitals}
+                  />
                 )}
               </div>
             </section>
@@ -622,7 +647,11 @@ export default function ResponseMode() {
                 {incident?.history?.length ? (
                   incident.history.map((entry, index) => (
                     <div key={entry.id || index} className="relative">
-                      <div className={`absolute -left-[21px] top-1 h-3 w-3 rounded-full ring-4 ring-white ${index === 0 ? "bg-primary" : "bg-gray-300"}`} />
+                      <div
+                        className={`absolute -left-[21px] top-1 h-3 w-3 rounded-full ring-4 ring-white ${
+                          index === 0 ? "bg-primary" : "bg-gray-300"
+                        }`}
+                      />
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                         <p className="text-sm font-semibold text-gray-900 capitalize">
                           {entry.status?.replace(/_/g, " ")}
@@ -630,15 +659,20 @@ export default function ResponseMode() {
                         <span className="text-xs text-gray-500 font-mono">
                           {entry.created_at_human ||
                             (entry.created_at
-                              ? new Date(entry.created_at).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
+                              ? new Date(entry.created_at).toLocaleTimeString(
+                                  [],
+                                  {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )
                               : "")}
                         </span>
                       </div>
                       {entry.notes && (
-                        <p className="text-xs text-gray-600 mt-1">{entry.notes}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {entry.notes}
+                        </p>
                       )}
                     </div>
                   ))
@@ -646,12 +680,19 @@ export default function ResponseMode() {
                   <div className="relative">
                     <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-primary ring-4 ring-white" />
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                      <p className="text-sm font-semibold text-gray-900">Incident Created</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        Incident Created
+                      </p>
                       <span className="text-xs text-gray-500 font-mono">
-                        {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {new Date().toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">Waiting for updates...</p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Waiting for updates...
+                    </p>
                   </div>
                 )}
               </div>
@@ -673,6 +714,37 @@ function useResponseModeData(incidentId, userId, navigate, incidents) {
 
   const conversationRef = useRef(null);
   const incidentRef = useRef(null);
+  const previousIncidentIdRef = useRef(null);
+
+  useEffect(() => {
+    const previousId = previousIncidentIdRef.current;
+
+    if (!incidentId) {
+      previousIncidentIdRef.current = null;
+      setMessages([]);
+      setConversation(null);
+      setIncident(null);
+      setHospitals([]);
+      setError(null);
+      setLoading(true);
+      return;
+    }
+
+    if (
+      previousId !== null &&
+      String(previousId) === String(incidentId)
+    ) {
+      return;
+    }
+
+    previousIncidentIdRef.current = incidentId;
+    setMessages([]);
+    setConversation(null);
+    setIncident(null);
+    setHospitals([]);
+    setError(null);
+    setLoading(true);
+  }, [incidentId]);
 
   const fetchHospitals = useCallback(async () => {
     if (!incidentId) {

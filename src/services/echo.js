@@ -40,14 +40,18 @@ const applyAuthHeader = (echoInstance, headerValue) => {
 };
 
 // Configure Echo for Laravel Reverb WebSocket connections
+const reverbScheme = import.meta.env.VITE_REVERB_SCHEME || "http";
+const useTls = reverbScheme === "https";
+const transportModes = useTls ? ["wss"] : ["ws"];
+
 const echo = new Echo({
   broadcaster: "reverb",
   key: import.meta.env.VITE_REVERB_APP_KEY || "ydxpycz90avrcgumitzo",
   wsHost: import.meta.env.VITE_REVERB_HOST || "localhost",
   wsPort: import.meta.env.VITE_REVERB_PORT || 6001,
   wssPort: import.meta.env.VITE_REVERB_PORT || 6001,
-  forceTLS: (import.meta.env.VITE_REVERB_SCHEME || "http") === "https",
-  enabledTransports: ["ws", "wss"],
+  forceTLS: useTls,
+  enabledTransports: transportModes,
   disableStats: true, // Disable statistics for better performance
   authEndpoint: `${API_BASE_URL}/api/broadcasting/auth`,
   auth: {

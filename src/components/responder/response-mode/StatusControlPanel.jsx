@@ -136,8 +136,7 @@ export default function StatusControlPanel({
           </h2>
         </div>
         <p className="mt-1 text-xs text-gray-500">
-          Update responder status and lock the receiving facility once on
-          scene.
+          Update responder status and lock the receiving facility once on scene.
         </p>
       </header>
 
@@ -214,14 +213,14 @@ export default function StatusControlPanel({
             {nearestHospital &&
               (selectedHospitalId === null ||
                 String(selectedHospitalId) !== String(nearestHospital.id)) && (
-              <button
-                type="button"
-                onClick={handleAssignNearest}
-                className="text-xs font-semibold text-primary hover:underline"
-              >
-                Auto-select nearest
-              </button>
-            )}
+                <button
+                  type="button"
+                  onClick={handleAssignNearest}
+                  className="text-xs font-semibold text-primary hover:underline"
+                >
+                  Auto-select nearest
+                </button>
+              )}
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm">
@@ -258,8 +257,7 @@ export default function StatusControlPanel({
               <div className="flex items-center gap-2 text-gray-500">
                 <Route className="h-4 w-4 flex-shrink-0" />
                 <span>
-                  No hospital locked. Nearest suggestion is
-                  {" "}
+                  No hospital locked. Nearest suggestion is{" "}
                   <strong className="text-gray-700">
                     {nearestHospital.name}
                   </strong>

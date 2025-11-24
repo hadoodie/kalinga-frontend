@@ -722,9 +722,7 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
               {conversation.participant.isOnline && !isArchived && (
                 <span className="text-green-600">● Online</span>
               )}
-              {isArchived && (
-                <span className="text-gray-500">● Archived</span>
-              )}
+              {isArchived && <span className="text-gray-500">● Archived</span>}
             </p>
           </div>
         </div>
@@ -792,6 +790,10 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
                         : "bg-primary text-white"
                       : "bg-white text-gray-900 border border-gray-200"
                   }`}
+                  style={{
+                    wordBreak: "break-word",
+                    overflowWrap: "break-word",
+                  }}
                 >
                   <p className="text-sm whitespace-pre-wrap break-words text-left">
                     {msg.text}
@@ -2180,10 +2182,7 @@ export default function MessagesContact() {
           });
         }
 
-        if (
-          payload.autoReply?.message &&
-          payload.autoReply?.conversation
-        ) {
+        if (payload.autoReply?.message && payload.autoReply?.conversation) {
           const autoConversation = normalizeConversation(
             payload.autoReply.conversation,
             user?.id ?? null
@@ -2308,7 +2307,10 @@ export default function MessagesContact() {
 
       const realtimeResult = await ensureConnected();
       if (!realtimeResult?.ok) {
-        console.warn("Realtime connection not ready for emergency alert", realtimeResult);
+        console.warn(
+          "Realtime connection not ready for emergency alert",
+          realtimeResult
+        );
       }
 
       const triggeredAt = options.triggeredAt ?? new Date().toISOString();
@@ -2350,7 +2352,8 @@ export default function MessagesContact() {
           mapLink = buildMapsLink(latCandidate, lngCandidate);
         } else {
           latDisplay =
-            locationInfo.latitude !== undefined && locationInfo.latitude !== null
+            locationInfo.latitude !== undefined &&
+            locationInfo.latitude !== null
               ? String(locationInfo.latitude)
               : null;
           lngDisplay =
@@ -2452,9 +2455,7 @@ export default function MessagesContact() {
       }
 
       const emergencyConversation = conversationsWithPresence.find(
-        (conv) =>
-          conv.category === "Emergency" &&
-          !conv.isArchived
+        (conv) => conv.category === "Emergency" && !conv.isArchived
       );
       const responderConversation = conversationsWithPresence.find(
         (conv) =>
@@ -2537,7 +2538,7 @@ export default function MessagesContact() {
         "Emergency Dispatch";
 
       emergencyPayload.responder_name = responderName;
-  emergencyPayload.patient_id = user.id;
+      emergencyPayload.patient_id = user.id;
 
       const participant =
         targetConversation?.participant ??

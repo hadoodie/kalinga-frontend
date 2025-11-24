@@ -12,8 +12,14 @@ const formatList = (items, fallback) => {
 };
 
 export default function ContextGeneratorPanel({ insights, locked }) {
-  const { summary, symptoms, hazards, location, supportingMessages, urgencyCue } =
-    insights ?? {};
+  const {
+    summary,
+    symptoms,
+    hazards,
+    location,
+    supportingMessages,
+    urgencyCue,
+  } = insights ?? {};
 
   return (
     <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
@@ -26,7 +32,9 @@ export default function ContextGeneratorPanel({ insights, locked }) {
             <p className="text-xs uppercase tracking-wide font-bold text-gray-500">
               AI Context Generator
             </p>
-            <h2 className="text-lg font-black text-gray-900">Patient Insight Stream</h2>
+            <h2 className="text-lg font-black text-gray-900">
+              Patient Insight Stream
+            </h2>
           </div>
         </div>
         {locked ? (
@@ -76,8 +84,8 @@ export default function ContextGeneratorPanel({ insights, locked }) {
         <div className="flex items-center gap-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl p-4">
           <AlertTriangle className="h-4 w-4" />
           <span>
-            Escalation flag triggered (<strong>{urgencyCue}</strong>). Notify command
-            center if not already done.
+            Escalation flag triggered (<strong>{urgencyCue}</strong>). Notify
+            command center if not already done.
           </span>
         </div>
       ) : null}
@@ -96,14 +104,19 @@ export default function ContextGeneratorPanel({ insights, locked }) {
                 <p className="font-semibold text-gray-900 text-xs mb-1">
                   {new Date(
                     message.createdAt || message.created_at || Date.now()
-                  ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  ).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </p>
                 <p>{message.text || message.body}</p>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-gray-500">No patient lines captured yet.</p>
+          <p className="text-sm text-gray-500">
+            No patient lines captured yet.
+          </p>
         )}
       </div>
     </section>
