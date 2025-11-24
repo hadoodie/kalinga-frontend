@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Construction, Truck, Check, FileQuestionMark, Loader2 } from "lucide-react";
 import api from "../../services/api"; 
 import LiveTrackingMap from "../../components/logistics/LiveTrackingMap"; 
+import { useNavigate } from "react-router-dom"; 
+import { ROUTES } from "../../config/routes";
 
 // Helpers
 const formatETA = (utcDateString) => {
@@ -39,6 +41,7 @@ export default function Supply() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedShipment, setSelectedShipment] = useState(null); 
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchSupplyData = async () => {
@@ -178,17 +181,32 @@ export default function Supply() {
 
         {/* MAP */}
         <section className="lg:col-span-2 bg-white rounded-xl shadow-lg p-0 flex flex-col h-[60vh] lg:h-auto">
-            <div className="p-4 border-b">
+            <div className="p-4 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-700">
-              Real-time Asset Tracking & Hazard Zones
+                Real-time Asset Tracking
               </h2>
+              <span className="text-xs text-primary font-semibold animate-pulse">
+                ● Live
+              </span>
             </div>
             
-            <div className="w-full flex-1 rounded-b-xl overflow-hidden">
-              <LiveTrackingMap 
-                selectedShipment={selectedShipment} 
-                allShipments={shipments.filter(s => s.status !== 'Delivered')}
-              />
+            <div 
+              className="w-full flex-1 rounded-b-xl overflow-hidden relative group cursor-pointer"
+              onClick={() => navigate(ROUTES.LOGISTICS.LIVE_MAP)} 
+            >
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 z-[400] transition-colors flex items-center justify-center">
+                 <span className="bg-white/90 text-primary px-4 py-2 rounded-full shadow-lg font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    View Full Screen Map
+                 </span>
+              </div>
+
+              <div className="w-full h-full pointer-events-none">
+                 <LiveTrackingMap 
+                    selectedShipment={selectedShipment} 
+                    allShipments={shipments.filter(s => s.status !== 'Delivered')}
+                    onShipmentSelect={setSelectedShipment}
+                  />
+              </div>
             </div>
         </section>
 

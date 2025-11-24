@@ -15,6 +15,7 @@ class AllocationRequestSeeder extends Seeder
      */
     public function run(): void
     {
+        AllocationRequest::truncate();
         // Get the logistics user who will handle/create requests
         $logisticsUser = User::where('email', 'logistics_verified@kalinga.com')->first();
         
@@ -245,6 +246,8 @@ class AllocationRequestSeeder extends Seeder
                 ['status' => 'Pending', 'time' => Carbon::now()->subHours(1), 'details' => 'Submitted to field hospital inventory.'],
             ],
             'created_at' => Carbon::now()->subHours(1),
+            'current_location_lat' => 14.6510, 
+            'current_location_lng' => 121.0510,
         ]);
 
         AllocationRequest::create([
@@ -266,6 +269,8 @@ class AllocationRequestSeeder extends Seeder
             ],
             'created_at' => Carbon::now()->subDays(4),
             'eta' => Carbon::now()->subDays(4)->addHours(3), 
+            'current_location_lat' => 14.5547,
+            'current_location_lng' => 121.0485,
         ]);
         
         AllocationRequest::create([

@@ -67,6 +67,7 @@ export const ROUTES = {
     REQUESTED_ALLOCATION: "/logistics/requested-allocation",
     SETTINGS: "/logistics/settings",
     NOTIFICATIONS: "/logistics/notifications",
+    LIVE_MAP: "/logistics/live-map",
   },
 };
 
