@@ -40,6 +40,13 @@ const BLOCKADE_SEVERITY_COLORS = {
 
 const BLOCKADE_ICON_CACHE = {};
 
+const ROUTE_POLYLINE_COLORS = {
+  danger: "#dc2626",
+  warning: "#f97316",
+  hospital: "#059669",
+  default: "#2563eb",
+};
+
 const getBlockadeIcon = (severity = "medium") => {
   if (BLOCKADE_ICON_CACHE[severity]) {
     return BLOCKADE_ICON_CACHE[severity];
@@ -424,7 +431,16 @@ export default function LiveResponseMap({
   onAutoAssignHospital,
   autoAssignmentEnabled = true,
 }) {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const authToken = useMemo(() => {
+    if (token) {
+      return token;
+    }
+    if (typeof window === "undefined") {
+      return null;
+    }
+    return window.localStorage.getItem("token");
+  }, [token]);
   const isMountedRef = useRef(true);
   const [responderPosition, setResponderPosition] = useState(null);
   const [routePoints, setRoutePoints] = useState(null);
@@ -498,7 +514,7 @@ export default function LiveResponseMap({
 
     if (!navigator.geolocation) {
       setResponderPosition(DEFAULT_POSITION);
-      return;
+      return undefined;
     }
 
     trackingWatchId.current = navigator.geolocation.watchPosition(
@@ -507,9 +523,7 @@ export default function LiveResponseMap({
         setResponderPosition([latitude, longitude]);
       },
       () => {
-        if (!responderPosition) {
-          setResponderPosition(DEFAULT_POSITION);
-        }
+        setResponderPosition((prev) => prev ?? DEFAULT_POSITION);
       },
       {
         enableHighAccuracy: true,
@@ -523,7 +537,7 @@ export default function LiveResponseMap({
         navigator.geolocation.clearWatch(trackingWatchId.current);
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchBlockades = useCallback(
     async ({ silent = false } = {}) => {
@@ -533,14 +547,13 @@ export default function LiveResponseMap({
       }
 
       try {
+        const headers = { Accept: "application/json" };
+        if (authToken) {
+          headers.Authorization = `Bearer ${authToken}`;
+        }
         const response = await fetch(
           `${KALINGA_CONFIG.API_BASE_URL}/api/road-blockades`,
-          {
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
+          { headers }
         );
 
         if (!response.ok) {
@@ -573,7 +586,7 @@ export default function LiveResponseMap({
         }
       }
     },
-    []
+    [authToken]
   );
 
   useEffect(() => {
@@ -705,7 +718,9 @@ export default function LiveResponseMap({
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            ...(authToken
+              ? { Authorization: `Bearer ${authToken}` }
+              : {}),
           },
           body: JSON.stringify({
             title,
@@ -744,6 +759,7 @@ export default function LiveResponseMap({
       setRoadIssueSubmitting(false);
     }
   }, [
+    authToken,
     fetchBlockades,
     incident?.id,
     incident?.location,
@@ -885,6 +901,19 @@ export default function LiveResponseMap({
     return incidentPosition;
   }, [incidentPosition, mode, responderPosition]);
 
+  const polylineColor = useMemo(() => {
+    if (routeAlert?.type === "danger") {
+      return ROUTE_POLYLINE_COLORS.danger;
+    }
+    if (routeAlert?.type === "warning") {
+      return ROUTE_POLYLINE_COLORS.warning;
+    }
+    if (mode === "hospital") {
+      return ROUTE_POLYLINE_COLORS.hospital;
+    }
+    return ROUTE_POLYLINE_COLORS.default;
+  }, [mode, routeAlert?.type]);
+
   return (
     <section className="flex h-full min-h-[520px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
@@ -1019,15 +1048,7 @@ export default function LiveResponseMap({
           {routePoints && routePoints.length > 1 && (
             <Polyline
               positions={routePoints}
-              color={
-                routeAlert?.type === "danger"
-                  ? "#dc2626"
-                  : routeAlert?.type === "warning"
-                  ? "#f97316"
-                  : mode === "hospital"
-                  ? "#059669"
-                  : "#2563eb"
-              }
+              color={polylineColor}
               weight={5}
               opacity={0.85}
             />

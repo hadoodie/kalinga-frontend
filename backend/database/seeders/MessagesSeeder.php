@@ -29,7 +29,10 @@ class MessagesSeeder extends Seeder
                 'owner_id' => $ownerUser->id,
             ]);
 
-            $users = User::inRandomOrder()->limit(rand(2,5))->pluck('id')->toArray();
+            $users = User::inRandomOrder()
+                ->limit(random_int(2, 5))
+                ->pluck('id')
+                ->toArray();
             $participants = array_unique([$ownerUser->id, ...$users]);
             $group->users()->attach($participants);
 
