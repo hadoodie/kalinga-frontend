@@ -39,6 +39,7 @@ class Incident extends Model
         'latlng',
         'description',
         'user_id',
+        'conversation_id',
         'status',
         'assigned_responder_id',
         'assigned_at',
@@ -61,6 +62,11 @@ class Incident extends Model
     public function assignedResponder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'assigned_responder_id');
+    }
+
+    public function conversation(): BelongsTo
+    {
+        return $this->belongsTo(Conversation::class);
     }
 
     public function assignments(): HasMany

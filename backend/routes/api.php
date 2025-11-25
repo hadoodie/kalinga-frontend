@@ -124,7 +124,10 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware(['role:admin,responder,logistics'])->group(function () {
         // Pathfinding routes
         Route::get('/incidents', [IncidentApiController::class, 'index']);
+        Route::get('/incidents/{incident}', [IncidentApiController::class, 'show']);
         Route::get('/incidents/{incident}/history', [IncidentApiController::class, 'history']);
+        Route::get('/incidents/{incident}/conversation', [IncidentApiController::class, 'conversation']);
+        Route::get('/incidents/{incident}/hospital-recommendations', [IncidentApiController::class, 'hospitalRecommendations']);
         Route::post('/incidents/{incident}/assign', [IncidentApiController::class, 'assign']);
         Route::post('/incidents/{incident}/status', [IncidentApiController::class, 'updateStatus']);
         Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);

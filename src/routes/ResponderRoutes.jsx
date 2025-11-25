@@ -10,6 +10,7 @@ const IncidentLogs = lazy(() => import("../pages-responders/IncidentLogs"));
 const EmergencySOS = lazy(() => import("../pages-responders/EmergencySOS"));
 const TriageSystem = lazy(() => import("../pages-responders/TriageSystem"));
 const OnlineTraining = lazy(() => import("../pages-responders/OnlineTraining"));
+const ResponseMode = lazy(() => import("../pages-responders/ResponseMode"));
 const Settings = lazy(() => import("../pages-responders/Settings"));
 const Profile = lazy(() => import("../pages-responders/Profile"));
 const Grades = lazy(() => import("../pages-responders/Grades"));
@@ -66,6 +67,14 @@ export const ResponderRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
           <DashboardV2 />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.RESPONDER.RESPONSE_MODE}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <ResponseMode />
         </ProtectedRoute>
       }
     />

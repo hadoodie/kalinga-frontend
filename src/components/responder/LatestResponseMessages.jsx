@@ -44,9 +44,7 @@ const selectConversationFromList = (list = []) => {
 
   return {
     conversation: selected,
-    messages: Array.isArray(selected?.messages)
-      ? [...selected.messages]
-      : [],
+    messages: Array.isArray(selected?.messages) ? [...selected.messages] : [],
   };
 };
 
@@ -69,9 +67,7 @@ const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
     cacheSeedRef.current.conversation
   );
   const [messages, setMessages] = useState(cacheSeedRef.current.messages);
-  const [loading, setLoading] = useState(
-    () => !cacheSeedRef.current.hydrated
-  );
+  const [loading, setLoading] = useState(() => !cacheSeedRef.current.hydrated);
   const [error, setError] = useState(() => cacheSeedRef.current.error);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -92,7 +88,7 @@ const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
     : null;
 
   const loadConversation = useCallback(async () => {
-    setLoading((prev) => (prev || !conversationRef.current));
+    setLoading((prev) => prev || !conversationRef.current);
     setError(null);
 
     try {
@@ -103,8 +99,9 @@ const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
         )
       );
 
-      const { conversation: selectedConversation } =
-        selectConversationFromList(normalizedConversations);
+      const { conversation: selectedConversation } = selectConversationFromList(
+        normalizedConversations
+      );
 
       if (!selectedConversation) {
         setConversation(null);

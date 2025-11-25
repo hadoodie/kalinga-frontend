@@ -18,11 +18,13 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             HospitalSeeder::class,
             ResourceSeeder::class,
-            HealthRecordsSeeder::class, 
+            HealthRecordsSeeder::class,
             AppointmentsSeeder::class,
             LabResultSeeder::class,
             NotificationSeeder::class,
             AllocationRequestSeeder::class,
+            IncidentSeeder::class,
+            MessagesSeeder::class,
         ]);
     }
 }

@@ -18,8 +18,11 @@ import {
   MessageSquare,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
+
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useIncidents } from "../../context/IncidentContext";
+import { useReverseGeocode } from "../../hooks/useReverseGeocode";
 
 export default function ResponderSidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -28,8 +31,22 @@ export default function ResponderSidebar() {
   const [emergencySOSOpen, setEmergencySOSOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { toast } = useToast();
+  const { incidents } = useIncidents();
+
+  const activeAssignment = incidents.find((inc) => {
+    const isAssigned = inc.assignments?.some(
+      (a) => (a.responder_id || a.responder?.id) === user?.id
+    );
+    const isActive = !["resolved", "cancelled"].includes(inc.status);
+    return isAssigned && isActive;
+  });
+
+  const { address: activeAddress } = useReverseGeocode(
+    activeAssignment?.latitude,
+    activeAssignment?.longitude
+  );
 
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
@@ -181,6 +198,45 @@ export default function ResponderSidebar() {
             <Menu size={30} />
           </button>
         </div>
+
+        {/* Active Assignment Quick Link */}
+        {activeAssignment && (
+          <div
+            className={`mb-2 px-2 ${collapsed ? "flex justify-center" : ""}`}
+          >
+            <button
+              onClick={() =>
+                navigate(`/responder/response-mode/${activeAssignment.id}`)
+              }
+              className={`
+                flex items-center gap-3 rounded-xl border border-red-400/30 bg-red-500/20 text-white hover:bg-red-500/30 transition-all
+                ${collapsed ? "p-2 justify-center" : "px-3 py-3 w-full"}
+              `}
+              title="Return to Active Response"
+            >
+              <div className="relative">
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                <AlertCircle
+                  size={collapsed ? 24 : 20}
+                  className="text-red-200"
+                />
+              </div>
+              {!collapsed && (
+                <div className="text-left overflow-hidden">
+                  <p className="text-[10px] font-bold uppercase text-red-200 tracking-wider">
+                    Active Response
+                  </p>
+                  <p
+                    className="text-xs font-semibold truncate"
+                    title={activeAddress || `Incident #${activeAssignment.id}`}
+                  >
+                    {activeAddress || `Incident #${activeAssignment.id}`}
+                  </p>
+                </div>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Menu */}
         <ul className="list-none flex-1 p-2 space-y-1">

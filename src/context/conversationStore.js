@@ -26,7 +26,9 @@ export const updateConversationStore = (updater) => {
   };
 
   const nextState =
-    typeof updater === "function" ? updater(baseState) : { ...baseState, ...(updater ?? {}) };
+    typeof updater === "function"
+      ? updater(baseState)
+      : { ...baseState, ...(updater ?? {}) };
 
   if (nextState.conversations !== undefined) {
     conversationStore.conversations = Array.isArray(nextState.conversations)

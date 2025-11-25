@@ -42,6 +42,7 @@ export const ROUTES = {
     ROOT: "/responder",
     DASHBOARD: "/responder/dashboard",
     DASHBOARD_V2: "/responder/dashboard-v2",
+    RESPONSE_MODE: "/responder/response-mode/:incidentId",
     INCIDENT_LOGS: "/responder/incident-logs",
     EMERGENCY_SOS: "/responder/emergency-sos",
     TRIAGE_SYSTEM: "/responder/triage-system",

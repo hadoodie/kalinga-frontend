@@ -1,0 +1,22 @@
+[
+  {
+    "id": "response-mode-live-map",
+    "title": "Introduce live-tracking map component for Response Mode reused from Response Map page",
+    "status": "not-started"
+  },
+  {
+    "id": "response-mode-incident-status-panel",
+    "title": "Add incident status control panel for responders with status updates and hospital selection",
+    "status": "not-started"
+  },
+  {
+    "id": "response-mode-layout-update",
+    "title": "Rework Response Mode layout prioritizing map while keeping conversation and timeline panels",
+    "status": "not-started"
+  },
+  {
+    "id": "response-mode-status-wiring",
+    "title": "Wire status updates to trigger hospital auto-assignment and timeline updates via incidents API",
+    "status": "not-started"
+  }
+]
