@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
-import { Truck } from "lucide-react";
+import { 
+  MapContainer, 
+  TileLayer, 
+  Marker, 
+  Popup, 
+  Polyline, 
+  useMap 
+} from "react-leaflet";
 import L from 'leaflet';
 
 // --- Custom Icon Logic ---
@@ -35,29 +41,37 @@ function RecenterView({ coords, zoom }) {
 }
 
 // --- MAIN COMPONENT ---
-export default function LiveTrackingMap({ selectedShipment, allShipments, onShipmentSelect }) {
+// Added 'userLocation' to props
+export default function LiveTrackingMap({ selectedShipment, allShipments, onShipmentSelect, userLocation }) {
   const [routeCoords, setRouteCoords] = useState(null);
-  const [mapCenter, setMapCenter] = useState([14.65, 121.05]); // Default: Metro Manila
+  const [mapCenter, setMapCenter] = useState([14.65, 121.05]); // Default fallback: Metro Manila
   const [mapZoom, setMapZoom] = useState(11);
 
-  // Calculate route when a shipment is selected
+  // Effect: Recenter map on User Location when it loads (if no shipment is selected)
   useEffect(() => {
-    // 1. Validation: If no valid shipment selected, clear the route
+    if (userLocation && !selectedShipment) {
+      setMapCenter([userLocation.lat, userLocation.lng]);
+    }
+  }, [userLocation, selectedShipment]);
+
+  // Calculate route when a shipment is selected OR user location changes
+  useEffect(() => {
+    // Validation: If no valid shipment selected, clear the route
     if (!selectedShipment || !selectedShipment.location || selectedShipment.location[0] == null || selectedShipment.location[1] == null) {
       setRouteCoords(null); 
-      // Optional: Reset map view if deselecting
-      // setMapCenter([14.65, 121.05]);
-      // setMapZoom(11);
       return;
     }
 
     const fetchRoute = async () => {
-      // 2. Define Start (Logistics HQ) and End (Shipment Location)
-      // Ideally, HQ coords should come from your backend/config
-      const startCoords = [14.65, 121.05]; 
+      // Define Start (Logistics HQ) and End (Shipment Location)
+      // Use userLocation if available, otherwise fallback
+      const startCoords = userLocation 
+        ? [userLocation.lat, userLocation.lng] 
+        : [14.65, 121.05]; 
+        
       const endCoords = selectedShipment.location; 
 
-      // 3. Format for OSRM (Longitude,Latitude)
+      // Format for OSRM (Longitude,Latitude)
       const osrmCoords = `${startCoords[1]},${startCoords[0]};${endCoords[1]},${endCoords[0]}`;
       const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${osrmCoords}?overview=full&geometries=geojson`;
 
@@ -66,12 +80,11 @@ export default function LiveTrackingMap({ selectedShipment, allShipments, onShip
         const data = await response.json();
         
         if (data.routes && data.routes.length > 0) {
-          // 4. Convert OSRM [lng, lat] to Leaflet [lat, lng]
+          // Convert OSRM [lng, lat] to Leaflet [lat, lng]
           const leafletCoords = data.routes[0].geometry.coordinates.map(coord => [coord[1], coord[0]]);
           setRouteCoords(leafletCoords);
           
-          // 5. Recenter map to show the whole route
-          // Find the midpoint or just focus on the truck
+          // Recenter map to focus on the truck/destination
           setMapCenter(endCoords); 
           setMapZoom(13);
         }
@@ -81,7 +94,12 @@ export default function LiveTrackingMap({ selectedShipment, allShipments, onShip
     };
 
     fetchRoute();
-  }, [selectedShipment]);
+  }, [selectedShipment, userLocation]); 
+
+  // Determine current HQ position for rendering marker
+  const hqPosition = userLocation 
+    ? [userLocation.lat, userLocation.lng] 
+    : [14.65, 121.05];
 
   return (
     <MapContainer center={mapCenter} zoom={mapZoom} style={{ height: "100%", width: "100%" }}>
@@ -101,7 +119,7 @@ export default function LiveTrackingMap({ selectedShipment, allShipments, onShip
               eventHandlers={{
                 click: () => {
                   if (onShipmentSelect) {
-                    onShipmentSelect(shipment); // Trigger the parent state update
+                    onShipmentSelect(shipment);
                   }
                 },
               }}
@@ -117,16 +135,22 @@ export default function LiveTrackingMap({ selectedShipment, allShipments, onShip
         return null;
       })}
 
-      {/* Render the Route Line if a shipment is selected */}
+      {/* Render the Route Line + HQ Marker if a shipment is selected */}
       {routeCoords && (
         <>
-          {/* Start Point (HQ) */}
-          <Marker position={[14.65, 121.05]}>
-            <Popup>Logistics HQ (Start)</Popup>
+          {/* Start Point */}
+          <Marker position={hqPosition}>
+            <Popup>Logistics HQ (Your Location)</Popup>
           </Marker>
           {/* The Blue Route Line */}
           <Polyline pathOptions={{ color: '#004d25', weight: 6, opacity: 0.8 }} positions={routeCoords} />
         </>
+      )}
+
+      {!selectedShipment && userLocation && (
+         <Marker position={hqPosition}>
+            <Popup>Logistics HQ (Your Location)</Popup>
+         </Marker>
       )}
 
       <RecenterView coords={mapCenter} zoom={mapZoom} />

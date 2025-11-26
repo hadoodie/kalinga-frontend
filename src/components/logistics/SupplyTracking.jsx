@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Construction, Truck, Check, FileQuestionMark, Loader2 } from "lucide-react";
+import { 
+  Construction, 
+  Truck, 
+  Check, 
+  Package, 
+  Loader2 
+} from "lucide-react";
 import api from "../../services/api"; 
 import LiveTrackingMap from "../../components/logistics/LiveTrackingMap"; 
 import { useNavigate } from "react-router-dom"; 
@@ -28,7 +34,7 @@ const getStatusVisuals = (status) => {
     case "Delivered":
       return { pillClass: "bg-green-500 text-white", icon: <Check size={16} /> };
     default:
-      return { pillClass: "bg-blue-300 text-blue-800", icon: <FileQuestionMark size={16} /> };
+      return { pillClass: "bg-blue-300 text-blue-800", icon: <Package size={16} /> };
   }
 };
 
@@ -180,7 +186,7 @@ export default function Supply() {
         </section>
 
         {/* MAP */}
-        <section className="lg:col-span-2 bg-white rounded-xl shadow-lg p-0 flex flex-col h-[60vh] lg:h-auto">
+        <section className="lg:col-span-2 bg-white rounded-xl shadow-lg p-0 flex flex-col h-[60vh] lg:h-[600px]">
             <div className="p-4 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-700">
                 Real-time Asset Tracking
@@ -196,16 +202,16 @@ export default function Supply() {
             >
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 z-[400] transition-colors flex items-center justify-center">
                  <span className="bg-white/90 text-primary px-4 py-2 rounded-full shadow-lg font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                    View Full Screen Map
+                   View Full Screen Map
                  </span>
               </div>
 
               <div className="w-full h-full pointer-events-none">
                  <LiveTrackingMap 
-                    selectedShipment={selectedShipment} 
-                    allShipments={shipments.filter(s => s.status !== 'Delivered')}
-                    onShipmentSelect={setSelectedShipment}
-                  />
+                   selectedShipment={selectedShipment} 
+                   allShipments={shipments.filter(s => s.status !== 'Delivered')}
+                   onShipmentSelect={setSelectedShipment}
+                 />
               </div>
             </div>
         </section>
