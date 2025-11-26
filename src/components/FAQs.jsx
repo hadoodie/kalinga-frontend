@@ -66,6 +66,18 @@ export default function Faqs() {
             </p>
           </FaqItem>
 
+          <FaqItem question="How do I schedule an appointment?">
+            <p className="font-bold text-red-600">
+              No. Kalinga is a tool that works *in coordination with* 911, but it does not
+              replace it.
+            </p>
+            <p>
+              In any life-threatening emergency, you must always <strong>call 911 directly</strong> first. The Kalinga
+              app's emergency features are designed to supplement this by providing critical data to
+              responders <strong>after</strong> 911 has been alerted.
+            </p>
+          </FaqItem>
+
           <FaqItem question="Is Kalinga a replacement for 911?">
             <p className="font-bold text-red-600">
               No. Kalinga is a tool that works *in coordination with* 911, but it does not
@@ -102,6 +114,22 @@ export default function Faqs() {
               When you click the "Reject" button, a modal will appear asking you to provide a reason. This
               reason is logged and will be visible to the original requester in their "Allocation History"
               so they understand why the request could not be fulfilled.
+            </p>
+          </FaqItem>
+
+
+        {/* Health Responders FAQs */}
+          <h2 className="text-2xl font-bold text-primary mt-12 mb-4">Health Responders Questions</h2>
+          <FaqItem question="How do I access the triage interface?">
+            <p>
+              Once logged in with your responder account, go to the Triage Dashboard. The system will automatically display 
+              real-time patient vitals gathered from the ALISTO hardware, including heart rate, temperature, and SpO₂ percentage.
+            </p>
+          </FaqItem>
+          <FaqItem question="Can I override the AI’s suggested triage result?">
+            <p>
+              Yes. Responders have manual control. After reviewing the automatically generated ESI and CCI scores, you may 
+              adjust the triage category if your clinical judgment finds it necessary. All overrides are recorded for transparency.
             </p>
           </FaqItem>
         </div>

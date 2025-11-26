@@ -400,7 +400,7 @@ export default function ResourceMngmt() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen gap-6 p-4 md:p-8 bg-background">
+    <div className="flex flex-col min-h-screen gap-5 p-4 md:p-8 bg-background">
       {/* Header and Title */}
       <header className="flex flex-wrap justify-between items-center gap-4 p-4 bg-white rounded-xl shadow-lg">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
@@ -448,27 +448,27 @@ export default function ResourceMngmt() {
       {!loading && !error && (
         <>
           {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200 bg-white rounded-lg p-1">
+          <div className="flex border-b border-gray-200 bg-none mt-0 rounded-lg ">
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-3 py-3 font-medium text-sm border-b-2 ${
                 activeTab === 'inventory'
-                  ? 'border-yellow-500 text-yellow-600 bg-yellow-50 rounded'
+                  ? 'border-yellow-500 text-yellow-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <List className="h-4 w-4" />
+              <div className="h-4 w-4" />
               Inventory Management
             </button>
             <button
               onClick={() => setActiveTab('calendar')}
-              className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+              className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 ${
                 activeTab === 'calendar'
-                  ? 'border-yellow-500 text-yellow-600 bg-yellow-50 rounded'
+                  ? 'border-yellow-500 text-yellow-500'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <Calendar className="h-4 w-4" />
+              <div className="h-4 w-4" />
               History Calendar
             </button>
           </div>
@@ -482,9 +482,6 @@ export default function ResourceMngmt() {
                   seeAll ? "hidden" : "block"
                 }`}
               >
-                <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                  Overview
-                </h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <StatCard
                     title="Remaining Items"

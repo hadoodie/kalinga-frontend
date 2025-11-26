@@ -1,8 +1,17 @@
-// src/pages-logistics/AssetRegistry.jsx 
+
+// src/components/logistics/AssetRegis.jsx
+
 import { useState, useEffect } from "react";
-import { RefreshCw } from "lucide-react";
-import MetricCards from "../../components/logistics/registry/overview/MetricCards";
-import RegistryTabs from "../../components/logistics/registry/RegistryTabs";
+import {
+  LayoutDashboard,
+  CalendarClock,
+  ChartNoAxesCombined,
+  RefreshCw,
+  CircleAlert
+} from "lucide-react";
+import OverviewTab from "./registry/overview/OverviewTab";
+import MaintenanceTab from "./registry/maintenance/MaintenanceTab";
+import ReportsTab from "./registry/reports/ReportsTab";
 import { mockAssetService } from "../../services/mockAssetService";
 
 export default function AssetRegistry() {
@@ -11,85 +20,47 @@ export default function AssetRegistry() {
     total_assets: 0,
     active_assets: 0,
     vehicles_under_repair: 0,
-    assets_unassigned: 0,
+    assets_unassigned: 0
   });
   const [assets, setAssets] = useState([]);
   const [filteredAssets, setFilteredAssets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showMetrics, setShowMetrics] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Filter states
   const [filters, setFilters] = useState({
     status: "All Status",
     category: "All Categories",
     location: "All Locations",
     dateFrom: "",
-    dateTo: "",
+    dateTo: ""
   });
   const [searchQuery, setSearchQuery] = useState("");
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // Update filtered assets when assets, filters, or search change
-  useEffect(() => {
-    if (assets.length > 0) {
-      const filtered = filterAssets(assets, filters, searchQuery);
-      setFilteredAssets(filtered);
-    }
-  }, [assets, filters, searchQuery]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [metricsData, assetsData] = await Promise.all([
-        mockAssetService.getMetrics(),
-        mockAssetService.getAssets(),
-      ]);
-      setMetrics(metricsData);
-      setAssets(assetsData);
-      setFilteredAssets(assetsData);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const refreshData = () => fetchData();
-
-  const filterAssets = (assets, filters, searchQuery) => {
-    return assets.filter((asset) => {
+  const filterAssets = (assetsArr, f, q) =>
+    assetsArr.filter((asset) => {
+      const ql = q.toLowerCase();
       const matchesSearch =
-        searchQuery === "" ||
-        asset.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (asset.personnel &&
-          asset.personnel.toLowerCase().includes(searchQuery.toLowerCase()));
+        q === "" ||
+        asset.id.toLowerCase().includes(ql) ||
+        asset.type.toLowerCase().includes(ql) ||
+        asset.location.toLowerCase().includes(ql) ||
+        (asset.personnel && asset.personnel.toLowerCase().includes(ql));
 
-      const matchesStatus =
-        filters.status === "All Status" || asset.status === filters.status;
+      const matchesStatus = f.status === "All Status" || asset.status === f.status;
       const matchesCategory =
-        filters.category === "All Categories" ||
-        asset.category === filters.category;
+        f.category === "All Categories" || asset.category === f.category;
       const matchesLocation =
-        filters.location === "All Locations" ||
-        asset.location === filters.location;
+        f.location === "All Locations" || asset.location === f.location;
 
       const matchesDateRange = () => {
-        if (!filters.dateFrom && !filters.dateTo) return true;
+        if (!f.dateFrom && !f.dateTo) return true;
         if (!asset.lastMaintenance) return false;
-
-        const assetDate = new Date(asset.lastMaintenance);
-        const fromDate = filters.dateFrom ? new Date(filters.dateFrom) : null;
-        const toDate = filters.dateTo ? new Date(filters.dateTo) : null;
-
-        if (fromDate && toDate)
-          return assetDate >= fromDate && assetDate <= toDate;
-        if (fromDate) return assetDate >= fromDate;
-        if (toDate) return assetDate <= toDate;
+        const d = new Date(asset.lastMaintenance);
+        const from = f.dateFrom ? new Date(f.dateFrom) : null;
+        const to = f.dateTo ? new Date(f.dateTo) : null;
+        if (from && to) return d >= from && d <= to;
+        if (from) return d >= from;
+        if (to) return d <= to;
         return true;
       };
 
@@ -101,74 +72,149 @@ export default function AssetRegistry() {
         matchesDateRange()
       );
     });
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const [metricsData, assetsData] = await Promise.all([
+        mockAssetService.getMetrics(),
+        mockAssetService.getAssets()
+      ]);
+      setMetrics(metricsData);
+      setAssets(assetsData);
+      setFilteredAssets(filterAssets(assetsData, filters, searchQuery));
+    } catch (e) {
+      console.error(e);
+      setError("Failed to load assets. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleFiltersChange = (newFilters) => setFilters(newFilters);
-  const handleSearchChange = (query) => setSearchQuery(query);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  useEffect(() => {
+    if (assets.length) {
+      setFilteredAssets(filterAssets(assets, filters, searchQuery));
+    }
+  }, [assets, filters, searchQuery]);
+
+  const handleFiltersChange = (nf) => setFilters(nf);
+  const handleSearchChange = (q) => setSearchQuery(q);
+
+  const tabs = [
+    {
+      id: "overview",
+      label: "Overview",
+      icon: <LayoutDashboard size={22} />,
+      colors: ["#a8ff78", "#78ffd6"],
+      component: OverviewTab
+    },
+    {
+      id: "maintenance",
+      label: "Maintenance",
+      icon: <CalendarClock size={22} />,
+      colors: ["#9cffb0", "#00b97c"],
+      component: MaintenanceTab
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      icon: <ChartNoAxesCombined size={22} />,
+      colors: ["#b9ff9c", "#00d48c"],
+      component: ReportsTab
+    }
+  ];
+
+  const ActiveComponent = tabs.find((t) => t.id === activeTab)?.component;
 
   return (
-    <div className="min-h-screen bg-[#F8FBF8] p-6">
+    <div className="min-h-screen bg-[#F8FBF8] p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <header className="mb-8 bg-white rounded-lg shadow-md p-6 border border-gray-200">
-          <div className="flex flex-wrap justify-between items-center gap-4">
-            <div>
-      <h1 className="text-4xl font-extrabold text-green-9000">Asset Registry</h1> {/* Moved -ml-2 here */}
-              <p className="text-gray-600 mt-1 text-sm">
-                Manage and track all emergency response assets efficiently
-              </p>
-            </div>
-
-            <button
-              onClick={refreshData}
-              disabled={loading}
-              className="flex items-center px-5 py-2.5 bg-green-800 hover:bg-green-700 text-white font-semibold rounded-md shadow-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${
-                  loading ? "animate-spin" : ""
-                }`}
-              />
-              {loading ? "Loading..." : "Refresh Data"}
-            </button>
-          </div>
+        <header className="flex flex-wrap justify-between items-center gap-4 p-4 bg-white rounded-xl shadow-lg">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-green-900">
+            Asset Registry
+          </h1>
+          <button
+            onClick={fetchData}
+            className="flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-800 font-semibold rounded-lg shadow-md transition duration-200 disabled:opacity-50"
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            {loading ? "Refreshing..." : "Refresh Data"}
+          </button>
         </header>
 
-        {/* Collapsible Metrics */}
-        <section className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-3xl font-bold text-green-900">Dashboard Overview</h2>
-            <button
-              onClick={() => setShowMetrics(!showMetrics)}
-              className="px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-md transition text-sm font-medium"
-            >
-              {showMetrics ? "Hide Summary" : "Show Summary"}
-            </button>
-          </div>
-
-          {showMetrics && (
-            <div className="transition-all duration-300 ease-in-out">
-              <MetricCards metrics={metrics} loading={loading} />
+        {/* Loading */}
+        {loading && (
+            <div className="flex justify-center items-center p-8 bg-white rounded-xl shadow-lg mt-4">
+              <div className="text-center">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mb-4"></div>
+                <p className="text-gray-600 font-medium">Loading assets...</p>
+              </div>
             </div>
-          )}
-        </section>
+        )}
 
-        {/* Tabs Section */}
-        <section className="bg-white rounded-lg shadow-md border border-gray-200">
-          <RegistryTabs
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            loading={loading}
-            assets={filteredAssets}
-            allAssets={assets}
-            onRefresh={refreshData}
-            metrics={metrics}
-            filters={filters}
-            onFiltersChange={handleFiltersChange}
-            searchQuery={searchQuery}
-            onSearchChange={handleSearchChange}
-          />
-        </section>
+        {/* Error */}
+        {error && !loading && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg shadow-lg mt-4">
+            <div className="flex items-center">
+              <CircleAlert className="text-red-500 mr-3" size={24} />
+              <div>
+                <p className="text-red-800 font-medium">{error}</p>
+                <button
+                  onClick={fetchData}
+                  className="mt-2 text-red-600 hover:text-red-800 underline text-sm"
+                >
+                  Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tabs + Content */}
+        {!loading && !error && (
+          <div className="bg-white rounded-lg shadow-sm p-4 mt-6">
+            {/* Simple Horizontal Tabs */}
+            <div className="border-b border-none">
+              <ul className="flex gap-8">
+                {tabs.map((tab) => (
+                  <li
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`pb-3 px-2 cursor-pointer transition-all duration-300 ${
+                      activeTab === tab.id
+                        ? "text-yellow-600 font-semibold border-b-2 border-yellow-600"
+                        : "text-gray-600 hover:text-gray-800"
+                    }`}
+                  >
+                    {tab.label}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="w-full mt-4 p-2 rounded-2xl">
+              {ActiveComponent && (
+                <ActiveComponent
+                  loading={loading}
+                  assets={filteredAssets}
+                  onRefresh={fetchData}
+                  metrics={metrics}
+                  filters={filters}
+                  onFiltersChange={handleFiltersChange}
+                  searchQuery={searchQuery}
+                  onSearchChange={handleSearchChange}
+                />
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

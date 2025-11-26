@@ -1,3 +1,4 @@
+
 // src/components/logistics/registry/BulkActionsPanel.jsx
 import { useState } from "react";
 import { CheckCircle, Clock, AlertCircle, Download, Users, X } from "lucide-react";

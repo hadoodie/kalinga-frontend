@@ -1,9 +1,289 @@
 // src/components/logistics/registry/overview/OverviewTab.jsx
 import { useState, useEffect } from "react";
+import { Search, Filter, X, RefreshCw, ClipboardClock, Boxes, Truck, Wrench, Users, ChevronDown } from "lucide-react";
 import AssetTable from "./AssetTable";
-import FilterPanel from "./FilterPanel";
 import { mockAssetService } from "../../../../services/mockAssetService";
+import { useNavigate } from 'react-router-dom';
 
+// Enhanced CSS animations and styles
+const enhancedStyles = `
+/* ======== Enhanced Search Bar Animations ======== */
+.enhanced-search-container {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.enhanced-search-input {
+  border: 2px solid #e5e7eb;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+}
+
+.enhanced-search-input:hover {
+  border-color: #a7f3d0;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.enhanced-search-input:focus {
+  border-color: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.2),
+              0 0 20px rgba(16, 185, 129, 0.3);
+  transform: scale(1.02);
+}
+
+.enhanced-search-glow {
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #00B97C, #4CAF50, #A8FF78, #00B97C);
+  background-size: 400% 400%;
+  border-radius: 12px;
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.3s ease;
+  animation: gradientFlow 3s ease infinite;
+}
+
+.enhanced-search-input:hover ~ .enhanced-search-glow,
+.enhanced-search-input:focus ~ .enhanced-search-glow {
+  opacity: 0.6;
+}
+
+@keyframes gradientFlow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.enhanced-search-icon {
+  transition: all 0.3s ease;
+}
+
+.enhanced-search-input:hover ~ .enhanced-search-icon,
+.enhanced-search-input:focus ~ .enhanced-search-icon {
+  color: #10b981;
+  transform: scale(1.1) rotate(5deg);
+}
+
+/* ======== Automated Hover Dropdown ======== */
+.enhanced-dropdown {
+  position: relative;
+}
+
+.enhanced-dropdown:hover .enhanced-dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.enhanced-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 50;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.enhanced-dropdown-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.enhanced-dropdown-option:last-child {
+  border-bottom: none;
+}
+
+.enhanced-dropdown-option:hover {
+  background: #f0fdf4;
+  color: #059669;
+}
+
+.enhanced-dropdown-select {
+  cursor: pointer;
+}
+
+/* ======== Enhanced Refresh Button ======== */
+.enhanced-refresh-btn {
+  background: linear-gradient(135deg, #00B97C 0%, #4CAF50 50%, #00B97C 100%);
+  background-size: 200% 200%;
+  border: none;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.enhanced-refresh-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s ease;
+}
+
+.enhanced-refresh-btn:hover::before {
+  left: 100%;
+}
+
+.enhanced-refresh-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+  background-position: 100% 100%;
+}
+
+.enhanced-refresh-btn:active {
+  transform: scale(0.98);
+}
+
+.enhanced-refresh-icon {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.enhanced-refresh-btn:hover .enhanced-refresh-icon {
+  transform: rotate(180deg);
+}
+
+.enhanced-refresh-btn.loading .enhanced-refresh-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ======== Enhanced Metric Cards ======== */
+.enhanced-metric-card {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.enhanced-metric-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.03), transparent);
+  transition: left 0.6s ease;
+  z-index: 1;
+}
+
+.enhanced-metric-card:hover::before {
+  left: 100%;
+}
+
+.enhanced-metric-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  border-color: #10b981;
+}
+
+.enhanced-metric-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+  z-index: 0;
+}
+
+.enhanced-metric-card:hover .enhanced-metric-bg {
+  opacity: 0.7;
+}
+
+.enhanced-metric-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Tooltip styles */
+.enhanced-tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: #064e3b;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.enhanced-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #064e3b;
+}
+
+.enhanced-refresh-btn:hover .enhanced-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(-12px);
+}
+
+/* Metric card navigation tooltip */
+.metric-tooltip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.enhanced-metric-card:hover .metric-tooltip {
+  opacity: 1;
+}
+`;
+
+// Inject styles
+if (!document.querySelector('#enhanced-overview-styles')) {
+  const styleElement = document.createElement('style');
+  styleElement.id = 'enhanced-overview-styles';
+  styleElement.textContent = enhancedStyles;
+  document.head.appendChild(styleElement);
+}
 
 export default function OverviewTab({ loading }) {
   const [assets, setAssets] = useState([]);
@@ -16,6 +296,18 @@ export default function OverviewTab({ loading }) {
     dateTo: ""
   });
   const [searchQuery, setSearchQuery] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const navigate = useNavigate();
+
+  // Import metric card images
+  const metricImages = {
+    total: '/src/assets/images/MetricCardTotal.png',
+    active: '/src/assets/images/MetricCardActive.png',
+    maintenance: '/src/assets/images/MetricCardMaintenance.jpeg',
+    unassigned: '/src/assets/images/MetricCardUnassigned.png'
+  };
 
   useEffect(() => {
     fetchAssets();
@@ -26,242 +318,419 @@ export default function OverviewTab({ loading }) {
   }, [assets, filters, searchQuery]);
 
   const fetchAssets = async () => {
+    setIsRefreshing(true);
     try {
       const assetsData = await mockAssetService.getAssets();
       setAssets(assetsData);
     } catch (error) {
       console.error('Error fetching assets:', error);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 1000);
     }
   };
 
   const applyFilters = () => {
-    let filtered = assets;
+    setIsFiltering(true);
+    
+    setTimeout(() => {
+      let filtered = assets;
 
-    // Search filter
-    if (searchQuery) {
-      const searchLower = searchQuery.toLowerCase();
-      filtered = filtered.filter(asset =>
-        asset.id.toLowerCase().includes(searchLower) ||
-        asset.type.toLowerCase().includes(searchLower) ||
-        asset.location.toLowerCase().includes(searchLower) ||
-        asset.personnel.toLowerCase().includes(searchLower) ||
-        (asset.capacity && asset.capacity.toLowerCase().includes(searchLower))
-      );
-    }
+      if (searchQuery) {
+        const searchLower = searchQuery.toLowerCase();
+        filtered = filtered.filter(asset =>
+          asset.id.toLowerCase().includes(searchLower) ||
+          asset.type.toLowerCase().includes(searchLower) ||
+          asset.location.toLowerCase().includes(searchLower) ||
+          asset.personnel.toLowerCase().includes(searchLower) ||
+          (asset.capacity && asset.capacity.toLowerCase().includes(searchLower))
+        );
+      }
 
-    // Status filter
-    if (filters.status !== "All Status") {
-      filtered = filtered.filter(asset => asset.status === filters.status);
-    }
+      if (filters.status !== "All Status") {
+        filtered = filtered.filter(asset => asset.status === filters.status);
+      }
 
-    // Category filter
-    if (filters.category !== "All Categories") {
-      filtered = filtered.filter(asset => asset.category === filters.category);
-    }
+      if (filters.category !== "All Categories") {
+        filtered = filtered.filter(asset => asset.category === filters.category);
+      }
 
-    // Location filter
-    if (filters.location !== "All Locations") {
-      filtered = filtered.filter(asset => asset.location === filters.location);
-    }
+      if (filters.location !== "All Locations") {
+        filtered = filtered.filter(asset => asset.location === filters.location);
+      }
 
-    // Date range filter
-    if (filters.dateFrom || filters.dateTo) {
-      filtered = filtered.filter(asset => {
-        if (!asset.lastMaintenance) return true;
-        
-        try {
-          const assetDate = new Date(asset.lastMaintenance);
-          const fromDate = filters.dateFrom ? new Date(filters.dateFrom) : null;
-          const toDate = filters.dateTo ? new Date(filters.dateTo) : null;
+      if (filters.dateFrom || filters.dateTo) {
+        filtered = filtered.filter(asset => {
+          if (!asset.lastMaintenance) return true;
+          
+          try {
+            const assetDate = new Date(asset.lastMaintenance);
+            const fromDate = filters.dateFrom ? new Date(filters.dateFrom) : null;
+            const toDate = filters.dateTo ? new Date(filters.dateTo) : null;
 
-          if (fromDate) fromDate.setHours(0, 0, 0, 0);
-          if (toDate) toDate.setHours(23, 59, 59, 999);
-          assetDate.setHours(0, 0, 0, 0);
+            if (fromDate) fromDate.setHours(0, 0, 0, 0);
+            if (toDate) toDate.setHours(23, 59, 59, 999);
+            assetDate.setHours(0, 0, 0, 0);
 
-          if (fromDate && toDate) {
-            return assetDate >= fromDate && assetDate <= toDate;
-          } else if (fromDate) {
-            return assetDate >= fromDate;
-          } else if (toDate) {
-            return assetDate <= toDate;
+            if (fromDate && toDate) {
+              return assetDate >= fromDate && assetDate <= toDate;
+            } else if (fromDate) {
+              return assetDate >= fromDate;
+            } else if (toDate) {
+              return assetDate <= toDate;
+            }
+            return true;
+          } catch (error) {
+            console.error('Date parsing error:', error);
+            return true;
           }
-          return true;
-        } catch (error) {
-          console.error('Date parsing error:', error);
-          return true;
-        }
-      });
-    }
+        });
+      }
 
-    // Handle advanced filter conditions (for future implementation)
-    if (filters.maintenanceStatus === 'overdue') {
-      filtered = filtered.filter(asset => {
-        if (!asset.nextMaintenance) return false;
-        const nextMaintenance = new Date(asset.nextMaintenance);
-        return nextMaintenance < new Date();
-      });
-    }
-
-    if (filters.personnel === 'unassigned') {
-      filtered = filtered.filter(asset => !asset.personnel || asset.personnel.trim() === '');
-    }
-
-    if (filters.priority === 'high') {
-      filtered = filtered.filter(asset => 
-        asset.status === 'Under Repair' || 
-        asset.condition === 'Poor' ||
-        (asset.nextMaintenance && new Date(asset.nextMaintenance) < new Date())
-      );
-    }
-
-    setFilteredAssets(filtered);
+      setFilteredAssets(filtered);
+      setIsFiltering(false);
+    }, 300);
   };
 
   const handleFiltersChange = (newFilters) => {
-    console.log("Filters changed:", newFilters);
     setFilters(newFilters);
   };
 
   const handleSearchChange = (query) => {
-    console.log("Search changed:", query);
     setSearchQuery(query);
   };
 
-  // Calculate quick stats
-  const activeAssets = assets.filter(a => a.status === 'Active').length;
+  const clearAllFilters = () => {
+    setFilters({
+      status: "All Status",
+      category: "All Categories", 
+      location: "All Locations",
+      dateFrom: "",
+      dateTo: ""
+    });
+    setSearchQuery("");
+  };
+
+  const statusOptions = ["All Status", ...new Set(assets.map(asset => asset.status))];
+  const categoryOptions = ["All Categories", ...new Set(assets.map(asset => asset.category))];
+  const locationOptions = ["All Locations", ...new Set(assets.map(asset => asset.location))];
+
+  const activeAssets = assets.filter(a => a.status === 'Operational').length;
   const underRepair = assets.filter(a => a.status === 'Under Repair').length;
-  const standbyAssets = assets.filter(a => a.status === 'Standby').length;
-  
-  // Calculate estimated total value (placeholder logic)
-  const totalValue = assets.reduce((total, asset) => {
-    const baseValue = {
-      'Ambulance': 250000,
-      'Defibrillator': 3000,
-      'Stretcher': 1500,
-      'Mobile Clinic': 500000,
-      'Fire Truck': 750000,
-      'Generator': 15000
-    }[asset.type] || 10000;
-    
-    return total + baseValue;
-  }, 0);
+  const unassignedAssets = assets.filter(a => a.status === 'Unassigned').length;
+
+  const hasActiveFilters = filters.status !== "All Status" || 
+                          filters.category !== "All Categories" || 
+                          filters.location !== "All Locations" || 
+                          filters.dateFrom || 
+                          filters.dateTo || 
+                          searchQuery;
+
+  // Metric card navigation handlers
+  const handleTotalAssetsClick = () => {
+    // Navigate to main asset registry
+    navigate('/logistics/asset-registry');
+  };
+
+  const handleActiveAssetsClick = () => {
+    navigate('/logistics/assets/operational');
+  };
+
+  const handleUnderRepairClick = () => {
+    navigate('/logistics/assets/under-repair');
+  };
+
+  const handleUnassignedClick = () => {
+    navigate('/logistics/assets/standby');
+  };
 
   return (
-    <div className="space-y-6 min-h-screen">
-      {/* Header Section - Green Theme */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-green-900">Asset Inventory</h2>
-          <p className="text-gray-600 text-sm mt-1">
-            Manage and track all emergency response assets
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-sm font-medium text-green-900 bg-green-100 px-3 py-1 rounded-full">
-            Showing {filteredAssets.length} of {assets.length} assets
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header Section */}
+      <div className="rounded-xl p-4 sm:p-6 border border-gray-200">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 registry-header">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-4 mb-3">
+              <div>
+                <h2 className="text-2xl sm:text-2xl text-left font-bold text-green-900 mb-1">Asset Inventory</h2>
+                <p className="text-gray-600 text-sm sm:text-base">
+                  Manage and track all emergency response assets efficiently in the asset registry
+                </p>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={fetchAssets}
-            className="flex items-center gap-2 px-4 py-2 bg-green-800 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh
-          </button>
+          
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2 bg-green-50 px-4 py-2 rounded-lg border border-green-200">
+              <span className="text-green-900 text-sm font-medium">
+                {filteredAssets.length} of {assets.length}
+              </span>
+            </div>
+            
+            {/* Enhanced Refresh Button */}
+            <div className="relative">
+              <button
+                onClick={fetchAssets}
+                disabled={loading || isRefreshing}
+                className={`flex items-center gap-2 px-4 py-2 bg-green-800 hover:bg-green-700 text-white rounded-lg font-semibold transition text-sm  ${
+                  isRefreshing ? 'loading' : ''
+                } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <RefreshCw className={`enhanced-refresh-icon h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">Refresh</span>
+                <div className="enhanced-tooltip">Refresh Data</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Search and Filter Bar */}
+        <div className="mt-6">
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Enhanced Search Bar */}
+            <div className="flex-1 enhanced-search-container">
+              <input
+                type="text"
+                placeholder="Search assets by ID, type, location, or personnel..."
+                value={searchQuery}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="enhanced-search-input w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-0 focus:outline-none text-sm bg-white transition-colors"
+              />
+              <div className="enhanced-search-glow"></div>
+              <Search className="enhanced-search-icon absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            </div>
+
+            {/* Mobile Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="sm:hidden flex items-center gap-2 px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium enhanced-dropdown-select"
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              {hasActiveFilters && (
+                <span className="bg-green-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  !
+                </span>
+              )}
+            </button>
+
+            {/* Enhanced Desktop Dropdowns with Hover Expansion */}
+            <div className="hidden sm:flex items-center gap-2">
+              {/* Status Dropdown */}
+              <div className="enhanced-dropdown">
+                <div className="enhanced-dropdown-select px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white min-w-[140px] cursor-pointer flex items-center justify-between">
+                  <span>{filters.status}</span>
+                  <ChevronDown className="enhanced-dropdown-caret h-4 w-4 text-gray-400 transition-transform" />
+                </div>
+                
+                <div className="enhanced-dropdown-menu">
+                  {statusOptions.map(status => (
+                    <div
+                      key={status}
+                      onClick={() => handleFiltersChange({...filters, status})}
+                      className="enhanced-dropdown-option"
+                    >
+                      {status}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Category Dropdown */}
+              <div className="enhanced-dropdown">
+                <div className="enhanced-dropdown-select px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white min-w-[160px] cursor-pointer flex items-center justify-between">
+                  <span>{filters.category}</span>
+                  <ChevronDown className="enhanced-dropdown-caret h-4 w-4 text-gray-400 transition-transform" />
+                </div>
+                
+                <div className="enhanced-dropdown-menu">
+                  {categoryOptions.map(category => (
+                    <div
+                      key={category}
+                      onClick={() => handleFiltersChange({...filters, category})}
+                      className="enhanced-dropdown-option"
+                    >
+                      {category}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Location Dropdown */}
+              <div className="enhanced-dropdown">
+                <div className="enhanced-dropdown-select px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white min-w-[150px] cursor-pointer flex items-center justify-between">
+                  <span>{filters.location}</span>
+                  <ChevronDown className="enhanced-dropdown-caret h-4 w-4 text-gray-400 transition-transform" />
+                </div>
+                
+                <div className="enhanced-dropdown-menu">
+                  {locationOptions.map(location => (
+                    <div
+                      key={location}
+                      onClick={() => handleFiltersChange({...filters, location})}
+                      className="enhanced-dropdown-option"
+                    >
+                      {location}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {hasActiveFilters && (
+                <button
+                  onClick={clearAllFilters}
+                  className="flex items-center gap-1 px-3 py-2.5 text-gray-600 hover:text-gray-800 transition-colors text-sm enhanced-dropdown-select"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Mobile Filters Panel */}
+          {showFilters && (
+            <div className="sm:hidden mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-gray-900">Filters</h3>
+                <button
+                  onClick={() => setShowFilters(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 gap-3">
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFiltersChange({...filters, status: e.target.value})}
+                  className="enhanced-dropdown-select w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-0 focus:outline-none text-sm bg-white"
+                >
+                  {statusOptions.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filters.category}
+                  onChange={(e) => handleFiltersChange({...filters, category: e.target.value})}
+                  className="enhanced-dropdown-select w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-0 focus:outline-none text-sm bg-white"
+                >
+                  {categoryOptions.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={filters.location}
+                  onChange={(e) => handleFiltersChange({...filters, location: e.target.value})}
+                  className="enhanced-dropdown-select w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-0 focus:outline-none text-sm bg-white"
+                >
+                  {locationOptions.map(location => (
+                    <option key={location} value={location}>{location}</option>
+                  ))}
+                </select>
+              </div>
+
+              {hasActiveFilters && (
+                <button
+                  onClick={clearAllFilters}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors text-sm font-medium enhanced-dropdown-select"
+                >
+                  <X className="h-4 w-4" />
+                  Clear All Filters
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Advanced Filter Panel */}
-      <FilterPanel
-        filters={filters}
-        onFiltersChange={handleFiltersChange}
-        searchQuery={searchQuery}
-        onSearchChange={handleSearchChange}
-        assets={assets}
-      />
+      {/* Enhanced Metric Cards with Navigation */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Assets */}
+        <div 
+          className="enhanced-metric-card bg-white rounded-xl p-3 shadow-lg border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={handleTotalAssetsClick}
+        >
+          <div className="metric-tooltip">View All Assets</div>
+          <p className="text-5xl font-bold text-green-800 mb-2">{assets.length}</p>
+          <p className="text-base font-semibold text-gray-900 mb-2">Total Assets</p>
+
+        </div>
+
+        {/* Active / Deployed */}
+        <div 
+          className="enhanced-metric-card bg-white rounded-xl p-3 shadow-lg border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={handleActiveAssetsClick}
+        >
+          <div className="metric-tooltip">View Operational Assets</div>
+          <p className="text-5xl font-bold text-green-800 mb-2">{activeAssets}</p>
+          <p className="text-base font-semibold text-gray-900 mb-2">Operational</p>
+
+        </div>
+
+        {/* Under Repair */}
+        <div 
+          className="enhanced-metric-card bg-white rounded-xl p-3 shadow-lg border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={handleUnderRepairClick}
+        >
+          <div className="metric-tooltip">View Assets Under Repair</div>
+          <p className="text-5xl font-bold text-green-800 mb-2">{underRepair}</p>
+          <p className="text-base font-semibold text-gray-900 mb-2">Under Repair</p>
+
+        </div>
+
+        {/* Unassigned */}
+        <div 
+          className="enhanced-metric-card bg-white rounded-xl p-3 shadow-lg border border-gray-200 flex flex-col items-center justify-center cursor-pointer hover:shadow-lg transition-shadow"
+          onClick={handleUnassignedClick}
+        >
+          <div className="metric-tooltip">View Unassigned Assets</div>
+          <p className="text-5xl font-bold text-green-800 mb-2">{unassignedAssets}</p>
+          <p className="text-base font-semibold text-gray-900 mb-2">Unassigned</p>
+
+        </div>
+      </div>
+
+      {/* Loading State */}
+      {isFiltering && (
+        <div className="flex items-center justify-center py-8">
+          <div className="flex items-center gap-3 text-green-700">
+            <RefreshCw className="h-5 w-5 animate-spin" />
+            <span className="font-medium">Applying filters...</span>
+          </div>
+        </div>
+      )}
 
       {/* Asset Table */}
-      <div className="bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <div className="min-w-full">
-            <AssetTable 
-              assets={filteredAssets} 
-              loading={loading}
-              onRefresh={fetchAssets}
-            />
-          </div>
-        </div>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <AssetTable 
+          assets={filteredAssets} 
+          loading={loading || isFiltering}
+          onRefresh={fetchAssets}
+        />
       </div>
 
-      {/* Enhanced Quick Stats Footer */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-          <div className="font-semibold text-green-900">Active Assets</div>
-          <div className="text-green-700 font-bold text-2xl mt-1">
-            {activeAssets}
-          </div>
-          <div className="text-green-600 text-xs mt-1">
-            {((activeAssets / assets.length) * 100).toFixed(1)}% of total
-          </div>
-        </div>
-        
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-          <div className="font-semibold text-yellow-900">Under Repair</div>
-          <div className="text-yellow-700 font-bold text-2xl mt-1">
-            {underRepair}
-          </div>
-          <div className="text-yellow-600 text-xs mt-1">
-            {((underRepair / assets.length) * 100).toFixed(1)}% of total
-          </div>
-        </div>
-        
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-          <div className="font-semibold text-gray-900">On Standby</div>
-          <div className="text-gray-700 font-bold text-2xl mt-1">
-            {standbyAssets}
-          </div>
-          <div className="text-gray-600 text-xs mt-1">
-            {((standbyAssets / assets.length) * 100).toFixed(1)}% of total
-          </div>
-        </div>
-        
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center hover:shadow-md transition-shadow cursor-pointer">
-          <div className="font-semibold text-blue-900">Total Value</div>
-          <div className="text-blue-700 font-bold text-2xl mt-1">
-            ${(totalValue / 1000000).toFixed(1)}M
-          </div>
-          <div className="text-blue-600 text-xs mt-1">
-            Estimated equipment value
-          </div>
-        </div>
-      </div>
-
-      {/* Filter Summary */}
-      {(filters.status !== "All Status" || filters.category !== "All Categories" || filters.location !== "All Locations" || searchQuery) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-semibold text-yellow-900">Active Filters</h4>
-              <p className="text-yellow-700 text-sm">
-                Viewing filtered results. 
-                {filteredAssets.length === 0 && " No assets match your current filters."}
+      {/* Active Filters Summary */}
+      {hasActiveFilters && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex-1">
+              <h4 className="font-semibold text-yellow-900 text-sm sm:text-base">Active Filters</h4>
+              <p className="text-yellow-700 text-xs sm:text-sm mt-1">
+                {filteredAssets.length === 0 
+                  ? "No assets match your current filters." 
+                  : `Showing ${filteredAssets.length} filtered assets.`
+                }
               </p>
             </div>
             <button
-              onClick={() => {
-                setFilters({
-                  status: "All Status",
-                  category: "All Categories", 
-                  location: "All Locations",
-                  dateFrom: "",
-                  dateTo: ""
-                });
-                setSearchQuery("");
-              }}
-              className="px-3 py-1 bg-yellow-500 text-yellow-900 rounded text-sm hover:bg-yellow-600 transition-colors"
+              onClick={clearAllFilters}
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-yellow-900 rounded-lg transition-colors text-sm font-medium whitespace-nowrap enhanced-dropdown-select"
             >
-              Clear All
+              <X className="h-4 w-4" />
+              Clear All Filters
             </button>
           </div>
         </div>

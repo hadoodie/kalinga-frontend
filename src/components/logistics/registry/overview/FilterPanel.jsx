@@ -1,3 +1,4 @@
+
 // src/components/logistics/registry/overview/FilterPanel.jsx
 import { useState, useRef, useEffect } from "react";
 import { 
@@ -9,12 +10,11 @@ import {
   FolderOpen, 
   Plus,
   Trash2,
-  Download,
-  Upload
+  ChevronDown,
+  Check
 } from "lucide-react";
-import CalendarDropdown from "../maintenance/CalendarDropdown";
 
-export default function AdvancedFilterPanel({ 
+export default function FilterPanel({ 
   filters, 
   onFiltersChange, 
   searchQuery, 
@@ -27,10 +27,27 @@ export default function AdvancedFilterPanel({
   const [savedFilters, setSavedFilters] = useState([]);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
   const [filterName, setFilterName] = useState("");
-  const [filterGroups, setFilterGroups] = useState([]);
+  const [showSavedFilters, setShowSavedFilters] = useState(false);
   const calendarRef = useRef(null);
+  const savedFiltersRef = useRef(null);
 
-  // Load saved filters from localStorage on mount
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (savedFiltersRef.current && !savedFiltersRef.current.contains(event.target)) {
+        setShowSavedFilters(false);
+      }
+      if (calendarRef.current && !calendarRef.current.contains(event.target)) {
+        setShowCalendar(false);
+        setCalendarType(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Load saved filters from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('kalinga-saved-filters');
     if (saved) {
@@ -38,12 +55,12 @@ export default function AdvancedFilterPanel({
     }
   }, []);
 
-  // Save filters to localStorage when they change
+  // Save filters to localStorage
   useEffect(() => {
     localStorage.setItem('kalinga-saved-filters', JSON.stringify(savedFilters));
   }, [savedFilters]);
 
-  const statusOptions = ["All Status", "Active", "Under Repair", "Standby"];
+  const statusOptions = ["All Status", "Operational", "Under Repair", "Unassigned", "Standby"];
   
   const categoryOptions = [
     "All Categories", 
@@ -70,36 +87,33 @@ export default function AdvancedFilterPanel({
   // Quick filter presets
   const quickPresets = [
     {
-      id: 'overdue-maintenance',
-      name: 'Overdue Maintenance',
-      description: 'Assets with overdue maintenance',
+      id: 'operational-assets',
+      name: 'Operational',
+      description: 'All active and ready assets',
       filters: { 
-        status: 'All Status',
+        status: 'Operational',
         category: 'All Categories', 
-        location: 'All Locations',
-        maintenanceStatus: 'overdue'
+        location: 'All Locations'
+      }
+    },
+    {
+      id: 'under-repair',
+      name: 'Under Repair',
+      description: 'Assets currently in maintenance',
+      filters: { 
+        status: 'Under Repair',
+        category: 'All Categories', 
+        location: 'All Locations'
       }
     },
     {
       id: 'unassigned-assets',
-      name: 'Unassigned Assets',
+      name: 'Unassigned',
       description: 'Assets without assigned personnel',
       filters: { 
-        status: 'All Status',
+        status: 'Unassigned',
         category: 'All Categories', 
-        location: 'All Locations',
-        personnel: 'unassigned'
-      }
-    },
-    {
-      id: 'high-priority',
-      name: 'High Priority',
-      description: 'Critical assets needing attention',
-      filters: { 
-        status: 'Under Repair',
-        category: 'All Categories', 
-        location: 'All Locations',
-        priority: 'high'
+        location: 'All Locations'
       }
     },
     {
@@ -168,6 +182,7 @@ export default function AdvancedFilterPanel({
       onSearchChange(savedFilter.searchQuery);
     }
     setIsExpanded(true);
+    setShowSavedFilters(false);
   };
 
   // Delete a saved filter
@@ -183,40 +198,6 @@ export default function AdvancedFilterPanel({
     setIsExpanded(true);
   };
 
-  // Add a new filter group
-  const addFilterGroup = () => {
-    const newGroup = {
-      id: `group-${Date.now()}`,
-      field: 'type',
-      operator: 'contains',
-      value: '',
-      logic: 'AND'
-    };
-    setFilterGroups(prev => [...prev, newGroup]);
-  };
-
-  // Remove a filter group
-  const removeFilterGroup = (groupId) => {
-    setFilterGroups(prev => prev.filter(g => g.id !== groupId));
-  };
-
-  // Update filter group
-  const updateFilterGroup = (groupId, updates) => {
-    setFilterGroups(prev => 
-      prev.map(group => 
-        group.id === groupId ? { ...group, ...updates } : group
-      )
-    );
-  };
-
-  // Apply advanced filter groups
-  const applyAdvancedFilters = () => {
-    // This would implement complex filtering logic
-    console.log('Applying advanced filters:', filterGroups);
-    // For now, we'll just show a message
-    alert('Advanced filtering logic would be applied here');
-  };
-
   // Clear all filters
   const clearAllFilters = () => {
     onFiltersChange({
@@ -227,13 +208,108 @@ export default function AdvancedFilterPanel({
       dateTo: ""
     });
     onSearchChange("");
-    setFilterGroups([]);
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = filters.status !== "All Status" || 
+                          filters.category !== "All Categories" || 
+                          filters.location !== "All Locations" || 
+                          filters.dateFrom || 
+                          filters.dateTo || 
+                          searchQuery;
+
+  // Simple calendar component
+  const SimpleCalendar = ({ onDateSelect, onClose }) => {
+    const [currentDate, setCurrentDate] = useState(new Date());
+    
+    const getDaysInMonth = (date) => {
+      return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    };
+    
+    const getFirstDayOfMonth = (date) => {
+      return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    };
+    
+    const handleDateClick = (day) => {
+      const selectedDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+      onDateSelect(selectedDate.toISOString().split('T')[0]);
+    };
+
+    const daysInMonth = getDaysInMonth(currentDate);
+    const firstDay = getFirstDayOfMonth(currentDate);
+    const days = [];
+
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < firstDay; i++) {
+      days.push(<div key={`empty-${i}`} className="h-8"></div>);
+    }
+
+    // Add days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(
+        <button
+          key={day}
+          onClick={() => handleDateClick(day)}
+          className="h-8 w-8 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
+        >
+          {day}
+        </button>
+      );
+    }
+
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 w-64">
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}
+            className="p-1 hover:bg-gray-100 rounded"
+          >
+            <ChevronDown className="h-4 w-4 rotate-90" />
+          </button>
+          <span className="font-medium text-sm">
+            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </span>
+          <button
+            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}
+            className="p-1 hover:bg-gray-100 rounded"
+          >
+            <ChevronDown className="h-4 w-4 -rotate-90" />
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-7 gap-1 text-xs text-gray-500 mb-2">
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
+            <div key={day} className="text-center font-medium">{day}</div>
+          ))}
+        </div>
+        
+        <div className="grid grid-cols-7 gap-1">
+          {days}
+        </div>
+        
+        <div className="flex justify-between mt-4 pt-4 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onDateSelect('')}
+            className="px-3 py-1 text-sm text-green-600 hover:text-green-800"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 relative">
-      {/* Search Bar and Filter Toggle */}
+    <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+      {/* Main Search and Filter Bar */}
       <div className="flex flex-col sm:flex-row gap-3">
+        {/* Search Input */}
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
@@ -241,102 +317,110 @@ export default function AdvancedFilterPanel({
             placeholder="Search assets by ID, type, location, or personnel..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white transition-colors"
           />
         </div>
         
+        {/* Action Buttons */}
         <div className="flex gap-2">
           {/* Saved Filters Dropdown */}
           {savedFilters.length > 0 && (
-            <div className="relative">
+            <div className="relative" ref={savedFiltersRef}>
               <button
-                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                onClick={() => setShowSavedFilters(!showSavedFilters)}
+                className="flex items-center gap-2 px-3 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition text-sm font-medium"
               >
                 <FolderOpen className="h-4 w-4" />
-                <span>Saved ({savedFilters.length})</span>
+                <span className="hidden sm:inline">Saved</span>
+                <ChevronDown className="h-3 w-3" />
               </button>
               
-              <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1 hidden">
-                {savedFilters.map(savedFilter => (
-                  <div
-                    key={savedFilter.id}
-                    className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer group"
-                    onClick={() => loadSavedFilter(savedFilter)}
-                  >
-                    <div className="flex-1">
-                      <div className="font-medium text-sm text-gray-900">
-                        {savedFilter.name}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {new Date(savedFilter.createdAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <button
-                      onClick={(e) => deleteSavedFilter(savedFilter.id, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
+              {showSavedFilters && (
+                <div className="absolute top-full right-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-2">
+                  <div className="px-3 py-2 border-b border-gray-200">
+                    <h4 className="font-medium text-gray-900 text-sm">Saved Filters</h4>
                   </div>
-                ))}
-              </div>
+                  {savedFilters.map(savedFilter => (
+                    <div
+                      key={savedFilter.id}
+                      className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 cursor-pointer group"
+                      onClick={() => loadSavedFilter(savedFilter)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm text-gray-900 truncate">
+                          {savedFilter.name}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {new Date(savedFilter.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => deleteSavedFilter(savedFilter.id, e)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Filters Button */}
+          {/* Filters Toggle Button */}
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className={`flex items-center gap-2 px-4 py-2 border rounded-lg transition ${
-              isExpanded 
-                ? "bg-yellow-500 text-gray-800 border-yellow-500" 
-                : "border-gray-300 hover:bg-gray-50"
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 border rounded-lg transition text-sm font-medium ${
+              isExpanded || hasActiveFilters
+                ? "bg-green-800 text-white border-green-800" 
+                : "border-gray-300 hover:bg-gray-50 text-gray-700"
             }`}
           >
             <Filter className="h-4 w-4" />
-            <span>Filters</span>
+            <span className="hidden sm:inline">Filters</span>
+            {(isExpanded || hasActiveFilters) && (
+              <div className="h-2 w-2 bg-white rounded-full"></div>
+            )}
           </button>
         </div>
       </div>
 
-      {/* Quick Filter Presets */}
-      {!isExpanded && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {quickPresets.map(preset => (
-            <button
-              key={preset.id}
-              onClick={() => applyQuickPreset(preset)}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm hover:bg-blue-100 transition-colors border border-blue-200"
-            >
-              {preset.name}
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Quick Filter Presets - Always Visible */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {quickPresets.map(preset => (
+          <button
+            key={preset.id}
+            onClick={() => applyQuickPreset(preset)}
+            className="inline-flex items-center gap-1 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm hover:bg-green-100 transition-colors border border-green-200 font-medium"
+          >
+            {preset.name}
+          </button>
+        ))}
+      </div>
 
-      {/* Expandable Filters - Only shows when expanded */}
+      {/* Expandable Filters Panel */}
       {isExpanded && (
         <div className="border-t border-gray-200 pt-4 mt-4">
-          {/* Quick Actions Bar */}
+          {/* Quick Actions */}
           <div className="flex flex-wrap gap-2 mb-4">
             <button
               onClick={() => setShowSaveDialog(true)}
-              className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200 transition-colors font-medium"
             >
               <Save className="h-3 w-3" />
               Save Filter
             </button>
             <button
               onClick={clearAllFilters}
-              className="flex items-center gap-2 px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200 transition-colors font-medium"
             >
               <X className="h-3 w-3" />
               Clear All
             </button>
           </div>
 
-          {/* Basic Filters Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Status Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -345,7 +429,7 @@ export default function AdvancedFilterPanel({
               <select
                 value={filters.status}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
               >
                 {statusOptions.map(option => (
                   <option key={option} value={option}>
@@ -363,7 +447,7 @@ export default function AdvancedFilterPanel({
               <select
                 value={filters.category}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
               >
                 {categoryOptions.map(option => (
                   <option key={option} value={option}>
@@ -381,7 +465,7 @@ export default function AdvancedFilterPanel({
               <select
                 value={filters.location}
                 onChange={(e) => handleLocationChange(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm bg-white"
               >
                 {locationOptions.map(option => (
                   <option key={option} value={option}>
@@ -397,25 +481,24 @@ export default function AdvancedFilterPanel({
                 Maintenance Date
               </label>
               <div className="flex gap-2">
-                {/* From Date */}
-                <div className="flex-1 relative">
+                <div className="flex-1 relative" ref={calendarRef}>
                   <button
                     onClick={() => openCalendar('from')}
-                    className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg text-sm transition ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 border rounded-lg text-sm transition ${
                       filters.dateFrom 
-                        ? "border-yellow-500 bg-yellow-50 text-gray-900" 
+                        ? "border-green-500 bg-green-50 text-gray-900" 
                         : "border-gray-300 hover:border-gray-400 text-gray-600"
                     }`}
                   >
-                    <span className="truncate">{filters.dateFrom || "From Date"}</span>
+                    <span className="truncate text-xs">
+                      {filters.dateFrom || "From"}
+                    </span>
                     <Calendar className="h-4 w-4 flex-shrink-0 ml-2" />
                   </button>
                   
-                  {/* Calendar Dropdown for From Date */}
                   {showCalendar && calendarType === 'from' && (
-                    <div ref={calendarRef} className="absolute top-full left-0 mt-1 z-50">
-                      <CalendarDropdown
-                        selectedDate={filters.dateFrom}
+                    <div className="absolute top-full left-0 mt-1 z-50">
+                      <SimpleCalendar
                         onDateSelect={handleDateSelect}
                         onClose={() => {
                           setShowCalendar(false);
@@ -426,205 +509,111 @@ export default function AdvancedFilterPanel({
                   )}
                 </div>
 
-                {/* To Date */}
                 <div className="flex-1 relative">
                   <button
                     onClick={() => openCalendar('to')}
-                    className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg text-sm transition ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 border rounded-lg text-sm transition ${
                       filters.dateTo 
-                        ? "border-yellow-500 bg-yellow-50 text-gray-900" 
+                        ? "border-green-500 bg-green-50 text-gray-900" 
                         : "border-gray-300 hover:border-gray-400 text-gray-600"
                     }`}
                   >
-                    <span className="truncate">{filters.dateTo || "To Date"}</span>
+                    <span className="truncate text-xs">
+                      {filters.dateTo || "To"}
+                    </span>
                     <Calendar className="h-4 w-4 flex-shrink-0 ml-2" />
                   </button>
-                  
-                  {/* Calendar Dropdown for To Date */}
-                  {showCalendar && calendarType === 'to' && (
-                    <div ref={calendarRef} className="absolute top-full right-0 mt-1 z-50">
-                      <CalendarDropdown
-                        selectedDate={filters.dateTo}
-                        onDateSelect={handleDateSelect}
-                        onClose={() => {
-                          setShowCalendar(false);
-                          setCalendarType(null);
-                        }}
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Advanced Filter Groups */}
-          <div className="border-t border-gray-200 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-gray-900">Advanced Filters</h4>
-              <button
-                onClick={addFilterGroup}
-                className="flex items-center gap-1 px-2 py-1 text-sm text-blue-600 hover:text-blue-800"
-              >
-                <Plus className="h-3 w-3" />
-                Add Condition
-              </button>
-            </div>
-
-            {filterGroups.length > 0 && (
-              <div className="space-y-2 mb-4">
-                {filterGroups.map((group, index) => (
-                  <div key={group.id} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
-                    {index > 0 && (
-                      <select
-                        value={group.logic}
-                        onChange={(e) => updateFilterGroup(group.id, { logic: e.target.value })}
-                        className="px-2 py-1 border border-gray-300 rounded text-sm"
-                      >
-                        <option value="AND">AND</option>
-                        <option value="OR">OR</option>
-                      </select>
-                    )}
-                    <select
-                      value={group.field}
-                      onChange={(e) => updateFilterGroup(group.id, { field: e.target.value })}
-                      className="px-2 py-1 border border-gray-300 rounded text-sm"
-                    >
-                      <option value="type">Type</option>
-                      <option value="personnel">Personnel</option>
-                      <option value="condition">Condition</option>
-                      <option value="capacity">Capacity</option>
-                    </select>
-                    <select
-                      value={group.operator}
-                      onChange={(e) => updateFilterGroup(group.id, { operator: e.target.value })}
-                      className="px-2 py-1 border border-gray-300 rounded text-sm"
-                    >
-                      <option value="contains">contains</option>
-                      <option value="equals">equals</option>
-                      <option value="startsWith">starts with</option>
-                      <option value="greaterThan">greater than</option>
-                    </select>
-                    <input
-                      type="text"
-                      value={group.value}
-                      onChange={(e) => updateFilterGroup(group.id, { value: e.target.value })}
-                      placeholder="Value..."
-                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm"
-                    />
-                    <button
-                      onClick={() => removeFilterGroup(group.id)}
-                      className="p-1 text-gray-400 hover:text-red-600"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={applyAdvancedFilters}
-                  className="w-full px-4 py-2 bg-yellow-500 text-gray-800 rounded-lg hover:bg-yellow-600 transition-colors font-medium"
-                >
-                  Apply Advanced Filters
-                </button>
-              </div>
-            )}
-          </div>
-
           {/* Active Filters Display */}
-          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
-            {filters.status !== "All Status" && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
-                Status: {filters.status}
-                <button
-                  onClick={() => handleStatusChange("All Status")}
-                  className="hover:text-blue-900 ml-1"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            {filters.category !== "All Categories" && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
-                Category: {filters.category}
-                <button
-                  onClick={() => handleCategoryChange("All Categories")}
-                  className="hover:text-green-900 ml-1"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            {filters.location !== "All Locations" && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
-                Location: {filters.location}
-                <button
-                  onClick={() => handleLocationChange("All Locations")}
-                  className="hover:text-purple-900 ml-1"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            {filters.dateFrom && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
-                From: {filters.dateFrom}
-                <button
-                  onClick={() => onFiltersChange({ ...filters, dateFrom: "" })}
-                  className="hover:text-yellow-900 ml-1"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            {filters.dateTo && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
-                To: {filters.dateTo}
-                <button
-                  onClick={() => onFiltersChange({ ...filters, dateTo: "" })}
-                  className="hover:text-orange-900 ml-1"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-            {searchQuery && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm">
-                Search: "{searchQuery}"
-                <button
-                  onClick={() => onSearchChange("")}
-                  className="hover:text-gray-900 ml-1"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            )}
-          </div>
+          {hasActiveFilters && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-gray-200">
+              {filters.status !== "All Status" && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                  Status: {filters.status}
+                  <button
+                    onClick={() => handleStatusChange("All Status")}
+                    className="hover:text-green-900 ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {filters.category !== "All Categories" && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                  Category: {filters.category}
+                  <button
+                    onClick={() => handleCategoryChange("All Categories")}
+                    className="hover:text-blue-900 ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {filters.location !== "All Locations" && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm">
+                  Location: {filters.location}
+                  <button
+                    onClick={() => handleLocationChange("All Locations")}
+                    className="hover:text-purple-900 ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {filters.dateFrom && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+                  From: {filters.dateFrom}
+                  <button
+                    onClick={() => onFiltersChange({ ...filters, dateFrom: "" })}
+                    className="hover:text-yellow-900 ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+              {filters.dateTo && (
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm">
+                  To: {filters.dateTo}
+                  <button
+                    onClick={() => onFiltersChange({ ...filters, dateTo: "" })}
+                    className="hover:text-orange-900 ml-1"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       {/* Save Filter Dialog */}
       {showSaveDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-sm">
             <h3 className="font-semibold text-gray-900 mb-4">Save Current Filter</h3>
             <input
               type="text"
               value={filterName}
               onChange={(e) => setFilterName(e.target.value)}
               placeholder="Enter filter name..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-green-500 focus:border-green-500"
               autoFocus
             />
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowSaveDialog(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={saveCurrentFilter}
-                className="px-4 py-2 bg-yellow-500 text-gray-800 rounded-lg hover:bg-yellow-600"
+                className="px-4 py-2 bg-green-800 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
               >
                 Save
               </button>
