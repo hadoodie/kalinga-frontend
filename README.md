@@ -79,6 +79,19 @@ Backend runs on: `http://localhost:8000`
 - Flags escalation cues (e.g., "can't breathe", "fire spreading") and surfaces the last five patient statements for quick reference.
 - Locks once the responder arrives so historical context is preserved even as new hospital navigation data loads.
 
+##### Configuring the AI model
+
+The responder context panel now calls a configurable AI API so summaries reflect the full transcript instead of keyword matches. Provide credentials in your Vite env file:
+
+```
+VITE_AI_CONTEXT_API_URL=https://api.openai.com/v1/chat/completions   # or any compatible endpoint
+VITE_AI_CONTEXT_API_KEY=sk-...
+VITE_AI_CONTEXT_MODEL=gpt-4o-mini                                  # optional, defaults to gpt-4o-mini
+VITE_AI_CONTEXT_WINDOW=24                                           # optional max message window
+```
+
+If the API is unreachable or unset, the UI automatically falls back to the on-device heuristic classifier so responders still see context.
+
 #### Response Navigation
 
 - Route view tracks the responder's live location versus the incident site, highlighting reported blockades.

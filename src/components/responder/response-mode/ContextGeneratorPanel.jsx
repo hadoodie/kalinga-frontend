@@ -1,4 +1,33 @@
-import { AlertTriangle, Info, Sparkles } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
+
+const SOURCE_BADGE_MAP = {
+  ai: {
+    text: "AI signal",
+    className:
+      "text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded-md",
+  },
+  fallback: {
+    text: "Heuristic fallback",
+    className:
+      "text-amber-700 bg-amber-50 border border-amber-200 px-2 py-1 rounded-md",
+  },
+  empty: {
+    text: "Waiting for patient",
+    className:
+      "text-gray-500 bg-gray-50 border border-gray-200 px-2 py-1 rounded-md",
+  },
+  idle: {
+    text: "Initializing",
+    className:
+      "text-gray-500 bg-gray-50 border border-gray-200 px-2 py-1 rounded-md",
+  },
+};
 
 const formatList = (items, fallback) => {
   if (!items?.length) {
@@ -11,7 +40,13 @@ const formatList = (items, fallback) => {
     .join(", ");
 };
 
-export default function ContextGeneratorPanel({ insights, locked }) {
+export default function ContextGeneratorPanel({
+  insights,
+  locked,
+  loading,
+  error,
+  source = "idle",
+}) {
   const {
     summary,
     symptoms,
@@ -20,6 +55,8 @@ export default function ContextGeneratorPanel({ insights, locked }) {
     supportingMessages,
     urgencyCue,
   } = insights ?? {};
+
+  const badge = SOURCE_BADGE_MAP[source] || SOURCE_BADGE_MAP.idle;
 
   return (
     <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col gap-4">
@@ -37,16 +74,28 @@ export default function ContextGeneratorPanel({ insights, locked }) {
             </h2>
           </div>
         </div>
-        {locked ? (
-          <span className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wide">
-            <Info className="h-3.5 w-3.5" />
-            Locked — On Scene
-          </span>
-        ) : (
-          <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-            Live feed
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-2">
+          {locked ? (
+            <span className="inline-flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full uppercase tracking-wide">
+              <Info className="h-3.5 w-3.5" />
+              Locked — On Scene
+            </span>
+          ) : (
+            <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
+              Live feed
+            </span>
+          )}
+          {loading ? (
+            <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Synthesizing…
+            </span>
+          ) : (
+            <span className={`text-xs font-semibold ${badge.className}`}>
+              {badge.text}
+            </span>
+          )}
+        </div>
       </header>
 
       <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-xl p-4">
@@ -86,6 +135,15 @@ export default function ContextGeneratorPanel({ insights, locked }) {
           <span>
             Escalation flag triggered (<strong>{urgencyCue}</strong>). Notify
             command center if not already done.
+          </span>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="flex items-center gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+          <AlertCircle className="h-4 w-4" />
+          <span>
+            AI generator unavailable — showing heuristic results instead.
           </span>
         </div>
       ) : null}

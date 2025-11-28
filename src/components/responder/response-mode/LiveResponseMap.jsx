@@ -17,6 +17,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { KALINGA_CONFIG } from "../../../constants/mapConfig";
+import LocationSimulator from "../../maps/LocationSimulator";
 
 const DEFAULT_POSITION = [
   KALINGA_CONFIG.DEFAULT_LOCATION.lat,
@@ -346,15 +347,6 @@ const responderIcon = iconFactory("blue");
 const incidentIcon = iconFactory("red");
 const hospitalIcon = iconFactory("green");
 
-const normalizeCoordinate = (value) => {
-  if (typeof value === "number") return value;
-  if (typeof value === "string") {
-    const parsed = parseFloat(value);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
-};
-
 const getIncidentPosition = (incident) => {
   if (!incident) return null;
   const lat =
@@ -417,6 +409,9 @@ export default function LiveResponseMap({
   autoAssignmentEnabled = true,
 }) {
   const [responderPosition, setResponderPosition] = useState(null);
+  const [isSimulatingResponder, setIsSimulatingResponder] = useState(false);
+  const liveResponderRef = useRef(null);
+  const isSimulatingRef = useRef(false);
   const [routePoints, setRoutePoints] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState(null);
@@ -427,6 +422,10 @@ export default function LiveResponseMap({
   const [blockades, setBlockades] = useState([]);
   const [blockadesLoading, setBlockadesLoading] = useState(false);
   const [blockadesError, setBlockadesError] = useState(null);
+
+  useEffect(() => {
+    isSimulatingRef.current = isSimulatingResponder;
+  }, [isSimulatingResponder]);
 
   const normalizedBlockades = useMemo(
     () => blockades.map(normalizeBlockade).filter(Boolean),
@@ -478,10 +477,15 @@ export default function LiveResponseMap({
     trackingWatchId.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setResponderPosition([latitude, longitude]);
+        const coords = [latitude, longitude];
+        liveResponderRef.current = coords;
+        if (isSimulatingRef.current) {
+          return;
+        }
+        setResponderPosition(coords);
       },
       () => {
-        if (!responderPosition) {
+        if (!responderPosition && !isSimulatingRef.current) {
           setResponderPosition(DEFAULT_POSITION);
         }
       },
@@ -659,6 +663,37 @@ export default function LiveResponseMap({
     return incidentPosition;
   }, [incidentPosition, mode, responderPosition]);
 
+  const handleSimulatedLocationChange = (coords, options = {}) => {
+    if (!coords) return;
+    const lat = Number(coords.lat);
+    const lng = Number(coords.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return;
+    }
+    const next = [lat, lng];
+    setIsSimulatingResponder(true);
+    setResponderPosition(next);
+
+    if (options.centerMap !== false && mapRef.current) {
+      mapRef.current.flyTo(next, Math.max(13, mapRef.current.getZoom()), {
+        duration: 0.6,
+      });
+    }
+  };
+
+  const handleStopSimulatedLocation = () => {
+    setIsSimulatingResponder(false);
+    const fallback = liveResponderRef.current || responderPosition;
+    if (fallback) {
+      setResponderPosition(fallback);
+      if (mapRef.current) {
+        mapRef.current.flyTo(fallback, Math.max(13, mapRef.current.getZoom()), {
+          duration: 0.6,
+        });
+      }
+    }
+  };
+
   return (
     <section className="flex h-full min-h-[520px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
@@ -702,6 +737,19 @@ export default function LiveResponseMap({
       </header>
 
       <div className="relative flex-1">
+        <LocationSimulator
+          currentLocation={
+            responderPosition
+              ? { lat: responderPosition[0], lng: responderPosition[1] }
+              : incidentPosition
+              ? { lat: incidentPosition[0], lng: incidentPosition[1] }
+              : null
+          }
+          isActive={isSimulatingResponder}
+          onLocationChange={handleSimulatedLocationChange}
+          onStopSimulation={handleStopSimulatedLocation}
+          buttonLabel="Simulate responder"
+        />
         <MapContainer
           center={currentCenter}
           zoom={13}

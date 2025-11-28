@@ -18,9 +18,9 @@ class AllocationRequestSeeder extends Seeder
         AllocationRequest::truncate();
         // Get the logistics user who will handle/create requests
         $logisticsUser = User::where('email', 'logistics_verified@kalinga.com')->first();
-        
-        // Get the hospitals from the 'hospitals' table
-        $stLukes = Hospital::where('name', 'St. Luke\'s Medical Center')->first();
+
+        // Get the hospitals from the 'hospitals' table (now seeded in HospitalSeeder)
+        $stLukes = Hospital::where('name', "St. Luke's Medical Center")->first();
         $centralGeneral = Hospital::where('name', 'Central General Hospital')->first();
         $fieldHospital = Hospital::where('name', 'Emergency Field Hospital')->first();
 

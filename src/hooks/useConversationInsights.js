@@ -1,4 +1,14 @@
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import aiContextService from "../services/aiContextService";
+
+const EMPTY_INSIGHTS = {
+  summary: "Awaiting patient updates…",
+  symptoms: [],
+  hazards: [],
+  location: [],
+  urgencyCue: null,
+  supportingMessages: [],
+};
 
 const normalizeText = (value) =>
   typeof value === "string" ? value.toLowerCase() : "";
@@ -111,8 +121,8 @@ const buildSummary = (aggregate) => {
     : "Monitoring patient chatter — no critical signals yet.";
 };
 
-const determineUrgencyCue = (messages) => {
-  const urgent = messages.find((msg) => msg.urgencyHits.length > 0);
+const determineUrgencyCue = (classifications) => {
+  const urgent = classifications.find((msg) => msg.urgencyHits.length > 0);
   return urgent ? urgent.urgencyHits[0] : null;
 };
 
@@ -130,24 +140,22 @@ const filterMessages = (messages, { lockTimestamp }) => {
   });
 };
 
-const collectInsights = (messages, options) => {
-  const filtered = filterMessages(messages, options);
-
-  const patientMessages = filtered.filter((message) => {
+const extractPatientMessages = (messages) =>
+  messages.filter((message) => {
     const senderRole = message?.senderRole || message?.sender_role;
     const actor = message?.actor_role || message?.metadata?.actor;
-    const inferredPatient =
-      senderRole === "patient" || actor === "patient" || message?.isPatient;
-    return inferredPatient;
+    return (
+      senderRole === "patient" || actor === "patient" || message?.isPatient
+    );
   });
 
+const buildHeuristicInsights = (patientMessages) => {
   if (!patientMessages.length) {
     return {
-      summary: "Awaiting patient updates…",
+      summary: EMPTY_INSIGHTS.summary,
       symptoms: [],
       hazards: [],
       location: [],
-      supportingMessages: [],
       urgencyCue: null,
     };
   }
@@ -167,7 +175,6 @@ const collectInsights = (messages, options) => {
       new Set(classifications.flatMap((item) => Array.from(item.location)))
     ),
     urgencyCue: determineUrgencyCue(classifications),
-    supportingMessages: patientMessages.slice(-5),
   };
 
   return {
@@ -179,20 +186,108 @@ const collectInsights = (messages, options) => {
 export default function useConversationInsights(messages, options = {}) {
   const { lockTimestamp } = options;
   const lockRef = useRef(null);
+  const abortRef = useRef(null);
+  const [state, setState] = useState({
+    insights: EMPTY_INSIGHTS,
+    loading: false,
+    error: null,
+    source: "idle",
+  });
 
-  const computed = useMemo(
-    () => collectInsights(messages, { lockTimestamp }),
+  useEffect(() => {
+    if (!Number.isFinite(lockTimestamp) || lockTimestamp <= 0) {
+      lockRef.current = null;
+    }
+  }, [lockTimestamp]);
+
+  const filteredMessages = useMemo(
+    () => filterMessages(messages, { lockTimestamp }),
     [messages, lockTimestamp]
   );
 
-  if (Number.isFinite(lockTimestamp) && lockTimestamp > 0) {
-    if (lockRef.current) {
-      return lockRef.current;
-    }
-    lockRef.current = computed;
-    return lockRef.current;
-  }
+  const patientMessages = useMemo(
+    () => extractPatientMessages(filteredMessages),
+    [filteredMessages]
+  );
 
-  lockRef.current = null;
-  return computed;
+  useEffect(() => {
+    if (!patientMessages.length) {
+      abortRef.current?.abort();
+      lockRef.current = null;
+      setState((prev) => ({
+        ...prev,
+        insights: { ...EMPTY_INSIGHTS },
+        loading: false,
+        error: null,
+        source: "empty",
+      }));
+      return;
+    }
+
+    if (
+      Number.isFinite(lockTimestamp) &&
+      lockTimestamp > 0 &&
+      lockRef.current
+    ) {
+      setState((prev) => ({
+        ...prev,
+        insights: lockRef.current,
+        loading: false,
+        error: null,
+        source: prev.source || "ai",
+      }));
+      return;
+    }
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    let mounted = true;
+
+    const supportingMessages = patientMessages.slice(-5);
+    const commit = (payload, meta = {}) => {
+      if (!mounted) return;
+      const merged = {
+        ...EMPTY_INSIGHTS,
+        ...payload,
+        supportingMessages,
+      };
+
+      if (Number.isFinite(lockTimestamp) && lockTimestamp > 0) {
+        lockRef.current = merged;
+      } else {
+        lockRef.current = null;
+      }
+
+      setState({
+        insights: merged,
+        loading: false,
+        error: meta.error || null,
+        source: meta.source || "ai",
+      });
+    };
+
+    setState((prev) => ({ ...prev, loading: true, error: null }));
+
+    aiContextService
+      .generateInsights(patientMessages, { signal: controller.signal })
+      .then((result) => commit(result, { source: "ai" }))
+      .catch((error) => {
+        if (!mounted || controller.signal.aborted) {
+          return;
+        }
+        console.warn("AI context generator fallback activated", error);
+        const fallback = buildHeuristicInsights(patientMessages);
+        commit(fallback, { source: "fallback", error });
+      });
+
+    return () => {
+      mounted = false;
+      controller.abort();
+    };
+  }, [patientMessages, lockTimestamp]);
+
+  return state;
 }
+
+export { buildHeuristicInsights };

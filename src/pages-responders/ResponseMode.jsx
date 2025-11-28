@@ -99,7 +99,12 @@ export default function ResponseMode() {
     [incident]
   );
 
-  const insights = useConversationInsights(messages, { lockTimestamp });
+  const {
+    insights,
+    loading: insightsLoading,
+    error: insightsError,
+    source: insightsSource,
+  } = useConversationInsights(messages, { lockTimestamp });
 
   const nearestHospital = useMemo(() => {
     if (!Array.isArray(hospitals) || hospitals.length === 0) {
@@ -574,7 +579,7 @@ export default function ResponseMode() {
                           key={tab.key}
                           type="button"
                           onClick={() => setActiveTab(tab.key)}
-                          className={`flex-1 min-w-[120px] rounded-xl border px-3 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                          className={`flex-1 min-w-[120px] rounded-xl border px-3 py-2 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                             isActive
                               ? "border-primary bg-primary/5 text-primary shadow-sm"
                               : "border-gray-200 bg-white text-gray-600 hover:border-primary/40"
@@ -619,6 +624,9 @@ export default function ResponseMode() {
                 {activeTab === "intel" && (
                   <ContextGeneratorPanel
                     insights={insights}
+                    loading={insightsLoading}
+                    error={insightsError}
+                    source={insightsSource}
                     locked={Boolean(lockTimestamp)}
                   />
                 )}
