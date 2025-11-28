@@ -1274,7 +1274,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   };
 
   // Function to clear all routes and destination markers
-  const clearAllRoutes = () => {
+  function clearAllRoutes() {
     if (map) {
       if (routeLine) {
         map.removeLayer(routeLine);
@@ -1287,7 +1287,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     }
   };
 
-  const drawRoute = async (
+  async function drawRoute(
     destLat,
     destLng,
     isNearest = false,
@@ -1536,7 +1536,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         setPendingDeviation(null);
       }
     }
-  };
+  }
 
   const handleRouteDeviation = useCallback(
     (currentLocation, distanceFromRouteMeters) => {
