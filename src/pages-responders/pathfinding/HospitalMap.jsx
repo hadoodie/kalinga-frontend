@@ -1,8 +1,15 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import { KALINGA_CONFIG } from "../../constants/mapConfig";
 import { useAuth } from "../../context/AuthContext";
 import ResponderTopbar from "../../components/responder/Topbar";
 import ResponderSidebar from "../../components/responder/Sidebar";
+import LocationSimulator from "../../components/maps/LocationSimulator";
 import {
   createRouteLog,
   appendRouteDeviation,
@@ -13,7 +20,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const [userMarker, setUserMarker] = useState(null);
+  const userMarkerRef = useRef(null);
   const [blockades, setBlockades] = useState([]);
   const [selectedTab, setSelectedTab] = useState("hospitals");
   const [blockadeMarkers, setBlockadeMarkers] = useState([]);
@@ -32,9 +39,78 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     "Getting location..."
   );
   const [hospitalsWithDistance, setHospitalsWithDistance] = useState([]);
+  const [hospitalCatalog, setHospitalCatalog] = useState([]);
+  const [hospitalSyncMeta, setHospitalSyncMeta] = useState({
+    loading: false,
+    error: null,
+    lastFetchKey: null,
+  });
   const [locationWatchId, setLocationWatchId] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isDrawingRoute, setIsDrawingRoute] = useState(false);
+  const [isSimulatingLocation, setIsSimulatingLocation] = useState(false);
+
+  const liveUserLocationRef = useRef(null);
+  const leafletLibRef = useRef(null);
+  const isSimulatingLocationRef = useRef(false);
+
+  useEffect(() => {
+    isSimulatingLocationRef.current = isSimulatingLocation;
+  }, [isSimulatingLocation]);
+
+  const ensureLeafletInstance = useCallback(async () => {
+    if (leafletLibRef.current) {
+      return leafletLibRef.current;
+    }
+    const module = await import("leaflet");
+    const L = module.default ?? module;
+    leafletLibRef.current = L;
+    return L;
+  }, []);
+
+  const placeUserMarker = useCallback(
+    (leafletLib, lat, lng, variant = "live") => {
+      const resolvedLib =
+        leafletLib?.default ?? leafletLib ?? leafletLibRef.current;
+      if (
+        !map ||
+        !resolvedLib ||
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng)
+      ) {
+        return null;
+      }
+
+      if (!leafletLibRef.current) {
+        leafletLibRef.current = resolvedLib;
+      }
+
+      if (userMarkerRef.current) {
+        map.removeLayer(userMarkerRef.current);
+      }
+
+      const variantClasses = {
+        live: "bg-blue-500 animate-pulse",
+        lastKnown: "bg-yellow-500",
+        default: "bg-gray-500",
+        simulated: "bg-amber-500 animate-pulse ring-2 ring-amber-200",
+      };
+
+      const className = variantClasses[variant] ?? variantClasses.live;
+
+      const icon = resolvedLib.divIcon({
+        html: `<div class="w-4 h-4 rounded-full border-2 border-white shadow-lg ${className}"></div>`,
+        className: "user-location-marker",
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+
+      const marker = resolvedLib.marker([lat, lng], { icon }).addTo(map);
+      userMarkerRef.current = marker;
+      return marker;
+    },
+    [map]
+  );
 
   // Mobile bottom interface states
   const [showHospitalsList, setShowHospitalsList] = useState(false);
@@ -110,10 +186,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           }
         } else if (activeRouteLogId) {
           await appendRouteDeviation(activeRouteLogId, {
-            deviation_lat:
-              deviationInfo?.location?.lat ?? originLocation.lat,
-            deviation_lng:
-              deviationInfo?.location?.lng ?? originLocation.lng,
+            deviation_lat: deviationInfo?.location?.lat ?? originLocation.lat,
+            deviation_lng: deviationInfo?.location?.lng ?? originLocation.lng,
             route_path: routeCoords,
             distance,
             duration,
@@ -128,17 +202,11 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         console.error("Failed to log route analytics", error);
       }
     },
-    [
-      activeRouteLogId,
-      destination,
-      isNavigating,
-      routeSessionStart,
-      user,
-    ]
+    [activeRouteLogId, destination, isNavigating, routeSessionStart, user]
   );
 
-  // Predefined hospitals in Metro Manila
-  const HOSPITALS = [
+  // Predefined hospitals in Metro Manila (fallback)
+  const STATIC_HOSPITALS = [
     {
       name: "Fatima University Medical Center",
       lat: 14.65891,
@@ -213,6 +281,10 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     },
   ];
 
+  const effectiveHospitals = useMemo(() => {
+    return hospitalCatalog.length ? hospitalCatalog : STATIC_HOSPITALS;
+  }, [hospitalCatalog]);
+
   // Initialize map when component mounts
   useEffect(() => {
     if (!mapRef.current || typeof window === "undefined") return;
@@ -221,7 +293,11 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     if (map) return;
 
     // Dynamically import Leaflet to avoid SSR issues
-    import("leaflet").then((L) => {
+    import("leaflet").then((leafletModule) => {
+      const L = leafletModule.default ?? leafletModule;
+      if (!leafletLibRef.current) {
+        leafletLibRef.current = L;
+      }
       // Check if map container is already initialized
       if (mapRef.current && mapRef.current._leaflet_id) {
         return;
@@ -369,6 +445,10 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   }, [isNavigating, map, userLocation]);
 
   const getUserLocation = (leafletMap, L) => {
+    const resolvedLeaflet = L?.default ?? L;
+    if (resolvedLeaflet && !leafletLibRef.current) {
+      leafletLibRef.current = resolvedLeaflet;
+    }
     // Helper function to save location to localStorage
     const saveLocationToStorage = (location) => {
       try {
@@ -411,10 +491,16 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         (position) => {
           const { latitude, longitude } = position.coords;
           const location = { lat: latitude, lng: longitude };
-          setUserLocation(location);
+          liveUserLocationRef.current = location;
 
           // Save current location to localStorage
           saveLocationToStorage(location);
+
+          if (isSimulatingLocationRef.current) {
+            return;
+          }
+
+          setUserLocation(location);
 
           if (leafletMap) {
             // Update location display
@@ -423,22 +509,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             // Update hospital distances
             updateHospitalDistances(location);
 
-            // Remove previous user marker
-            if (userMarker) {
-              leafletMap.removeLayer(userMarker);
-            }
-
-            // Add/update user marker with pulsing animation
-            const newUserMarker = L.marker([latitude, longitude], {
-              icon: L.divIcon({
-                html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse"></div>`,
-                className: "user-location-marker",
-                iconSize: [16, 16],
-                iconAnchor: [8, 8],
-              }),
-            }).addTo(leafletMap);
-
-            setUserMarker(newUserMarker);
+            placeUserMarker(resolvedLeaflet, latitude, longitude, "live");
 
             // Only center map on first location fix
             if (!userLocation) {
@@ -468,52 +539,48 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           // Try to use last known location first
           const lastKnown = getLastKnownLocation();
           if (lastKnown) {
-            setUserLocation(lastKnown);
-            setCurrentLocationDisplay(
-              `Last known location (${errorMessage})\n${lastKnown.lat.toFixed(
-                6
-              )}, ${lastKnown.lng.toFixed(6)}`
-            );
-            updateHospitalDistances(lastKnown);
-            if (leafletMap && L) {
-              // Create marker for last known location (yellow)
-              const lastKnownMarker = L.marker([lastKnown.lat, lastKnown.lng], {
-                icon: L.divIcon({
-                  html: `<div class="w-4 h-4 bg-yellow-500 rounded-full border-2 border-white shadow-lg"></div>`,
-                  className: "last-known-location-marker",
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                }),
-              }).addTo(leafletMap);
-
-              setUserMarker(lastKnownMarker);
-              leafletMap.setView(
-                [lastKnown.lat, lastKnown.lng],
-                KALINGA_CONFIG.USER_LOCATION_ZOOM
+            liveUserLocationRef.current = lastKnown;
+            if (!isSimulatingLocationRef.current) {
+              setUserLocation(lastKnown);
+              setCurrentLocationDisplay(
+                `Last known location (${errorMessage})\n${lastKnown.lat.toFixed(
+                  6
+                )}, ${lastKnown.lng.toFixed(6)}`
               );
+              updateHospitalDistances(lastKnown);
+              if (leafletMap && resolvedLeaflet) {
+                placeUserMarker(
+                  resolvedLeaflet,
+                  lastKnown.lat,
+                  lastKnown.lng,
+                  "lastKnown"
+                );
+                leafletMap.setView(
+                  [lastKnown.lat, lastKnown.lng],
+                  KALINGA_CONFIG.USER_LOCATION_ZOOM
+                );
+              }
             }
           } else {
             // Use default TUP Manila location for testing
-            setCurrentLocationDisplay("Default location (TUP Manila)");
             const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
-            setUserLocation(fallback);
-            updateHospitalDistances(fallback);
-            if (leafletMap && L) {
-              // Create marker for default location (gray)
-              const defaultMarker = L.marker([fallback.lat, fallback.lng], {
-                icon: L.divIcon({
-                  html: `<div class="w-4 h-4 bg-gray-500 rounded-full border-2 border-white shadow-lg"></div>`,
-                  className: "default-location-marker",
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                }),
-              }).addTo(leafletMap);
-
-              setUserMarker(defaultMarker);
-              leafletMap.setView(
-                [fallback.lat, fallback.lng],
-                KALINGA_CONFIG.DEFAULT_LOCATION.zoom
-              );
+            liveUserLocationRef.current = fallback;
+            if (!isSimulatingLocationRef.current) {
+              setCurrentLocationDisplay("Default location (TUP Manila)");
+              setUserLocation(fallback);
+              updateHospitalDistances(fallback);
+              if (leafletMap && resolvedLeaflet) {
+                placeUserMarker(
+                  resolvedLeaflet,
+                  fallback.lat,
+                  fallback.lng,
+                  "default"
+                );
+                leafletMap.setView(
+                  [fallback.lat, fallback.lng],
+                  KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+                );
+              }
             }
           }
         },
@@ -530,64 +597,51 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       // Try to use last known location first
       const lastKnown = getLastKnownLocation();
       if (lastKnown) {
-        setUserLocation(lastKnown);
-        setCurrentLocationDisplay(
-          `Last known location (Geolocation not supported)\n${lastKnown.lat.toFixed(
-            6
-          )}, ${lastKnown.lng.toFixed(6)}`
-        );
-        updateHospitalDistances(lastKnown);
-        if (leafletMap) {
-          // Import Leaflet to create marker for last known location
-          import("leaflet").then((L) => {
-            const lastKnownMarker = L.default
-              .marker([lastKnown.lat, lastKnown.lng], {
-                icon: L.default.divIcon({
-                  html: `<div class="w-4 h-4 bg-yellow-500 rounded-full border-2 border-white shadow-lg"></div>`,
-                  className: "last-known-location-marker",
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                }),
-              })
-              .addTo(leafletMap);
-
-            setUserMarker(lastKnownMarker);
-          });
-
-          leafletMap.setView(
-            [lastKnown.lat, lastKnown.lng],
-            KALINGA_CONFIG.USER_LOCATION_ZOOM
+        liveUserLocationRef.current = lastKnown;
+        if (!isSimulatingLocationRef.current) {
+          setUserLocation(lastKnown);
+          setCurrentLocationDisplay(
+            `Last known location (Geolocation not supported)\n${lastKnown.lat.toFixed(
+              6
+            )}, ${lastKnown.lng.toFixed(6)}`
           );
+          updateHospitalDistances(lastKnown);
+          if (leafletMap) {
+            ensureLeafletInstance().then((Leaflet) => {
+              placeUserMarker(
+                Leaflet,
+                lastKnown.lat,
+                lastKnown.lng,
+                "lastKnown"
+              );
+            });
+
+            leafletMap.setView(
+              [lastKnown.lat, lastKnown.lng],
+              KALINGA_CONFIG.USER_LOCATION_ZOOM
+            );
+          }
         }
       } else {
         // Use default TUP Manila location (Geolocation not supported)
         const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
-        setUserLocation(fallback);
-        setCurrentLocationDisplay(
-          "TUP Manila (Default - Geolocation not supported)"
-        );
-        updateHospitalDistances(fallback);
-        if (leafletMap) {
-          // Import Leaflet to create marker for default location
-          import("leaflet").then((L) => {
-            const defaultMarker = L.default
-              .marker([fallback.lat, fallback.lng], {
-                icon: L.default.divIcon({
-                  html: `<div class="w-4 h-4 bg-gray-500 rounded-full border-2 border-white shadow-lg"></div>`,
-                  className: "default-location-marker",
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                }),
-              })
-              .addTo(leafletMap);
-
-            setUserMarker(defaultMarker);
-          });
-
-          leafletMap.setView(
-            [fallback.lat, fallback.lng],
-            KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+        liveUserLocationRef.current = fallback;
+        if (!isSimulatingLocationRef.current) {
+          setUserLocation(fallback);
+          setCurrentLocationDisplay(
+            "TUP Manila (Default - Geolocation not supported)"
           );
+          updateHospitalDistances(fallback);
+          if (leafletMap) {
+            ensureLeafletInstance().then((Leaflet) => {
+              placeUserMarker(Leaflet, fallback.lat, fallback.lng, "default");
+            });
+
+            leafletMap.setView(
+              [fallback.lat, fallback.lng],
+              KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+            );
+          }
         }
       }
     }
@@ -633,19 +687,59 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     }
   };
 
-  const updateHospitalDistances = (userLoc) => {
-    const hospitalsWithDist = HOSPITALS.map((hospital) => {
-      const distance = calculateDistance(
-        userLoc.lat,
-        userLoc.lng,
-        hospital.lat,
-        hospital.lng
-      );
-      return { ...hospital, distance };
-    }).sort((a, b) => a.distance - b.distance);
+  const updateHospitalDistances = useCallback(
+    (userLoc = null, dataset = effectiveHospitals) => {
+      const referenceList = (
+        Array.isArray(dataset) && dataset.length ? dataset : STATIC_HOSPITALS
+      ).filter((hospital) => {
+        const lat = Number(hospital.lat ?? hospital.latitude);
+        const lng = Number(hospital.lng ?? hospital.longitude);
+        return Number.isFinite(lat) && Number.isFinite(lng);
+      });
 
-    setHospitalsWithDistance(hospitalsWithDist);
-  };
+      const enriched = referenceList
+        .map((hospital) => {
+          const lat = Number(hospital.lat ?? hospital.latitude);
+          const lng = Number(hospital.lng ?? hospital.longitude);
+          let distance =
+            typeof hospital.distance_km === "number"
+              ? hospital.distance_km
+              : null;
+
+          if (userLoc && Number.isFinite(lat) && Number.isFinite(lng)) {
+            distance = calculateDistance(userLoc.lat, userLoc.lng, lat, lng);
+          }
+
+          return {
+            ...hospital,
+            lat,
+            lng,
+            distance,
+            priority_score:
+              typeof hospital.priority_score === "number"
+                ? hospital.priority_score
+                : 0,
+            capability_score: hospital.capability_score,
+            resource_profile: hospital.resource_profile,
+          };
+        })
+        .sort((a, b) => {
+          if (b.priority_score !== a.priority_score) {
+            return b.priority_score - a.priority_score;
+          }
+          if (a.distance === null || a.distance === undefined) {
+            return 1;
+          }
+          if (b.distance === null || b.distance === undefined) {
+            return -1;
+          }
+          return a.distance - b.distance;
+        });
+
+      setHospitalsWithDistance(enriched);
+    },
+    [effectiveHospitals]
+  );
 
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371; // Earth's radius in kilometers
@@ -661,78 +755,327 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     return R * c;
   };
 
-  const loadHospitals = (leafletMap, L) => {
-    if (!leafletMap || !L) return;
+  const handleSimulatedLocationChange = useCallback(
+    async (coords, options = {}) => {
+      if (!coords) return;
+      const lat = Number(coords.lat);
+      const lng = Number(coords.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
 
-    // Clear existing hospital markers
-    hospitalMarkers.forEach((marker) => leafletMap.removeLayer(marker));
+      const location = { lat, lng };
+      setIsSimulatingLocation(true);
+      setUserLocation(location);
+      updateHospitalDistances(location);
+      setCurrentLocationDisplay(
+        `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`
+      );
 
-    const newMarkers = [];
-    HOSPITALS.forEach((hospital) => {
-      // Create custom green hospital icon
-      const hospitalIcon = L.divIcon({
-        className: "hospital-marker",
-        html: `
-                    <div style="
-                        background: #28a745;
-                        color: white;
-                        border-radius: 50%;
-                        width: 30px;
-                        height: 30px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-weight: bold;
-                        font-size: 16px;
-                        border: 2px solid white;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                    ">🏥</div>
-                `,
-        iconSize: [30, 30],
-        iconAnchor: [15, 15],
+      const Leaflet = leafletLibRef.current || (await ensureLeafletInstance());
+      placeUserMarker(Leaflet, lat, lng, "simulated");
+
+      if (options.centerMap !== false && map) {
+        map.flyTo(
+          [lat, lng],
+          Math.max(KALINGA_CONFIG.USER_LOCATION_ZOOM, map.getZoom() || 13),
+          {
+            animate: true,
+            duration: 0.9,
+          }
+        );
+      }
+    },
+    [ensureLeafletInstance, map, placeUserMarker, updateHospitalDistances]
+  );
+
+  const handleStopSimulatedLocation = useCallback(async () => {
+    setIsSimulatingLocation(false);
+    const fallbackLocation =
+      liveUserLocationRef.current ||
+      userLocation ||
+      KALINGA_CONFIG.DEFAULT_LOCATION;
+
+    if (!fallbackLocation) {
+      return;
+    }
+
+    setUserLocation(fallbackLocation);
+    updateHospitalDistances(fallbackLocation);
+    setCurrentLocationDisplay(
+      `Live GPS restored\n${fallbackLocation.lat.toFixed(
+        6
+      )}, ${fallbackLocation.lng.toFixed(6)}`
+    );
+    updateLocationDisplay(fallbackLocation.lat, fallbackLocation.lng);
+
+    const Leaflet = leafletLibRef.current || (await ensureLeafletInstance());
+    placeUserMarker(
+      Leaflet,
+      fallbackLocation.lat,
+      fallbackLocation.lng,
+      "live"
+    );
+
+    if (map) {
+      map.flyTo(
+        [fallbackLocation.lat, fallbackLocation.lng],
+        Math.max(KALINGA_CONFIG.USER_LOCATION_ZOOM, map.getZoom() || 13),
+        {
+          animate: true,
+          duration: 0.9,
+        }
+      );
+    }
+  }, [
+    ensureLeafletInstance,
+    map,
+    placeUserMarker,
+    updateHospitalDistances,
+    updateLocationDisplay,
+    userLocation,
+  ]);
+
+  const loadHospitals = useCallback(
+    (leafletMap, L, dataset = effectiveHospitals) => {
+      if (!leafletMap || !L) return;
+
+      setHospitalMarkers((existingMarkers) => {
+        existingMarkers.forEach((marker) => leafletMap.removeLayer(marker));
+
+        const referenceList = (
+          Array.isArray(dataset) && dataset.length ? dataset : STATIC_HOSPITALS
+        ).filter((hospital) => {
+          const lat = Number(hospital.lat ?? hospital.latitude);
+          const lng = Number(hospital.lng ?? hospital.longitude);
+          return Number.isFinite(lat) && Number.isFinite(lng);
+        });
+
+        const newMarkers = referenceList.map((hospital) => {
+          const lat = Number(hospital.lat ?? hospital.latitude);
+          const lng = Number(hospital.lng ?? hospital.longitude);
+          const hospitalIcon = L.divIcon({
+            className: "hospital-marker",
+            html: `
+            <div style="
+                background: #28a745;
+                color: white;
+                border-radius: 50%;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-weight: bold;
+                font-size: 16px;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">🏥</div>
+          `,
+            iconSize: [30, 30],
+            iconAnchor: [15, 15],
+          });
+
+          const topResources = hospital.resource_profile?.top_resources ?? [];
+          const resourcesHtml = topResources.length
+            ? topResources
+                .map((resource) => {
+                  const badgeColor = resource.is_critical
+                    ? "#fee2e2"
+                    : "#f3f4f6";
+                  const badgeTextColor = resource.is_critical
+                    ? "#b91c1c"
+                    : "#374151";
+                  return `<span style="background:${badgeColor};color:${badgeTextColor};padding:2px 6px;border-radius:10px;font-size:11px;margin:2px;display:inline-block;">${resource.name} (${resource.quantity})</span>`;
+                })
+                .join("")
+            : '<span style="font-size:12px;color:#6b7280;">No live inventory data</span>';
+
+          const servicesHtml = Array.isArray(hospital.services)
+            ? hospital.services
+                .map(
+                  (service) =>
+                    `<span style="background: #e8f5e8; padding: 2px 6px; margin: 2px; border-radius: 10px; font-size: 11px; display: inline-block;">${service}</span>`
+                )
+                .join("")
+            : '<span style="font-size:12px;color:#6b7280;">Live capability data</span>';
+
+          const distanceLabel =
+            typeof hospital.distance_km === "number"
+              ? `${hospital.distance_km.toFixed(2)} km`
+              : typeof hospital.distance === "number"
+              ? `${hospital.distance.toFixed(2)} km`
+              : "Distance unavailable";
+
+          const marker = L.marker([lat, lng], {
+            icon: hospitalIcon,
+          }).addTo(leafletMap);
+
+          marker.bindPopup(`
+          <div style="min-width: 260px;">
+            <h4 style="margin: 0 0 6px 0; color: #15803d; font-weight: bold;">${
+              hospital.name
+            }</h4>
+            <p style="margin: 0 0 4px 0;"><strong>📍 Address:</strong> ${
+              hospital.address || "—"
+            }</p>
+            <p style="margin: 0 0 4px 0;"><strong>📞 Phone:</strong> ${
+              hospital.contact_number || hospital.phone || "—"
+            }</p>
+            <p style="margin: 0 0 8px 0;"><strong>🧭 Distance:</strong> ${distanceLabel}</p>
+            <div style="display:flex;gap:8px;margin-bottom:8px;">
+              <div style="flex:1;background:#ecfdf5;border-radius:10px;padding:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:#047857;">${
+                  typeof hospital.priority_score === "number"
+                    ? hospital.priority_score.toFixed(2)
+                    : "—"
+                }</div>
+                <div style="font-size:10px;text-transform:uppercase;color:#047857;">Priority</div>
+              </div>
+              <div style="flex:1;background:#eef2ff;border-radius:10px;padding:6px;text-align:center;">
+                <div style="font-size:16px;font-weight:700;color:#4338ca;">${
+                  typeof hospital.capability_score === "number"
+                    ? hospital.capability_score.toFixed(2)
+                    : "—"
+                }</div>
+                <div style="font-size:10px;text-transform:uppercase;color:#4338ca;">Capability</div>
+              </div>
+            </div>
+            <div style="margin-bottom: 8px;">
+              <strong>🏥 Services:</strong><br>
+              ${servicesHtml}
+            </div>
+            <div style="margin-bottom: 8px;">
+              <strong>📦 Resources:</strong><br>
+              ${resourcesHtml}
+            </div>
+            <button onclick="getDirectionsToHospital(${lat}, ${lng})"
+              style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; width: 100%; margin-top: 4px;">
+              🗺️ Get Directions
+            </button>
+          </div>
+        `);
+
+          return marker;
+        });
+
+        return newMarkers;
       });
+    },
+    [effectiveHospitals]
+  );
 
-      const marker = L.marker([hospital.lat, hospital.lng], {
-        icon: hospitalIcon,
-      }).addTo(leafletMap);
+  const fetchHospitalsFromApi = useCallback(
+    async (coords = null) => {
+      try {
+        setHospitalSyncMeta((prev) => ({
+          ...prev,
+          loading: true,
+          error: null,
+        }));
+        const params = new URLSearchParams();
+        if (Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)) {
+          params.append("lat", coords.lat);
+          params.append("lng", coords.lng);
+        }
 
-      marker.bindPopup(`
-                <div style="min-width: 250px;">
-                    <h4 style="margin: 0 0 8px 0; color: #28a745; font-weight: bold;">${
-                      hospital.name
-                    }</h4>
-                    <p style="margin: 0 0 4px 0;"><strong>📍 Address:</strong> ${
-                      hospital.address
-                    }</p>
-                    <p style="margin: 0 0 4px 0;"><strong>📞 Phone:</strong> ${
-                      hospital.phone
-                    }</p>
-                    <p style="margin: 0 0 8px 0;"><strong>🚨 Emergency:</strong> ${
-                      hospital.emergency ? "Available 24/7" : "Limited hours"
-                    }</p>
-                    <div style="margin-bottom: 8px;">
-                        <strong>🏥 Services:</strong><br>
-                        ${hospital.services
-                          .map(
-                            (service) =>
-                              `<span style="background: #e8f5e8; padding: 2px 6px; margin: 2px; border-radius: 10px; font-size: 11px; display: inline-block;">${service}</span>`
-                          )
-                          .join("")}
-                    </div>
-                    <button onclick="getDirectionsToHospital(${hospital.lat}, ${
-        hospital.lng
-      })" 
-                            style="background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%; margin-top: 4px;">
-                        🗺️ Get Directions
-                    </button>
-                </div>
-            `);
+        const queryString = params.toString();
+        let url = `${KALINGA_CONFIG.API_BASE_URL}/api/hospitals`;
+        if (queryString) {
+          url += `?${queryString}`;
+        }
 
-      newMarkers.push(marker);
+        const token = localStorage.getItem("token");
+        const response = await fetch(url, {
+          headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Unable to load hospitals (${response.status})`);
+        }
+
+        const payload = await response.json();
+        const list = Array.isArray(payload?.data)
+          ? payload.data
+          : Array.isArray(payload)
+          ? payload
+          : [];
+
+        const normalized = list
+          .map((hospital) => ({
+            ...hospital,
+            lat: Number(hospital.lat ?? hospital.latitude),
+            lng: Number(hospital.lng ?? hospital.longitude),
+          }))
+          .filter(
+            (hospital) =>
+              Number.isFinite(hospital.lat) && Number.isFinite(hospital.lng)
+          );
+
+        setHospitalCatalog(normalized);
+        updateHospitalDistances(coords ?? userLocation ?? null, normalized);
+        setHospitalSyncMeta({
+          loading: false,
+          error: null,
+          lastFetchKey:
+            Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
+              ? `${coords.lat.toFixed(3)},${coords.lng.toFixed(3)}`
+              : "global",
+        });
+      } catch (error) {
+        console.warn("Hospital catalog unavailable", error);
+        setHospitalSyncMeta((prev) => ({
+          ...prev,
+          loading: false,
+          error: error.message || "Unable to load hospitals",
+        }));
+      }
+    },
+    [updateHospitalDistances, userLocation]
+  );
+
+  useEffect(() => {
+    if (!map || !effectiveHospitals.length) return;
+
+    let active = true;
+    import("leaflet").then((L) => {
+      if (!active) return;
+      loadHospitals(map, L.default, effectiveHospitals);
     });
 
-    setHospitalMarkers(newMarkers);
-  };
+    return () => {
+      active = false;
+    };
+  }, [map, effectiveHospitals, loadHospitals]);
+
+  useEffect(() => {
+    if (hospitalSyncMeta.loading) return;
+    if (hospitalCatalog.length) return;
+    if (hospitalSyncMeta.lastFetchKey === "global") return;
+    fetchHospitalsFromApi();
+  }, [fetchHospitalsFromApi, hospitalCatalog.length, hospitalSyncMeta]);
+
+  useEffect(() => {
+    if (!userLocation) return;
+    if (
+      !Number.isFinite(userLocation.lat) ||
+      !Number.isFinite(userLocation.lng)
+    ) {
+      return;
+    }
+
+    const coarseKey = `${userLocation.lat.toFixed(
+      3
+    )},${userLocation.lng.toFixed(3)}`;
+    if (hospitalSyncMeta.lastFetchKey === coarseKey) {
+      return;
+    }
+
+    fetchHospitalsFromApi(userLocation);
+  }, [userLocation, hospitalSyncMeta.lastFetchKey, fetchHospitalsFromApi]);
 
   // Debounced fetch for blockades to reduce API calls
   const debounceTimerRef = useRef(null);
@@ -1153,55 +1496,55 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     } finally {
       // Always reset drawing state
       setIsDrawingRoute(false);
-        if (isAutoRecalculation) {
-          setIsRecalculatingRoute(false);
-        }
-        if (isAutoRecalculation) {
-          setPendingDeviation(null);
-        }
+      if (isAutoRecalculation) {
+        setIsRecalculatingRoute(false);
+      }
+      if (isAutoRecalculation) {
+        setPendingDeviation(null);
+      }
     }
   };
 
-    const handleRouteDeviation = useCallback(
-      (currentLocation, distanceFromRouteMeters) => {
-        if (!destination || isRecalculatingRoute) {
-          return;
-        }
+  const handleRouteDeviation = useCallback(
+    (currentLocation, distanceFromRouteMeters) => {
+      if (!destination || isRecalculatingRoute) {
+        return;
+      }
 
-        const now = Date.now();
-        if (
-          lastDeviationTimestamp &&
-          now - lastDeviationTimestamp < DEVIATION_MIN_INTERVAL_MS
-        ) {
-          return;
-        }
+      const now = Date.now();
+      if (
+        lastDeviationTimestamp &&
+        now - lastDeviationTimestamp < DEVIATION_MIN_INTERVAL_MS
+      ) {
+        return;
+      }
 
-        setLastDeviationTimestamp(now);
-        setPendingDeviation({
-          location: currentLocation,
-          extra: {
-            distance_from_route_m: Math.round(distanceFromRouteMeters),
-          },
-        });
+      setLastDeviationTimestamp(now);
+      setPendingDeviation({
+        location: currentLocation,
+        extra: {
+          distance_from_route_m: Math.round(distanceFromRouteMeters),
+        },
+      });
 
-        drawRoute(
-          destination.lat,
-          destination.lng,
-          false,
-          isNavigating,
-          true,
-          currentLocation
-        );
-      },
-      [
-        DEVIATION_MIN_INTERVAL_MS,
-        destination,
-        drawRoute,
+      drawRoute(
+        destination.lat,
+        destination.lng,
+        false,
         isNavigating,
-        isRecalculatingRoute,
-        lastDeviationTimestamp,
-      ]
-    );
+        true,
+        currentLocation
+      );
+    },
+    [
+      DEVIATION_MIN_INTERVAL_MS,
+      destination,
+      drawRoute,
+      isNavigating,
+      isRecalculatingRoute,
+      lastDeviationTimestamp,
+    ]
+  );
 
   // Process OSRM route steps into turn-by-turn instructions
   const processRouteInstructions = (steps) => {
@@ -1320,8 +1663,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         updateNavigationProgress(newLocation);
 
         // Update user marker on map
-        if (map && userMarker) {
-          userMarker.setLatLng([newLocation.lat, newLocation.lng]);
+        if (map && userMarkerRef.current) {
+          userMarkerRef.current.setLatLng([newLocation.lat, newLocation.lng]);
 
           // Keep user centered during navigation
           if (isNavigating) {
@@ -1638,6 +1981,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const refreshData = async () => {
     if (!map) return;
 
+    await fetchHospitalsFromApi(userLocation ?? null);
     const L = await import("leaflet");
 
     // Refresh all data regardless of selected tab
@@ -1661,9 +2005,9 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         duration: 1.2,
       });
 
-      if (userMarker) {
+      if (userMarkerRef.current) {
         setTimeout(() => {
-          userMarker.openPopup();
+          userMarkerRef.current.openPopup();
           // Refresh hospital distances
           if (selectedTab === "hospitals") {
             updateHospitalDistances(userLocation);
@@ -1700,6 +2044,17 @@ export default function HospitalMap({ embedded = false, className = "" }) {
 
   const mapShell = (
     <div className={mapShellClass}>
+      <LocationSimulator
+        currentLocation={
+          userLocation ??
+          liveUserLocationRef.current ??
+          KALINGA_CONFIG.DEFAULT_LOCATION
+        }
+        isActive={isSimulatingLocation}
+        onLocationChange={handleSimulatedLocationChange}
+        onStopSimulation={handleStopSimulatedLocation}
+        buttonLabel="Simulate patient"
+      />
       {/* Mobile Bottom Interface - Google Maps Style */}
       <div className="md:hidden">
         {/* User Info Dropdown */}

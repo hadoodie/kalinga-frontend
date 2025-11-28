@@ -118,24 +118,29 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/resources/critical', [ResourceController::class, 'critical']);
         Route::get('/resources/expiring', [ResourceController::class, 'expiring']);
         
-        // Full CRUD resources (keep this last)
-        Route::apiResource('resources', ResourceController::class);
-        Route::apiResource('hospitals', HospitalController::class);
+        // Full CRUD resources (except index which stays public)
+        Route::apiResource('resources', ResourceController::class)->except(['index']);
+        Route::apiResource('hospitals', HospitalController::class)->except(['index']);
+    });
+
+    // Shared read-only situational awareness (patients need visibility too)
+    Route::middleware(['role:admin,responder,logistics,patient'])->group(function () {
+        Route::get('/incidents', [IncidentApiController::class, 'index']);
+        Route::get('/incidents/{incident}', [IncidentApiController::class, 'show']);
+        Route::get('/incidents/{incident}/history', [IncidentApiController::class, 'history']);
+        Route::get('/road-blockades', [RoadBlockadeController::class, 'index']);
     });
     
     // Responder (and Logistics) routes
     Route::middleware(['role:admin,responder,logistics'])->group(function () {
         // Pathfinding routes
-        Route::get('/incidents', [IncidentApiController::class, 'index']);
-        Route::get('/incidents/{incident}', [IncidentApiController::class, 'show']);
-        Route::get('/incidents/{incident}/history', [IncidentApiController::class, 'history']);
         Route::get('/incidents/{incident}/conversation', [IncidentApiController::class, 'conversation']);
         Route::get('/incidents/{incident}/hospital-recommendations', [IncidentApiController::class, 'hospitalRecommendations']);
         Route::post('/incidents/{incident}/assign', [IncidentApiController::class, 'assign']);
         Route::post('/incidents/{incident}/status', [IncidentApiController::class, 'updateStatus']);
         Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);
         
-        Route::apiResource('road-blockades', RoadBlockadeController::class);
+        Route::apiResource('road-blockades', RoadBlockadeController::class)->except(['index']);
         Route::post('/road-blockades/route', [RoadBlockadeController::class, 'getRouteBlockades']);
         Route::patch('/road-blockades/{id}/remove', [RoadBlockadeController::class, 'removeBlockade']);
     });

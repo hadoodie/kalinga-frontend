@@ -13,6 +13,7 @@ use App\Models\Incident;
 use App\Models\IncidentResponderAssignment;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\HospitalCapabilityService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -20,6 +21,10 @@ use Illuminate\Support\Collection;
 
 class IncidentApiController extends Controller
 {
+    public function __construct(private HospitalCapabilityService $hospitalCapabilityService)
+    {
+    }
+
     public function index(Request $request)
     {
         $statuses = $this->normalizeStatuses($request->query('status'));
@@ -146,6 +151,9 @@ class IncidentApiController extends Controller
         }
 
         $hospitals = Hospital::query()
+            ->with(['resources' => function ($query) {
+                $query->select('id', 'hospital_id', 'name', 'category', 'quantity', 'is_critical');
+            }])
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->get();
@@ -172,22 +180,31 @@ class IncidentApiController extends Controller
                     $distance = $this->calculateDistance($incidentLat, $incidentLng, $lat, $lng);
                 }
 
+                $resourceProfile = $this->hospitalCapabilityService->buildResourceProfile($hospital);
+                $distanceScore = $this->hospitalCapabilityService->distanceScore($distance);
+                $priorityScore = $this->hospitalCapabilityService->priorityScore($resourceProfile['score'], $distanceScore);
+                $capabilities = $this->inferHospitalCapabilities($hospital);
+
                 return [
                     'id' => $hospital->id,
                     'name' => $hospital->name,
                     'address' => $hospital->address,
                     'contact_number' => $hospital->contact_number ?? $hospital->contact,
                     'type' => $hospital->type,
-                    'capabilities' => $this->inferHospitalCapabilities($hospital),
+                    'capabilities' => $capabilities,
                     'latitude' => $lat,
                     'longitude' => $lng,
                     'distance_km' => $distance,
                     'capacity' => $hospital->capacity,
                     'emergency_services' => (bool) $hospital->emergency_services,
+                    'capability_score' => $resourceProfile['score'],
+                    'distance_score' => $distanceScore,
+                    'priority_score' => $priorityScore,
+                    'resource_profile' => $resourceProfile,
                 ];
             })
-            ->sortBy(function (array $payload) {
-                return $payload['distance_km'] ?? PHP_INT_MAX;
+            ->sortByDesc(function (array $payload) {
+                return $payload['priority_score'];
             })
             ->values()
             ->take($limit)

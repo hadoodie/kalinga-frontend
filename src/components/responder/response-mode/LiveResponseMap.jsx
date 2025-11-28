@@ -445,6 +445,7 @@ export default function LiveResponseMap({
   const nearestHospital = hospitals?.[0] ?? null;
 
   const mode = determineMode(incident?.status);
+  const isOnScene = incident?.status === "on_scene";
 
   useEffect(() => {
     if (
@@ -551,11 +552,16 @@ export default function LiveResponseMap({
   }, []);
 
   const activeStart = useMemo(() => {
-    if (mode === "hospital" && incidentPosition) {
-      return incidentPosition;
+    if (mode === "hospital") {
+      if (isOnScene && responderPosition) {
+        return responderPosition;
+      }
+      if (incidentPosition) {
+        return incidentPosition;
+      }
     }
     return responderPosition ?? incidentPosition;
-  }, [incidentPosition, mode, responderPosition]);
+  }, [incidentPosition, isOnScene, mode, responderPosition]);
 
   const activeDestination = useMemo(() => {
     if (mode === "hospital") {
@@ -654,14 +660,19 @@ export default function LiveResponseMap({
   }, [routingKey, normalizedBlockades]);
 
   const currentCenter = useMemo(() => {
-    if (mode === "hospital" && incidentPosition) {
-      return incidentPosition;
+    if (mode === "hospital") {
+      if (isOnScene && responderPosition) {
+        return responderPosition;
+      }
+      if (incidentPosition) {
+        return incidentPosition;
+      }
     }
     if (responderPosition) {
       return responderPosition;
     }
     return incidentPosition;
-  }, [incidentPosition, mode, responderPosition]);
+  }, [incidentPosition, isOnScene, mode, responderPosition]);
 
   const handleSimulatedLocationChange = (coords, options = {}) => {
     if (!coords) return;

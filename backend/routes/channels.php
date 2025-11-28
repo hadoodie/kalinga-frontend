@@ -14,7 +14,9 @@ Broadcast::channel('incidents', function ($user) {
         return false;
     }
 
-    return in_array($user->role, ['admin', 'responder'], true)
+    $allowedRoles = ['admin', 'responder', 'logistics', 'patient'];
+
+    return in_array($user->role, $allowedRoles, true)
         ? new UserResource($user)
         : false;
 });
