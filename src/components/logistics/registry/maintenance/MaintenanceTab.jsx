@@ -1,3 +1,4 @@
+
 // src/components/logistics/registry/maintenance/MaintenanceTab.jsx
 import { useState, useEffect } from "react";
 import { Plus, Calendar, Clock, AlertTriangle, CheckCircle, Wrench, RefreshCw } from "lucide-react";
@@ -117,19 +118,19 @@ export default function MaintenanceTab({ loading }) {
     { 
       id: "calendar", 
       label: "Calendar", 
-      icon: "📅",
+      //icon: "📅",
       description: "Visual schedule and maintenance planning"
     },
     { 
       id: "history", 
       label: "Service History", 
-      icon: "📋",
+      //icon: "📋",
       description: "Past maintenance records and analytics"
     },
     { 
       id: "schedule", 
       label: "Schedule", 
-      icon: "⏰",
+      //icon: "⏰",
       description: "Upcoming maintenance timeline"
     }
   ];
@@ -158,8 +159,8 @@ export default function MaintenanceTab({ loading }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex-1">
-          <h2 className="text-lg sm:text-2xl font-bold text-green-900">Maintenance Management</h2>
-          <p className="text-green-700 text-xs sm:text-sm">
+          <h2 className="text-lg text-left sm:text-2xl font-bold text-green-900">Maintenance Management</h2>
+          <p className="text-green-700 text-left text-xs sm:text-sm">
             Track, schedule, and manage asset maintenance operations
           </p>
         </div>
@@ -190,61 +191,53 @@ export default function MaintenanceTab({ loading }) {
       {/* Enhanced Maintenance Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Total Scheduled</p>
-              <p className="text-xl sm:text-2xl font-bold text-gray-900">{stats.totalScheduled}</p>
-              <p className="text-xs text-gray-500 mt-1">Maintenance tasks</p>
-            </div>
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
+          <div className="flex items-center gap-3 mb-1">
+            <Calendar className="h-8 w-8 sm:h-9 sm:w-9 text-green-800" />
+            <div className="text-left">
+              <p className="text-sm text-gray-600">Maintenance Task</p>
+              <p className="text-lg font-semibold text-green-800 uppercase">Total Scheduled</p>
             </div>
           </div>
+          <p className="text-4xl text-left sm:text-5xl font-bold text-green-800 mb-0">{stats.totalScheduled}</p>
         </div>
 
         <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Overdue</p>
-              <p className="text-xl sm:text-2xl font-bold text-red-600">{stats.overdue}</p>
-              <p className="text-xs text-red-500 mt-1">Requires attention</p>
-            </div>
-            <div className="p-2 bg-red-100 rounded-lg">
-              <AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
+          <div className="flex items-center gap-3 mb-1">
+            <AlertTriangle className="h-8 w-8 sm:h-9 sm:w-9 text-red-600" />
+            <div className="text-left">
+              <p className="text-sm text-gray-600">Requires attention</p>
+              <p className="text-lg font-semibold text-red-600 uppercase">Overdue</p>
             </div>
           </div>
+          <p className="text-4xl text-left sm:text-5xl font-bold text-red-600">{stats.overdue}</p>
         </div>
 
         <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">In Progress</p>
-              <p className="text-xl sm:text-2xl font-bold text-yellow-600">{stats.inProgress}</p>
-              <p className="text-xs text-yellow-600 mt-1">Active work</p>
-            </div>
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Wrench className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-600" />
+          <div className="flex items-center gap-3 mb-1">
+            <Wrench className="h-8 w-8 sm:h-9 sm:w-9 text-green-800" />
+            <div className="text-left">
+              <p className="text-sm text-gray-600">In Progress</p>
+              <p className="text-lg font-semibold text-green-800 uppercase">Active Work</p>
             </div>
           </div>
+          <p className="text-4xl text-left sm:text-5xl font-bold text-green-800">{stats.inProgress}</p>
         </div>
 
         <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Completed</p>
-              <p className="text-xl sm:text-2xl font-bold text-green-600">{stats.completedThisMonth}</p>
-              <p className="text-xs text-green-600 mt-1">This month</p>
-            </div>
-            <div className="p-2 bg-green-100 rounded-lg">
-              <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
+          <div className="flex items-center gap-3 mb-1">
+            <CheckCircle className="h-8 w-8 sm:h-9 sm:w-9 text-green-800" />
+            <div className="text-left">
+              <p className="text-sm text-gray-600">This month</p>
+              <p className="text-lg font-semibold text-green-800 uppercase">Completed</p>
             </div>
           </div>
+          <p className="text-4xl text-left sm:text-5xl font-bold text-green-800">{stats.completedThisMonth}</p>
         </div>
       </div>
 
       {/* Enhanced View Tabs */}
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="border-b border-gray-200">
+        <div className="border-b text-left border-gray-200">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
@@ -255,21 +248,20 @@ export default function MaintenanceTab({ loading }) {
               </p>
             </div>
             
-            <nav className="flex overflow-x-auto mt-3 sm:mt-0 -mb-px">
+            <nav className="flex mt-3 sm:mt-0">
               {views.map((view) => (
                 <button
                   key={view.id}
                   onClick={() => setActiveView(view.id)}
                   className={`
-                    flex items-center gap-2 whitespace-nowrap py-2 px-4 border-b-2 font-medium text-sm transition-colors duration-200
+                    px-4 py-2.5 font-medium text-sm transition-all duration-200
                     ${
                       activeView === view.id
-                        ? "border-yellow-500 text-yellow-600 bg-yellow-50"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                        ? "bg-green-800 text-white rounded-lg"
+                        : "bg-white text-black hover:bg-gray-100"
                     }
                   `}
                 >
-                  <span className="text-base">{view.icon}</span>
                   <span>{view.label}</span>
                 </button>
               ))}

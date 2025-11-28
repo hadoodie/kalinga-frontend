@@ -6,6 +6,8 @@ import {
   Linkedin,
   Twitter,
 } from "lucide-react";
+import { Link } from "react-router-dom"; 
+import { ROUTES } from "../config/routes"; 
 
 export const Footer = () => {
   return (
@@ -52,24 +54,24 @@ export const Footer = () => {
             <div>
               <h3 className="text-xl font-extrabold mb-3">Quick Links</h3>
               <div className="flex flex-col space-y-2 text-sm">
-                <a
-                  href="#"
+                <Link
+                  to={ROUTES.PRIVACY_POLICY}
                   className="text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
                   Privacy Policy
-                </a>
-                <a
-                  href="#"
+                </Link>
+                <Link
+                  to={ROUTES.TERMS_AND_CONDITIONS}
                   className="text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
                   Terms and Conditions
-                </a>
-                <a
-                  href="#"
+                </Link>
+                <Link
+                  to={ROUTES.FAQS}
                   className="text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
                   FAQs
-                </a>
+                </Link>
               </div>
             </div>
           </div>

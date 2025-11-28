@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
-import { Construction, Truck, Check, FileQuestionMark, Loader2 } from "lucide-react";
-import api from "../../services/api";
+import { 
+  Construction, 
+  Truck, 
+  Check, 
+  Package, 
+  Loader2 
+} from "lucide-react";
+import api from "../../services/api"; 
+import LiveTrackingMap from "../../components/logistics/LiveTrackingMap"; 
+import { useNavigate } from "react-router-dom"; 
+import { ROUTES } from "../../config/routes";
 
 // Helpers
 const formatETA = (utcDateString) => {
@@ -20,18 +29,16 @@ const getStatusVisuals = (status) => {
     case "Delayed":
       return { pillClass: "bg-red-500 text-white animate-pulse", icon: <Construction size={16} /> };
     case "Shipped":
-    case "On-the-Way": // Backend status 'Shipped' or 'On-the-Way'
+    case "On-the-Way":
       return { pillClass: "bg-yellow-400 text-gray-800", icon: <Truck size={16} /> };
     case "Delivered":
       return { pillClass: "bg-green-500 text-white", icon: <Check size={16} /> };
     default:
-      // Catches 'Approved' and 'Packed'
-      return { pillClass: "bg-blue-300 text-blue-800", icon: <FileQuestionMark size={16} /> };
+      return { pillClass: "bg-blue-300 text-blue-800", icon: <Package size={16} /> };
   }
 };
 
 const formatRelativeTime = (ping) => {
-    // Backend now sends a formatted string like "3 minutes ago"
     return ping || 'N/A';
 };
 
@@ -39,6 +46,8 @@ export default function Supply() {
   const [shipments, setShipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedShipment, setSelectedShipment] = useState(null); 
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchSupplyData = async () => {
@@ -56,12 +65,10 @@ export default function Supply() {
     };
     
     fetchSupplyData();
-    // Refresh data every 30 seconds
     const interval = setInterval(fetchSupplyData, 30000); 
     return () => clearInterval(interval);
   }, []);
 
-  // Critical shipments (Delayed, Critical, or ETA < 4h)
   const criticalShipments = shipments
     .filter(
       (s) =>
@@ -125,12 +132,16 @@ export default function Supply() {
               return (
                 <div
                   key={s.id}
-                  className={`bg-white p-4 rounded-xl shadow-md border-l-4 ${
+                  onClick={() => setSelectedShipment(s)} 
+                  className={`bg-white p-4 rounded-xl shadow-md border-l-4 cursor-pointer ${
                     isCritical
                       ? "border-red-500 shadow-xl"
                       : "border-yellow-500"
-                  } transition duration-300 hover:shadow-2xl`}
+                  } transition duration-300 hover:shadow-2xl ${
+                    selectedShipment?.id === s.id ? 'ring-2 ring-primary' : '' // Highlight selected
+                  }`}
                 >
+
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-bold text-gray-500">
                       ID: {s.id}
@@ -175,19 +186,33 @@ export default function Supply() {
         </section>
 
         {/* MAP */}
-        <section className="lg:col-span-2 bg-white rounded-xl shadow-lg p-0 flex flex-col">
-            <div className="p-4 border-b">
+        <section className="lg:col-span-2 bg-white rounded-xl shadow-lg p-0 flex flex-col h-[60vh] lg:h-[600px]">
+            <div className="p-4 border-b flex justify-between items-center">
               <h2 className="text-xl font-bold text-gray-700">
-              Real-time Asset Tracking & Hazard Zones
+                Real-time Asset Tracking
               </h2>
+              <span className="text-xs text-primary font-semibold animate-pulse">
+                ● Live
+              </span>
             </div>
-            <div className="w-full flex-1 rounded-b-xl overflow-hidden">
-                {/* Placeholder map image */}
-                <img
-                src="https://placehold.co/1000x600/e2e8f0/64748b?text=Live+Map+Placeholder"
-                alt="Evacuation Map"
-                className="w-full h-full object-cover"
-                />
+            
+            <div 
+              className="w-full flex-1 rounded-b-xl overflow-hidden relative group cursor-pointer"
+              onClick={() => navigate(ROUTES.LOGISTICS.LIVE_MAP)} 
+            >
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 z-[400] transition-colors flex items-center justify-center">
+                 <span className="bg-white/90 text-primary px-4 py-2 rounded-full shadow-lg font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                   View Full Screen Map
+                 </span>
+              </div>
+
+              <div className="w-full h-full pointer-events-none">
+                 <LiveTrackingMap 
+                   selectedShipment={selectedShipment} 
+                   allShipments={shipments.filter(s => s.status !== 'Delivered')}
+                   onShipmentSelect={setSelectedShipment}
+                 />
+              </div>
             </div>
         </section>
 
@@ -200,12 +225,12 @@ export default function Supply() {
             <table className="w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                 <tr>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Route (O → D)</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ETA</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Contents</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Last Ping</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Route (O → D)</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ETA</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contents</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Ping</th>
                 </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -216,7 +241,15 @@ export default function Supply() {
                     const { pillClass, icon } = getStatusVisuals(s.status);
                     const isUrgent = s.status === "Delayed" || s.priority === "Critical";
                     return (
-                        <tr key={s.id} className={`${isUrgent ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}`}>
+                        <tr 
+                          key={s.id} 
+                          onClick={() => setSelectedShipment(s)} 
+                          className={`${
+                            isUrgent ? "bg-red-50" : ""
+                          } hover:bg-gray-100 cursor-pointer ${
+                            selectedShipment?.id === s.id ? 'bg-gray-200' : '' // Highlight selected
+                          }`}
+                        >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{s.id}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                             <div className={`flex items-center justify-center gap-1 py-1 px-2 text-xs font-semibold status-pill rounded-full ${pillClass}`}>

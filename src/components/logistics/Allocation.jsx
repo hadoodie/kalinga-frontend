@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { List, Plus, Send, Check, X, ArrowRightLeft, Ambulance, HeartHandshake, Package, PackageOpen, PackageCheck, Truck, Clock, Droplets, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from 'date-fns';
-import api from "../../services/api"; // <-- Make sure this path is correct
+import api from "../../services/api"; 
+import { useToast } from "@/hooks/use-toast";
 
 // --- Reusable Modal Component ---
 const Modal = ({ isOpen, onClose, title, children }) => {
@@ -26,7 +27,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
 // --- END: Modal Component ---
 
 
-// --- Main Allocation Component (Tab Switcher) ---
+// --- Main Allocation Component ---
 export function Allocation() {
   const [activeTab, setActiveTab] = useState("incoming");
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -36,7 +37,7 @@ export function Allocation() {
       {/* HEADER */}
       <header className="flex flex-col md:flex-row justify-between items-center md:items-center p-4 bg-white rounded-xl shadow-lg">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
-          Requested Allocation
+          Resource Allocation
         </h1>
         <button 
           onClick={() => setIsHistoryModalOpen(true)}
@@ -70,7 +71,7 @@ export function Allocation() {
       <Modal
         isOpen={isHistoryModalOpen}
         onClose={() => setIsHistoryModalOpen(false)}
-        title="Allocation History"
+        title="Allocation History (Completed & Cancelled)"
       >
         <AllocationHistoryPanel />
       </Modal>
@@ -125,6 +126,7 @@ const getStatusIcon = (status) => {
 };
 
 function IncomingRequestsPanel() {
+  const { toast } = useToast(); // <-- 2. USE THE HOOK
   const [requests, setRequests] = useState([]);
   const [selected, setSelected] = useState(null);
   const [filter, setFilter] = useState("");
@@ -143,6 +145,12 @@ function IncomingRequestsPanel() {
       }
     } catch (err) {
       console.error("Failed to fetch incoming requests", err);
+      // --- 3. UPDATED ERROR TOAST ---
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch incoming requests.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -165,9 +173,14 @@ function IncomingRequestsPanel() {
       (r.item_name && r.item_name.toLowerCase().includes(filter.toLowerCase()))
   );
   
-  // --- MODIFIED: This function now handles removing items from the list ---
   const handleStatusChange = async (newStatus, reason = "") => {
     if (!selected) return;
+
+    if (newStatus === 'Cancelled' && !reason) {
+      setIsRejectModalOpen(true);
+      return; 
+    }
+
     try {
       const response = await api.put(`/incoming-requests/${selected.id}/status`, {
         status: newStatus,
@@ -176,13 +189,11 @@ function IncomingRequestsPanel() {
       
       const updatedRequest = response.data;
       
-      // If the request is now finished (Cancelled or Delivered), remove it from the list
       if (newStatus === 'Cancelled' || newStatus === 'Delivered') {
         const remainingRequests = requests.filter(r => r.id !== updatedRequest.id);
         setRequests(remainingRequests);
         setSelected(remainingRequests.length > 0 ? remainingRequests[0] : null);
       } else {
-        // Otherwise, just update the item in the list
         setSelected(updatedRequest);
         setRequests(prevRequests =>
           prevRequests.map(r =>
@@ -192,16 +203,30 @@ function IncomingRequestsPanel() {
       }
       
       setNextStatus(updatedRequest.status);
-      alert(`Request ${updatedRequest.request_id} status updated to ${newStatus}`);
+      // --- 3. UPDATED SUCCESS TOAST ---
+      toast({
+        title: "Status Updated",
+        description: `Request ${updatedRequest.request_id} is now ${newStatus}.`,
+      });
     } catch (err) {
       console.error("Failed to update status", err);
-      alert("Failed to update status.");
+      // --- 3. UPDATED ERROR TOAST ---
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: "Could not update the request status.",
+      });
     }
   };
 
   const handleSubmitRejection = () => {
     if (!rejectReason) {
-      alert("Please provide a reason for rejection.");
+      // --- 3. UPDATED ERROR TOAST ---
+      toast({
+        variant: "destructive",
+        title: "Reason Required",
+        description: "Please provide a reason for rejection.",
+      });
       return;
     }
     handleStatusChange('Cancelled', rejectReason);
@@ -340,7 +365,7 @@ function IncomingRequestsPanel() {
             </>
           ) : (
             <p className="text-center text-gray-500 mt-20">
-              Select a request to review
+              {isLoading ? "Loading..." : "Select a request to review"}
             </p>
           )}
         </section>
@@ -388,6 +413,7 @@ function IncomingRequestsPanel() {
 
 // --- 2. Panel for "Create New Request" ---
 function CreateRequestPanel({ onClose, onSave }) {
+  const { toast } = useToast(); // <-- 2. USE THE HOOK
   const [requestType, setRequestType] = useState("resources");
   const [hospital, setHospital] = useState("");
   const [item, setItem] = useState("");
@@ -403,9 +429,14 @@ function CreateRequestPanel({ onClose, onSave }) {
       setIsLoadingHospitals(true);
       try {
         const response = await api.get('/hospitals'); 
-        setHospitals(response.data);
+        setHospitals(response.data.data || response.data); 
       } catch (err) {
         console.error("Failed to fetch hospitals", err);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load hospitals.",
+        });
       } finally {
         setIsLoadingHospitals(false);
       }
@@ -425,12 +456,23 @@ function CreateRequestPanel({ onClose, onSave }) {
         urgency: urgency,
       };
       const response = await api.post('/allocation-requests', payload);
-      alert('Request submitted successfully!');
+      
+      // --- 3. UPDATED SUCCESS TOAST ---
+      toast({
+        title: "Success!",
+        description: "Request submitted successfully.",
+      });
+      
       if (onSave) onSave(response.data);
       if (onClose) onClose();
     } catch (err) {
       console.error("Failed to create request", err);
-      alert("Failed to submit request. Please check the details.");
+      // --- 3. UPDATED ERROR TOAST ---
+      toast({
+        variant: "destructive",
+        title: "Submission Failed",
+        description: "Please check the details and try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -537,6 +579,7 @@ function CreateRequestPanel({ onClose, onSave }) {
 
 // --- 3. Panel for "Track My Requests" ---
 function OutgoingRequestsPanel() {
+  const { toast } = useToast(); // <-- 2. USE THE HOOK
   const [requests, setRequests] = useState([]);
   const [selected, setSelected] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -552,6 +595,12 @@ function OutgoingRequestsPanel() {
       }
     } catch (err) {
       console.error("Failed to fetch outgoing requests", err);
+      // --- 3. UPDATED ERROR TOAST ---
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to fetch outgoing requests.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -562,9 +611,8 @@ function OutgoingRequestsPanel() {
   }, []);
 
   const handleNewRequestSaved = (newRequest) => {
-    // Add new request to the top of the list
     setRequests(prev => [newRequest, ...prev]);
-    setSelected(newRequest); // Select the new request
+    setSelected(newRequest);
   };
 
   const getStatusIcon = (status) => {
@@ -675,6 +723,7 @@ function OutgoingRequestsPanel() {
 
 // --- NEW: Allocation History Panel ---
 function AllocationHistoryPanel() {
+  const { toast } = useToast(); // <-- 2. USE THE HOOK
   const [history, setHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -686,6 +735,12 @@ function AllocationHistoryPanel() {
         setHistory(response.data);
       } catch (err) {
         console.error("Failed to fetch history", err);
+        // --- 3. UPDATED ERROR TOAST ---
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch allocation history.",
+        });
       } finally {
         setIsLoading(false);
       }

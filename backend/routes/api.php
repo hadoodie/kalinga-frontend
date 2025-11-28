@@ -80,6 +80,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/verify-id', [AuthController::class, 'verifyId']);
     Route::post('/submit-verification', [AuthController::class, 'submitVerification']);
+    Route::get('/notifications', [NotificationController::class, 'index']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
@@ -119,8 +120,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::apiResource('hospitals', HospitalController::class);
     });
     
-    // Responder routes
-    Route::middleware(['role:admin,responder'])->group(function () {
+    // Responder (and Logistics) routes
+    Route::middleware(['role:admin,responder,logistics'])->group(function () {
         // Pathfinding routes
         Route::get('/incidents', [IncidentApiController::class, 'index']);
         Route::get('/incidents/{incident}', [IncidentApiController::class, 'show']);
@@ -140,7 +141,6 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware(['role:admin,patient'])->group(function () {
         Route::get('/lab-results', [LabResultController::class, 'index']);
         Route::get('/appointments', [AppointmentController::class, 'index']);
-        Route::get('/notifications', [NotificationController::class, 'index']);
     });
 
     // Chat routes (all authenticated users)

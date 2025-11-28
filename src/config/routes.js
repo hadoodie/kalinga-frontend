@@ -5,6 +5,9 @@ export const ROUTES = {
   LOGIN: "/login",
   FORGOT_PASSWORD: "/forgot-password",
   CREATE_ACCOUNT: "/create-acc",
+  PRIVACY_POLICY: "/privacy-policy",
+  TERMS_AND_CONDITIONS: "/terms-and-conditions",
+  FAQS: "/faqs",
 
   // Account creation flow
   VERIFY_ID: "/verify-id",
@@ -64,6 +67,8 @@ export const ROUTES = {
     SUPPLY_TRACKING: "/logistics/supply-tracking",
     REQUESTED_ALLOCATION: "/logistics/requested-allocation",
     SETTINGS: "/logistics/settings",
+    NOTIFICATIONS: "/logistics/notifications",
+    LIVE_MAP: "/logistics/live-map",
   },
 };
 

@@ -19,6 +19,15 @@ const ForgotPassword = lazy(() =>
     default: module.ForgotPassword,
   }))
 );
+const PrivacyPolicy = lazy(() =>
+  import("../pages-quicklinks/Policy")
+);
+const TermsAndConditions = lazy(() =>
+  import("../pages-quicklinks/TermsAndConditions")
+);
+const Faqs = lazy(() =>
+  import("../pages-quicklinks/FAQs")
+);
 
 export const PublicRoutes = () => (
   <>
@@ -26,5 +35,8 @@ export const PublicRoutes = () => (
     <Route path={ROUTES.LOGIN} element={<LogIn />} />
     <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
     <Route path={ROUTES.CREATE_ACCOUNT} element={<CreateAccount />} />
+    <Route path={ROUTES.PRIVACY_POLICY} element={<PrivacyPolicy />} /> 
+    <Route path={ROUTES.TERMS_AND_CONDITIONS} element={<TermsAndConditions />} />
+    <Route path={ROUTES.FAQS} element={<Faqs />} />
   </>
 );

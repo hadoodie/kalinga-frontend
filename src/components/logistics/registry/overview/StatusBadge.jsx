@@ -1,17 +1,17 @@
 // src/components/logistics/registry/StatusBadge.jsx
 const StatusBadge = ({ status }) => {
   const statusConfig = {
-    'Active': { 
+    'Operational': { 
       color: 'bg-green-100 text-green-800 border-green-200',
-      icon: '🟢'
+      //icon: '🟢'
     },
     'Under Repair': { 
       color: 'bg-red-100 text-red-800 border-red-200 animate-pulse',
-      icon: '🔴'
+     //icon: '🔴'
     },
     'Standby': { 
       color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-      icon: '🟡'
+      //icon: '🟡'
     }
   };
   

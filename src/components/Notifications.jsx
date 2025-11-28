@@ -1,4 +1,4 @@
-import { Bell } from "lucide-react";
+import { Bell, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { formatDistanceToNow } from 'date-fns';
 import api from "../services/api"; 
@@ -10,53 +10,39 @@ export default function Notifs() {
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
+        setLoading(true); // Set loading to true at the start
         const response = await api.get('/notifications');
-
         setNotifications(response.data);
       } catch (error) {
         console.error("Failed to fetch notifications:", error);
       } finally {
-        setLoading(false);
+        setLoading(false); // Set loading to false at the end
       }
     };
 
     fetchNotifications();
   }, []); // Empty array means this runs once on mount
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        {/* Page Header */}
-        <header className="flex flex-wrap justify-between items-center gap-4 mb-8 p-4 bg-white rounded-xl shadow-lg">
-          <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
-            Notifications
-          </h1>
-          <button className="px-4 py-2 text-sm rounded-md bg-green-900 text-white hover:bg-green-700 transition">
-            Mark all as read
-          </button>
-        </header>
-
-        {/* Notifications List */}
-        <div className="p-6 text-center text-gray-500">Loading notifications...</div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 space-y-6">
       {/* Page Header */}
-      <header className="flex flex-wrap justify-between items-center gap-4 mb-8 p-4 bg-white rounded-xl shadow-lg">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
+      <header className="flex flex-col md:flex-row justify-between items-center md:items-center p-4 bg-white rounded-xl shadow-lg">
+        <h1 className="text-3xl md:text-4xl font-extrabold text-primary flex items-center gap-3">
+          <Bell className="w-8 h-8" />
           Notifications
         </h1>
-        <button className="px-4 py-2 text-sm rounded-md bg-green-900 text-white hover:bg-green-700 transition">
+        <button className="mt-3 md:mt-0 px-4 py-2 text-sm rounded-md bg-primary text-white hover:bg-green-700 transition">
           Mark all as read
         </button>
       </header>
 
       {/* Notifications List */}
       <div className="bg-white shadow rounded-lg divide-y divide-gray-200">
-        {notifications.length > 0 ? (
+        {loading ? (
+          <div className="p-10 flex justify-center items-center">
+            <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          </div>
+        ) : notifications.length > 0 ? (
           notifications.map((notif) => (
             <div
               key={notif.id}

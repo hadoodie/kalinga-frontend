@@ -108,12 +108,12 @@ const CalendarView = ({ facility, onEventClick }) => {
 
   return (
     <div className="space-y-4">
+      <div className="bg-white shadow-lg rounded-lg overflow-hidden">
       {/* Calendar Header - Responsive */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-lg border border-gray-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
         <div className="flex items-center gap-4">
           <h3 className="text-xl font-bold text-green-900 flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            <span className="hidden sm:inline">Resource History Calendar</span>
+            <span className="hidden text-left sm:inline">Resource History Calendar</span>
             <span className="sm:hidden">Calendar</span>
           </h3>
           <div className="text-lg font-semibold text-gray-900">
@@ -125,7 +125,7 @@ const CalendarView = ({ facility, onEventClick }) => {
           {/* Today Button */}
           <button
             onClick={goToToday}
-            className="px-3 py-2 bg-green-800 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+            className="px-3 py-2 bg-yellow-500 rounded-lg hover:bg-green-700 transition text-sm font-medium"
           >
             Today
           </button>
@@ -172,12 +172,10 @@ const CalendarView = ({ facility, onEventClick }) => {
       </div>
 
       {/* Event Type Filters - Responsive */}
-      <div className="bg-white p-4 rounded-lg border border-gray-200">
-        <div className="flex items-center gap-3 mb-3">
-          <Filter className="h-4 w-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-700">Filter Events:</span>
-        </div>
-        <div className="flex flex-wrap gap-2 sm:gap-4">
+      <div className="bg-white p-4 mt-0">
+        <div className="flex flex row justify-between">
+          <p className="text-sm font-medium text-green-900 flex items-center gap-2">Filter items by:</p>
+          <div className="flex flex-wrap gap-2 sm:gap-4 items-right align-right justify-end">
           {Object.entries(eventTypeConfig).map(([type, config]) => (
             <label key={type} className="flex items-center gap-2 cursor-pointer text-xs sm:text-sm">
               <input
@@ -193,6 +191,9 @@ const CalendarView = ({ facility, onEventClick }) => {
             </label>
           ))}
         </div>
+        </div>
+        
+      </div>
       </div>
 
       {/* Calendar Grid - Responsive */}

@@ -7,7 +7,6 @@ import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { formatDistanceToNow } from "date-fns";
 
-// Remove the notifications prop
 export const NavbarB = () => {
   const { user, logout } = useAuth();
   const capitalizeFirstLetter = (str) => {
@@ -15,7 +14,6 @@ export const NavbarB = () => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
-  // Add state for notifications
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -28,20 +26,42 @@ export const NavbarB = () => {
   const userRole = user?.role ? capitalizeFirstLetter(user.role) : null;
   const userPic = user?.profilePicture || "https://i.pravatar.cc/100";
 
+  // Sets the base path based on the user's role
+  const getDashboardUrl = () => {
+    const role = user?.role;
+    if (role === 'admin') return '/admin/dashboard';
+    if (role === 'logistics') return '/logistics/dashboard';
+    if (role === 'responder') return '/responder/dashboard';
+    if (role === 'patient') return '/patient/dashboard';
+    return '/'; // Fallback
+  };
+  
+  // Gets the base path for links like "profile" or "settings"
+  const getRoleBasePath = () => {
+    const role = user?.role;
+    if (role === 'admin') return '/admin';
+    if (role === 'logistics') return '/logistics';
+    if (role === 'responder') return '/responder';
+    if (role === 'patient') return '/patient';
+    return ''; // Fallback
+  };
+
+  const dashboardUrl = getDashboardUrl();
+  const baseRolePath = getRoleBasePath();
+
   const handleLogout = async () => {
     await logout();
     navigate("/login");
   };
 
-  // Fetch notifications when the user logs in
   useEffect(() => {
     const fetchNotifications = async () => {
-      if (!user) return; // Don't fetch if no user
+      if (!user) return; 
 
       setIsLoading(true);
       try {
         const response = await api.get("/notifications");
-        setNotifications(response.data.slice(0, 5)); // Get 5 most recent
+        setNotifications(response.data.slice(0, 5)); 
       } catch (error) {
         console.error("Failed to fetch navbar notifications:", error);
       } finally {
@@ -50,7 +70,7 @@ export const NavbarB = () => {
     };
 
     fetchNotifications();
-  }, [user]); // Re-fetch when user changes (e.g., on login)
+  }, [user]); 
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -71,10 +91,10 @@ export const NavbarB = () => {
     <div className="flex flex-col bg-white p-3 shadow-md relative">
       {/* === Top Row === */}
       <div className="flex flex-wrap justify-between items-center gap-3">
-        {/* Logo */}
+        {/* Logo (MODIFIED: uses dynamic dashboardUrl) */}
         <HashLink
           smooth
-          to="/patient/dashboard"
+          to={dashboardUrl} 
           className="flex items-center space-x-2 text-xl font-bold text-primary"
         >
           <img src={logo} alt="Kalinga Logo" className="h-10 w-auto" />
@@ -107,7 +127,6 @@ export const NavbarB = () => {
               }}
             >
               <Bell />
-              {/* Notification count */}
               {notifications.length > 0 && (
                 <span className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {notifications.length}
@@ -121,14 +140,14 @@ export const NavbarB = () => {
                   <span className="font-semibold text-sm text-gray-700">
                     Notifications
                   </span>
+                  {/* MODIFIED: uses dynamic baseRolePath */}
                   <button
-                    onClick={() => navigate("/patient/notifications")}
+                    onClick={() => navigate(`${baseRolePath}/notifications`)} 
                     className="text-xs text-blue-600 hover:underline"
                   >
                     See all
                   </button>
                 </div>
-                {/* Dropdown list */}
                 <ul className="text-left max-h-80 overflow-y-auto">
                   {isLoading ? (
                     <li className="px-4 py-3 text-sm text-gray-500 flex items-center justify-center">
@@ -194,16 +213,18 @@ export const NavbarB = () => {
                 </div>
                 <ul className="py-1 text-sm text-gray-700">
                   <li>
+                    {/* MODIFIED: uses dynamic baseRolePath */}
                     <button
-                      onClick={() => navigate("/patient/profile")}
+                      onClick={() => navigate(`${baseRolePath}/profile`)} 
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Profile
                     </button>
                   </li>
                   <li>
+                    {/* MODIFIED: uses dynamic baseRolePath */}
                     <button
-                      onClick={() => navigate("/patient/settings")}
+                      onClick={() => navigate(`${baseRolePath}/settings`)} 
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Settings
