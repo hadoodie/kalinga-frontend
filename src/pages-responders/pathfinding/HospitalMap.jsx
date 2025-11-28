@@ -53,10 +53,19 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const liveUserLocationRef = useRef(null);
   const leafletLibRef = useRef(null);
   const isSimulatingLocationRef = useRef(false);
+  const simulatedRecalcTimerRef = useRef(null);
 
   useEffect(() => {
     isSimulatingLocationRef.current = isSimulatingLocation;
   }, [isSimulatingLocation]);
+
+  useEffect(() => {
+    return () => {
+      if (simulatedRecalcTimerRef.current) {
+        clearTimeout(simulatedRecalcTimerRef.current);
+      }
+    };
+  }, []);
 
   const ensureLeafletInstance = useCallback(async () => {
     if (leafletLibRef.current) {
@@ -785,8 +794,32 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           }
         );
       }
+
+      if (destination) {
+        if (simulatedRecalcTimerRef.current) {
+          clearTimeout(simulatedRecalcTimerRef.current);
+        }
+        simulatedRecalcTimerRef.current = setTimeout(() => {
+          drawRoute(
+            destination.lat,
+            destination.lng,
+            false,
+            isNavigating,
+            true,
+            location
+          );
+        }, 400);
+      }
     },
-    [ensureLeafletInstance, map, placeUserMarker, updateHospitalDistances]
+    [
+      destination,
+      drawRoute,
+      ensureLeafletInstance,
+      isNavigating,
+      map,
+      placeUserMarker,
+      updateHospitalDistances,
+    ]
   );
 
   const handleStopSimulatedLocation = useCallback(async () => {
