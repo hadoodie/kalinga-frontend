@@ -114,9 +114,7 @@ class IncidentApiController extends Controller
         $messages = $this->fetchConversationMessages(
             $patient->id,
             $responder->id,
-            $conversation?->id,
-            200,
-            $request->integer('before_id')
+            $conversation?->id
         );
 
         $payload = $this->formatConversationPayload(
@@ -502,14 +500,10 @@ class IncidentApiController extends Controller
         $conversation = Conversation::query()
             ->where('user_id1', $pair[0])
             ->where('user_id2', $pair[1])
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
+            ->where('is_archived', false)
             ->first();
 
         if ($conversation) {
-            if ($conversation->is_archived) {
-                $conversation->forceFill(['is_archived' => false])->save();
-            }
             return $conversation;
         }
 
@@ -523,7 +517,7 @@ class IncidentApiController extends Controller
     /**
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
-    private function fetchConversationMessages(int $userA, int $userB, ?int $conversationId = null, int $limit = 200, ?int $beforeMessageId = null): Collection
+    private function fetchConversationMessages(int $userA, int $userB, ?int $conversationId = null, int $limit = 200): Collection
     {
         $query = Message::query()
             ->with([
@@ -547,17 +541,11 @@ class IncidentApiController extends Controller
             });
         });
 
-        if ($beforeMessageId) {
-            $query->where('id', '<', $beforeMessageId);
-        }
-
-        $messages = $query
+        return $query
             ->limit($limit)
             ->get()
-            ->reverse()
-            ->values();
-
-        return $messages
+            ->sortBy('created_at')
+            ->values()
             ->map(function (Message $message) {
                 $timestamp = optional($message->created_at)?->toIso8601String();
 
@@ -572,7 +560,7 @@ class IncidentApiController extends Controller
                     'timestamp' => $timestamp,
                     'createdAt' => $timestamp,
                 ];
-                });
+            });
     }
 
     private function formatConversationPayload(

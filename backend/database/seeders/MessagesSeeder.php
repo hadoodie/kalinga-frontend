@@ -29,14 +29,11 @@ class MessagesSeeder extends Seeder
                 'owner_id' => $ownerUser->id,
             ]);
 
-            $users = User::inRandomOrder()
-                ->limit(random_int(2, 5))
-                ->pluck('id')
-                ->toArray();
+            $users = User::inRandomOrder()->limit(rand(2,5))->pluck('id')->toArray();
             $participants = array_unique([$ownerUser->id, ...$users]);
             $group->users()->attach($participants);
 
-            Message::factory(1000)->create();
+            Message::factory(50)->create();
             $messages = Message::whereNull('group_id')->orderBy('created_at')->get();
 
             $conversations = $messages->groupBy(function ($message) {

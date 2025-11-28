@@ -16,7 +16,6 @@ import {
 } from "../../services/incidents";
 import { useAuth } from "../../context/AuthContext";
 import { useIncidents } from "../../context/IncidentContext";
-import { useToast } from "@/hooks/use-toast";
 import {
   INCIDENT_STATUS_OPTIONS,
   INCIDENT_STATUS_COLORS,
@@ -34,7 +33,6 @@ export default function EmergencyNotifications() {
   const { incidents, loading, refreshing, error, refresh, mergeIncident } =
     useIncidents();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [selectedStatus, setSelectedStatus] = useState({});
   const [updating, setUpdating] = useState({});
   const [filter, setFilter] = useState("active");
@@ -68,12 +66,10 @@ export default function EmergencyNotifications() {
     } catch (err) {
       console.error("Failed to join incident", err);
       if (err?.response?.status === 409) {
-        toast.error(
+        window.alert(
           err.response?.data?.message ||
             "Another responder already claimed this incident."
         );
-      } else {
-        toast.error("Unable to join the incident right now.");
       }
     } finally {
       setUpdating((prev) => ({ ...prev, [incidentId]: false }));
@@ -90,7 +86,7 @@ export default function EmergencyNotifications() {
     const requestingSupport = status === SUPPORT_STATUS;
 
     if (requestingSupport && !noteValue) {
-      toast.error(
+      window.alert(
         "Please describe the support or resources you need before requesting assistance."
       );
       return;

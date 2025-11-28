@@ -495,14 +495,10 @@ class ChatController extends Controller
         $conversation = Conversation::query()
             ->where('user_id1', $ids[0])
             ->where('user_id2', $ids[1])
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
+            ->where('is_archived', false)
             ->first();
 
         if ($conversation) {
-            if ($conversation->is_archived) {
-                $conversation->forceFill(['is_archived' => false])->save();
-            }
             return $conversation;
         }
 
