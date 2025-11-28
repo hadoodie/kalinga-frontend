@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\RoadBlockadeController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AllocationController;
+use App\Http\Controllers\Api\RouteLogController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -81,6 +82,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/verify-id', [AuthController::class, 'verifyId']);
     Route::post('/submit-verification', [AuthController::class, 'submitVerification']);
     Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/route-logs', [RouteLogController::class, 'store']);
+    Route::post('/route-logs/{routeLog}/deviations', [RouteLogController::class, 'storeDeviation']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {

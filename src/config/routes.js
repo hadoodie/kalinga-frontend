@@ -26,6 +26,7 @@ export const ROUTES = {
     VEHICLE: "/patient/vehicle",
     SPECIFY_VEHICLE: "/patient/specify-vehicle",
     WEATHER: "/patient/weather",
+    HOSPITAL_MAP: "/patient/hospital-map",
     NOTIFICATIONS: "/patient/notifications",
     SETTINGS: "/patient/settings",
     PROFILE: "/patient/profile",

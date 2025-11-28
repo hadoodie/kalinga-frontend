@@ -3,6 +3,10 @@ import { KALINGA_CONFIG } from "../../constants/mapConfig";
 import { useAuth } from "../../context/AuthContext";
 import ResponderTopbar from "../../components/responder/Topbar";
 import ResponderSidebar from "../../components/responder/Sidebar";
+import {
+  createRouteLog,
+  appendRouteDeviation,
+} from "../../services/routeLogService";
 
 export default function HospitalMap({ embedded = false, className = "" }) {
   const { user } = useAuth();
@@ -48,6 +52,90 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const [highAccuracyWatchId, setHighAccuracyWatchId] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [destination, setDestination] = useState(null);
+  const [activeRouteLogId, setActiveRouteLogId] = useState(null);
+  const [routeSessionStart, setRouteSessionStart] = useState(null);
+  const [isRecalculatingRoute, setIsRecalculatingRoute] = useState(false);
+  const [pendingDeviation, setPendingDeviation] = useState(null);
+  const [lastDeviationTimestamp, setLastDeviationTimestamp] = useState(null);
+
+  const OFF_ROUTE_THRESHOLD_METERS = 80;
+  const DEVIATION_MIN_INTERVAL_MS = 10000;
+
+  const logRouteUpdate = useCallback(
+    async ({
+      routeCoords,
+      distance,
+      duration,
+      originLocation,
+      eventType,
+      destinationLocation,
+      deviationInfo,
+      metadata = {},
+    }) => {
+      const targetDestination = destinationLocation || destination;
+
+      if (
+        !user ||
+        !targetDestination ||
+        !originLocation?.lat ||
+        !originLocation?.lng ||
+        !Array.isArray(routeCoords) ||
+        routeCoords.length === 0
+      ) {
+        return;
+      }
+
+      try {
+        if (!activeRouteLogId || eventType === "initial") {
+          const response = await createRouteLog({
+            start_lat: originLocation.lat,
+            start_lng: originLocation.lng,
+            dest_lat: targetDestination.lat,
+            dest_lng: targetDestination.lng,
+            route_path: routeCoords,
+            distance,
+            duration,
+            started_at: routeSessionStart || new Date().toISOString(),
+            metadata: {
+              ...metadata,
+              mode: isNavigating ? "navigation" : "overview",
+              event_type: eventType,
+            },
+          });
+
+          const logId = response?.route_log?.id;
+          if (logId) {
+            setActiveRouteLogId(logId);
+          }
+        } else if (activeRouteLogId) {
+          await appendRouteDeviation(activeRouteLogId, {
+            deviation_lat:
+              deviationInfo?.location?.lat ?? originLocation.lat,
+            deviation_lng:
+              deviationInfo?.location?.lng ?? originLocation.lng,
+            route_path: routeCoords,
+            distance,
+            duration,
+            metadata: {
+              ...metadata,
+              event_type: eventType,
+              ...(deviationInfo?.extra || {}),
+            },
+          });
+        }
+      } catch (error) {
+        console.error("Failed to log route analytics", error);
+      }
+    },
+    [
+      activeRouteLogId,
+      destination,
+      isNavigating,
+      routeSessionStart,
+      user,
+    ]
+  );
 
   // Predefined hospitals in Metro Manila
   const HOSPITALS = [
@@ -827,9 +915,22 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     destLat,
     destLng,
     isNearest = false,
-    enableNavigation = false
+    enableNavigation = false,
+    isAutoRecalculation = false,
+    originOverride = null
   ) => {
-    if (!userLocation || !map || isDrawingRoute) return;
+    const originLocation = originOverride || userLocation;
+
+    if (!originLocation || !map || isDrawingRoute) return;
+
+    if (!isAutoRecalculation) {
+      setActiveRouteLogId(null);
+      setRouteSessionStart(new Date().toISOString());
+    } else {
+      setIsRecalculatingRoute(true);
+    }
+
+    setDestination({ lat: destLat, lng: destLng });
 
     // Set drawing state to prevent concurrent route requests
     setIsDrawingRoute(true);
@@ -861,7 +962,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       const blockades = await blockadeResponse.json();
 
       // Enhanced OSRM query with step details for navigation
-      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${userLocation.lng},${userLocation.lat};${destLng},${destLat}`;
+      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${originLocation.lng},${originLocation.lat};${destLng},${destLat}`;
       const params = enableNavigation
         ? "?overview=full&geometries=geojson&steps=true&annotations=true"
         : "?overview=full&geometries=geojson";
@@ -911,6 +1012,22 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             .addTo(map);
           setRouteLine(newRouteLine);
 
+          const eventType = isAutoRecalculation ? "recalculation" : "initial";
+          await logRouteUpdate({
+            routeCoords: coords,
+            distance: route.distance,
+            duration: route.duration,
+            originLocation,
+            eventType,
+            destinationLocation: { lat: destLat, lng: destLng },
+            deviationInfo: isAutoRecalculation ? pendingDeviation : null,
+            metadata: {
+              isNearest,
+              enableNavigation,
+              rerouted: false,
+            },
+          });
+
           // If navigation is enabled, process turn-by-turn instructions
           if (
             enableNavigation &&
@@ -945,7 +1062,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           const detourParams = enableNavigation
             ? "?overview=full&geometries=geojson&steps=true&annotations=true"
             : "?overview=full&geometries=geojson";
-          const detourUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${userLocation.lng},${userLocation.lat};${detourLng},${detourLat};${destLng},${destLat}${detourParams}`;
+          const detourUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${originLocation.lng},${originLocation.lat};${detourLng},${detourLat};${destLng},${destLat}${detourParams}`;
 
           try {
             const detourResponse = await fetch(detourUrl);
@@ -969,6 +1086,25 @@ export default function HospitalMap({ embedded = false, className = "" }) {
 
               // Store route coordinates for navigation
               setRouteCoordinates(detourCoords);
+
+              const detourEventType = isAutoRecalculation
+                ? "recalculation"
+                : "initial";
+              await logRouteUpdate({
+                routeCoords: detourCoords,
+                distance: detourRoute.distance,
+                duration: detourRoute.duration,
+                originLocation,
+                eventType: detourEventType,
+                destinationLocation: { lat: destLat, lng: destLng },
+                deviationInfo: isAutoRecalculation ? pendingDeviation : null,
+                metadata: {
+                  isNearest,
+                  enableNavigation,
+                  rerouted: true,
+                  blockade_id: blockingBlockade?.id ?? null,
+                },
+              });
 
               // If navigation is enabled, process turn-by-turn instructions for detour
               if (
@@ -1017,8 +1153,55 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     } finally {
       // Always reset drawing state
       setIsDrawingRoute(false);
+        if (isAutoRecalculation) {
+          setIsRecalculatingRoute(false);
+        }
+        if (isAutoRecalculation) {
+          setPendingDeviation(null);
+        }
     }
   };
+
+    const handleRouteDeviation = useCallback(
+      (currentLocation, distanceFromRouteMeters) => {
+        if (!destination || isRecalculatingRoute) {
+          return;
+        }
+
+        const now = Date.now();
+        if (
+          lastDeviationTimestamp &&
+          now - lastDeviationTimestamp < DEVIATION_MIN_INTERVAL_MS
+        ) {
+          return;
+        }
+
+        setLastDeviationTimestamp(now);
+        setPendingDeviation({
+          location: currentLocation,
+          extra: {
+            distance_from_route_m: Math.round(distanceFromRouteMeters),
+          },
+        });
+
+        drawRoute(
+          destination.lat,
+          destination.lng,
+          false,
+          isNavigating,
+          true,
+          currentLocation
+        );
+      },
+      [
+        DEVIATION_MIN_INTERVAL_MS,
+        destination,
+        drawRoute,
+        isNavigating,
+        isRecalculatingRoute,
+        lastDeviationTimestamp,
+      ]
+    );
 
   // Process OSRM route steps into turn-by-turn instructions
   const processRouteInstructions = (steps) => {
@@ -1180,6 +1363,13 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       }
     });
 
+    const distanceFromRouteMeters = minDistance * 1000;
+
+    if (distanceFromRouteMeters > OFF_ROUTE_THRESHOLD_METERS && destination) {
+      handleRouteDeviation(currentLocation, distanceFromRouteMeters);
+      return;
+    }
+
     // Update current instruction based on progress
     const currentInstruction = routeInstructions[currentInstructionIndex];
     if (currentInstruction && currentInstruction.coordinates) {
@@ -1229,6 +1419,12 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     setCurrentInstruction(null);
     setDistanceToNextTurn(0);
     setRouteCoordinates([]);
+    setDestination(null);
+    setActiveRouteLogId(null);
+    setRouteSessionStart(null);
+    setPendingDeviation(null);
+    setLastDeviationTimestamp(null);
+    setIsRecalculatingRoute(false);
 
     // Clear high-accuracy tracking
     if (highAccuracyWatchId) {

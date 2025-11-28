@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Bell,
   User,
+  MapPin,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
 import { useAuth } from "../../context/AuthContext";
@@ -66,6 +67,11 @@ export default function PatientSidebar() {
       label: "Weather",
       path: "/patient/weather",
       icon: <Cloud size={25} />,
+    },
+    {
+      label: "Hospital Map",
+      path: "/patient/hospital-map",
+      icon: <MapPin size={25} />,
     },
     {
       label: "Notifications",
