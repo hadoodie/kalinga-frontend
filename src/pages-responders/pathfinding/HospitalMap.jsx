@@ -1294,7 +1294,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     enableNavigation = false,
     isAutoRecalculation = false,
     originOverride = null
-  ) => {
+  ) {
     const originLocation = originOverride || userLocation;
 
     if (!originLocation || !map || isDrawingRoute) return;
