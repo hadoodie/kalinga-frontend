@@ -35,14 +35,16 @@ if HARDWARE_AVAILABLE:
         try:
             mlx = adafruit_mlx90614.MLX90614(mux[0])
             print("✅ MLX90614 (Temp) Ready")
-        except: print("❌ MLX90614 Failed")
+        except Exception:
+            print("❌ MLX90614 Failed")
 
         # Pulse Sensor (Channel 1)
         try:
             mx30 = MAX30100(i2c=mux[1])
             mx30.enable_spo2()
             print("✅ MAX30100 (Pulse) Ready")
-        except: print("❌ MAX30100 Failed")
+        except Exception:
+            print("❌ MAX30100 Failed")
 
     except Exception as e:
         print(f"⚠️ I2C Bus Error: {e}")
@@ -54,7 +56,8 @@ def reset_max30100():
         try:
             mx30.reset()
             mx30.enable_spo2()
-        except: pass
+        except Exception:
+            pass  # Sensor reset failures are non-critical; continue with stale state
 
 # --- Routes ---
 
@@ -84,7 +87,8 @@ def check_finger():
             # Threshold matches driver logic
             if raw_val > 5000: 
                 is_detected = True
-        except: pass
+        except Exception:
+            pass  # Hardware read errors are expected; return default values
     else:
         # Simulation: Always say yes for testing flow, or randomize
         is_detected = True 
@@ -100,8 +104,10 @@ def record_temp():
     while (time.time() - start_time) < 3.0:
         val = 0
         if HARDWARE_AVAILABLE and mlx:
-            try: val = mlx.object_temperature
-            except: pass
+            try:
+                val = mlx.object_temperature
+            except Exception:
+                pass  # Temp sensor read errors are expected; skip this reading
         else:
             val = random.uniform(36.3, 36.7)
             
@@ -134,7 +140,8 @@ def record_pulse():
                 mx30.update()
                 curr_hr = mx30.get_heart_rate()
                 curr_spo2 = mx30.get_spo2()
-            except: pass
+            except Exception:
+                pass  # Pulse sensor read errors are expected; skip this sample
         else:
             # Sim
             if elapsed > 3:
