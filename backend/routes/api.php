@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\LabResultController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\IncidentApiController;
+use App\Http\Controllers\Api\GeminiController;
 use App\Http\Controllers\Api\RoadBlockadeController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ChatController;
@@ -130,6 +131,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/incidents/{incident}/history', [IncidentApiController::class, 'history']);
         Route::get('/road-blockades', [RoadBlockadeController::class, 'index']);
     });
+
+    // Gemini context generation (backend proxy) - authenticated only
+    Route::post('/gemini/context', [GeminiController::class, 'generate']);
     
     // Responder (and Logistics) routes
     Route::middleware(['role:admin,responder,logistics'])->group(function () {

@@ -1,9 +1,12 @@
-const AI_CONTEXT_API_URL = import.meta.env.VITE_AI_CONTEXT_API_URL;
-const AI_CONTEXT_API_KEY = import.meta.env.VITE_AI_CONTEXT_API_KEY;
-const AI_CONTEXT_MODEL = import.meta.env.VITE_AI_CONTEXT_MODEL || "gpt-4o-mini";
+import { KALINGA_CONFIG } from "../constants/mapConfig";
+
 const AI_CONTEXT_MAX_MESSAGES = Number(
   import.meta.env.VITE_AI_CONTEXT_WINDOW || 24
 );
+const AI_CONTEXT_MODEL =
+  import.meta.env.VITE_AI_CONTEXT_MODEL || "gemini-2.0-flash-lite";
+const GEMINI_CONTEXT_ENDPOINT =
+  `${KALINGA_CONFIG.API_BASE_URL}/api/gemini/context`;
 
 const SYSTEM_PROMPT = `You are an emergency response context generator tasked with helping field responders understand patient needs.
 Return strictly valid JSON with the following shape:
@@ -118,28 +121,12 @@ const normalizeAiPayload = (payload = {}) => {
   };
 };
 
-const buildRequestBody = (messages) => ({
-  model: AI_CONTEXT_MODEL,
-  response_format: { type: "json_object" },
-  temperature: 0.2,
-  messages: [
-    { role: "system", content: SYSTEM_PROMPT },
-    {
-      role: "user",
-      content: `Transcript:\n${buildTranscript(
-        messages
-      )}\n\nGenerate the JSON now.`,
-    },
-  ],
-});
+const buildPrompt = (messages) =>
+  `${SYSTEM_PROMPT}\n\nTranscript:\n${buildTranscript(
+    messages
+  )}\n\nGenerate the JSON now.`;
 
 async function generateInsights(messages, { signal } = {}) {
-  if (!AI_CONTEXT_API_URL || !AI_CONTEXT_API_KEY) {
-    throw new Error(
-      "AI context API is not configured. Set VITE_AI_CONTEXT_API_URL and VITE_AI_CONTEXT_API_KEY."
-    );
-  }
-
   const sanitized = sanitizeMessages(messages);
   if (!sanitized.length) {
     return {
@@ -151,13 +138,25 @@ async function generateInsights(messages, { signal } = {}) {
     };
   }
 
-  const response = await fetch(AI_CONTEXT_API_URL, {
+  const token = localStorage.getItem("token");
+  if (!token) {
+    throw new Error("Missing authentication token for AI context service");
+  }
+
+  const response = await fetch(GEMINI_CONTEXT_ENDPOINT, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${AI_CONTEXT_API_KEY}`,
+      Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(buildRequestBody(sanitized)),
+    body: JSON.stringify({
+      prompt: buildPrompt(sanitized),
+      options: {
+        model: AI_CONTEXT_MODEL,
+        max_tokens: 512,
+        temperature: 0.15,
+      },
+    }),
     signal,
   });
 
@@ -168,9 +167,16 @@ async function generateInsights(messages, { signal } = {}) {
     );
   }
 
-  const data = await response.json();
+  const payload = await response.json();
+
+  if (payload?.success === false) {
+    throw new Error(payload?.error || "Gemini backend error");
+  }
+
   const content =
-    data?.choices?.[0]?.message?.content || data?.result || data?.content;
+    typeof payload?.data?.text === "string"
+      ? payload.data.text
+      : JSON.stringify(payload?.data?.raw ?? {});
   const parsed = parseAiContent(content);
   return normalizeAiPayload(parsed);
 }
