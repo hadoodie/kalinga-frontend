@@ -193,7 +193,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           if (logId) {
             setActiveRouteLogId(logId);
           }
-        } else if (activeRouteLogId) {
+        } else {
           await appendRouteDeviation(activeRouteLogId, {
             deviation_lat: deviationInfo?.location?.lat ?? originLocation.lat,
             deviation_lng: deviationInfo?.location?.lng ?? originLocation.lng,
