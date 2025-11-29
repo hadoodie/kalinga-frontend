@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { ArrowLeft, Loader2, Send } from "lucide-react";
+import { useMemo } from "react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 
 const MessageBubble = ({ message, currentUserId }) => {
   const isOwn =
@@ -50,36 +50,7 @@ export default function ConversationPanel({
   loading,
   onBack,
   currentUserId,
-  onSendMessage,
-  sending,
-  sendError,
 }) {
-  const [draft, setDraft] = useState("");
-  const textareaRef = useRef(null);
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    const trimmed = draft.trim();
-    if (!trimmed || !onSendMessage) {
-      return;
-    }
-
-    try {
-      await Promise.resolve(onSendMessage(trimmed));
-      setDraft("");
-      textareaRef.current?.focus();
-    } catch (error) {
-      // errors handled upstream, keep draft for retry
-    }
-  };
-
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      handleSubmit(event);
-    }
-  };
-
   if (loading) {
     return (
       <section className="bg-white border border-gray-200 rounded-2xl p-8 flex items-center justify-center h-full min-h-[400px]">
@@ -134,38 +105,6 @@ export default function ConversationPanel({
           </p>
         )}
       </div>
-
-      <form
-        onSubmit={handleSubmit}
-        className="border-t border-gray-100 bg-white px-5 py-4"
-      >
-        <div className="flex gap-3">
-          <textarea
-            ref={textareaRef}
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a message…"
-            rows={2}
-            className="flex-1 resize-none rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-900 shadow-inner focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            disabled={sending}
-          />
-          <button
-            type="submit"
-            disabled={sending || !draft.trim()}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-primary text-white shadow disabled:cursor-not-allowed disabled:bg-gray-300"
-          >
-            {sending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-        {sendError && (
-          <p className="mt-2 text-xs text-red-500">{sendError}</p>
-        )}
-      </form>
     </section>
   );
 }

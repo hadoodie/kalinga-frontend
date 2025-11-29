@@ -9,7 +9,6 @@ import LiveResponseMap from "../components/responder/response-mode/LiveResponseM
 import StatusControlPanel from "../components/responder/response-mode/StatusControlPanel";
 import ResponseModeDemoPanel from "../components/responder/response-mode/ResponseModeDemoPanel";
 import responseModeService from "../services/responseMode";
-import chatService from "../services/chatService";
 import { ROUTES } from "../config/routes";
 import { useAuth } from "../context/AuthContext";
 import useConversationInsights from "../hooks/useConversationInsights";
@@ -90,8 +89,6 @@ export default function ResponseMode() {
   const [statusError, setStatusError] = useState(null);
   const [selectedHospitalId, setSelectedHospitalId] = useState(null);
   const [activeTab, setActiveTab] = useState("control");
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [sendMessageError, setSendMessageError] = useState(null);
 
   useEffect(() => {
     setSelectedHospitalId(null);
@@ -102,7 +99,12 @@ export default function ResponseMode() {
     [incident]
   );
 
-  const insights = useConversationInsights(messages, { lockTimestamp });
+  const {
+    insights,
+    loading: insightsLoading,
+    error: insightsError,
+    source: insightsSource,
+  } = useConversationInsights(messages, { lockTimestamp });
 
   const nearestHospital = useMemo(() => {
     if (!Array.isArray(hospitals) || hospitals.length === 0) {
@@ -162,211 +164,6 @@ export default function ResponseMode() {
     });
   }, []);
 
-  const resolveReceiverId = useCallback(() => {
-    if (!conversation) {
-      return null;
-    }
-
-    const selfId = user?.id ? String(user.id) : null;
-    const participantCandidates = [
-      conversation.participant,
-      ...(Array.isArray(conversation.participants)
-        ? conversation.participants
-        : []),
-      conversation.receiver,
-      conversation.sender,
-      conversation.patient,
-    ].filter(Boolean);
-
-    for (const candidate of participantCandidates) {
-      if (
-        candidate?.id !== undefined &&
-        candidate?.id !== null &&
-        (!selfId || String(candidate.id) !== selfId)
-      ) {
-        return candidate.id;
-      }
-    }
-
-    const fallbackIds = [
-      conversation.receiver_id,
-      conversation.patient_id,
-      conversation.participant_id,
-      conversation.user_id,
-    ];
-
-    for (const id of fallbackIds) {
-      if (id !== undefined && id !== null) {
-        if (!selfId || String(id) !== selfId) {
-          return id;
-        }
-      }
-    }
-
-    return null;
-  }, [conversation, user?.id]);
-
-  const deriveParticipantName = useCallback(
-    (conversationPayload) => {
-      if (!conversationPayload) {
-        return "Patient";
-      }
-
-      if (conversationPayload.participant?.name) {
-        return conversationPayload.participant.name;
-      }
-
-      if (Array.isArray(conversationPayload.participants)) {
-        const other = conversationPayload.participants.find((person) => {
-          if (!person) return false;
-          if (!user?.id) return true;
-          return person.id !== user.id;
-        });
-        if (other?.name) {
-          return other.name;
-        }
-      }
-
-      return conversationPayload.participant?.name || "Patient";
-    },
-    [user?.id]
-  );
-
-  const handleSendMessage = useCallback(
-    async (messageText) => {
-      if (!conversation || !user?.id) {
-        return;
-      }
-
-      const trimmed = messageText.trim();
-      if (!trimmed) {
-        return;
-      }
-
-      const receiverId = resolveReceiverId();
-      if (!receiverId) {
-        setSendMessageError("Unable to identify chat recipient.");
-        return;
-      }
-
-      const tempId = `temp-${Date.now()}-${Math.random()
-        .toString(36)
-        .slice(2)}`;
-      const timestamp = new Date().toISOString();
-
-      const optimisticMessage = {
-        id: tempId,
-        clientId: tempId,
-        text: trimmed,
-        body: trimmed,
-        senderId: user.id,
-        sender: user.name || "Responder",
-        createdAt: timestamp,
-        timestamp,
-        isOwn: true,
-        deliveryStatus: "sending",
-      };
-
-      setMessages((prev) => insertMessageChronologically(prev, optimisticMessage));
-      setSendMessageError(null);
-      setSendingMessage(true);
-
-      try {
-        const payload = await chatService.sendMessage({
-          receiver_id: receiverId,
-          message: trimmed,
-          incident_id: incident?.id,
-          conversation_id: conversation.conversationId ?? conversation.id,
-        });
-
-        const fallbackName = deriveParticipantName(conversation);
-        const normalized = normalizeMessage(
-          {
-            ...payload,
-            senderId: payload.senderId ?? user.id,
-            sender: payload.sender ?? user.name,
-            timestamp: payload.timestamp ?? new Date().toISOString(),
-          },
-          fallbackName,
-          user.id
-        );
-
-        const prepared = {
-          ...normalized,
-          body: normalized.text ?? normalized.body ?? "",
-          createdAt: normalized.timestamp,
-          isOwn: true,
-          clientId: tempId,
-        };
-
-        setMessages((prev) => {
-          const withoutTemp = prev.filter(
-            (message) => message.id !== tempId && message.clientId !== tempId
-          );
-          return insertMessageChronologically(withoutTemp, prepared);
-        });
-
-        setConversation((prev) =>
-          prev
-            ? {
-                ...prev,
-                lastMessage: trimmed,
-                lastMessageTime: prepared.createdAt,
-              }
-            : prev
-        );
-
-        if (payload?.autoReply?.message) {
-          const autoConversation =
-            payload.autoReply.conversation ?? conversation;
-          const autoFallback = deriveParticipantName(autoConversation);
-          const autoNormalized = normalizeMessage(
-            payload.autoReply.message,
-            autoFallback,
-            user.id
-          );
-          const autoPrepared = {
-            ...autoNormalized,
-            body: autoNormalized.text ?? autoNormalized.body ?? "",
-            createdAt: autoNormalized.timestamp,
-          };
-          setMessages((prev) =>
-            insertMessageChronologically(prev, autoPrepared)
-          );
-        }
-
-        setSendMessageError(null);
-      } catch (error) {
-        console.error("Failed to send message", error);
-        const fallbackError =
-          error?.response?.data?.message ||
-          error?.message ||
-          "Unable to send message right now.";
-        setSendMessageError(fallbackError);
-        setMessages((prev) =>
-          prev.map((message) =>
-            message.id === tempId || message.clientId === tempId
-              ? { ...message, deliveryStatus: "failed", sendError: fallbackError }
-              : message
-          )
-        );
-        throw error;
-      } finally {
-        setSendingMessage(false);
-      }
-    },
-    [
-      conversation,
-      deriveParticipantName,
-      incident?.id,
-      resolveReceiverId,
-      setConversation,
-      setMessages,
-      user?.id,
-      user?.name,
-    ]
-  );
-
   const handleStatusChange = useCallback(
     async (nextStatus, note) => {
       if (!incident?.id) {
@@ -404,6 +201,32 @@ export default function ResponseMode() {
       }
     },
     [incident?.id, refreshHospitals, setIncident]
+  );
+
+  const deriveParticipantName = useCallback(
+    (conversationPayload) => {
+      if (!conversationPayload) {
+        return "Patient";
+      }
+
+      if (conversationPayload.participant?.name) {
+        return conversationPayload.participant.name;
+      }
+
+      if (Array.isArray(conversationPayload.participants)) {
+        const other = conversationPayload.participants.find((person) => {
+          if (!person) return false;
+          if (!user?.id) return true;
+          return person.id !== user.id;
+        });
+        if (other?.name) {
+          return other.name;
+        }
+      }
+
+      return conversationPayload.participant?.name || "Patient";
+    },
+    [user?.id]
   );
 
   const formatMessageForDisplay = useCallback(
@@ -756,7 +579,7 @@ export default function ResponseMode() {
                           key={tab.key}
                           type="button"
                           onClick={() => setActiveTab(tab.key)}
-                          className={`flex-1 min-w-[120px] rounded-xl border px-3 py-2 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                          className={`flex-1 min-w-[120px] rounded-xl border px-3 py-2 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                             isActive
                               ? "border-primary bg-primary/5 text-primary shadow-sm"
                               : "border-gray-200 bg-white text-gray-600 hover:border-primary/40"
@@ -795,15 +618,15 @@ export default function ResponseMode() {
                     loading={loading}
                     onBack={handleExit}
                     currentUserId={user?.id}
-                    onSendMessage={handleSendMessage}
-                    sending={sendingMessage}
-                    sendError={sendMessageError}
                   />
                 )}
 
                 {activeTab === "intel" && (
                   <ContextGeneratorPanel
                     insights={insights}
+                    loading={insightsLoading}
+                    error={insightsError}
+                    source={insightsSource}
                     locked={Boolean(lockTimestamp)}
                   />
                 )}
@@ -899,37 +722,6 @@ function useResponseModeData(incidentId, userId, navigate, incidents) {
 
   const conversationRef = useRef(null);
   const incidentRef = useRef(null);
-  const previousIncidentIdRef = useRef(null);
-
-  useEffect(() => {
-    const previousId = previousIncidentIdRef.current;
-
-    if (!incidentId) {
-      previousIncidentIdRef.current = null;
-      setMessages([]);
-      setConversation(null);
-      setIncident(null);
-      setHospitals([]);
-      setError(null);
-      setLoading(true);
-      return;
-    }
-
-    if (
-      previousId !== null &&
-      String(previousId) === String(incidentId)
-    ) {
-      return;
-    }
-
-    previousIncidentIdRef.current = incidentId;
-    setMessages([]);
-    setConversation(null);
-    setIncident(null);
-    setHospitals([]);
-    setError(null);
-    setLoading(true);
-  }, [incidentId]);
 
   const fetchHospitals = useCallback(async () => {
     if (!incidentId) {

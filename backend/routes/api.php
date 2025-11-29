@@ -6,10 +6,12 @@ use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\LabResultController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\IncidentApiController;
+use App\Http\Controllers\Api\GeminiController;
 use App\Http\Controllers\Api\RoadBlockadeController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AllocationController;
+use App\Http\Controllers\Api\RouteLogController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -81,6 +83,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/verify-id', [AuthController::class, 'verifyId']);
     Route::post('/submit-verification', [AuthController::class, 'submitVerification']);
     Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/route-logs', [RouteLogController::class, 'store']);
+    Route::post('/route-logs/{routeLog}/deviations', [RouteLogController::class, 'storeDeviation']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
@@ -115,24 +119,32 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/resources/critical', [ResourceController::class, 'critical']);
         Route::get('/resources/expiring', [ResourceController::class, 'expiring']);
         
-        // Full CRUD resources (keep this last)
-        Route::apiResource('resources', ResourceController::class);
-        Route::apiResource('hospitals', HospitalController::class);
+        // Full CRUD resources (except index which stays public)
+        Route::apiResource('resources', ResourceController::class)->except(['index']);
+        Route::apiResource('hospitals', HospitalController::class)->except(['index']);
     });
+
+    // Shared read-only situational awareness (patients need visibility too)
+    Route::middleware(['role:admin,responder,logistics,patient'])->group(function () {
+        Route::get('/incidents', [IncidentApiController::class, 'index']);
+        Route::get('/incidents/{incident}', [IncidentApiController::class, 'show']);
+        Route::get('/incidents/{incident}/history', [IncidentApiController::class, 'history']);
+        Route::get('/road-blockades', [RoadBlockadeController::class, 'index']);
+    });
+
+    // Gemini context generation (backend proxy) - authenticated only
+    Route::post('/gemini/context', [GeminiController::class, 'generate']);
     
     // Responder (and Logistics) routes
     Route::middleware(['role:admin,responder,logistics'])->group(function () {
         // Pathfinding routes
-        Route::get('/incidents', [IncidentApiController::class, 'index']);
-        Route::get('/incidents/{incident}', [IncidentApiController::class, 'show']);
-        Route::get('/incidents/{incident}/history', [IncidentApiController::class, 'history']);
         Route::get('/incidents/{incident}/conversation', [IncidentApiController::class, 'conversation']);
         Route::get('/incidents/{incident}/hospital-recommendations', [IncidentApiController::class, 'hospitalRecommendations']);
         Route::post('/incidents/{incident}/assign', [IncidentApiController::class, 'assign']);
         Route::post('/incidents/{incident}/status', [IncidentApiController::class, 'updateStatus']);
         Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);
         
-        Route::apiResource('road-blockades', RoadBlockadeController::class);
+        Route::apiResource('road-blockades', RoadBlockadeController::class)->except(['index']);
         Route::post('/road-blockades/route', [RoadBlockadeController::class, 'getRouteBlockades']);
         Route::patch('/road-blockades/{id}/remove', [RoadBlockadeController::class, 'removeBlockade']);
     });
