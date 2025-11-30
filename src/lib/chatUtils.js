@@ -75,6 +75,46 @@ export const normalizeMessage = (
     ? normalizePerson(receiverObject, receiverName)
     : null;
 
+  const normalizeRole = (roleValue) => {
+    if (!roleValue) return null;
+    if (typeof roleValue === "string") {
+      return roleValue.toLowerCase();
+    }
+    return null;
+  };
+
+  const senderRole = normalizeRole(
+    message.sender_role ??
+      message.senderRole ??
+      message.sender_category ??
+      senderObject?.role ??
+      senderObject?.category ??
+      null
+  );
+
+  const receiverRole = normalizeRole(
+    message.receiver_role ??
+      message.receiverRole ??
+      message.receiver_category ??
+      receiverObject?.role ??
+      receiverObject?.category ??
+      null
+  );
+
+  const metadata =
+    message.metadata && typeof message.metadata === "object"
+      ? { ...message.metadata }
+      : undefined;
+
+  const actorRole =
+    normalizeRole(
+      message.actor_role ??
+        message.actorRole ??
+        metadata?.actor ??
+        metadata?.role ??
+        null
+    ) ?? null;
+
   const isOwnMessage =
     message.isOwn ??
     (currentUserId !== null && senderId !== null
@@ -94,6 +134,11 @@ export const normalizeMessage = (
     isRead: message.isRead ?? false,
     isSystemMessage: message.isSystemMessage ?? false,
     isOwn: isOwnMessage,
+    senderRole,
+    receiverRole,
+    actorRole,
+    actor_role: actorRole,
+    metadata,
     deliveryStatus:
       message.deliveryStatus ??
       (typeof isOwnMessage === "boolean"
