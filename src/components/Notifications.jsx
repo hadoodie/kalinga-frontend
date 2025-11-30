@@ -1,5 +1,5 @@
 import { Loader2 } from "lucide-react";
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from "date-fns";
 import { useNotifications } from "../hooks/useNotifications";
 
 export default function Notifs() {
@@ -12,7 +12,7 @@ export default function Notifs() {
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary flex items-center gap-3">
           Notifications
         </h1>
-        <button 
+        <button
           onClick={markAllAsRead}
           className="mt-3 md:mt-0 px-4 py-2 text-sm rounded-md bg-primary text-white hover:bg-green-700 transition"
         >
@@ -41,7 +41,9 @@ export default function Notifs() {
                 <p className="text-sm text-gray-600">{notif.description}</p>
               </div>
               <span className="text-xs text-gray-500 mt-1 sm:mt-0 sm:ml-4 whitespace-nowrap">
-                {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                {formatDistanceToNow(new Date(notif.created_at), {
+                  addSuffix: true,
+                })}
               </span>
             </div>
           ))

@@ -33,21 +33,21 @@ export const NavbarB = () => {
   // Sets the base path based on the user's role
   const getDashboardUrl = () => {
     const role = user?.role;
-    if (role === 'admin') return '/admin/dashboard';
-    if (role === 'logistics') return '/logistics/dashboard';
-    if (role === 'responder') return '/responder/dashboard';
-    if (role === 'patient') return '/patient/dashboard';
-    return '/'; // Fallback
+    if (role === "admin") return "/admin/dashboard";
+    if (role === "logistics") return "/logistics/dashboard";
+    if (role === "responder") return "/responder/dashboard";
+    if (role === "patient") return "/patient/dashboard";
+    return "/"; // Fallback
   };
-  
+
   // Gets the base path for links like "profile" or "settings"
   const getRoleBasePath = () => {
     const role = user?.role;
-    if (role === 'admin') return '/admin';
-    if (role === 'logistics') return '/logistics';
-    if (role === 'responder') return '/responder';
-    if (role === 'patient') return '/patient';
-    return ''; // Fallback
+    if (role === "admin") return "/admin";
+    if (role === "logistics") return "/logistics";
+    if (role === "responder") return "/responder";
+    if (role === "patient") return "/patient";
+    return ""; // Fallback
   };
 
   const dashboardUrl = getDashboardUrl();
@@ -80,7 +80,7 @@ export const NavbarB = () => {
         {/* Logo (MODIFIED: uses dynamic dashboardUrl) */}
         <HashLink
           smooth
-          to={dashboardUrl} 
+          to={dashboardUrl}
           className="flex items-center space-x-2 text-xl font-bold text-primary"
         >
           <img src={logo} alt="Kalinga Logo" className="h-10 w-auto" />
@@ -128,7 +128,7 @@ export const NavbarB = () => {
                   </span>
                   {/* MODIFIED: uses dynamic baseRolePath */}
                   <button
-                    onClick={() => navigate(`${baseRolePath}/notifications`)} 
+                    onClick={() => navigate(`${baseRolePath}/notifications`)}
                     className="text-xs text-blue-600 hover:underline"
                   >
                     See all
@@ -201,7 +201,7 @@ export const NavbarB = () => {
                   <li>
                     {/* MODIFIED: uses dynamic baseRolePath */}
                     <button
-                      onClick={() => navigate(`${baseRolePath}/profile`)} 
+                      onClick={() => navigate(`${baseRolePath}/profile`)}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Profile
@@ -210,7 +210,7 @@ export const NavbarB = () => {
                   <li>
                     {/* MODIFIED: uses dynamic baseRolePath */}
                     <button
-                      onClick={() => navigate(`${baseRolePath}/settings`)} 
+                      onClick={() => navigate(`${baseRolePath}/settings`)}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Settings

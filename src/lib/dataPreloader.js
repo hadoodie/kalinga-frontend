@@ -50,7 +50,9 @@ export const preloadCriticalData = async (options = {}) => {
       }
 
       const elapsed = performance.now() - startTime;
-      console.debug(`[Preloader] Initiated cache preload in ${elapsed.toFixed(1)}ms`);
+      console.debug(
+        `[Preloader] Initiated cache preload in ${elapsed.toFixed(1)}ms`
+      );
     } catch (error) {
       console.warn("[Preloader] Some preloads failed:", error.message);
     }
@@ -72,7 +74,10 @@ export const preloadForRoute = (route) => {
     hospitalService.preload();
   }
 
-  if (route.includes("/responder/messages") || route.includes("/patient/messages")) {
+  if (
+    route.includes("/responder/messages") ||
+    route.includes("/patient/messages")
+  ) {
     chatService.preloadConversations();
   }
 

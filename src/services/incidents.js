@@ -14,7 +14,7 @@ const INCIDENT_HISTORY_TTL_MS = 30 * 1000; // 30 seconds
 // Cache keys
 const CACHE_KEYS = {
   ALL: "incidents:all",
-  history: (id) => `incidents:${id}:history`,
+  HISTORY: (id) => `incidents:${id}:history`,
 };
 
 /**
@@ -32,6 +32,7 @@ export const fetchResponderIncidents = async (params = {}, options = {}) => {
     cacheKey,
     async () => {
       const response = await api.get("/incidents", { params });
+      // Return the axios response for consistent cache structure
       return response;
     },
     {
@@ -41,6 +42,7 @@ export const fetchResponderIncidents = async (params = {}, options = {}) => {
     }
   );
 
+  // result.data is the axios response, which has .data containing actual incidents
   return result.data;
 };
 
@@ -95,7 +97,7 @@ export const mergeIncidentToCache = (incident) => {
  */
 export const fetchIncidentHistory = async (incidentId, options = {}) => {
   const { forceRefresh = false } = options;
-  const cacheKey = CACHE_KEYS.history(incidentId);
+  const cacheKey = CACHE_KEYS.HISTORY(incidentId);
 
   const { data } = await cachedFetch(
     cacheKey,
@@ -115,7 +117,7 @@ export const fetchIncidentHistory = async (incidentId, options = {}) => {
 export const assignToIncident = async (incidentId, payload = {}) => {
   const response = await api.post(`/incidents/${incidentId}/assign`, payload);
   invalidateCache(CACHE_KEYS.ALL);
-  invalidateCache(CACHE_KEYS.history(incidentId));
+  invalidateCache(CACHE_KEYS.HISTORY(incidentId));
   return response;
 };
 
@@ -125,7 +127,7 @@ export const assignToIncident = async (incidentId, payload = {}) => {
 export const updateIncidentStatus = async (incidentId, payload) => {
   const response = await api.post(`/incidents/${incidentId}/status`, payload);
   invalidateCache(CACHE_KEYS.ALL);
-  invalidateCache(CACHE_KEYS.history(incidentId));
+  invalidateCache(CACHE_KEYS.HISTORY(incidentId));
   return response;
 };
 

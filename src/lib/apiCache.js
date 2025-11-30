@@ -26,9 +26,11 @@ const createEntry = (data, ttlMs = DEFAULT_TTL_MS) => ({
 // Check if entry is fresh
 const isFresh = (entry) => entry && Date.now() < entry.expiresAt;
 
-// Check if entry is stale but usable (within 5x TTL for SWR)
+// Check if entry is stale but usable (within 3x TTL for SWR)
+// Using 3x instead of 5x for fresher data in emergency response scenarios
 const isUsable = (entry) =>
-  entry && Date.now() < entry.timestamp + (entry.expiresAt - entry.timestamp) * 5;
+  entry &&
+  Date.now() < entry.timestamp + (entry.expiresAt - entry.timestamp) * 3;
 
 // LRU eviction when cache is full
 const evictOldest = () => {
@@ -149,7 +151,7 @@ export const cachedFetch = async (key, fetcher, options = {}) => {
           return data;
         })
         .catch((err) => {
-          console.warn(`Background refresh failed for ${key}:`, err.message);
+          console.warn(`Background refresh failed for ${key}:`, err);
         })
         .finally(() => {
           inflightRequests.delete(key);

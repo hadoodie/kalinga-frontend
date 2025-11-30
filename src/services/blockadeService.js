@@ -16,7 +16,9 @@ const BLOCKADES_BOUNDS_TTL_MS = 30 * 1000; // 30 seconds for bounded queries
 const CACHE_KEYS = {
   ALL: "blockades:all",
   bounded: (north, south, east, west) =>
-    `blockades:${north.toFixed(3)}:${south.toFixed(3)}:${east.toFixed(3)}:${west.toFixed(3)}`,
+    `blockades:${north.toFixed(3)}:${south.toFixed(3)}:${east.toFixed(
+      3
+    )}:${west.toFixed(3)}`,
 };
 
 const blockadeService = {
@@ -84,7 +86,11 @@ const blockadeService = {
         const res = await api.get(`/road-blockades?${params}`);
         return Array.isArray(res.data) ? res.data : [];
       },
-      { ttlMs: BLOCKADES_BOUNDS_TTL_MS, forceRefresh, staleWhileRevalidate: true }
+      {
+        ttlMs: BLOCKADES_BOUNDS_TTL_MS,
+        forceRefresh,
+        staleWhileRevalidate: true,
+      }
     );
 
     return data;

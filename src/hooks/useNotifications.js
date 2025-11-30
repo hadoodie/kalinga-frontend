@@ -80,7 +80,9 @@ export const useNotifications = ({ limit = 20, enabled = true } = {}) => {
       await api.patch(`/notifications/${notificationId}/read`);
       setNotifications((prev) =>
         prev.map((n) =>
-          n.id === notificationId ? { ...n, read_at: new Date().toISOString() } : n
+          n.id === notificationId
+            ? { ...n, read_at: new Date().toISOString() }
+            : n
         )
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
@@ -94,7 +96,10 @@ export const useNotifications = ({ limit = 20, enabled = true } = {}) => {
     try {
       await api.post("/notifications/mark-all-read");
       setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() }))
+        prev.map((n) => ({
+          ...n,
+          read_at: n.read_at || new Date().toISOString(),
+        }))
       );
       setUnreadCount(0);
     } catch (err) {
@@ -146,7 +151,10 @@ export const useNotifications = ({ limit = 20, enabled = true } = {}) => {
       channel.listen(".NotificationReceived", handleRealtimeNotification);
       subscriptionRef.current = channel;
     } catch (subscriptionError) {
-      console.error("Failed to subscribe to notifications channel", subscriptionError);
+      console.error(
+        "Failed to subscribe to notifications channel",
+        subscriptionError
+      );
     }
 
     return () => {
@@ -164,7 +172,13 @@ export const useNotifications = ({ limit = 20, enabled = true } = {}) => {
         subscriptionRef.current = null;
       }
     };
-  }, [enabled, isAuthenticated, authLoading, user?.id, handleRealtimeNotification]);
+  }, [
+    enabled,
+    isAuthenticated,
+    authLoading,
+    user?.id,
+    handleRealtimeNotification,
+  ]);
 
   return {
     notifications,

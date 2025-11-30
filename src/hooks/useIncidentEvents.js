@@ -12,7 +12,10 @@ import { useAuth } from "../context/AuthContext";
  * @param {boolean} options.enabled - Whether the subscription is enabled (default: true)
  * @returns {Object} - { isSubscribed, subscriptionError }
  */
-export const useIncidentEvents = ({ onIncidentUpdate, enabled = true } = {}) => {
+export const useIncidentEvents = ({
+  onIncidentUpdate,
+  enabled = true,
+} = {}) => {
   const { ensureConnected } = useRealtime();
   const { isAuthenticated, loading: authLoading } = useAuth();
 
@@ -83,7 +86,13 @@ export const useIncidentEvents = ({ onIncidentUpdate, enabled = true } = {}) => 
         isSubscribedRef.current = false;
       }
     };
-  }, [enabled, authLoading, isAuthenticated, ensureConnected, handleIncidentUpdate]);
+  }, [
+    enabled,
+    authLoading,
+    isAuthenticated,
+    ensureConnected,
+    handleIncidentUpdate,
+  ]);
 
   return {
     isSubscribed: isSubscribedRef.current,

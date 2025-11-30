@@ -94,7 +94,9 @@ const chatService = {
         }
 
         const queryString = params.toString();
-        const url = `/chat/messages/${otherUserId}${queryString ? `?${queryString}` : ""}`;
+        const url = `/chat/messages/${otherUserId}${
+          queryString ? `?${queryString}` : ""
+        }`;
 
         const response = await api.get(url);
         return response.data?.data ?? [];

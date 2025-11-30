@@ -12,7 +12,10 @@ import api from "../services/api";
  * @param {boolean} options.enabled - Whether to enable the hook (default: true)
  * @returns {Object} - { blockades, loading, error, refetch }
  */
-export const useBlockades = ({ pollingInterval = 120000, enabled = true } = {}) => {
+export const useBlockades = ({
+  pollingInterval = 120000,
+  enabled = true,
+} = {}) => {
   const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   const [blockades, setBlockades] = useState([]);
@@ -21,6 +24,7 @@ export const useBlockades = ({ pollingInterval = 120000, enabled = true } = {}) 
 
   const subscriptionRef = useRef(null);
   const pollingTimerRef = useRef(null);
+  const wsPollingTimerRef = useRef(null); // Separate ref for WS-adjusted polling
   const isMountedRef = useRef(true);
 
   // Fetch blockades from API
@@ -86,7 +90,10 @@ export const useBlockades = ({ pollingInterval = 120000, enabled = true } = {}) 
   const handleRealtimeBlockadeUpdate = useCallback(
     (payload) => {
       if (payload?.blockade) {
-        if (payload.blockade.status === "cleared" || payload.action === "removed") {
+        if (
+          payload.blockade.status === "cleared" ||
+          payload.action === "removed"
+        ) {
           removeBlockade(payload.blockade.id);
         } else {
           updateBlockade(payload.blockade);
@@ -152,16 +159,27 @@ export const useBlockades = ({ pollingInterval = 120000, enabled = true } = {}) 
 
       // Reduce polling frequency when WebSocket is active
       if (pollingTimerRef.current && pollingInterval > 0) {
+        // Clear original polling timer
         clearInterval(pollingTimerRef.current);
-        pollingTimerRef.current = setInterval(() => {
+        pollingTimerRef.current = null;
+        // Use a separate ref for WS-adjusted polling so cleanup properly handles both
+        wsPollingTimerRef.current = setInterval(() => {
           fetchBlockades({ silent: true });
         }, pollingInterval * 3); // Much longer fallback when WS is active
       }
     } catch (subscriptionError) {
-      console.error("Failed to subscribe to blockades channel", subscriptionError);
+      console.error(
+        "Failed to subscribe to blockades channel",
+        subscriptionError
+      );
     }
 
     return () => {
+      // Clean up WS-adjusted polling timer
+      if (wsPollingTimerRef.current) {
+        clearInterval(wsPollingTimerRef.current);
+        wsPollingTimerRef.current = null;
+      }
       if (subscriptionRef.current) {
         try {
           subscriptionRef.current.stopListening(".BlockadeUpdated");

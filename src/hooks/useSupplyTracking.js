@@ -12,7 +12,10 @@ import api from "../services/api";
  * @param {boolean} options.enabled - Whether to enable the hook (default: true)
  * @returns {Object} - { shipments, loading, error, refetch, updateShipment }
  */
-export const useSupplyTracking = ({ pollingInterval = 60000, enabled = true } = {}) => {
+export const useSupplyTracking = ({
+  pollingInterval = 60000,
+  enabled = true,
+} = {}) => {
   const { isAuthenticated, loading: authLoading, user } = useAuth();
 
   const [shipments, setShipments] = useState([]);
@@ -21,6 +24,7 @@ export const useSupplyTracking = ({ pollingInterval = 60000, enabled = true } = 
 
   const subscriptionRef = useRef(null);
   const pollingTimerRef = useRef(null);
+  const wsPollingTimerRef = useRef(null); // Separate ref for WS-adjusted polling
   const isMountedRef = useRef(true);
   const lastFetchedRef = useRef(null);
 
@@ -145,17 +149,27 @@ export const useSupplyTracking = ({ pollingInterval = 60000, enabled = true } = 
 
       // When WebSocket is active, we can reduce polling frequency
       if (pollingTimerRef.current && pollingInterval > 0) {
+        // Clear original polling timer
         clearInterval(pollingTimerRef.current);
-        // Use a longer interval as backup when WebSocket is connected
-        pollingTimerRef.current = setInterval(() => {
+        pollingTimerRef.current = null;
+        // Use a separate ref for WS-adjusted polling so cleanup properly handles both
+        wsPollingTimerRef.current = setInterval(() => {
           fetchShipments({ silent: true });
         }, pollingInterval * 2);
       }
     } catch (subscriptionError) {
-      console.error("Failed to subscribe to supply tracking channel", subscriptionError);
+      console.error(
+        "Failed to subscribe to supply tracking channel",
+        subscriptionError
+      );
     }
 
     return () => {
+      // Clean up WS-adjusted polling timer
+      if (wsPollingTimerRef.current) {
+        clearInterval(wsPollingTimerRef.current);
+        wsPollingTimerRef.current = null;
+      }
       if (subscriptionRef.current) {
         try {
           subscriptionRef.current.stopListening(".SupplyUpdated");

@@ -420,7 +420,7 @@ export default function LiveResponseMap({
   const [routeAlert, setRouteAlert] = useState(null);
   const trackingWatchId = useRef(null);
   const mapRef = useRef(null);
-  
+
   // Use the real-time blockades hook (WebSocket + polling fallback every 2 mins)
   const {
     blockades,

@@ -2472,16 +2472,26 @@ export default function MessagesContact() {
         emergencyPayload.location_error = locationErrorMessage;
       }
 
+      // Helper to check if a conversation has an active (non-resolved/cancelled) incident
+      const isConversationActiveForEmergency = (conv) => {
+        if (conv.isArchived) return false;
+        // If no incident, conversation is usable
+        if (!conv.activeIncidentId) return true;
+        // If incident exists, check it's not resolved/cancelled
+        if (!conv.incidentStatus) return false;
+        return !["resolved", "cancelled"].includes(
+          conv.incidentStatus.toLowerCase()
+        );
+      };
+
       // Find an existing NON-archived emergency conversation that has an ACTIVE incident.
       // We should NOT reuse conversations that have resolved/cancelled incidents,
       // as those should start fresh with a new incident.
       const emergencyConversation = conversationsWithPresence.find(
         (conv) =>
           conv.category === "Emergency" &&
-          !conv.isArchived &&
           conv.activeIncidentId &&
-          conv.incidentStatus &&
-          !["resolved", "cancelled"].includes(conv.incidentStatus.toLowerCase())
+          isConversationActiveForEmergency(conv)
       );
 
       // Fallback: find any non-archived responder conversation without resolved incidents
@@ -2489,12 +2499,7 @@ export default function MessagesContact() {
         (conv) =>
           typeof conv.participant?.role === "string" &&
           conv.participant.role.toLowerCase() === "responder" &&
-          !conv.isArchived &&
-          (!conv.activeIncidentId ||
-            (conv.incidentStatus &&
-              !["resolved", "cancelled"].includes(
-                conv.incidentStatus.toLowerCase()
-              )))
+          isConversationActiveForEmergency(conv)
       );
 
       const presenceResponder = onlineUsers.find((candidate) => {
