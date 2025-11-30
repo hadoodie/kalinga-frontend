@@ -2,6 +2,8 @@ import { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
 import { getCsrfCookie } from "../services/api";
 import { cleanupAuthStorage } from "../utils/storage";
+import { preloadCriticalData, resetPreloader } from "../lib/dataPreloader";
+import { clearCache, clearPersistedCache } from "../lib/apiCache";
 
 const AuthContext = createContext(null);
 
@@ -46,6 +48,9 @@ export const AuthProvider = ({ children }) => {
                 setToken(savedToken);
                 setLoading(false);
 
+                // Preload critical data immediately after restoring auth
+                preloadCriticalData({ userRole: parsedUser.role });
+
                 // Then fetch fresh data in background
                 try {
                   const userData = await authService.getCurrentUser();
@@ -81,6 +86,8 @@ export const AuthProvider = ({ children }) => {
           setUser(userData);
           setToken(savedToken);
           localStorage.setItem("user", JSON.stringify(userData));
+          // Preload critical data after fresh login
+          preloadCriticalData({ userRole: userData.role });
           setLoading(false);
         } catch (error) {
           console.error("Failed to fetch user:", error);
@@ -147,6 +154,10 @@ export const AuthProvider = ({ children }) => {
       setToken(data.token);
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
+
+      // Preload critical data right after successful login
+      preloadCriticalData({ userRole: data.user.role });
+
       return data;
     } catch (error) {
       throw error;
@@ -163,6 +174,11 @@ export const AuthProvider = ({ children }) => {
       setToken(null);
       localStorage.removeItem("token");
       localStorage.removeItem("user");
+
+      // Clear all caches on logout
+      clearCache();
+      clearPersistedCache();
+      resetPreloader();
     }
   };
 

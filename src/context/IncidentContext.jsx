@@ -7,7 +7,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { fetchResponderIncidents } from "../services/incidents";
+import {
+  fetchResponderIncidents,
+  getCachedIncidents,
+  mergeIncidentToCache,
+} from "../services/incidents";
 import { useRealtime } from "./RealtimeContext";
 import { getEchoInstance } from "../services/echo";
 import { INCIDENT_STATUS_PRIORITIES } from "../constants/incidentStatus";
@@ -59,6 +63,9 @@ export const IncidentProvider = ({ children }) => {
       return;
     }
 
+    // Update cache as well as local state
+    mergeIncidentToCache(incoming);
+
     setIncidents((prev) => {
       const next = [...prev];
       const index = next.findIndex((item) => item.id === incoming.id);
@@ -83,6 +90,16 @@ export const IncidentProvider = ({ children }) => {
         setLoading(false);
         setRefreshing(false);
         return;
+      }
+
+      // Try to use cached data first for instant display
+      if (!force && incidentsRef.current.length === 0) {
+        const cached = getCachedIncidents();
+        if (cached) {
+          const normalized = sortIncidents(cached);
+          incidentsRef.current = normalized;
+          setIncidents(normalized);
+        }
       }
 
       if (!force && lastFetchedRef.current) {

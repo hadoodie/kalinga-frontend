@@ -140,7 +140,6 @@ const filterMessages = (messages, { lockTimestamp }) => {
   });
 };
 
-<<<<<<< HEAD
 const normalizeRoleValue = (value) =>
   typeof value === "string" ? value.toLowerCase() : null;
 
@@ -174,43 +173,6 @@ const isPatientMessage = (message) => {
 
 const extractPatientMessages = (messages) =>
   Array.isArray(messages) ? messages.filter(isPatientMessage) : [];
-=======
-const normalizeRoleValue = (value) =>
-  typeof value === "string" ? value.toLowerCase() : null;
-
-const isPatientMessage = (message) => {
-  if (!message) return false;
-
-  const directRole = normalizeRoleValue(
-    message.senderRole || message.sender_role
-  );
-  const infoRole = normalizeRoleValue(
-    message.senderInfo?.role || message.senderInfo?.category
-  );
-  const actorRole = normalizeRoleValue(
-    message.actorRole || message.actor_role || message.metadata?.actor
-  );
-
-  if ([directRole, infoRole, actorRole].includes("patient")) {
-    return true;
-  }
-
-  if (typeof message.isPatient === "boolean") {
-    return message.isPatient;
-  }
-
-  if (typeof message.isOwn === "boolean") {
-    return message.isOwn === false && !message.isSystemMessage;
-  }
-
-  return false;
-};
-
-const collectInsights = (messages, options) => {
-  const filtered = filterMessages(messages, options);
-
-  const patientMessages = filtered.filter(isPatientMessage);
->>>>>>> 1a8053d (feat: incident-scoped messaging, intel service, and frontend insights update)
 
 const buildHeuristicInsights = (patientMessages) => {
   if (!patientMessages.length) {
