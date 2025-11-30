@@ -832,7 +832,13 @@ export default function MessagesContact() {
       inflightConversationFetch.current.add(key);
 
       try {
-        const data = await chatService.getMessages(participantId);
+        // Pass incidentId to ensure we only fetch messages for the active incident.
+        // This enforces incident-scoped messaging and prevents archived incident
+        // messages from appearing in new conversations.
+        const data = await chatService.getMessages(participantId, {
+          incidentId: meta.incidentId || meta.activeIncidentId,
+          conversationId: meta.conversationId,
+        });
         const normalizedMessages = data.map((msg) =>
           normalizeMessage(msg, "", user.id)
         );
