@@ -114,7 +114,8 @@ class IncidentApiController extends Controller
         $messages = $this->fetchConversationMessages(
             $patient->id,
             $responder->id,
-            $conversation?->id
+            $conversation?->id,
+            $incident->id
         );
 
         $payload = $this->formatConversationPayload(
@@ -517,7 +518,13 @@ class IncidentApiController extends Controller
     /**
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
-    private function fetchConversationMessages(int $userA, int $userB, ?int $conversationId = null, int $limit = 200): Collection
+    private function fetchConversationMessages(
+        int $userA,
+        int $userB,
+        ?int $conversationId = null,
+        ?int $incidentId = null,
+        int $limit = 200
+    ): Collection
     {
         $query = Message::query()
             ->with([
@@ -527,19 +534,19 @@ class IncidentApiController extends Controller
             ->whereNull('group_id')
             ->orderByDesc('created_at');
 
-        $query->where(function ($builder) use ($userA, $userB, $conversationId) {
-            if ($conversationId) {
-                $builder->where('conversation_id', $conversationId);
-            }
-
-            $builder->orWhere(function ($inner) use ($userA, $userB) {
-                $inner->where(function ($q) use ($userA, $userB) {
-                    $q->where('sender_id', $userA)->where('receiver_id', $userB);
-                })->orWhere(function ($q) use ($userA, $userB) {
-                    $q->where('sender_id', $userB)->where('receiver_id', $userA);
+        if ($incidentId) {
+            $query->where('incident_id', $incidentId);
+        } elseif ($conversationId) {
+            $query->where('conversation_id', $conversationId);
+        } else {
+            $query->where(function ($builder) use ($userA, $userB) {
+                $builder->where(function ($inner) use ($userA, $userB) {
+                    $inner->where('sender_id', $userA)->where('receiver_id', $userB);
+                })->orWhere(function ($inner) use ($userA, $userB) {
+                    $inner->where('sender_id', $userB)->where('receiver_id', $userA);
                 });
             });
-        });
+        }
 
         return $query
             ->limit($limit)

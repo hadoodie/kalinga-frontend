@@ -16,6 +16,7 @@ class IncidentResource extends JsonResource
     public function toArray(Request $request): array
     {
         [$lat, $lng] = $this->resolveCoordinates();
+        $intel = $this->resolveConversationIntel();
 
         return [
             'id' => $this->id,
@@ -37,6 +38,10 @@ class IncidentResource extends JsonResource
                 ->where('status', '!=', IncidentResponderAssignment::STATUS_CANCELLED)
                 ->count(),
             'is_fulfilled' => (bool) ($this->is_fulfilled ?? false),
+            'intel_summary' => $intel['summary'] ?? null,
+            'intel_updated_at' => $intel['updated_at'] ?? null,
+            'intel_recent_statements' => $intel['recent_statements'] ?? [],
+            'intel' => $intel,
             'latest_update' => $this->whenLoaded('latestStatusUpdate', function () {
                 return new IncidentStatusUpdateResource($this->latestStatusUpdate);
             }),
@@ -71,5 +76,26 @@ class IncidentResource extends JsonResource
             is_numeric($parts[0]) ? (float) $parts[0] : null,
             is_numeric($parts[1]) ? (float) $parts[1] : null,
         ];
+    }
+
+    private function resolveConversationIntel(): ?array
+    {
+        $metadata = $this->metadata;
+
+        if (!is_array($metadata) || empty($metadata['conversation_insights'])) {
+            return null;
+        }
+
+        $intel = $metadata['conversation_insights'];
+
+        if (!is_array($intel)) {
+            return null;
+        }
+
+        if (isset($intel['recent_statements']) && is_array($intel['recent_statements'])) {
+            $intel['recent_statements'] = array_values($intel['recent_statements']);
+        }
+
+        return $intel;
     }
 }
