@@ -19,6 +19,8 @@ import "leaflet/dist/leaflet.css";
 import { KALINGA_CONFIG } from "../../../constants/mapConfig";
 import LocationSimulator from "../../maps/LocationSimulator";
 import { useBlockades } from "../../../hooks/useBlockades";
+import TurnByTurnNavigation from "./TurnByTurnNavigation";
+import { useResponderLocationBroadcast } from "../../../hooks/useResponderLocationBroadcast";
 
 const DEFAULT_POSITION = [
   KALINGA_CONFIG.DEFAULT_LOCATION.lat,
@@ -418,8 +420,18 @@ export default function LiveResponseMap({
   const [routeError, setRouteError] = useState(null);
   const [routeSelection, setRouteSelection] = useState(null);
   const [routeAlert, setRouteAlert] = useState(null);
+  const [navigationEnabled, setNavigationEnabled] = useState(false);
+  const [responderHeading, setResponderHeading] = useState(null);
   const trackingWatchId = useRef(null);
   const mapRef = useRef(null);
+
+  // Broadcast responder location to patient via WebSocket
+  const { isTracking: isBroadcasting } = useResponderLocationBroadcast({
+    incidentId: incident?.id,
+    incidentStatus: incident?.status,
+    enabled: navigationEnabled && incident?.status === "en_route",
+    broadcastInterval: 5000,
+  });
 
   // Use the real-time blockades hook (WebSocket + polling fallback every 2 mins)
   const {
@@ -812,7 +824,7 @@ export default function LiveResponseMap({
           </div>
         )}
 
-        {(routeAlert || routeError) && !routeLoading && (
+        {(routeAlert || routeError) && !routeLoading && !navigationEnabled && (
           <div className="pointer-events-none absolute inset-x-0 bottom-4 mx-auto w-fit max-w-[320px] rounded-xl bg-white px-4 py-2 text-sm shadow-lg">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-700">
               {routeAlert ? (
@@ -827,6 +839,40 @@ export default function LiveResponseMap({
               </span>
             </div>
           </div>
+        )}
+
+        {/* Turn-by-Turn Navigation Overlay */}
+        {navigationEnabled && responderPosition && (
+          <TurnByTurnNavigation
+            isActive={navigationEnabled}
+            destination={mode === "hospital" ? hospitalPosition : incidentPosition}
+            destinationName={mode === "hospital" 
+              ? selectedHospital?.name || "Hospital"
+              : incident?.location || "Incident Site"
+            }
+            currentPosition={responderPosition}
+            heading={responderHeading}
+            onClose={() => setNavigationEnabled(false)}
+            onRouteUpdate={(route) => {
+              // Optionally update the main map's route when navigation fetches a new route
+              if (route?.geometry?.coordinates) {
+                const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
+                setRoutePoints(coords);
+              }
+            }}
+            incident={incident}
+          />
+        )}
+
+        {/* Navigation Toggle Button */}
+        {!navigationEnabled && responderPosition && (mode === "hospital" ? hospitalPosition : incidentPosition) && (
+          <button
+            onClick={() => setNavigationEnabled(true)}
+            className="absolute bottom-20 right-4 z-[1000] flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95"
+          >
+            <Navigation2 className="h-5 w-5" />
+            Start Navigation
+          </button>
         )}
       </div>
 
