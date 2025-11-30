@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
   Marker,
@@ -6,22 +6,18 @@ import {
   TileLayer,
   Tooltip,
   useMap,
-  useMapEvents,
 } from "react-leaflet";
 import {
   Activity,
   AlertTriangle,
-  Crosshair,
   Loader2,
-  MapPin,
   Navigation2,
-  RefreshCw,
   Stethoscope,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { KALINGA_CONFIG } from "../../../constants/mapConfig";
-import { useAuth } from "../../../context/AuthContext";
+import LocationSimulator from "../../maps/LocationSimulator";
 
 const DEFAULT_POSITION = [
   KALINGA_CONFIG.DEFAULT_LOCATION.lat,
@@ -405,18 +401,6 @@ const MapFlyTo = ({ target }) => {
   return null;
 };
 
-const MapClickHandler = ({ enabled, onSelect }) => {
-  useMapEvents({
-    click(event) {
-      if (!enabled || !onSelect) {
-        return;
-      }
-      onSelect(event.latlng);
-    },
-  });
-  return null;
-};
-
 export default function LiveResponseMap({
   incident,
   selectedHospital,
@@ -424,35 +408,24 @@ export default function LiveResponseMap({
   onAutoAssignHospital,
   autoAssignmentEnabled = true,
 }) {
-  const { user } = useAuth();
-  const isMountedRef = useRef(true);
   const [responderPosition, setResponderPosition] = useState(null);
+  const [isSimulatingResponder, setIsSimulatingResponder] = useState(false);
+  const liveResponderRef = useRef(null);
+  const isSimulatingRef = useRef(false);
   const [routePoints, setRoutePoints] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState(null);
   const [routeSelection, setRouteSelection] = useState(null);
   const [routeAlert, setRouteAlert] = useState(null);
-  const [routeRefreshKey, setRouteRefreshKey] = useState(0);
   const trackingWatchId = useRef(null);
   const mapRef = useRef(null);
   const [blockades, setBlockades] = useState([]);
   const [blockadesLoading, setBlockadesLoading] = useState(false);
   const [blockadesError, setBlockadesError] = useState(null);
-  const [reportingRoadIssue, setReportingRoadIssue] = useState(false);
-  const [roadIssueForm, setRoadIssueForm] = useState({
-    title: "",
-    description: "",
-    severity: "medium",
-  });
-  const [roadIssueLocation, setRoadIssueLocation] = useState(null);
-  const [roadIssueStatus, setRoadIssueStatus] = useState(null);
-  const [roadIssueSubmitting, setRoadIssueSubmitting] = useState(false);
 
   useEffect(() => {
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+    isSimulatingRef.current = isSimulatingResponder;
+  }, [isSimulatingResponder]);
 
   const normalizedBlockades = useMemo(
     () => blockades.map(normalizeBlockade).filter(Boolean),
@@ -472,6 +445,7 @@ export default function LiveResponseMap({
   const nearestHospital = hospitals?.[0] ?? null;
 
   const mode = determineMode(incident?.status);
+  const isOnScene = incident?.status === "on_scene";
 
   useEffect(() => {
     if (
@@ -504,10 +478,15 @@ export default function LiveResponseMap({
     trackingWatchId.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setResponderPosition([latitude, longitude]);
+        const coords = [latitude, longitude];
+        liveResponderRef.current = coords;
+        if (isSimulatingRef.current) {
+          return;
+        }
+        setResponderPosition(coords);
       },
       () => {
-        if (!responderPosition) {
+        if (!responderPosition && !isSimulatingRef.current) {
           setResponderPosition(DEFAULT_POSITION);
         }
       },
@@ -525,14 +504,13 @@ export default function LiveResponseMap({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const fetchBlockades = useCallback(
-    async ({ silent = false } = {}) => {
-      if (!silent) {
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchBlockades = async () => {
+      try {
         setBlockadesLoading(true);
         setBlockadesError(null);
-      }
-
-      try {
         const response = await fetch(
           `${KALINGA_CONFIG.API_BASE_URL}/api/road-blockades`,
           {
@@ -548,236 +526,42 @@ export default function LiveResponseMap({
         }
 
         const data = await response.json();
-        const list = Array.isArray(data?.data)
-          ? data.data
-          : Array.isArray(data)
-          ? data
-          : Array.isArray(data?.blockades)
-          ? data.blockades
-          : [];
-
-        if (isMountedRef.current) {
-          setBlockades(list);
+        if (!cancelled) {
+          setBlockades(Array.isArray(data) ? data : []);
         }
       } catch (error) {
         console.warn("Unable to load road blockades", error);
-        if (isMountedRef.current) {
+        if (!cancelled) {
+          setBlockades([]);
           setBlockadesError("Road issues unavailable");
-          if (!silent) {
-            setBlockades([]);
-          }
         }
       } finally {
-        if (isMountedRef.current && !silent) {
+        if (!cancelled) {
           setBlockadesLoading(false);
         }
       }
-    },
-    []
-  );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async (options) => {
-      if (cancelled) return;
-      await fetchBlockades(options);
     };
 
-    load();
-    const interval = setInterval(() => load({ silent: true }), 60 * 1000);
+    fetchBlockades();
+    const interval = setInterval(fetchBlockades, 60 * 1000);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [fetchBlockades]);
-
-  const handleRefreshMap = useCallback(() => {
-    fetchBlockades();
-    setRouteRefreshKey((value) => value + 1);
-  }, [fetchBlockades]);
-
-  const handleRecenterMap = useCallback(() => {
-    const target =
-      mode === "hospital"
-        ? incidentPosition
-        : responderPosition ?? incidentPosition;
-
-    if (mapRef.current && target) {
-      mapRef.current.flyTo(target, Math.max(13, mapRef.current.getZoom()), {
-        duration: 0.8,
-      });
-    }
-  }, [incidentPosition, mode, responderPosition]);
-
-  const toggleRoadIssueReporting = useCallback(() => {
-    setReportingRoadIssue((value) => !value);
-    setRoadIssueStatus(null);
-    setRoadIssueLocation(null);
   }, []);
-
-  const handleRoadIssueLocationSelect = useCallback(
-    async ({ lat, lng }) => {
-      if (!reportingRoadIssue) {
-        return;
-      }
-
-      setRoadIssueStatus(null);
-      setRoadIssueLocation({ lat, lng, snapped: false });
-
-      try {
-        const response = await fetch(
-          `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`
-        );
-        const data = await response.json();
-
-        if (data.code === "Ok" && data.waypoints?.length) {
-          const waypoint = data.waypoints[0];
-          const snappedLocation = {
-            lat: waypoint.location[1],
-            lng: waypoint.location[0],
-            snapped: true,
-            name: waypoint.name || null,
-            distance: waypoint.distance,
-          };
-          setRoadIssueLocation(snappedLocation);
-
-          if (!roadIssueForm.title.trim() && waypoint.name) {
-            setRoadIssueForm((prev) => ({
-              ...prev,
-              title: `Blockade on ${waypoint.name}`,
-            }));
-          }
-        }
-      } catch (error) {
-        console.warn("Failed to snap blockade location", error);
-      }
-    },
-    [reportingRoadIssue, roadIssueForm.title]
-  );
-
-  const handleCancelRoadIssue = useCallback(() => {
-    setReportingRoadIssue(false);
-    setRoadIssueLocation(null);
-    setRoadIssueStatus(null);
-    setRoadIssueSubmitting(false);
-  }, []);
-
-  const handleSubmitRoadIssue = useCallback(async () => {
-    if (!reportingRoadIssue) {
-      return;
-    }
-
-    if (!user?.id) {
-      setRoadIssueStatus({
-        type: "error",
-        message: "Sign in required to report road issues.",
-      });
-      return;
-    }
-
-    if (!roadIssueLocation) {
-      setRoadIssueStatus({
-        type: "error",
-        message: "Select a location by clicking on the map.",
-      });
-      return;
-    }
-
-    const title = roadIssueForm.title.trim();
-    if (!title) {
-      setRoadIssueStatus({
-        type: "error",
-        message: "Provide a short headline for the issue.",
-      });
-      return;
-    }
-
-    setRoadIssueSubmitting(true);
-    setRoadIssueStatus(null);
-
-    try {
-      const response = await fetch(
-        `${KALINGA_CONFIG.API_BASE_URL}/api/road-blockades`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({
-            title,
-            description: roadIssueForm.description.trim(),
-            start_lat: roadIssueLocation.lat,
-            start_lng: roadIssueLocation.lng,
-            road_name:
-              roadIssueLocation.name || incident?.location || "Unknown Road",
-            severity: roadIssueForm.severity,
-            reported_by: user.id,
-            incident_id: incident?.id,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok || (!data?.blockade && !data?.data)) {
-        throw new Error(data?.message || "Unable to report road issue.");
-      }
-
-      setRoadIssueStatus({
-        type: "success",
-        message: "Road issue reported successfully.",
-      });
-      setRoadIssueForm({ title: "", description: "", severity: "medium" });
-      setRoadIssueLocation(null);
-      setReportingRoadIssue(false);
-      fetchBlockades({ silent: true });
-    } catch (error) {
-      console.error("Road issue submission failed", error);
-      setRoadIssueStatus({
-        type: "error",
-        message: error.message || "Unable to submit road issue.",
-      });
-    } finally {
-      setRoadIssueSubmitting(false);
-    }
-  }, [
-    fetchBlockades,
-    incident?.id,
-    incident?.location,
-    reportingRoadIssue,
-    roadIssueForm.description,
-    roadIssueForm.severity,
-    roadIssueForm.title,
-    roadIssueLocation,
-    user?.id,
-  ]);
-
-  useEffect(() => {
-    const mapInstance = mapRef.current;
-    if (!mapInstance) {
-      return;
-    }
-    const container = mapInstance.getContainer();
-    if (!container) {
-      return;
-    }
-
-    container.style.cursor = reportingRoadIssue ? "crosshair" : "";
-
-    return () => {
-      container.style.cursor = "";
-    };
-  }, [reportingRoadIssue]);
 
   const activeStart = useMemo(() => {
-    if (mode === "hospital" && incidentPosition) {
-      return incidentPosition;
+    if (mode === "hospital") {
+      if (isOnScene && responderPosition) {
+        return responderPosition;
+      }
+      if (incidentPosition) {
+        return incidentPosition;
+      }
     }
     return responderPosition ?? incidentPosition;
-  }, [incidentPosition, mode, responderPosition]);
+  }, [incidentPosition, isOnScene, mode, responderPosition]);
 
   const activeDestination = useMemo(() => {
     if (mode === "hospital") {
@@ -873,17 +657,53 @@ export default function LiveResponseMap({
     return () => {
       cancelled = true;
     };
-  }, [normalizedBlockades, routeRefreshKey, routingKey]);
+  }, [routingKey, normalizedBlockades]);
 
   const currentCenter = useMemo(() => {
-    if (mode === "hospital" && incidentPosition) {
-      return incidentPosition;
+    if (mode === "hospital") {
+      if (isOnScene && responderPosition) {
+        return responderPosition;
+      }
+      if (incidentPosition) {
+        return incidentPosition;
+      }
     }
     if (responderPosition) {
       return responderPosition;
     }
     return incidentPosition;
-  }, [incidentPosition, mode, responderPosition]);
+  }, [incidentPosition, isOnScene, mode, responderPosition]);
+
+  const handleSimulatedLocationChange = (coords, options = {}) => {
+    if (!coords) return;
+    const lat = Number(coords.lat);
+    const lng = Number(coords.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return;
+    }
+    const next = [lat, lng];
+    setIsSimulatingResponder(true);
+    setResponderPosition(next);
+
+    if (options.centerMap !== false && mapRef.current) {
+      mapRef.current.flyTo(next, Math.max(13, mapRef.current.getZoom()), {
+        duration: 0.6,
+      });
+    }
+  };
+
+  const handleStopSimulatedLocation = () => {
+    setIsSimulatingResponder(false);
+    const fallback = liveResponderRef.current || responderPosition;
+    if (fallback) {
+      setResponderPosition(fallback);
+      if (mapRef.current) {
+        mapRef.current.flyTo(fallback, Math.max(13, mapRef.current.getZoom()), {
+          duration: 0.6,
+        });
+      }
+    }
+  };
 
   return (
     <section className="flex h-full min-h-[520px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -928,6 +748,19 @@ export default function LiveResponseMap({
       </header>
 
       <div className="relative flex-1">
+        <LocationSimulator
+          currentLocation={
+            responderPosition
+              ? { lat: responderPosition[0], lng: responderPosition[1] }
+              : incidentPosition
+              ? { lat: incidentPosition[0], lng: incidentPosition[1] }
+              : null
+          }
+          isActive={isSimulatingResponder}
+          onLocationChange={handleSimulatedLocationChange}
+          onStopSimulation={handleStopSimulatedLocation}
+          buttonLabel="Simulate responder"
+        />
         <MapContainer
           center={currentCenter}
           zoom={13}
@@ -938,10 +771,6 @@ export default function LiveResponseMap({
             mapRef.current = mapInstance;
           }}
         >
-          <MapClickHandler
-            enabled={reportingRoadIssue}
-            onSelect={handleRoadIssueLocationSelect}
-          />
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -981,24 +810,6 @@ export default function LiveResponseMap({
             </Marker>
           )}
 
-          {reportingRoadIssue && roadIssueLocation && (
-            <Marker
-              position={[roadIssueLocation.lat, roadIssueLocation.lng]}
-              icon={getBlockadeIcon(roadIssueForm.severity)}
-            >
-              <Tooltip direction="top" offset={[0, -8]} opacity={1}>
-                <div className="text-xs font-semibold text-slate-800">
-                  Pending road issue
-                </div>
-                {roadIssueLocation.name && (
-                  <div className="text-[10px] text-slate-500">
-                    Near {roadIssueLocation.name}
-                  </div>
-                )}
-              </Tooltip>
-            </Marker>
-          )}
-
           {normalizedBlockades.map((blockade) => (
             <Marker
               key={blockade.id}
@@ -1033,127 +844,6 @@ export default function LiveResponseMap({
             />
           )}
         </MapContainer>
-
-        <div className="pointer-events-none absolute top-4 right-4 z-30 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={handleRecenterMap}
-            className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow hover:border-primary/60 hover:text-primary"
-            title="Recenter map"
-          >
-            <Crosshair className="h-4 w-4" /> Focus view
-          </button>
-          <button
-            type="button"
-            onClick={handleRefreshMap}
-            className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow hover:border-primary/60 hover:text-primary"
-            title="Refresh map data"
-          >
-            <RefreshCw className="h-4 w-4" /> Refresh data
-          </button>
-          <button
-            type="button"
-            onClick={toggleRoadIssueReporting}
-            className={`pointer-events-auto inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold shadow ${
-              reportingRoadIssue
-                ? "border border-red-200 bg-red-50 text-red-700"
-                : "border border-gray-200 bg-white text-gray-700"
-            }`}
-            title="Report a road issue"
-          >
-            <MapPin className="h-4 w-4" />
-            {reportingRoadIssue ? "Cancel report" : "Report road issue"}
-          </button>
-        </div>
-
-        {reportingRoadIssue && (
-          <div className="pointer-events-auto absolute top-4 left-4 z-30 w-full max-w-sm rounded-2xl border border-gray-200 bg-white/95 p-4 shadow-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                  Report road issue
-                </p>
-                <p className="text-sm text-gray-700">
-                  Click the map to drop a marker.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleCancelRoadIssue}
-                className="text-xs font-semibold text-gray-500 hover:text-gray-900"
-              >
-                Cancel
-              </button>
-            </div>
-            <p className="mb-3 text-xs text-gray-500">
-              {roadIssueLocation
-                ? `Selected ${roadIssueLocation.lat.toFixed(4)}, ${roadIssueLocation.lng.toFixed(4)}${
-                    roadIssueLocation.name
-                      ? ` near ${roadIssueLocation.name}`
-                      : ""
-                  }`
-                : "No point selected yet."}
-            </p>
-            <input
-              type="text"
-              value={roadIssueForm.title}
-              onChange={(event) =>
-                setRoadIssueForm((prev) => ({
-                  ...prev,
-                  title: event.target.value,
-                }))
-              }
-              placeholder="Headline (e.g. Fallen tree on Main Rd)"
-              className="mb-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none"
-            />
-            <textarea
-              value={roadIssueForm.description}
-              onChange={(event) =>
-                setRoadIssueForm((prev) => ({
-                  ...prev,
-                  description: event.target.value,
-                }))
-              }
-              rows={2}
-              placeholder="Add optional details"
-              className="mb-2 w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none"
-            />
-            <select
-              value={roadIssueForm.severity}
-              onChange={(event) =>
-                setRoadIssueForm((prev) => ({
-                  ...prev,
-                  severity: event.target.value,
-                }))
-              }
-              className="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-primary focus:outline-none"
-            >
-              <option value="low">Low severity</option>
-              <option value="medium">Medium severity</option>
-              <option value="high">High severity</option>
-              <option value="critical">Critical</option>
-            </select>
-            {roadIssueStatus && (
-              <div
-                className={`mb-3 rounded-lg border px-3 py-2 text-xs font-semibold ${
-                  roadIssueStatus.type === "error"
-                    ? "border-red-200 bg-red-50 text-red-700"
-                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                }`}
-              >
-                {roadIssueStatus.message}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={handleSubmitRoadIssue}
-              disabled={roadIssueSubmitting}
-              className="inline-flex w-full items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300"
-            >
-              {roadIssueSubmitting ? "Submitting…" : "Submit issue"}
-            </button>
-          </div>
-        )}
 
         {routeLoading && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/40">

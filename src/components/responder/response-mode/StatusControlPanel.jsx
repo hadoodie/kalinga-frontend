@@ -59,6 +59,14 @@ const formatStatusText = (status) =>
 const formatDistance = (value) =>
   typeof value === "number" ? `${value.toFixed(2)} km` : "—";
 
+const formatScore = (value, digits = 2) =>
+  typeof value === "number" ? value.toFixed(digits) : "—";
+
+const formatQuantity = (value) =>
+  typeof value === "number"
+    ? value.toLocaleString(undefined, { maximumFractionDigits: 1 })
+    : "—";
+
 export default function StatusControlPanel({
   incident,
   hospitals = [],
@@ -80,6 +88,7 @@ export default function StatusControlPanel({
       id: hospital.id,
       label: hospital.name,
       distance: hospital.distance_km,
+      priority: hospital.priority_score,
     }));
   }, [hospitals]);
 
@@ -123,6 +132,11 @@ export default function StatusControlPanel({
     onHospitalChange(nearestHospital.id);
   };
 
+  const resourceProfile = selectedHospital?.resource_profile;
+  const topResources = Array.isArray(resourceProfile?.top_resources)
+    ? resourceProfile.top_resources
+    : [];
+
   return (
     <section className="flex h-full min-h-[520px] flex-col rounded-2xl border border-gray-200 bg-white shadow-sm">
       <header className="border-b border-gray-100 px-6 py-4">
@@ -159,7 +173,7 @@ export default function StatusControlPanel({
                   type="button"
                   onClick={() => handleStatusClick(option.value)}
                   disabled={disabled}
-                  className={`w-full rounded-xl border p-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                  className={`w-full rounded-xl border p-3 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                     isCurrent
                       ? "border-primary/60 bg-primary/5 text-primary"
                       : isCompleted
@@ -252,6 +266,61 @@ export default function StatusControlPanel({
                     Contact: {selectedHospital.contact_number}
                   </p>
                 )}
+                {(selectedHospital.priority_score !== undefined ||
+                  resourceProfile) && (
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-[11px] text-gray-500">
+                    <div className="rounded-lg bg-white/70 p-2 text-center">
+                      <p className="font-semibold text-gray-900">
+                        {formatScore(selectedHospital.priority_score ?? null)}
+                      </p>
+                      <p className="uppercase tracking-wide">Priority</p>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 text-center">
+                      <p className="font-semibold text-gray-900">
+                        {formatScore(selectedHospital.capability_score ?? null)}
+                      </p>
+                      <p className="uppercase tracking-wide">Capability</p>
+                    </div>
+                    <div className="rounded-lg bg-white/70 p-2 text-center">
+                      <p className="font-semibold text-gray-900">
+                        {formatScore(selectedHospital.distance_score ?? null)}
+                      </p>
+                      <p className="uppercase tracking-wide">Distance</p>
+                    </div>
+                  </div>
+                )}
+                {topResources.length > 0 && (
+                  <div className="mt-3 rounded-lg border border-gray-200 bg-white/80 p-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                      Key resources on-hand
+                    </p>
+                    <ul className="mt-1 space-y-1 text-[11px]">
+                      {topResources.map((resource) => (
+                        <li
+                          key={
+                            resource.id ??
+                            `${resource.name}-${resource.category}`
+                          }
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <span className="text-gray-600">
+                            {resource.name}
+                            {resource.category ? ` · ${resource.category}` : ""}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              resource.is_critical
+                                ? "bg-red-100 text-red-700"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            {formatQuantity(resource.quantity)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             ) : nearestHospital ? (
               <div className="flex items-center gap-2 text-gray-500">
@@ -283,6 +352,9 @@ export default function StatusControlPanel({
               {hospitalOptions.map((hospital) => (
                 <option key={hospital.id} value={hospital.id}>
                   {hospital.label}
+                  {typeof hospital.priority === "number"
+                    ? ` · score ${hospital.priority.toFixed(2)}`
+                    : ""}
                   {hospital.distance !== undefined
                     ? ` (${hospital.distance.toFixed(2)} km)`
                     : ""}

@@ -1,30 +1,657 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { KALINGA_CONFIG } from "../../constants/mapConfig";
 import { useAuth } from "../../context/AuthContext";
 import ResponderTopbar from "../../components/responder/Topbar";
 import ResponderSidebar from "../../components/responder/Sidebar";
-import LocationSimulator from "../../components/maps/LocationSimulator";
-import {
-  createRouteLog,
-  appendRouteDeviation,
-} from "../../services/routeLogService";
 
-export default function HospitalMap({ embedded = false, className = "" }) {
+// Leaflet CSS is imported in index.css
+
+const INCIDENT_STATUS_STYLES = {
+  reported: { color: "#dc2626", fillColor: "#fee2e2" },
+  acknowledged: { color: "#f97316", fillColor: "#ffedd5" },
+  en_route: { color: "#2563eb", fillColor: "#dbeafe" },
+  on_scene: { color: "#7c3aed", fillColor: "#ede9fe" },
+  needs_support: { color: "#ca8a04", fillColor: "#fef08a" },
+  resolved: { color: "#16a34a", fillColor: "#dcfce7" },
+  cancelled: { color: "#6b7280", fillColor: "#e5e7eb" },
+};
+
+const ROUTE_PROXIMITY_THRESHOLD_METERS = 45;
+const ROUTE_ALERT_TIMEOUT_MS = 12000;
+const MAX_ROUTE_SAMPLE_POINTS = 220;
+const DETOUR_OFFSETS_METERS = [160, 260, 360];
+const DETOUR_MAX_DISTANCE_MULTIPLIER = 1.55;
+const DETOUR_MAX_CANDIDATES = 12;
+const DETOUR_SNAP_DISTANCE_METERS = 600;
+
+const DEGREE_IN_RADIANS = Math.PI / 180;
+const EARTH_RADIUS_METERS = 6378137;
+
+const ROUTE_ALERT_STYLES = {
+  info: "bg-blue-600 text-white",
+  warning: "bg-yellow-500 text-gray-900",
+  danger: "bg-red-600 text-white",
+};
+
+const formatBlockadeDescriptor = (blockade) => {
+  if (!blockade) {
+    return "the reported blockade";
+  }
+
+  const title = typeof blockade.title === "string" ? blockade.title.trim() : "";
+  const road =
+    typeof blockade.road_name === "string" ? blockade.road_name.trim() : "";
+
+  if (title && road) {
+    return title.toLowerCase().includes(road.toLowerCase())
+      ? title
+      : `${title} (${road})`;
+  }
+
+  return title || road || "the reported blockade";
+};
+
+const calculateDistance = (lat1, lng1, lat2, lng2) => {
+  const toRadians = (value) => (value * Math.PI) / 180;
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(lat2 - lat1);
+  const dLng = toRadians(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRadians(lat1)) *
+      Math.cos(toRadians(lat2)) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return earthRadiusKm * c;
+};
+
+const sampleRouteCoordinates = (coords) => {
+  if (!Array.isArray(coords) || coords.length === 0) {
+    return [];
+  }
+
+  if (coords.length <= MAX_ROUTE_SAMPLE_POINTS) {
+    return coords;
+  }
+
+  const step = Math.ceil(coords.length / MAX_ROUTE_SAMPLE_POINTS);
+  const sampled = [];
+
+  for (let i = 0; i < coords.length; i += step) {
+    sampled.push(coords[i]);
+  }
+
+  const lastPoint = coords[coords.length - 1];
+  const lastSample = sampled[sampled.length - 1];
+  if (
+    !lastSample ||
+    lastSample[0] !== lastPoint[0] ||
+    lastSample[1] !== lastPoint[1]
+  ) {
+    sampled.push(lastPoint);
+  }
+
+  return sampled;
+};
+
+const normalizeBlockadePosition = (blockade) => {
+  if (!blockade) {
+    return null;
+  }
+
+  const latValue =
+    blockade.start_lat ?? blockade.latitude ?? blockade.lat ?? null;
+  const lngValue =
+    blockade.start_lng ?? blockade.longitude ?? blockade.lng ?? null;
+
+  const lat = typeof latValue === "number" ? latValue : parseFloat(latValue);
+  const lng = typeof lngValue === "number" ? lngValue : parseFloat(lngValue);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  return {
+    lat,
+    lng,
+    label: formatBlockadeDescriptor(blockade),
+    raw: blockade,
+  };
+};
+
+const analyzeRouteAgainstBlockades = (coords, normalizedBlockades) => {
+  if (!coords.length || !normalizedBlockades.length) {
+    return { closestDistance: Infinity, conflicts: [] };
+  }
+
+  let closestDistance = Infinity;
+  const conflicts = [];
+
+  normalizedBlockades.forEach((blockade) => {
+    let nearestToBlockade = Infinity;
+
+    for (let index = 0; index < coords.length; index += 1) {
+      const [lat, lng] = coords[index];
+      const distanceMeters =
+        calculateDistance(blockade.lat, blockade.lng, lat, lng) * 1000;
+
+      if (distanceMeters < nearestToBlockade) {
+        nearestToBlockade = distanceMeters;
+      }
+
+      if (nearestToBlockade <= ROUTE_PROXIMITY_THRESHOLD_METERS) {
+        break;
+      }
+    }
+
+    if (nearestToBlockade < closestDistance) {
+      closestDistance = nearestToBlockade;
+    }
+
+    if (nearestToBlockade <= ROUTE_PROXIMITY_THRESHOLD_METERS) {
+      conflicts.push({
+        blockade: blockade.raw,
+        distance: nearestToBlockade,
+        label: blockade.label,
+      });
+    }
+  });
+
+  return { closestDistance, conflicts };
+};
+
+const evaluateRoutesAgainstBlockades = (routes, normalizedBlockades) =>
+  routes.map((route, index) => {
+    const coords = Array.isArray(route?.geometry?.coordinates)
+      ? route.geometry.coordinates.map((point) => [point[1], point[0]])
+      : [];
+
+    const analysis = analyzeRouteAgainstBlockades(
+      sampleRouteCoordinates(coords),
+      normalizedBlockades
+    );
+
+    return {
+      index,
+      route,
+      coords,
+      closestDistance: analysis.closestDistance,
+      conflicts: analysis.conflicts,
+    };
+  });
+
+const selectBestRouteVariant = (routes, normalizedBlockades) => {
+  if (!Array.isArray(routes) || routes.length === 0) {
+    return null;
+  }
+
+  const evaluations = evaluateRoutesAgainstBlockades(
+    routes,
+    normalizedBlockades
+  );
+  const original = evaluations[0];
+  const alternativesAvailable = evaluations.length > 1;
+  const blockadesPresent = normalizedBlockades.length > 0;
+
+  if (!blockadesPresent) {
+    return {
+      selected: original,
+      original,
+      rerouted: false,
+      alternativesAvailable,
+      blockadesPresent,
+    };
+  }
+
+  const blockadeFreeRoutes = evaluations.filter(
+    (evaluation) => evaluation.conflicts.length === 0
+  );
+
+  if (blockadeFreeRoutes.length > 0) {
+    const best = blockadeFreeRoutes.reduce((currentBest, candidate) => {
+      if (!currentBest) {
+        return candidate;
+      }
+
+      const currentDistance = candidate.route?.distance ?? Infinity;
+      const bestDistance = currentBest.route?.distance ?? Infinity;
+
+      return currentDistance < bestDistance ? candidate : currentBest;
+    }, null);
+
+    return {
+      selected: best,
+      original,
+      rerouted: best.index !== original.index,
+      alternativesAvailable,
+      blockadesPresent,
+    };
+  }
+
+  const bestAvailable = evaluations.reduce((currentBest, candidate) => {
+    if (!currentBest) {
+      return candidate;
+    }
+
+    if (candidate.closestDistance === currentBest.closestDistance) {
+      const candidateDistance = candidate.route?.distance ?? Infinity;
+      const bestDistance = currentBest.route?.distance ?? Infinity;
+      return candidateDistance < bestDistance ? candidate : currentBest;
+    }
+
+    return candidate.closestDistance > currentBest.closestDistance
+      ? candidate
+      : currentBest;
+  }, null);
+
+  return {
+    selected: bestAvailable,
+    original,
+    rerouted: bestAvailable.index !== original.index,
+    alternativesAvailable,
+    blockadesPresent,
+  };
+};
+
+const deriveRouteAlert = (selection) => {
+  if (!selection || !selection.blockadesPresent) {
+    return null;
+  }
+
+  const { selected, original, rerouted, alternativesAvailable } = selection;
+  const originalConflicts = original?.conflicts ?? [];
+  const selectedConflicts = selected?.conflicts ?? [];
+
+  if (
+    !rerouted &&
+    originalConflicts.length === 0 &&
+    selectedConflicts.length === 0
+  ) {
+    return null;
+    const normalizeBearing = (bearing) => {
+      const normalized = bearing % 360;
+      return normalized < 0 ? normalized + 360 : normalized;
+    };
+
+    const bearingBetweenPoints = (start, end) => {
+      if (!start || !end) {
+        return 0;
+      }
+
+      if (
+        Math.abs(start.lat - end.lat) < 1e-6 &&
+        Math.abs(start.lng - end.lng) < 1e-6
+      ) {
+        return 0;
+      }
+
+      const -Â1 = start.lat * DEGREE_IN_RADIANS;
+      const -Â2 = end.lat * DEGREE_IN_RADIANS;
+      const +ˆ++ = (end.lng - start.lng) * DEGREE_IN_RADIANS;
+
+      const y = Math.sin(+ˆ++) * Math.cos(-Â2);
+      const x =
+        Math.cos(-Â1) * Math.sin(-Â2) -
+        Math.sin(-Â1) * Math.cos(-Â2) * Math.cos(+ˆ++);
+
+      const ++ = Math.atan2(y, x);
+      return normalizeBearing(++ / DEGREE_IN_RADIANS);
+    };
+
+    const offsetPointByBearing = (origin, distanceMeters, bearingDegrees) => {
+      const -Â1 = origin.lat * DEGREE_IN_RADIANS;
+      const ++1 = origin.lng * DEGREE_IN_RADIANS;
+      const ++ = bearingDegrees * DEGREE_IN_RADIANS;
+      const +¶ = distanceMeters / EARTH_RADIUS_METERS;
+
+      const sin-Â1 = Math.sin(-Â1);
+      const cos-Â1 = Math.cos(-Â1);
+      const sin+¶ = Math.sin(+¶);
+      const cos+¶ = Math.cos(+¶);
+
+      const sin-Â2 = sin-Â1 * cos+¶ + cos-Â1 * sin+¶ * Math.cos(++);
+      const -Â2 = Math.asin(sin-Â2);
+
+      const ++2Raw =
+        ++1 + Math.atan2(Math.sin(++) * sin+¶ * cos-Â1, cos+¶ - sin-Â1 * sin-Â2);
+
+      const ++2 = ((++2Raw + Math.PI) % (2 * Math.PI)) - Math.PI;
+
+      return {
+        lat: -Â2 / DEGREE_IN_RADIANS,
+        lng: ++2 / DEGREE_IN_RADIANS,
+      };
+    };
+
+    const generateDetourWaypoints = (start, end, blockade) => {
+      if (!start || !end || !blockade) {
+        return [];
+      }
+
+      const baseBearing = bearingBetweenPoints(start, end);
+      const perpendicularBearings = [
+        normalizeBearing(baseBearing + 90),
+        normalizeBearing(baseBearing - 90),
+        normalizeBearing(baseBearing + 135),
+        normalizeBearing(baseBearing - 135),
+      ];
+
+      const candidatePoints = [];
+
+      perpendicularBearings.forEach((bearing) => {
+        DETOUR_OFFSETS_METERS.forEach((offset) => {
+          const offsetPoint = offsetPointByBearing(blockade, offset, bearing);
+          candidatePoints.push({
+            lat: offsetPoint.lat,
+            lng: offsetPoint.lng,
+            bearing,
+            offset,
+          });
+        });
+      });
+
+      // Add forward/backward offsets to encourage bypassing by overshooting blockade
+      DETOUR_OFFSETS_METERS.forEach((offset) => {
+        const forward = offsetPointByBearing(blockade, offset, baseBearing);
+        const backward = offsetPointByBearing(
+          blockade,
+          offset,
+          normalizeBearing(baseBearing + 180)
+        );
+        candidatePoints.push({
+          lat: forward.lat,
+          lng: forward.lng,
+          bearing: baseBearing,
+          offset,
+        });
+        candidatePoints.push({
+          lat: backward.lat,
+          lng: backward.lng,
+          bearing: normalizeBearing(baseBearing + 180),
+          offset,
+        });
+      });
+
+      const seen = new Set();
+      const unique = [];
+
+      candidatePoints.forEach((candidate) => {
+        const key = `${candidate.lat.toFixed(5)}_${candidate.lng.toFixed(5)}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(candidate);
+        }
+      });
+
+      return unique.slice(0, DETOUR_MAX_CANDIDATES);
+    };
+
+    const snapWaypointToRoad = async (osrmServer, waypoint) => {
+      try {
+        const response = await fetch(
+          `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`
+        );
+        if (!response.ok) {
+          return null;
+        }
+        const data = await response.json();
+        if (!data?.waypoints?.length) {
+          return null;
+        }
+
+        const nearest = data.waypoints[0];
+        return {
+          lat: nearest.location[1],
+          lng: nearest.location[0],
+          distance: nearest.distance ?? 0,
+          meta: waypoint,
+        };
+      } catch (error) {
+        console.warn("Failed snapping waypoint to road", error);
+        return null;
+      }
+    };
+
+    const requestOsrmRoute = async (osrmServer, coordinates, paramsString) => {
+      if (!Array.isArray(coordinates) || coordinates.length < 2) {
+        return null;
+      }
+
+      const coordinatePath = coordinates
+        .map((coord) => `${coord.lng},${coord.lat}`)
+        .join(";");
+
+      const url = `${osrmServer}/route/v1/driving/${coordinatePath}?${paramsString}`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          return null;
+        }
+        const data = await response.json();
+        if (!data?.routes?.length) {
+          return null;
+        }
+        return data.routes;
+      } catch (error) {
+        console.warn("OSRM route request failed", error);
+        return null;
+      }
+    };
+
+    const tryResolveRouteWithDynamicDetours = async ({
+      osrmServer,
+      baseParamOptions,
+      start,
+      end,
+      normalizedBlockades,
+      currentSelection,
+    }) => {
+      if (!currentSelection?.selected?.conflicts?.length || !start || !end) {
+        return null;
+      }
+
+      const primaryConflict = currentSelection.selected.conflicts[0];
+      const normalizedConflict = normalizeBlockadePosition(
+        primaryConflict?.blockade
+      );
+
+      if (!normalizedConflict) {
+        return null;
+      }
+
+      const candidates = generateDetourWaypoints(
+        start,
+        end,
+        normalizedConflict
+      );
+
+      if (!candidates.length) {
+        return null;
+      }
+
+      const originalDistance =
+        currentSelection.selected?.route?.distance ??
+        currentSelection.original?.route?.distance ??
+        null;
+
+      let bestImproved = null;
+
+      for (const candidate of candidates) {
+        const snapped = await snapWaypointToRoad(osrmServer, candidate);
+        if (!snapped) {
+          continue;
+        }
+
+        if (snapped.distance > DETOUR_SNAP_DISTANCE_METERS) {
+          continue;
+        }
+
+        const detourParams = {
+          ...baseParamOptions,
+          alternatives: "1",
+        };
+
+        const paramString = new URLSearchParams(detourParams).toString();
+        const routes = await requestOsrmRoute(
+          osrmServer,
+          [start, snapped, end],
+          paramString
+        );
+
+        if (!routes || !routes.length) {
+          continue;
+        }
+
+        const evaluationEntry = evaluateRoutesAgainstBlockades(
+          [routes[0]],
+          normalizedBlockades
+        )[0];
+
+        if (!evaluationEntry) {
+          continue;
+        }
+
+        if (
+          originalDistance &&
+          evaluationEntry.route?.distance &&
+          evaluationEntry.route.distance >
+            originalDistance * DETOUR_MAX_DISTANCE_MULTIPLIER
+        ) {
+          continue;
+        }
+
+        if (evaluationEntry.conflicts.length === 0) {
+          return {
+            selected: evaluationEntry,
+            original: currentSelection.original,
+            rerouted: true,
+            blockadesPresent: true,
+            alternativesAvailable: currentSelection.alternativesAvailable,
+            detourMeta: {
+              label: normalizedConflict.label,
+              waypoint: snapped,
+              strategy: "dynamic",
+            },
+          };
+        }
+
+        if (
+          !bestImproved ||
+          evaluationEntry.closestDistance >
+            bestImproved.evaluation.closestDistance
+        ) {
+          bestImproved = {
+            evaluation: evaluationEntry,
+            snapped,
+          };
+        }
+      }
+
+      if (
+        bestImproved &&
+        bestImproved.evaluation.closestDistance >
+          (currentSelection.selected?.closestDistance ?? 0) + 10
+      ) {
+        return {
+          selected: bestImproved.evaluation,
+          original: currentSelection.original,
+          rerouted: true,
+          blockadesPresent: true,
+          alternativesAvailable: currentSelection.alternativesAvailable,
+          detourMeta: {
+            label: normalizedConflict.label,
+            waypoint: bestImproved.snapped,
+            strategy: "dynamic-improved",
+          },
+        };
+      }
+
+      return null;
+    };
+  }
+
+  const conflictSource =
+    (rerouted && originalConflicts.length > 0 ? originalConflicts[0] : null) ||
+    (selectedConflicts.length > 0 ? selectedConflicts[0] : null);
+
+  const detourDescriptor = selection.detourMeta?.label;
+
+  const descriptor =
+    conflictSource?.label ||
+    detourDescriptor ||
+    formatBlockadeDescriptor(conflictSource?.blockade);
+
+  if (selection.detourMeta && selectedConflicts.length === 0) {
+    return {
+      type: "info",
+      icon: "G£‡",
+      message: `Detour plotted to keep you clear of ${descriptor}.`,
+    };
+  }
+
+  if (
+    rerouted &&
+    originalConflicts.length > 0 &&
+    selectedConflicts.length === 0
+  ) {
+    return {
+      type: "info",
+      icon: "G£‡",
+      message: `Alternate route selected to avoid a blockade near ${descriptor}.`,
+    };
+  }
+
+  if (selectedConflicts.length > 0) {
+    const severity =
+      selected.closestDistance <= ROUTE_PROXIMITY_THRESHOLD_METERS / 2
+        ? "danger"
+        : "warning";
+
+    const intro = rerouted
+      ? "Limited detours available."
+      : alternativesAvailable
+      ? "No clear detour available."
+      : "Blockade ahead.";
+
+    return {
+      type: severity,
+      icon: severity === "danger" ? "G¢ˆ" : "G‹·n+≈",
+      message: `${intro} Blockade near ${descriptor}. Proceed with caution.`,
+    };
+  }
+
+  if (rerouted) {
+    return {
+      type: "info",
+      icon: "G‰¶n+≈",
+      message: "Alternate path selected to keep you clear of nearby blockades.",
+    };
+  }
+
+  if (originalConflicts.length > 0) {
+    return {
+      type: "warning",
+      icon: "G‹·n+≈",
+      message: `Blockade reported near ${descriptor}. We're showing the best available route.`,
+    };
+  }
+
+  return null;
+};
+
+export default function ResponseMap({ embedded = false, className = "" }) {
   const { user } = useAuth();
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
-  const userMarkerRef = useRef(null);
+  const [userMarker, setUserMarker] = useState(null);
   const [blockades, setBlockades] = useState([]);
-  const [selectedTab, setSelectedTab] = useState("hospitals");
+  const [incidents, setIncidents] = useState([]);
+  const [selectedTab, setSelectedTab] = useState("incidents");
+  const [incidentMarkers, setIncidentMarkers] = useState([]);
   const [blockadeMarkers, setBlockadeMarkers] = useState([]);
-  const [hospitalMarkers, setHospitalMarkers] = useState([]);
   const [routeLine, setRouteLine] = useState(null);
   const [destMarker, setDestMarker] = useState(null);
   const [blockadeReportingMode, setBlockadeReportingMode] = useState(false);
@@ -38,91 +665,13 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const [currentLocationDisplay, setCurrentLocationDisplay] = useState(
     "Getting location..."
   );
-  const [hospitalsWithDistance, setHospitalsWithDistance] = useState([]);
-  const [hospitalCatalog, setHospitalCatalog] = useState([]);
-  const [hospitalSyncMeta, setHospitalSyncMeta] = useState({
-    loading: false,
-    error: null,
-    lastFetchKey: null,
-  });
+  const [, setLocationError] = useState(null);
   const [locationWatchId, setLocationWatchId] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isDrawingRoute, setIsDrawingRoute] = useState(false);
-  const [isSimulatingLocation, setIsSimulatingLocation] = useState(false);
-
-  const liveUserLocationRef = useRef(null);
-  const leafletLibRef = useRef(null);
-  const isSimulatingLocationRef = useRef(false);
-  const simulatedRecalcTimerRef = useRef(null);
-
-  useEffect(() => {
-    isSimulatingLocationRef.current = isSimulatingLocation;
-  }, [isSimulatingLocation]);
-
-  useEffect(() => {
-    return () => {
-      if (simulatedRecalcTimerRef.current) {
-        clearTimeout(simulatedRecalcTimerRef.current);
-      }
-    };
-  }, []);
-
-  const ensureLeafletInstance = useCallback(async () => {
-    if (leafletLibRef.current) {
-      return leafletLibRef.current;
-    }
-    const module = await import("leaflet");
-    const L = module.default ?? module;
-    leafletLibRef.current = L;
-    return L;
-  }, []);
-
-  const placeUserMarker = useCallback(
-    (leafletLib, lat, lng, variant = "live") => {
-      const resolvedLib =
-        leafletLib?.default ?? leafletLib ?? leafletLibRef.current;
-      if (
-        !map ||
-        !resolvedLib ||
-        !Number.isFinite(lat) ||
-        !Number.isFinite(lng)
-      ) {
-        return null;
-      }
-
-      if (!leafletLibRef.current) {
-        leafletLibRef.current = resolvedLib;
-      }
-
-      if (userMarkerRef.current) {
-        map.removeLayer(userMarkerRef.current);
-      }
-
-      const variantClasses = {
-        live: "bg-blue-500 animate-pulse",
-        lastKnown: "bg-yellow-500",
-        default: "bg-gray-500",
-        simulated: "bg-amber-500 animate-pulse ring-2 ring-amber-200",
-      };
-
-      const className = variantClasses[variant] ?? variantClasses.live;
-
-      const icon = resolvedLib.divIcon({
-        html: `<div class="w-4 h-4 rounded-full border-2 border-white shadow-lg ${className}"></div>`,
-        className: "user-location-marker",
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-      });
-
-      const marker = resolvedLib.marker([lat, lng], { icon }).addTo(map);
-      userMarkerRef.current = marker;
-      return marker;
-    },
-    [map]
-  );
 
   // Mobile bottom interface states
-  const [showHospitalsList, setShowHospitalsList] = useState(false);
+  const [showIncidentsList, setShowIncidentsList] = useState(false);
   const [showBlockadesList, setShowBlockadesList] = useState(false);
   const [showUserInfo, setShowUserInfo] = useState(false);
 
@@ -137,162 +686,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const [highAccuracyWatchId, setHighAccuracyWatchId] = useState(null);
   const [routeCoordinates, setRouteCoordinates] = useState([]);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
-  const [destination, setDestination] = useState(null);
-  const [activeRouteLogId, setActiveRouteLogId] = useState(null);
-  const [routeSessionStart, setRouteSessionStart] = useState(null);
-  const [isRecalculatingRoute, setIsRecalculatingRoute] = useState(false);
-  const [pendingDeviation, setPendingDeviation] = useState(null);
-  const [lastDeviationTimestamp, setLastDeviationTimestamp] = useState(null);
-
-  const OFF_ROUTE_THRESHOLD_METERS = 80;
-  const DEVIATION_MIN_INTERVAL_MS = 10000;
-
-  const logRouteUpdate = useCallback(
-    async ({
-      routeCoords,
-      distance,
-      duration,
-      originLocation,
-      eventType,
-      destinationLocation,
-      deviationInfo,
-      metadata = {},
-    }) => {
-      const targetDestination = destinationLocation || destination;
-
-      if (
-        !user ||
-        !targetDestination ||
-        !originLocation?.lat ||
-        !originLocation?.lng ||
-        !Array.isArray(routeCoords) ||
-        routeCoords.length === 0
-      ) {
-        return;
-      }
-
-      try {
-        if (!activeRouteLogId || eventType === "initial") {
-          const response = await createRouteLog({
-            start_lat: originLocation.lat,
-            start_lng: originLocation.lng,
-            dest_lat: targetDestination.lat,
-            dest_lng: targetDestination.lng,
-            route_path: routeCoords,
-            distance,
-            duration,
-            started_at: routeSessionStart || new Date().toISOString(),
-            metadata: {
-              ...metadata,
-              mode: isNavigating ? "navigation" : "overview",
-              event_type: eventType,
-            },
-          });
-
-          const logId = response?.route_log?.id;
-          if (logId) {
-            setActiveRouteLogId(logId);
-          }
-        } else {
-          await appendRouteDeviation(activeRouteLogId, {
-            deviation_lat: deviationInfo?.location?.lat ?? originLocation.lat,
-            deviation_lng: deviationInfo?.location?.lng ?? originLocation.lng,
-            route_path: routeCoords,
-            distance,
-            duration,
-            metadata: {
-              ...metadata,
-              event_type: eventType,
-              ...(deviationInfo?.extra || {}),
-            },
-          });
-        }
-      } catch (error) {
-        console.error("Failed to log route analytics", error);
-      }
-    },
-    [activeRouteLogId, destination, isNavigating, routeSessionStart, user]
-  );
-
-  // Predefined hospitals in Metro Manila (fallback)
-  const STATIC_HOSPITALS = [
-    {
-      name: "Fatima University Medical Center",
-      lat: 14.65891,
-      lng: 120.98032,
-      address: "Valenzuela City",
-      phone: "(02) 292-7371",
-      emergency: true,
-      services: ["Emergency", "Surgery", "ICU", "Cardiology"],
-    },
-    {
-      name: "Dr. Jose N. Rodriguez Memorial Hospital",
-      lat: 14.64234,
-      lng: 120.96789,
-      address: "Caloocan City",
-      phone: "(02) 362-5555",
-      emergency: true,
-      services: ["Emergency", "Trauma", "Pediatrics", "Maternity"],
-    },
-    {
-      name: "Valenzuela City General Hospital",
-      lat: 14.67123,
-      lng: 120.98456,
-      address: "Valenzuela City",
-      phone: "(02) 293-2222",
-      emergency: true,
-      services: ["Emergency", "Surgery", "Internal Medicine"],
-    },
-    {
-      name: "Metro North Medical Center",
-      lat: 14.66789,
-      lng: 120.97234,
-      address: "Caloocan City",
-      phone: "(02) 364-7777",
-      emergency: true,
-      services: ["Emergency", "Orthopedics", "Neurology", "ICU"],
-    },
-    {
-      name: "Caloocan City Medical Center",
-      lat: 14.63456,
-      lng: 120.96123,
-      address: "Caloocan City",
-      phone: "(02) 361-8888",
-      emergency: true,
-      services: ["Emergency", "General Surgery", "OB-Gyne"],
-    },
-    {
-      name: "St. Mary's Hospital Valenzuela",
-      lat: 14.67891,
-      lng: 120.99567,
-      address: "Valenzuela City",
-      phone: "(02) 294-3333",
-      emergency: true,
-      services: ["Emergency", "Cardiology", "Pulmonology", "ICU"],
-    },
-    {
-      name: "Quirino Memorial Medical Center",
-      lat: 14.63789,
-      lng: 121.00234,
-      address: "Quezon City",
-      phone: "(02) 743-4141",
-      emergency: true,
-      services: ["Emergency", "Trauma", "Burn Unit", "ICU"],
-    },
-    {
-      name: "Marulas Medical Center",
-      lat: 14.65234,
-      lng: 120.97789,
-      address: "Valenzuela City",
-      phone: "(02) 292-9999",
-      emergency: true,
-      services: ["Emergency", "Surgery", "Pediatrics", "Dialysis"],
-    },
-  ];
-
-  const effectiveHospitals = useMemo(() => {
-    return hospitalCatalog.length ? hospitalCatalog : STATIC_HOSPITALS;
-  }, [hospitalCatalog]);
+  const [routeAlert, setRouteAlert] = useState(null);
 
   // Initialize map when component mounts
   useEffect(() => {
@@ -302,12 +696,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     if (map) return;
 
     // Dynamically import Leaflet to avoid SSR issues
-    import("leaflet").then((leafletModule) => {
-      const L = leafletModule.default ?? leafletModule;
-      if (!leafletLibRef.current) {
-        leafletLibRef.current = L;
-      }
-      // Check if map container is already initialized
+    import("leaflet").then((L) => {
+      // Check again if map container is already initialized
       if (mapRef.current && mapRef.current._leaflet_id) {
         return;
       }
@@ -324,7 +714,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         maxBoundsViscosity: 1.0,
       });
 
-      // Use CartoDB tiles for better visibility
+      // Use CartoDB tiles for better road visibility
       L.tileLayer(
         "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
         {
@@ -352,8 +742,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       // Get user location
       getUserLocation(leafletMap, L);
 
-      // Load hospitals and blockades
-      loadHospitals(leafletMap, L);
+      // Load initial data
+      fetchIncidents(leafletMap, L);
       fetchRoadBlockades(leafletMap, L);
     });
 
@@ -428,8 +818,11 @@ export default function HospitalMap({ embedded = false, className = "" }) {
 
       setDeviceHeading(heading);
 
-      // Leaflet doesn't support setBearing (Mapbox GL feature)
-      // User marker rotation handles orientation instead
+      // Rotate the map to match device orientation
+      if (map && userLocation) {
+        map.setBearing(heading);
+        map.setView([userLocation.lat, userLocation.lng], map.getZoom());
+      }
     };
 
     const startOrientationTracking = async () => {
@@ -454,10 +847,6 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   }, [isNavigating, map, userLocation]);
 
   const getUserLocation = (leafletMap, L) => {
-    const resolvedLeaflet = L?.default ?? L;
-    if (resolvedLeaflet && !leafletLibRef.current) {
-      leafletLibRef.current = resolvedLeaflet;
-    }
     // Helper function to save location to localStorage
     const saveLocationToStorage = (location) => {
       try {
@@ -500,25 +889,31 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         (position) => {
           const { latitude, longitude } = position.coords;
           const location = { lat: latitude, lng: longitude };
-          liveUserLocationRef.current = location;
+          setUserLocation(location);
 
           // Save current location to localStorage
           saveLocationToStorage(location);
-
-          if (isSimulatingLocationRef.current) {
-            return;
-          }
-
-          setUserLocation(location);
 
           if (leafletMap) {
             // Update location display
             updateLocationDisplay(latitude, longitude);
 
-            // Update hospital distances
-            updateHospitalDistances(location);
+            // Remove previous user marker
+            if (userMarker) {
+              leafletMap.removeLayer(userMarker);
+            }
 
-            placeUserMarker(resolvedLeaflet, latitude, longitude, "live");
+            // Add/update user marker with pulsing animation
+            const newUserMarker = L.marker([latitude, longitude], {
+              icon: L.divIcon({
+                html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse"></div>`,
+                className: "user-location-marker",
+                iconSize: [16, 16],
+                iconAnchor: [8, 8],
+              }),
+            }).addTo(leafletMap);
+
+            setUserMarker(newUserMarker);
 
             // Only center map on first location fix
             if (!userLocation) {
@@ -530,7 +925,15 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           }
         },
         (error) => {
-          console.error("Geolocation error:", error);
+          // Only log critical errors (permission denied)
+          // Timeouts are expected on desktop/laptop without GPS
+          if (error.code === 1) {
+            // PERMISSION_DENIED
+            console.warn(
+              "Location permission denied - emergency features limited"
+            );
+          }
+
           let errorMessage = "Unable to retrieve your location";
 
           switch (error.code) {
@@ -541,55 +944,66 @@ export default function HospitalMap({ embedded = false, className = "" }) {
               errorMessage = "Location information unavailable";
               break;
             case error.TIMEOUT:
-              errorMessage = "Location request timed out";
+              errorMessage = "GPS timeout (testing mode active)";
+              // Don't set location error for timeout - just use default
               break;
           }
 
           // Try to use last known location first
           const lastKnown = getLastKnownLocation();
           if (lastKnown) {
-            liveUserLocationRef.current = lastKnown;
-            if (!isSimulatingLocationRef.current) {
-              setUserLocation(lastKnown);
-              setCurrentLocationDisplay(
-                `Last known location (${errorMessage})\n${lastKnown.lat.toFixed(
-                  6
-                )}, ${lastKnown.lng.toFixed(6)}`
+            setUserLocation(lastKnown);
+            setCurrentLocationDisplay(
+              `Last known location\n${lastKnown.lat.toFixed(
+                6
+              )}, ${lastKnown.lng.toFixed(6)}`
+            );
+            if (leafletMap && L) {
+              // Create marker for last known location (yellow)
+              const lastKnownMarker = L.marker([lastKnown.lat, lastKnown.lng], {
+                icon: L.divIcon({
+                  html: `<div class="w-4 h-4 bg-yellow-500 rounded-full border-2 border-white shadow-lg"></div>`,
+                  className: "last-known-location-marker",
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8],
+                }),
+              }).addTo(leafletMap);
+
+              setUserMarker(lastKnownMarker);
+              leafletMap.setView(
+                [lastKnown.lat, lastKnown.lng],
+                KALINGA_CONFIG.USER_LOCATION_ZOOM
               );
-              updateHospitalDistances(lastKnown);
-              if (leafletMap && resolvedLeaflet) {
-                placeUserMarker(
-                  resolvedLeaflet,
-                  lastKnown.lat,
-                  lastKnown.lng,
-                  "lastKnown"
-                );
-                leafletMap.setView(
-                  [lastKnown.lat, lastKnown.lng],
-                  KALINGA_CONFIG.USER_LOCATION_ZOOM
-                );
-              }
             }
           } else {
-            // Use default TUP Manila location for testing
+            // Use default TUP Manila location for testing/desktop
             const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
-            liveUserLocationRef.current = fallback;
-            if (!isSimulatingLocationRef.current) {
-              setCurrentLocationDisplay("Default location (TUP Manila)");
-              setUserLocation(fallback);
-              updateHospitalDistances(fallback);
-              if (leafletMap && resolvedLeaflet) {
-                placeUserMarker(
-                  resolvedLeaflet,
-                  fallback.lat,
-                  fallback.lng,
-                  "default"
-                );
-                leafletMap.setView(
-                  [fallback.lat, fallback.lng],
-                  KALINGA_CONFIG.DEFAULT_LOCATION.zoom
-                );
-              }
+            setUserLocation(fallback);
+            setCurrentLocationDisplay(
+              `Default location (TUP Manila)\n${fallback.lat.toFixed(
+                6
+              )}, ${fallback.lng.toFixed(6)}`
+            );
+            if (leafletMap && L) {
+              // Create marker for default location (gray)
+              const defaultMarker = L.marker([fallback.lat, fallback.lng], {
+                icon: L.divIcon({
+                  html: `<div class="w-4 h-4 bg-gray-500 rounded-full border-2 border-white shadow-lg"></div>`,
+                  className: "default-location-marker",
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8],
+                }),
+              }).addTo(leafletMap);
+
+              setUserMarker(defaultMarker);
+              leafletMap.setView(
+                [fallback.lat, fallback.lng],
+                KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+              );
+            }
+            // Only set error for permission denied, not timeout
+            if (error.code === 1) {
+              setLocationError(errorMessage);
             }
           }
         },
@@ -606,51 +1020,62 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       // Try to use last known location first
       const lastKnown = getLastKnownLocation();
       if (lastKnown) {
-        liveUserLocationRef.current = lastKnown;
-        if (!isSimulatingLocationRef.current) {
-          setUserLocation(lastKnown);
-          setCurrentLocationDisplay(
-            `Last known location (Geolocation not supported)\n${lastKnown.lat.toFixed(
-              6
-            )}, ${lastKnown.lng.toFixed(6)}`
-          );
-          updateHospitalDistances(lastKnown);
-          if (leafletMap) {
-            ensureLeafletInstance().then((Leaflet) => {
-              placeUserMarker(
-                Leaflet,
-                lastKnown.lat,
-                lastKnown.lng,
-                "lastKnown"
-              );
-            });
+        setUserLocation(lastKnown);
+        setCurrentLocationDisplay(
+          `Last known location (Geolocation not supported)\n${lastKnown.lat.toFixed(
+            6
+          )}, ${lastKnown.lng.toFixed(6)}`
+        );
+        if (leafletMap) {
+          // Import Leaflet to create marker for last known location
+          import("leaflet").then((L) => {
+            const lastKnownMarker = L.default
+              .marker([lastKnown.lat, lastKnown.lng], {
+                icon: L.default.divIcon({
+                  html: `<div class="w-4 h-4 bg-yellow-500 rounded-full border-2 border-white shadow-lg"></div>`,
+                  className: "last-known-location-marker",
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8],
+                }),
+              })
+              .addTo(leafletMap);
 
-            leafletMap.setView(
-              [lastKnown.lat, lastKnown.lng],
-              KALINGA_CONFIG.USER_LOCATION_ZOOM
-            );
-          }
+            setUserMarker(lastKnownMarker);
+          });
+
+          leafletMap.setView(
+            [lastKnown.lat, lastKnown.lng],
+            KALINGA_CONFIG.USER_LOCATION_ZOOM
+          );
         }
       } else {
         // Use default TUP Manila location (Geolocation not supported)
         const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
-        liveUserLocationRef.current = fallback;
-        if (!isSimulatingLocationRef.current) {
-          setUserLocation(fallback);
-          setCurrentLocationDisplay(
-            "TUP Manila (Default - Geolocation not supported)"
-          );
-          updateHospitalDistances(fallback);
-          if (leafletMap) {
-            ensureLeafletInstance().then((Leaflet) => {
-              placeUserMarker(Leaflet, fallback.lat, fallback.lng, "default");
-            });
+        setUserLocation(fallback);
+        setCurrentLocationDisplay(
+          "TUP Manila (Default - Geolocation not supported)"
+        );
+        if (leafletMap) {
+          // Import Leaflet to create marker for default location
+          import("leaflet").then((L) => {
+            const defaultMarker = L.default
+              .marker([fallback.lat, fallback.lng], {
+                icon: L.default.divIcon({
+                  html: `<div class="w-4 h-4 bg-gray-500 rounded-full border-2 border-white shadow-lg"></div>`,
+                  className: "default-location-marker",
+                  iconSize: [16, 16],
+                  iconAnchor: [8, 8],
+                }),
+              })
+              .addTo(leafletMap);
 
-            leafletMap.setView(
-              [fallback.lat, fallback.lng],
-              KALINGA_CONFIG.DEFAULT_LOCATION.zoom
-            );
-          }
+            setUserMarker(defaultMarker);
+          });
+
+          leafletMap.setView(
+            [fallback.lat, fallback.lng],
+            KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+          );
         }
       }
     }
@@ -696,422 +1121,37 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     }
   };
 
-  const updateHospitalDistances = useCallback(
-    (userLoc = null, dataset = effectiveHospitals) => {
-      const referenceList = (
-        Array.isArray(dataset) && dataset.length ? dataset : STATIC_HOSPITALS
-      ).filter((hospital) => {
-        const lat = Number(hospital.lat ?? hospital.latitude);
-        const lng = Number(hospital.lng ?? hospital.longitude);
-        return Number.isFinite(lat) && Number.isFinite(lng);
-      });
-
-      const enriched = referenceList
-        .map((hospital) => {
-          const lat = Number(hospital.lat ?? hospital.latitude);
-          const lng = Number(hospital.lng ?? hospital.longitude);
-          let distance =
-            typeof hospital.distance_km === "number"
-              ? hospital.distance_km
-              : null;
-
-          if (userLoc && Number.isFinite(lat) && Number.isFinite(lng)) {
-            distance = calculateDistance(userLoc.lat, userLoc.lng, lat, lng);
-          }
-
-          return {
-            ...hospital,
-            lat,
-            lng,
-            distance,
-            priority_score:
-              typeof hospital.priority_score === "number"
-                ? hospital.priority_score
-                : 0,
-            capability_score: hospital.capability_score,
-            resource_profile: hospital.resource_profile,
-          };
-        })
-        .sort((a, b) => {
-          if (b.priority_score !== a.priority_score) {
-            return b.priority_score - a.priority_score;
-          }
-          if (a.distance === null || a.distance === undefined) {
-            return 1;
-          }
-          if (b.distance === null || b.distance === undefined) {
-            return -1;
-          }
-          return a.distance - b.distance;
-        });
-
-      setHospitalsWithDistance(enriched);
-    },
-    [effectiveHospitals]
-  );
-
-  const calculateDistance = (lat1, lng1, lat2, lng2) => {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLng = ((lng2 - lng1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
-  const handleSimulatedLocationChange = useCallback(
-    async (coords, options = {}) => {
-      if (!coords) return;
-      const lat = Number(coords.lat);
-      const lng = Number(coords.lng);
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-        return;
-      }
-
-      const location = { lat, lng };
-      setIsSimulatingLocation(true);
-      setUserLocation(location);
-      updateHospitalDistances(location);
-      setCurrentLocationDisplay(
-        `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`
-      );
-
-      const Leaflet = leafletLibRef.current || (await ensureLeafletInstance());
-      placeUserMarker(Leaflet, lat, lng, "simulated");
-
-      if (options.centerMap !== false && map) {
-        map.flyTo(
-          [lat, lng],
-          Math.max(KALINGA_CONFIG.USER_LOCATION_ZOOM, map.getZoom() || 13),
-          {
-            animate: true,
-            duration: 0.9,
-          }
-        );
-      }
-
-      if (destination) {
-        if (simulatedRecalcTimerRef.current) {
-          clearTimeout(simulatedRecalcTimerRef.current);
-        }
-        simulatedRecalcTimerRef.current = setTimeout(() => {
-          drawRoute(
-            destination.lat,
-            destination.lng,
-            false,
-            isNavigating,
-            true,
-            location
-          );
-        }, 400);
-      }
-    },
-    [
-      destination,
-      drawRoute,
-      ensureLeafletInstance,
-      isNavigating,
-      map,
-      placeUserMarker,
-      updateHospitalDistances,
-    ]
-  );
-
-  const handleStopSimulatedLocation = useCallback(async () => {
-    setIsSimulatingLocation(false);
-    const fallbackLocation =
-      liveUserLocationRef.current ||
-      userLocation ||
-      KALINGA_CONFIG.DEFAULT_LOCATION;
-
-    if (!fallbackLocation) {
-      return;
-    }
-
-    setUserLocation(fallbackLocation);
-    updateHospitalDistances(fallbackLocation);
-    setCurrentLocationDisplay(
-      `Live GPS restored\n${fallbackLocation.lat.toFixed(
-        6
-      )}, ${fallbackLocation.lng.toFixed(6)}`
-    );
-    updateLocationDisplay(fallbackLocation.lat, fallbackLocation.lng);
-
-    const Leaflet = leafletLibRef.current || (await ensureLeafletInstance());
-    placeUserMarker(
-      Leaflet,
-      fallbackLocation.lat,
-      fallbackLocation.lng,
-      "live"
-    );
-
-    if (map) {
-      map.flyTo(
-        [fallbackLocation.lat, fallbackLocation.lng],
-        Math.max(KALINGA_CONFIG.USER_LOCATION_ZOOM, map.getZoom() || 13),
+  const fetchIncidents = async (leafletMap, L) => {
+    try {
+      const response = await fetch(
+        `${KALINGA_CONFIG.API_BASE_URL}/api/incidents`,
         {
-          animate: true,
-          duration: 0.9,
-        }
-      );
-    }
-  }, [
-    ensureLeafletInstance,
-    map,
-    placeUserMarker,
-    updateHospitalDistances,
-    updateLocationDisplay,
-    userLocation,
-  ]);
-
-  const loadHospitals = useCallback(
-    (leafletMap, L, dataset = effectiveHospitals) => {
-      if (!leafletMap || !L) return;
-
-      setHospitalMarkers((existingMarkers) => {
-        existingMarkers.forEach((marker) => leafletMap.removeLayer(marker));
-
-        const referenceList = (
-          Array.isArray(dataset) && dataset.length ? dataset : STATIC_HOSPITALS
-        ).filter((hospital) => {
-          const lat = Number(hospital.lat ?? hospital.latitude);
-          const lng = Number(hospital.lng ?? hospital.longitude);
-          return Number.isFinite(lat) && Number.isFinite(lng);
-        });
-
-        const newMarkers = referenceList.map((hospital) => {
-          const lat = Number(hospital.lat ?? hospital.latitude);
-          const lng = Number(hospital.lng ?? hospital.longitude);
-          const hospitalIcon = L.divIcon({
-            className: "hospital-marker",
-            html: `
-            <div style="
-                background: #28a745;
-                color: white;
-                border-radius: 50%;
-                width: 30px;
-                height: 30px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-weight: bold;
-                font-size: 16px;
-                border: 2px solid white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            ">üè•</div>
-          `,
-            iconSize: [30, 30],
-            iconAnchor: [15, 15],
-          });
-
-          const topResources = hospital.resource_profile?.top_resources ?? [];
-          const resourcesHtml = topResources.length
-            ? topResources
-                .map((resource) => {
-                  const badgeColor = resource.is_critical
-                    ? "#fee2e2"
-                    : "#f3f4f6";
-                  const badgeTextColor = resource.is_critical
-                    ? "#b91c1c"
-                    : "#374151";
-                  return `<span style="background:${badgeColor};color:${badgeTextColor};padding:2px 6px;border-radius:10px;font-size:11px;margin:2px;display:inline-block;">${resource.name} (${resource.quantity})</span>`;
-                })
-                .join("")
-            : '<span style="font-size:12px;color:#6b7280;">No live inventory data</span>';
-
-          const servicesHtml = Array.isArray(hospital.services)
-            ? hospital.services
-                .map(
-                  (service) =>
-                    `<span style="background: #e8f5e8; padding: 2px 6px; margin: 2px; border-radius: 10px; font-size: 11px; display: inline-block;">${service}</span>`
-                )
-                .join("")
-            : '<span style="font-size:12px;color:#6b7280;">Live capability data</span>';
-
-          const distanceLabel =
-            typeof hospital.distance_km === "number"
-              ? `${hospital.distance_km.toFixed(2)} km`
-              : typeof hospital.distance === "number"
-              ? `${hospital.distance.toFixed(2)} km`
-              : "Distance unavailable";
-
-          const marker = L.marker([lat, lng], {
-            icon: hospitalIcon,
-          }).addTo(leafletMap);
-
-          marker.bindPopup(`
-          <div style="min-width: 260px;">
-            <h4 style="margin: 0 0 6px 0; color: #15803d; font-weight: bold;">${
-              hospital.name
-            }</h4>
-            <p style="margin: 0 0 4px 0;"><strong>üìç Address:</strong> ${
-              hospital.address || "‚Äî"
-            }</p>
-            <p style="margin: 0 0 4px 0;"><strong>üìû Phone:</strong> ${
-              hospital.contact_number || hospital.phone || "‚Äî"
-            }</p>
-            <p style="margin: 0 0 8px 0;"><strong>üß≠ Distance:</strong> ${distanceLabel}</p>
-            <div style="display:flex;gap:8px;margin-bottom:8px;">
-              <div style="flex:1;background:#ecfdf5;border-radius:10px;padding:6px;text-align:center;">
-                <div style="font-size:16px;font-weight:700;color:#047857;">${
-                  typeof hospital.priority_score === "number"
-                    ? hospital.priority_score.toFixed(2)
-                    : "‚Äî"
-                }</div>
-                <div style="font-size:10px;text-transform:uppercase;color:#047857;">Priority</div>
-              </div>
-              <div style="flex:1;background:#eef2ff;border-radius:10px;padding:6px;text-align:center;">
-                <div style="font-size:16px;font-weight:700;color:#4338ca;">${
-                  typeof hospital.capability_score === "number"
-                    ? hospital.capability_score.toFixed(2)
-                    : "‚Äî"
-                }</div>
-                <div style="font-size:10px;text-transform:uppercase;color:#4338ca;">Capability</div>
-              </div>
-            </div>
-            <div style="margin-bottom: 8px;">
-              <strong>üè• Services:</strong><br>
-              ${servicesHtml}
-            </div>
-            <div style="margin-bottom: 8px;">
-              <strong>üì¶ Resources:</strong><br>
-              ${resourcesHtml}
-            </div>
-            <button onclick="getDirectionsToHospital(${lat}, ${lng})"
-              style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; width: 100%; margin-top: 4px;">
-              üó∫Ô∏è Get Directions
-            </button>
-          </div>
-        `);
-
-          return marker;
-        });
-
-        return newMarkers;
-      });
-    },
-    [effectiveHospitals]
-  );
-
-  const fetchHospitalsFromApi = useCallback(
-    async (coords = null) => {
-      try {
-        setHospitalSyncMeta((prev) => ({
-          ...prev,
-          loading: true,
-          error: null,
-        }));
-        const params = new URLSearchParams();
-        if (Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)) {
-          params.append("lat", coords.lat);
-          params.append("lng", coords.lng);
-        }
-
-        const queryString = params.toString();
-        let url = `${KALINGA_CONFIG.API_BASE_URL}/api/hospitals`;
-        if (queryString) {
-          url += `?${queryString}`;
-        }
-
-        const token = localStorage.getItem("token");
-        const response = await fetch(url, {
           headers: {
             Accept: "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        });
-
-        if (!response.ok) {
-          throw new Error(`Unable to load hospitals (${response.status})`);
         }
-
-        const payload = await response.json();
-        const list = Array.isArray(payload?.data)
-          ? payload.data
-          : Array.isArray(payload)
-          ? payload
-          : [];
-
-        const normalized = list
-          .map((hospital) => ({
-            ...hospital,
-            lat: Number(hospital.lat ?? hospital.latitude),
-            lng: Number(hospital.lng ?? hospital.longitude),
-          }))
-          .filter(
-            (hospital) =>
-              Number.isFinite(hospital.lat) && Number.isFinite(hospital.lng)
-          );
-
-        setHospitalCatalog(normalized);
-        updateHospitalDistances(coords ?? userLocation ?? null, normalized);
-        setHospitalSyncMeta({
-          loading: false,
-          error: null,
-          lastFetchKey:
-            Number.isFinite(coords?.lat) && Number.isFinite(coords?.lng)
-              ? `${coords.lat.toFixed(3)},${coords.lng.toFixed(3)}`
-              : "global",
-        });
-      } catch (error) {
-        console.warn("Hospital catalog unavailable", error);
-        setHospitalSyncMeta((prev) => ({
-          ...prev,
-          loading: false,
-          error: error.message || "Unable to load hospitals",
-        }));
-      }
-    },
-    [updateHospitalDistances, userLocation]
-  );
-
-  useEffect(() => {
-    if (!map || !effectiveHospitals.length) return;
-
-    let active = true;
-    import("leaflet").then((L) => {
-      if (!active) return;
-      loadHospitals(map, L.default, effectiveHospitals);
-    });
-
-    return () => {
-      active = false;
-    };
-  }, [map, effectiveHospitals, loadHospitals]);
-
-  useEffect(() => {
-    if (hospitalSyncMeta.loading) return;
-    if (hospitalCatalog.length) return;
-    if (hospitalSyncMeta.lastFetchKey === "global") return;
-    fetchHospitalsFromApi();
-  }, [fetchHospitalsFromApi, hospitalCatalog.length, hospitalSyncMeta]);
-
-  useEffect(() => {
-    if (!userLocation) return;
-    if (
-      !Number.isFinite(userLocation.lat) ||
-      !Number.isFinite(userLocation.lng)
-    ) {
-      return;
+      );
+      const payload = await response.json();
+      const incidentList = Array.isArray(payload?.data)
+        ? payload.data
+        : payload;
+      const normalized = Array.isArray(incidentList) ? incidentList : [];
+      const activeIncidents = normalized.filter(
+        (incident) =>
+          incident && !["resolved", "cancelled"].includes(incident.status)
+      );
+      setIncidents(activeIncidents);
+      displayIncidentsOnMap(activeIncidents, leafletMap, L);
+    } catch (error) {
+      console.error("Error fetching incidents:", error);
+      setIncidents([]);
     }
-
-    const coarseKey = `${userLocation.lat.toFixed(
-      3
-    )},${userLocation.lng.toFixed(3)}`;
-    if (hospitalSyncMeta.lastFetchKey === coarseKey) {
-      return;
-    }
-
-    fetchHospitalsFromApi(userLocation);
-  }, [userLocation, hospitalSyncMeta.lastFetchKey, fetchHospitalsFromApi]);
+  };
 
   // Debounced fetch for blockades to reduce API calls
   const debounceTimerRef = useRef(null);
+  const routeAlertTimerRef = useRef(null);
   const debouncedFetchBlockades = useCallback((leafletMap, L) => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -1157,6 +1197,102 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     }
   };
 
+  const displayIncidentsOnMap = (incidentData, leafletMap, L) => {
+    if (!leafletMap || !L) return;
+
+    // Clear existing incident markers
+    incidentMarkers.forEach((marker) => leafletMap.removeLayer(marker));
+
+    const newMarkers = [];
+    const statusLabelMap = {
+      reported: "Waiting Dispatch",
+      acknowledged: "Acknowledged",
+      en_route: "En Route",
+      on_scene: "On Scene",
+      needs_support: "Needs Support",
+      resolved: "Resolved",
+      cancelled: "Cancelled",
+    };
+
+    incidentData.forEach((incident) => {
+      const lat =
+        typeof incident.lat === "number"
+          ? incident.lat
+          : parseFloat(incident?.lat);
+      const lng =
+        typeof incident.lng === "number"
+          ? incident.lng
+          : parseFloat(incident?.lng);
+
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        const style = INCIDENT_STATUS_STYLES[incident.status] ?? {
+          color: "#4b5563",
+          fillColor: "#e5e7eb",
+        };
+
+        const marker = L.circleMarker([lat, lng], {
+          radius: 9,
+          color: style.color,
+          weight: 3,
+          fillColor: style.fillColor,
+          fillOpacity: 0.85,
+        }).addTo(leafletMap);
+
+        const formattedDescription = incident.description
+          ? incident.description.replace(/(?:\r\n|\r|\n)/g, "<br />")
+          : "";
+
+        const respondersAssigned = incident.responders_assigned ?? 0;
+        const respondersRequired = incident.responders_required ?? 1;
+        const assignedNames = Array.isArray(incident.assignments)
+          ? incident.assignments
+              .map((assignment) => assignment?.responder?.name)
+              .filter(Boolean)
+              .join(", ") || "Unassigned"
+          : "Unassigned";
+
+        marker.bindPopup(`
+                    <div>
+                        <h4 style="margin: 0 0 8px 0; color: #111827; font-size: 15px;">${
+                          incident.type
+                        }</h4>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Status:</strong> ${
+                          statusLabelMap[incident.status] ?? incident.status
+                        }</p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Responders:</strong> ${respondersAssigned} / ${respondersRequired}</p>
+                        <p style="margin: 0 0 4px 0; font-size: 12px;"><strong>Assigned to:</strong> ${assignedNames}</p>
+                        <p style="margin: 0 0 6px 0; font-size: 12px; color: #4b5563;">
+                            <strong>Location:</strong> ${incident.location}
+                        </p>
+                        ${
+                          formattedDescription
+                            ? `<p style="margin: 0 0 8px 0; font-size: 11px; color: #6b7280;">${formattedDescription}</p>`
+                            : ""
+                        }
+                        <div style="display: flex; gap: 6px;">
+                            <button onclick="drawRouteToIncident(${lat}, ${lng})"
+                                style="background: #2563eb; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                                Get Route
+                            </button>
+                            <button onclick="startNavigationToIncident(${lat}, ${lng})"
+                                style="background: #16a34a; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px;">
+                                =É∫° Navigate
+                            </button>
+                        </div>
+                    </div>
+                `);
+
+        marker.on("click", () => {
+          drawRoute(parseFloat(lat), parseFloat(lng), false);
+        });
+
+        newMarkers.push(marker);
+      }
+    });
+
+    setIncidentMarkers(newMarkers);
+  };
+
   const displayBlockadesOnMap = (blockadeData, leafletMap, L) => {
     if (!leafletMap || !L) return;
 
@@ -1192,7 +1328,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                     border: 2px solid #fff;
                     box-shadow: 0 4px 8px rgba(0,0,0,0.25);
                     font-size: 18px;
-                ">üöß</div>`;
+                ">=É‹∫</div>`;
 
       const barrierIcon = L.divIcon({
         className: "blockade-marker",
@@ -1235,7 +1371,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         blockade.title
       }')" 
                             style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; width: 100%;">
-                        üóëÔ∏è Remove Blockade
+                        =É˘Ên+≈ Remove Blockade
                     </button>
                 </div>
             `);
@@ -1246,35 +1382,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     setBlockadeMarkers(newMarkers);
   };
 
-  const findNearestHospital = () => {
-    if (!userLocation || hospitalsWithDistance.length === 0) {
-      alert("User location not available or no hospitals loaded.");
-      return;
-    }
-
-    const nearest = hospitalsWithDistance[0];
-
-    // Ask user if they want to start navigation
-    const startNavigation = window.confirm(
-      `Nearest hospital: ${nearest.name}\nDistance: ${nearest.distance.toFixed(
-        2
-      )} km\nAddress: ${nearest.address}\n\nStart turn-by-turn navigation?`
-    );
-
-    // Draw route to nearest hospital
-    drawRoute(nearest.lat, nearest.lng, true, startNavigation);
-
-    // Fly to hospital if not navigating
-    if (!startNavigation && map) {
-      map.flyTo([nearest.lat, nearest.lng], 16, {
-        animate: true,
-        duration: 1.5,
-      });
-    }
-  };
-
   // Function to clear all routes and destination markers
-  function clearAllRoutes() {
+  const clearAllRoutes = () => {
     if (map) {
       if (routeLine) {
         map.removeLayer(routeLine);
@@ -1287,26 +1396,42 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     }
   };
 
-  async function drawRoute(
+  const dismissRouteAlert = useCallback(() => {
+    if (routeAlertTimerRef.current) {
+      clearTimeout(routeAlertTimerRef.current);
+      routeAlertTimerRef.current = null;
+    }
+    setRouteAlert(null);
+  }, [setRouteAlert]);
+
+  const pushRouteAlert = useCallback(
+    (alertPayload) => {
+      if (routeAlertTimerRef.current) {
+        clearTimeout(routeAlertTimerRef.current);
+        routeAlertTimerRef.current = null;
+      }
+
+      if (!alertPayload) {
+        setRouteAlert(null);
+        return;
+      }
+
+      setRouteAlert(alertPayload);
+      routeAlertTimerRef.current = setTimeout(() => {
+        setRouteAlert(null);
+        routeAlertTimerRef.current = null;
+      }, ROUTE_ALERT_TIMEOUT_MS);
+    },
+    [setRouteAlert]
+  );
+
+  const drawRoute = async (
     destLat,
     destLng,
-    isNearest = false,
-    enableNavigation = false,
-    isAutoRecalculation = false,
-    originOverride = null
-  ) {
-    const originLocation = originOverride || userLocation;
-
-    if (!originLocation || !map || isDrawingRoute) return;
-
-    if (!isAutoRecalculation) {
-      setActiveRouteLogId(null);
-      setRouteSessionStart(new Date().toISOString());
-    } else {
-      setIsRecalculatingRoute(true);
-    }
-
-    setDestination({ lat: destLat, lng: destLng });
+    isAssigned = false,
+    enableNavigation = false
+  ) => {
+    if (!userLocation || !map || isDrawingRoute) return;
 
     // Set drawing state to prevent concurrent route requests
     setIsDrawingRoute(true);
@@ -1314,6 +1439,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     try {
       // Clear all existing routes first
       clearAllRoutes();
+      dismissRouteAlert();
 
       // Import Leaflet for markers
       const L = await import("leaflet");
@@ -1321,204 +1447,107 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       const newDestMarker = L.default
         .marker([destLat, destLng])
         .addTo(map)
-        .bindPopup("Hospital Destination")
+        .bindPopup("Destination")
         .openPopup();
       setDestMarker(newDestMarker);
 
-      // Fetch all active blockades for route optimization
-      const blockadeResponse = await fetch(
-        `${KALINGA_CONFIG.API_BASE_URL}/api/road-blockades`,
-        {
-          headers: {
-            Accept: "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-      const blockades = await blockadeResponse.json();
-
       // Enhanced OSRM query with step details for navigation
-      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${originLocation.lng},${originLocation.lat};${destLng},${destLat}`;
-      const params = enableNavigation
-        ? "?overview=full&geometries=geojson&steps=true&annotations=true"
-        : "?overview=full&geometries=geojson";
+      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${userLocation.lng},${userLocation.lat};${destLng},${destLat}`;
+      const baseParamOptions = {
+        overview: "full",
+        geometries: "geojson",
+        alternatives: "3",
+      };
 
-      const url = baseUrl + params;
-      const response = await fetch(url);
+      if (enableNavigation) {
+        baseParamOptions.steps = "true";
+        baseParamOptions.annotations = "true";
+      }
+
+      const paramString = new URLSearchParams(baseParamOptions).toString();
+      const response = await fetch(`${baseUrl}?${paramString}`);
       const data = await response.json();
 
       if (data.routes && data.routes.length > 0) {
-        const route = data.routes[0];
-        const coords = route.geometry.coordinates.map((c) => [c[1], c[0]]);
+        const normalizedBlockades = blockades
+          .map(normalizeBlockadePosition)
+          .filter(Boolean);
+
+        let selection = selectBestRouteVariant(
+          data.routes,
+          normalizedBlockades
+        );
+
+        if (
+          selection?.selected?.conflicts?.length &&
+          normalizedBlockades.length
+        ) {
+          const detourSelection = await tryResolveRouteWithDynamicDetours({
+            osrmServer: KALINGA_CONFIG.OSRM_SERVER,
+            baseParamOptions,
+            start: { lat: userLocation.lat, lng: userLocation.lng },
+            end: { lat: destLat, lng: destLng },
+            normalizedBlockades,
+            currentSelection: selection,
+          });
+
+          if (detourSelection) {
+            selection = detourSelection;
+          }
+        }
+
+        const chosenRoute = selection?.selected?.route || data.routes[0];
+        const coords =
+          selection?.selected?.coords ||
+          (Array.isArray(chosenRoute.geometry?.coordinates)
+            ? chosenRoute.geometry.coordinates.map((point) => [
+                point[1],
+                point[0],
+              ])
+            : []);
+        const lineColor = isAssigned ? "#28a745" : "#007bff";
 
         // Store route coordinates for navigation
         setRouteCoordinates(coords);
 
-        // Check if route passes through any blockades
-        let routePassesThroughBlockade = false;
-        let blockingBlockade = null;
+        const newRouteLine = L.default
+          .polyline(coords, { color: lineColor, weight: 5 })
+          .addTo(map);
+        setRouteLine(newRouteLine);
 
-        for (const blockade of blockades) {
-          const blockadeLat = parseFloat(blockade.start_lat);
-          const blockadeLng = parseFloat(blockade.start_lng);
-
-          // Check if any route point is near this blockade (within ~100m)
-          for (const coord of coords) {
-            const distance = calculateDistance(
-              coord[0],
-              coord[1],
-              blockadeLat,
-              blockadeLng
-            );
-            if (distance < 0.1) {
-              // Within 100 meters
-              routePassesThroughBlockade = true;
-              blockingBlockade = blockade;
-              break;
-            }
-          }
-          if (routePassesThroughBlockade) break;
+        const alertDetails = deriveRouteAlert(selection);
+        if (alertDetails) {
+          pushRouteAlert(alertDetails);
         }
 
-        if (!routePassesThroughBlockade) {
-          // Clear route - no blockades
-          const lineColor = isNearest ? "#28a745" : "#007bff";
-          const newRouteLine = L.default
-            .polyline(coords, { color: lineColor, weight: 5 })
-            .addTo(map);
-          setRouteLine(newRouteLine);
+        // If navigation is enabled, process turn-by-turn instructions
+        if (
+          enableNavigation &&
+          chosenRoute.legs &&
+          chosenRoute.legs[0] &&
+          chosenRoute.legs[0].steps
+        ) {
+          const instructions = processRouteInstructions(
+            chosenRoute.legs[0].steps
+          );
+          setRouteInstructions(instructions);
+          setCurrentInstructionIndex(0);
 
-          const eventType = isAutoRecalculation ? "recalculation" : "initial";
-          await logRouteUpdate({
-            routeCoords: coords,
-            distance: route.distance,
-            duration: route.duration,
-            originLocation,
-            eventType,
-            destinationLocation: { lat: destLat, lng: destLng },
-            deviationInfo: isAutoRecalculation ? pendingDeviation : null,
-            metadata: {
-              isNearest,
-              enableNavigation,
-              rerouted: false,
-            },
-          });
-
-          // If navigation is enabled, process turn-by-turn instructions
-          if (
-            enableNavigation &&
-            route.legs &&
-            route.legs[0] &&
-            route.legs[0].steps
-          ) {
-            const instructions = processRouteInstructions(route.legs[0].steps);
-            setRouteInstructions(instructions);
-            setCurrentInstructionIndex(0);
-
-            if (instructions.length > 0) {
-              setCurrentInstruction(instructions[0]);
-              setDistanceToNextTurn(instructions[0].distance);
-            }
-
-            // Enable navigation mode
-            setIsNavigating(true);
-
-            // Start high-accuracy location tracking for navigation
-            startNavigationTracking();
-          } else {
-            // Regular route display mode
-            map.fitBounds(newRouteLine.getBounds(), {
-              padding: [50, 50],
-            });
+          if (instructions.length > 0) {
+            setCurrentInstruction(instructions[0]);
+            setDistanceToNextTurn(instructions[0].distance);
           }
+
+          // Enable navigation mode
+          setIsNavigating(true);
+
+          // Start high-accuracy location tracking for navigation
+          startNavigationTracking();
         } else {
-          // Try to reroute around blockade
-          const detourLat = parseFloat(blockingBlockade.start_lat) + 0.001;
-          const detourLng = parseFloat(blockingBlockade.start_lng) + 0.001;
-          const detourParams = enableNavigation
-            ? "?overview=full&geometries=geojson&steps=true&annotations=true"
-            : "?overview=full&geometries=geojson";
-          const detourUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${originLocation.lng},${originLocation.lat};${detourLng},${detourLat};${destLng},${destLat}${detourParams}`;
-
-          try {
-            const detourResponse = await fetch(detourUrl);
-            const detourData = await detourResponse.json();
-
-            if (detourData.routes && detourData.routes.length > 0) {
-              const detourRoute = detourData.routes[0];
-              const detourCoords = detourRoute.geometry.coordinates.map((c) => [
-                c[1],
-                c[0],
-              ]);
-              const lineColor = isNearest ? "#28a745" : "#ff9800";
-              const newRouteLine = L.default
-                .polyline(detourCoords, {
-                  color: lineColor,
-                  weight: 5,
-                  dashArray: "10,10",
-                })
-                .addTo(map);
-              setRouteLine(newRouteLine);
-
-              // Store route coordinates for navigation
-              setRouteCoordinates(detourCoords);
-
-              const detourEventType = isAutoRecalculation
-                ? "recalculation"
-                : "initial";
-              await logRouteUpdate({
-                routeCoords: detourCoords,
-                distance: detourRoute.distance,
-                duration: detourRoute.duration,
-                originLocation,
-                eventType: detourEventType,
-                destinationLocation: { lat: destLat, lng: destLng },
-                deviationInfo: isAutoRecalculation ? pendingDeviation : null,
-                metadata: {
-                  isNearest,
-                  enableNavigation,
-                  rerouted: true,
-                  blockade_id: blockingBlockade?.id ?? null,
-                },
-              });
-
-              // If navigation is enabled, process turn-by-turn instructions for detour
-              if (
-                enableNavigation &&
-                detourRoute.legs &&
-                detourRoute.legs[0] &&
-                detourRoute.legs[0].steps
-              ) {
-                const instructions = processRouteInstructions(
-                  detourRoute.legs[0].steps
-                );
-                setRouteInstructions(instructions);
-                setCurrentInstructionIndex(0);
-
-                if (instructions.length > 0) {
-                  setCurrentInstruction(instructions[0]);
-                  setDistanceToNextTurn(instructions[0].distance);
-                }
-
-                // Enable navigation mode
-                setIsNavigating(true);
-
-                // Start high-accuracy location tracking for navigation
-                startNavigationTracking();
-              } else {
-                map.fitBounds(newRouteLine.getBounds(), {
-                  padding: [50, 50],
-                });
-              }
-
-              alert("Blockade detected on route! Rerouted to avoid blockade.");
-            } else {
-              alert("No available detour route found.");
-            }
-          } catch (detourError) {
-            console.error("Error fetching detour route:", detourError);
-            alert("Error calculating detour route.");
-          }
+          // Regular route display mode
+          map.fitBounds(newRouteLine.getBounds(), {
+            padding: [50, 50],
+          });
         }
       } else {
         alert("No route found.");
@@ -1529,62 +1558,15 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     } finally {
       // Always reset drawing state
       setIsDrawingRoute(false);
-      if (isAutoRecalculation) {
-        setIsRecalculatingRoute(false);
-      }
-      if (isAutoRecalculation) {
-        setPendingDeviation(null);
-      }
     }
-  }
-
-  const handleRouteDeviation = useCallback(
-    (currentLocation, distanceFromRouteMeters) => {
-      if (!destination || isRecalculatingRoute) {
-        return;
-      }
-
-      const now = Date.now();
-      if (
-        lastDeviationTimestamp &&
-        now - lastDeviationTimestamp < DEVIATION_MIN_INTERVAL_MS
-      ) {
-        return;
-      }
-
-      setLastDeviationTimestamp(now);
-      setPendingDeviation({
-        location: currentLocation,
-        extra: {
-          distance_from_route_m: Math.round(distanceFromRouteMeters),
-        },
-      });
-
-      drawRoute(
-        destination.lat,
-        destination.lng,
-        false,
-        isNavigating,
-        true,
-        currentLocation
-      );
-    },
-    [
-      DEVIATION_MIN_INTERVAL_MS,
-      destination,
-      drawRoute,
-      isNavigating,
-      isRecalculatingRoute,
-      lastDeviationTimestamp,
-    ]
-  );
+  };
 
   // Process OSRM route steps into turn-by-turn instructions
   const processRouteInstructions = (steps) => {
     return steps.map((step, index) => {
       const maneuver = step.maneuver;
       let instruction = "";
-      let icon = "‚û°Ô∏è";
+      let icon = "GPÌn+≈";
 
       // Convert OSRM maneuver types to readable instructions
       switch (maneuver.type) {
@@ -1592,38 +1574,38 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           instruction = `Head ${getDirection(maneuver.bearing_after)} on ${
             step.name || "the road"
           }`;
-          icon = "üöÄ";
+          icon = "=É‹«";
           break;
         case "turn":
           const direction = maneuver.modifier;
           instruction = `Turn ${direction} onto ${step.name || "the road"}`;
-          icon = direction.includes("left") ? "‚¨ÖÔ∏è" : "‚û°Ô∏è";
+          icon = direction.includes("left") ? "Gº‡n+≈" : "GPÌn+≈";
           break;
         case "merge":
           instruction = `Merge ${maneuver.modifier || ""} onto ${
             step.name || "the road"
           }`;
-          icon = "üîÄ";
+          icon = "=Éˆ«";
           break;
         case "ramp":
           instruction = `Take the ramp ${maneuver.modifier || ""} onto ${
             step.name || "the highway"
           }`;
-          icon = "üõ£Ô∏è";
+          icon = "=É¢˙n+≈";
           break;
         case "roundabout":
           instruction = `Take the ${getOrdinal(
             maneuver.exit || 1
           )} exit at the roundabout onto ${step.name || "the road"}`;
-          icon = "üîÑ";
+          icon = "=Éˆ‰";
           break;
         case "arrive":
           instruction = "You have arrived at your destination";
-          icon = "üèÅ";
+          icon = "=É≈¸";
           break;
         default:
           instruction = `Continue on ${step.name || "the road"}`;
-          icon = "‚¨ÜÔ∏è";
+          icon = "GºÂn+≈";
       }
 
       return {
@@ -1690,14 +1672,13 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         // Update user location
         setUserLocation(newLocation);
         updateLocationDisplay(newLocation.lat, newLocation.lng);
-        updateHospitalDistances(newLocation);
 
         // Update navigation progress
         updateNavigationProgress(newLocation);
 
         // Update user marker on map
-        if (map && userMarkerRef.current) {
-          userMarkerRef.current.setLatLng([newLocation.lat, newLocation.lng]);
+        if (map && userMarker) {
+          userMarker.setLatLng([newLocation.lat, newLocation.lng]);
 
           // Keep user centered during navigation
           if (isNavigating) {
@@ -1706,11 +1687,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         }
       },
       (error) => {
-        // Only log permission errors during navigation
-        if (error.code === 1) {
-          console.warn("Navigation tracking requires location permission");
-        }
-        // Timeout errors are expected on desktop - no logging needed
+        console.error("Navigation tracking error:", error);
       },
       options
     );
@@ -1738,13 +1715,6 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         closestPointIndex = index;
       }
     });
-
-    const distanceFromRouteMeters = minDistance * 1000;
-
-    if (distanceFromRouteMeters > OFF_ROUTE_THRESHOLD_METERS && destination) {
-      handleRouteDeviation(currentLocation, distanceFromRouteMeters);
-      return;
-    }
 
     // Update current instruction based on progress
     const currentInstruction = routeInstructions[currentInstructionIndex];
@@ -1795,12 +1765,6 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     setCurrentInstruction(null);
     setDistanceToNextTurn(0);
     setRouteCoordinates([]);
-    setDestination(null);
-    setActiveRouteLogId(null);
-    setRouteSessionStart(null);
-    setPendingDeviation(null);
-    setLastDeviationTimestamp(null);
-    setIsRecalculatingRoute(false);
 
     // Clear high-accuracy tracking
     if (highAccuracyWatchId) {
@@ -1814,11 +1778,72 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       setOrientationWatchId(null);
     }
 
-    // Note: Leaflet doesn't have setBearing method (Mapbox GL feature)
-    // No action needed for Leaflet maps
+    // Reset map bearing
+    if (map) {
+      map.setBearing(0);
+    }
+
+    dismissRouteAlert();
 
     // Clear route from map
     clearAllRoutes();
+  };
+
+  const assignNearestIncident = async () => {
+    if (!userLocation) {
+      alert("User location not available.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${KALINGA_CONFIG.API_BASE_URL}/api/incidents/assign-nearest`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            responder_lat: userLocation.lat,
+            responder_lng: userLocation.lng,
+            responder_id: user.id,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.incident) {
+        // Ask user if they want to start navigation
+        const startNavigation = window.confirm(
+          `Assigned to ${data.incident.type} at ${
+            data.incident.location
+          }\nDistance: ${data.distance.toFixed(
+            2
+          )} km\n\nStart turn-by-turn navigation?`
+        );
+
+        drawRoute(
+          parseFloat(data.incident.lat),
+          parseFloat(data.incident.lng),
+          true,
+          startNavigation
+        );
+
+        // Refresh incidents list
+        if (map) {
+          const L = await import("leaflet");
+          fetchIncidents(map, L.default);
+        }
+      } else {
+        alert(data.message || "No incidents available for assignment.");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error assigning incident.");
+    }
   };
 
   const toggleBlockadeReporting = () => {
@@ -1929,7 +1954,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             description: blockadeForm.description.trim(),
             start_lat: selectedBlockadeLocation.lat,
             start_lng: selectedBlockadeLocation.lng,
-            road_name: "Unknown Road",
+            road_name: "Unknown Road", // Could be improved with reverse geocoding
             severity: blockadeForm.severity,
             reported_by: user.id,
           }),
@@ -2014,11 +2039,10 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const refreshData = async () => {
     if (!map) return;
 
-    await fetchHospitalsFromApi(userLocation ?? null);
     const L = await import("leaflet");
 
     // Refresh all data regardless of selected tab
-    loadHospitals(map, L.default);
+    fetchIncidents(map, L.default);
     fetchRoadBlockades(map, L.default);
   };
 
@@ -2033,18 +2057,14 @@ export default function HospitalMap({ embedded = false, className = "" }) {
 
   const recenterMap = () => {
     if (userLocation && map) {
-      map.flyTo([userLocation.lat, userLocation.lng], 15, {
+      map.flyTo([userLocation.lat, userLocation.lng], 17, {
         animate: true,
         duration: 1.2,
       });
 
-      if (userMarkerRef.current) {
+      if (userMarker) {
         setTimeout(() => {
-          userMarkerRef.current.openPopup();
-          // Refresh hospital distances
-          if (selectedTab === "hospitals") {
-            updateHospitalDistances(userLocation);
-          }
+          userMarker.openPopup();
         }, 1300);
       }
     }
@@ -2060,16 +2080,27 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     };
   }, []);
 
-  // Make functions available globally for popup buttons
+  // Make removeBlockade available globally for popup buttons
   useEffect(() => {
     window.removeBlockadeHandler = removeBlockade;
-    window.getDirectionsToHospital = drawRoute;
+    window.drawRouteToIncident = drawRoute;
+    window.startNavigationToIncident = (lat, lng) =>
+      drawRoute(lat, lng, false, true);
 
     return () => {
       delete window.removeBlockadeHandler;
-      delete window.getDirectionsToHospital;
+      delete window.drawRouteToIncident;
+      delete window.startNavigationToIncident;
     };
   }, [removeBlockade, drawRoute]);
+
+  useEffect(() => {
+    return () => {
+      if (routeAlertTimerRef.current) {
+        clearTimeout(routeAlertTimerRef.current);
+      }
+    };
+  }, []);
 
   const mapShellClass = embedded
     ? `relative w-full h-full overflow-hidden ${className}`.trim()
@@ -2077,24 +2108,31 @@ export default function HospitalMap({ embedded = false, className = "" }) {
 
   const mapShell = (
     <div className={mapShellClass}>
-      <LocationSimulator
-        currentLocation={
-          userLocation ??
-          liveUserLocationRef.current ??
-          KALINGA_CONFIG.DEFAULT_LOCATION
-        }
-        isActive={isSimulatingLocation}
-        onLocationChange={handleSimulatedLocationChange}
-        onStopSimulation={handleStopSimulatedLocation}
-        buttonLabel="Simulate patient"
-      />
+      {routeAlert && (
+        <div className="absolute top-4 left-1/2 z-50 flex -translate-x-1/2 transform">
+          <div
+            className={`flex items-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold shadow-lg ${
+              ROUTE_ALERT_STYLES[routeAlert.type] || ROUTE_ALERT_STYLES.info
+            }`}
+          >
+            {routeAlert.icon && (
+              <span className="text-lg" aria-hidden="true">
+                {routeAlert.icon}
+              </span>
+            )}
+            <span className="max-w-xs md:max-w-sm leading-snug">
+              {routeAlert.message}
+            </span>
+          </div>
+        </div>
+      )}
       {/* Mobile Bottom Interface - Google Maps Style */}
       <div className="md:hidden">
         {/* User Info Dropdown */}
         {showUserInfo && (
           <div className="fixed top-4 left-4 right-4 z-50 bg-white rounded-lg shadow-xl p-4 max-h-48 overflow-y-auto">
             <div className="flex items-center mb-3">
-              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-3">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1">
@@ -2105,12 +2143,12 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                 onClick={() => setShowUserInfo(false)}
                 className="p-2 hover:bg-gray-100 rounded-full"
               >
-                ‚úï
+                G£Ú
               </button>
             </div>
             <div className="p-3 bg-blue-50 rounded text-sm">
               <div className="font-semibold text-blue-800">
-                üìç Current Location
+                =ÉÙÏ Current Location
               </div>
               <div
                 className="text-blue-700 mt-1"
@@ -2122,8 +2160,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           </div>
         )}
 
-        {/* Hospitals List Dropdown */}
-        {showHospitalsList && (
+        {/* Incidents List Dropdown */}
+        {showIncidentsList && (
           <div
             className={`absolute left-4 right-4 z-40 bg-white rounded-lg shadow-lg flex flex-col ${
               isNavigating
@@ -2132,55 +2170,41 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             }`}
           >
             <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-              <h3 className="font-semibold text-lg">üè• Hospitals</h3>
+              <h3 className="font-semibold text-lg">=É‹ø Incidents</h3>
               <button
-                onClick={() => setShowHospitalsList(false)}
+                onClick={() => setShowIncidentsList(false)}
                 className="p-2 hover:bg-gray-100 rounded-full"
               >
-                ‚úï
+                G£Ú
               </button>
             </div>
             <div className="p-2 flex-1 overflow-y-auto">
-              {hospitalsWithDistance.length > 0 ? (
-                hospitalsWithDistance.map((hospital, index) => (
+              {incidents.length > 0 ? (
+                incidents.map((incident, index) => (
                   <div
                     key={index}
-                    className="p-3 border rounded-lg hover:bg-gray-50 mb-2"
+                    className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer mb-2"
+                    onClick={() => {
+                      if (incident.lat && incident.lng) {
+                        drawRoute(incident.lat, incident.lng, true);
+                      }
+                      setShowIncidentsList(false);
+                    }}
                   >
-                    <div className="font-semibold text-green-600">
-                      {hospital.name}
+                    <div className="font-semibold text-red-600">
+                      {incident.type}
                     </div>
                     <div className="text-sm text-gray-600">
-                      {hospital.address}
+                      {incident.location}
                     </div>
-                    <div className="text-xs text-blue-600 mt-1 mb-2">
-                      üìç {hospital.distance} ‚Ä¢ {hospital.phone}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          drawRoute(hospital.lat, hospital.lng, false, false);
-                          setShowHospitalsList(false);
-                        }}
-                        className="flex-1 px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600"
-                      >
-                        üó∫Ô∏è Route
-                      </button>
-                      <button
-                        onClick={() => {
-                          drawRoute(hospital.lat, hospital.lng, false, true);
-                          setShowHospitalsList(false);
-                        }}
-                        className="flex-1 px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600"
-                      >
-                        üß≠ Navigate
-                      </button>
+                    <div className="text-xs text-gray-500 mt-1 whitespace-pre-line">
+                      {incident.description}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="p-4 text-gray-500 text-center">
-                  No hospitals loaded
+                  No incidents available
                 </div>
               )}
             </div>
@@ -2197,12 +2221,12 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             }`}
           >
             <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-              <h3 className="font-semibold text-lg">üöß Road Issues</h3>
+              <h3 className="font-semibold text-lg">=É‹∫ Road Issues</h3>
               <button
                 onClick={() => setShowBlockadesList(false)}
                 className="p-2 hover:bg-gray-100 rounded-full"
               >
-                ‚úï
+                G£Ú
               </button>
             </div>
             <div className="p-2 flex-1 overflow-y-auto">
@@ -2223,13 +2247,13 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                       {blockade.title}
                     </div>
                     <div className="text-sm text-gray-600">
-                      {blockade.road_name} ‚Ä¢ {blockade.severity.toUpperCase()}
+                      {blockade.road_name} G«Û {blockade.severity.toUpperCase()}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
                       {blockade.description}
                     </div>
                     <div className="text-xs text-gray-400 mt-1">
-                      By: {blockade.reported_by} ‚Ä¢ {blockade.reported_at_human}
+                      By: {blockade.reported_by} G«Û {blockade.reported_at_human}
                     </div>
                   </div>
                 ))
@@ -2252,18 +2276,18 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             }`}
           >
             <div className="flex items-center justify-between p-4 border-b flex-shrink-0">
-              <h3 className="font-semibold text-lg">üöß Report Road Issue</h3>
+              <h3 className="font-semibold text-lg">=É‹∫ Report Road Issue</h3>
               <button
                 onClick={cancelBlockadeReport}
                 className="p-2 hover:bg-gray-100 rounded-full"
               >
-                ‚úï
+                G£Ú
               </button>
             </div>
 
             <div className="p-4 flex-1 overflow-y-auto">
               <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-sm">
-                <strong>üìç Click anywhere on the map</strong>
+                <strong>=ÉÙÏ Click anywhere on the map</strong>
                 <br />
                 The system will automatically snap to the nearest road.
               </div>
@@ -2351,7 +2375,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                   className="p-2 rounded-full bg-red-500 hover:bg-red-600 text-white"
                   title="Stop Navigation"
                 >
-                  <span className="text-lg">‚ùå</span>
+                  <span className="text-lg">G•Ó</span>
                 </button>
               </div>
             </div>
@@ -2368,50 +2392,48 @@ export default function HospitalMap({ embedded = false, className = "" }) {
               <button
                 onClick={() => {
                   setShowUserInfo(!showUserInfo);
-                  setShowHospitalsList(false);
+                  setShowIncidentsList(false);
                   setShowBlockadesList(false);
                   setBlockadeReportingMode(false);
                 }}
                 className={`flex flex-col items-center p-2 rounded-lg ${
-                  showUserInfo
-                    ? "bg-blue-100 text-blue-600"
-                    : "text-gray-600 hover:bg-green-50"
+                  showUserInfo ? "bg-blue-100 text-blue-600" : "text-gray-600"
                 }`}
               >
-                <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold mb-1">
+                <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold mb-1">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
                 <span className="text-xs">Profile</span>
               </button>
 
-              {/* Hospitals Button */}
+              {/* Incidents Button */}
               <button
                 onClick={() => {
-                  setShowHospitalsList(!showHospitalsList);
+                  setShowIncidentsList(!showIncidentsList);
                   setShowUserInfo(false);
                   setShowBlockadesList(false);
                   setBlockadeReportingMode(false);
                 }}
                 className={`flex flex-col items-center p-2 rounded-lg ${
-                  showHospitalsList
-                    ? "bg-green-100 text-green-600"
-                    : "text-gray-600 hover:bg-blue-50"
+                  showIncidentsList
+                    ? "bg-blue-100 text-blue-600"
+                    : "text-gray-600"
                 }`}
               >
-                <span className="text-lg mb-1">üè•</span>
-                <span className="text-xs">Hospitals</span>
+                <span className="text-lg mb-1">=É‹ø</span>
+                <span className="text-xs">Incidents</span>
               </button>
 
-              {/* Find Nearest Hospital */}
+              {/* Auto-Assign Nearest */}
               <button
                 onClick={() => {
-                  findNearestHospital();
+                  assignNearestIncident();
                   setBlockadeReportingMode(false);
                 }}
-                className="flex flex-col items-center p-2 rounded-lg text-gray-600 hover:bg-violet-50"
+                className="flex flex-col items-center p-2 rounded-lg text-gray-600 hover:bg-green-50"
               >
-                <span className="text-lg mb-1">üéØ</span>
-                <span className="text-xs">Nearest</span>
+                <span className="text-lg mb-1">=Éƒª</span>
+                <span className="text-xs">Assign</span>
               </button>
 
               {/* Road Issues Button */}
@@ -2419,16 +2441,16 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                 onClick={() => {
                   setShowBlockadesList(!showBlockadesList);
                   setShowUserInfo(false);
-                  setShowHospitalsList(false);
+                  setShowIncidentsList(false);
                   setBlockadeReportingMode(false);
                 }}
                 className={`flex flex-col items-center p-2 rounded-lg ${
                   showBlockadesList
                     ? "bg-red-100 text-red-600"
-                    : "text-gray-600 hover:bg-yellow-50"
+                    : "text-gray-600"
                 }`}
               >
-                <span className="text-lg mb-1">üöß</span>
+                <span className="text-lg mb-1">=É‹∫</span>
                 <span className="text-xs">Issues</span>
               </button>
 
@@ -2437,7 +2459,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                 onClick={() => {
                   toggleBlockadeReporting();
                   setShowUserInfo(false);
-                  setShowHospitalsList(false);
+                  setShowIncidentsList(false);
                   setShowBlockadesList(false);
                 }}
                 className={`flex flex-col items-center p-2 rounded-lg ${
@@ -2447,7 +2469,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                 }`}
               >
                 <span className="text-lg mb-1">
-                  {blockadeReportingMode ? "‚ùå" : "üìç"}
+                  {blockadeReportingMode ? "G•Ó" : "=ÉÙÏ"}
                 </span>
                 <span className="text-xs">
                   {blockadeReportingMode ? "Cancel" : "Report"}
@@ -2457,9 +2479,13 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           </div>
         </div>
 
-        {/* Recenter Button - Always visible when location available */}
+        {/* Recenter Button - Always visible */}
         <button
-          onClick={recenterMap}
+          onClick={() => {
+            if (userLocation) {
+              centerMapOnLocation(userLocation.lat, userLocation.lng);
+            }
+          }}
           className="absolute top-20 right-4 z-40 bg-white p-3 rounded-full shadow-lg hover:bg-gray-100"
           title="Recenter map to current location"
           style={{ display: userLocation ? "block" : "none" }}
@@ -2470,7 +2496,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             viewBox="0 0 24 24"
             strokeWidth={2}
             stroke="currentColor"
-            className="w-6 h-6 text-green-600"
+            className="w-6 h-6 text-blue-600"
           >
             <path
               strokeLinecap="round"
@@ -2518,8 +2544,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
 
         <button
           onClick={refreshData}
-          className="w-12 h-12 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg mobile-touch-button flex items-center justify-center transition-colors duration-200"
-          title="Refresh all map data (hospitals and road issues)"
+          className="w-12 h-12 bg-red-600 hover:bg-red-700 text-white rounded-full shadow-lg mobile-touch-button flex items-center justify-center transition-colors duration-200"
+          title="Refresh all map data (incidents and road issues)"
         >
           <svg
             className="w-5 h-5"
@@ -2540,12 +2566,12 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       {/* Desktop Sidebar - Hidden on Mobile */}
       <div className="hidden md:block absolute left-0 top-0 h-full bg-white shadow-lg z-35 w-80 overflow-y-auto">
         <div className="p-4">
-          <h3 className="text-lg font-semibold mb-4">Hospital Navigator</h3>
+          <h3 className="text-lg font-semibold mb-4">Response Map</h3>
 
           {/* User Info */}
-          <div className="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
+          <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
             <div className="flex items-center mb-2">
-              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-2">
+              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-2">
                 {user.name.charAt(0).toUpperCase()}
               </div>
               <div>
@@ -2555,7 +2581,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             </div>
             <div className="mt-2 p-2 bg-blue-100 rounded text-xs">
               <div className="font-semibold text-blue-800">
-                üìç Current Location
+                =ÉÙÏ Current Location
               </div>
               <div
                 className="text-blue-700 mt-1"
@@ -2569,10 +2595,10 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           {/* Action Buttons */}
           <div className="mb-4 space-y-2">
             <button
-              onClick={findNearestHospital}
-              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+              onClick={assignNearestIncident}
+              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm"
             >
-              üè• Find Nearest Hospital
+              =É‹ø Auto-Assign Nearest
             </button>
             <button
               onClick={toggleBlockadeReporting}
@@ -2582,7 +2608,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                   : "bg-red-600 hover:bg-red-700 text-white"
               }`}
             >
-              {blockadeReportingMode ? "‚ùå Cancel" : "üöß Report Road Issue"}
+              {blockadeReportingMode ? "G•Ó Cancel" : "=É‹∫ Report Issue"}
             </button>
           </div>
 
@@ -2591,7 +2617,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             <div className="mb-4 p-3 bg-gray-50 rounded-lg">
               <h4 className="font-semibold text-sm mb-2">Report Road Issue</h4>
               <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-xs">
-                <strong>üìç Click anywhere on the map</strong>
+                <strong>=ÉÙÏ Click anywhere on the map</strong>
                 <br />
                 The system will automatically snap to the nearest road.
               </div>
@@ -2653,14 +2679,14 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           {/* Tab Buttons */}
           <div className="flex mb-4 border-b">
             <button
-              onClick={() => setSelectedTab("hospitals")}
+              onClick={() => setSelectedTab("incidents")}
               className={`flex-1 py-2 px-4 text-sm ${
-                selectedTab === "hospitals"
-                  ? "border-b-2 border-green-500 text-green-600 bg-green-50"
+                selectedTab === "incidents"
+                  ? "border-b-2 border-blue-500 text-blue-600 bg-blue-50"
                   : "text-gray-600 hover:text-gray-800"
               }`}
             >
-              üè• Hospitals
+              =É‹ø Incidents
             </button>
             <button
               onClick={() => setSelectedTab("blockades")}
@@ -2670,34 +2696,36 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                   : "text-gray-600 hover:text-gray-800"
               }`}
             >
-              üöß Road Issues
+              =É‹∫ Road Issues
             </button>
           </div>
 
           {/* Items List */}
           <div className="space-y-2">
-            {selectedTab === "hospitals" ? (
-              hospitalsWithDistance.length > 0 ? (
-                hospitalsWithDistance.map((hospital, index) => (
+            {selectedTab === "incidents" ? (
+              incidents.length > 0 ? (
+                incidents.map((incident, index) => (
                   <div
                     key={index}
                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                    onClick={() => drawRoute(hospital.lat, hospital.lng)}
+                    onClick={() => {
+                      if (incident.lat && incident.lng) {
+                        drawRoute(incident.lat, incident.lng, true);
+                      }
+                    }}
                   >
-                    <div className="font-semibold text-green-600 text-sm">
-                      {hospital.name}
+                    <div className="font-semibold text-red-600 text-sm">
+                      {incident.type}
                     </div>
-                    <div className="text-xs text-gray-600">
-                      {hospital.address}
-                    </div>
-                    <div className="text-xs text-blue-600 mt-1">
-                      üìç {hospital.distance} ‚Ä¢ {hospital.phone}
+                    <div className="text-sm">{incident.location}</div>
+                    <div className="text-xs text-gray-600 mt-1 whitespace-pre-line">
+                      {incident.description}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="p-3 text-gray-500 text-sm">
-                  No hospitals loaded
+                  No incidents available
                 </div>
               )
             ) : blockades.length > 0 ? (
@@ -2713,13 +2741,13 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                     {blockade.title}
                   </div>
                   <div className="text-xs text-gray-600">
-                    {blockade.road_name} ‚Ä¢ {blockade.severity.toUpperCase()}
+                    {blockade.road_name} G«Û {blockade.severity.toUpperCase()}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
                     {blockade.description}
                   </div>
                   <div className="text-xs text-gray-400 mt-1">
-                    By: {blockade.reported_by} ‚Ä¢ {blockade.reported_at_human}
+                    By: {blockade.reported_by} G«Û {blockade.reported_at_human}
                   </div>
                 </div>
               ))

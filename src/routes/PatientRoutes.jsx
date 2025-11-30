@@ -49,6 +49,11 @@ const Weather = lazy(() =>
     default: module.Weather,
   }))
 );
+const PatientHospitalMap = lazy(() =>
+  import("../pages-patients/HospitalMap").then((module) => ({
+    default: module.PatientHospitalMap,
+  }))
+);
 const Notifications = lazy(() =>
   import("../pages-patients/Notifications").then((module) => ({
     default: module.Notifications,
@@ -134,6 +139,14 @@ export const PatientRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={patientRoles}>
           <Weather />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.PATIENT.HOSPITAL_MAP}
+      element={
+        <ProtectedRoute allowedRoles={patientRoles}>
+          <PatientHospitalMap />
         </ProtectedRoute>
       }
     />
