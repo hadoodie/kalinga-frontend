@@ -30,6 +30,7 @@ export const ROUTES = {
     NOTIFICATIONS: "/patient/notifications",
     SETTINGS: "/patient/settings",
     PROFILE: "/patient/profile",
+    RESCUE_TRACKER: "/patient/rescue-tracker",
   },
 
   // Admin routes

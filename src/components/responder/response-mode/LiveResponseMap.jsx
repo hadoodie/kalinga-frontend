@@ -19,6 +19,9 @@ import "leaflet/dist/leaflet.css";
 import { KALINGA_CONFIG } from "../../../constants/mapConfig";
 import LocationSimulator from "../../maps/LocationSimulator";
 import { useBlockades } from "../../../hooks/useBlockades";
+import TurnByTurnNavigation from "./TurnByTurnNavigation";
+import { useResponderLocationBroadcast } from "../../../hooks/useResponderLocationBroadcast";
+import api from "../../../services/api";
 
 const DEFAULT_POSITION = [
   KALINGA_CONFIG.DEFAULT_LOCATION.lat,
@@ -418,8 +421,39 @@ export default function LiveResponseMap({
   const [routeError, setRouteError] = useState(null);
   const [routeSelection, setRouteSelection] = useState(null);
   const [routeAlert, setRouteAlert] = useState(null);
+  const [navigationEnabled, setNavigationEnabled] = useState(false);
+  const [responderHeading, setResponderHeading] = useState(null);
   const trackingWatchId = useRef(null);
   const mapRef = useRef(null);
+
+  // Broadcast responder location to patient via WebSocket.
+  // Enable while incident is active (responder en route or on scene) so patient can track.
+  const {
+    position: broadcastPosition,
+    heading: broadcastHeading,
+    isTracking: isBroadcasting,
+    broadcast,
+  } = useResponderLocationBroadcast({
+    incidentId: incident?.id,
+    enabled:
+      !!incident &&
+      ["acknowledged", "en_route", "on_scene"].includes(incident?.status),
+    broadcastInterval: 5000,
+  });
+
+  // Keep map responder state in sync with the broadcast hook (if it produces a position)
+  useEffect(() => {
+    if (
+      broadcastPosition &&
+      Array.isArray(broadcastPosition) &&
+      broadcastPosition.length === 2
+    ) {
+      setResponderPosition([broadcastPosition[0], broadcastPosition[1]]);
+    }
+    if (typeof broadcastHeading !== "undefined" && broadcastHeading !== null) {
+      setResponderHeading(broadcastHeading);
+    }
+  }, [broadcastPosition, broadcastHeading]);
 
   // Use the real-time blockades hook (WebSocket + polling fallback every 2 mins)
   const {
@@ -488,7 +522,16 @@ export default function LiveResponseMap({
         if (isSimulatingRef.current) {
           return;
         }
-        setResponderPosition(coords);
+        // Prefer the broadcast hook's position when available (keeps what we send to server as source of truth)
+        if (
+          broadcastPosition &&
+          Array.isArray(broadcastPosition) &&
+          broadcastPosition.length === 2
+        ) {
+          setResponderPosition([broadcastPosition[0], broadcastPosition[1]]);
+        } else {
+          setResponderPosition(coords);
+        }
       },
       () => {
         if (!responderPosition && !isSimulatingRef.current) {
@@ -617,6 +660,33 @@ export default function LiveResponseMap({
     };
   }, [routingKey, normalizedBlockades]);
 
+  // If we have a selected route and broadcasting is active, send ETA and distance
+  useEffect(() => {
+    if (!routeSelection || !isBroadcasting) return;
+
+    const selected =
+      routeSelection.selected?.original || routeSelection.selected || null;
+    if (!selected) return;
+
+    const durationSec =
+      selected.duration ?? selected?.legs?.[0]?.duration ?? null;
+    const distanceMeters =
+      selected.distance ?? selected?.legs?.[0]?.distance ?? null;
+
+    if (typeof broadcast === "function") {
+      try {
+        const etaMinutes = durationSec ? Math.round(durationSec / 60) : null;
+        const distanceKm = distanceMeters
+          ? Number((distanceMeters / 1000).toFixed(3))
+          : null;
+        // Fire a manual broadcast to include ETA and remaining distance
+        broadcast({ eta: etaMinutes, distance: distanceKm });
+      } catch (e) {
+        console.warn("Failed to broadcast ETA/distance", e);
+      }
+    }
+  }, [routeSelection, isBroadcasting, broadcast]);
+
   const currentCenter = useMemo(() => {
     if (mode === "hospital") {
       if (isOnScene && responderPosition) {
@@ -648,6 +718,43 @@ export default function LiveResponseMap({
         duration: 0.6,
       });
     }
+
+    // Send simulated location to server so patient Emergency Mode receives the update.
+    // We do this directly rather than relying on navigator.geolocation so that
+    // the broadcasting endpoint receives the same payload as real devices.
+    (async () => {
+      try {
+        if (!incident?.id) return;
+
+        // If we have a selected route, derive ETA and distance to include in the simulated update
+        let eta_minutes = null;
+        let distance_remaining_km = null;
+
+        try {
+          const selected = routeSelection?.selected?.original || routeSelection?.selected || null;
+          const durationSec = selected?.duration ?? selected?.legs?.[0]?.duration ?? null;
+          const distanceMeters = selected?.distance ?? selected?.legs?.[0]?.distance ?? null;
+          if (durationSec) eta_minutes = Math.round(durationSec / 60);
+          if (distanceMeters) distance_remaining_km = Number((distanceMeters / 1000).toFixed(3));
+        } catch (e) {
+          // ignore route parse errors
+        }
+
+        await api.post(`/incidents/${incident.id}/responder-location`, {
+          latitude: lat,
+          longitude: lng,
+          // simulation doesn't provide heading/speed/accuracy by default
+          heading: null,
+          speed: null,
+          accuracy: null,
+          eta_minutes,
+          distance_remaining_km,
+        });
+      } catch (err) {
+        // don't block the UI on API errors; log for diagnostics
+        console.warn("Simulator: failed to post simulated location", err);
+      }
+    })();
   };
 
   const handleStopSimulatedLocation = () => {
@@ -812,7 +919,7 @@ export default function LiveResponseMap({
           </div>
         )}
 
-        {(routeAlert || routeError) && !routeLoading && (
+        {(routeAlert || routeError) && !routeLoading && !navigationEnabled && (
           <div className="pointer-events-none absolute inset-x-0 bottom-4 mx-auto w-fit max-w-[320px] rounded-xl bg-white px-4 py-2 text-sm shadow-lg">
             <div className="flex items-center gap-2 text-xs font-medium text-slate-700">
               {routeAlert ? (
@@ -828,6 +935,48 @@ export default function LiveResponseMap({
             </div>
           </div>
         )}
+
+        {/* Turn-by-Turn Navigation Overlay */}
+        {navigationEnabled && responderPosition && (
+          <TurnByTurnNavigation
+            isActive={navigationEnabled}
+            destination={
+              mode === "hospital" ? hospitalPosition : incidentPosition
+            }
+            destinationName={
+              mode === "hospital"
+                ? selectedHospital?.name || "Hospital"
+                : incident?.location || "Incident Site"
+            }
+            currentPosition={responderPosition}
+            heading={responderHeading}
+            onClose={() => setNavigationEnabled(false)}
+            onRouteUpdate={(route) => {
+              // Optionally update the main map's route when navigation fetches a new route
+              if (route?.geometry?.coordinates) {
+                const coords = route.geometry.coordinates.map(([lng, lat]) => [
+                  lat,
+                  lng,
+                ]);
+                setRoutePoints(coords);
+              }
+            }}
+            incident={incident}
+          />
+        )}
+
+        {/* Navigation Toggle Button */}
+        {!navigationEnabled &&
+          responderPosition &&
+          (mode === "hospital" ? hospitalPosition : incidentPosition) && (
+            <button
+              onClick={() => setNavigationEnabled(true)}
+              className="absolute bottom-20 right-4 z-[1000] flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95"
+            >
+              <Navigation2 className="h-5 w-5" />
+              Start Navigation
+            </button>
+          )}
       </div>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 text-xs text-gray-600">
