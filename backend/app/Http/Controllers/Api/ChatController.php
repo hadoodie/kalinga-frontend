@@ -10,6 +10,7 @@ use App\Models\Incident;
 use App\Models\IncidentStatusUpdate;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\IncidentIntelService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -19,6 +20,10 @@ use Illuminate\Validation\ValidationException;
 
 class ChatController extends Controller
 {
+    public function __construct(private IncidentIntelService $incidentIntelService)
+    {
+    }
+
     public function getConversations(Request $request)
     {
         $user = $request->user();
@@ -37,18 +42,39 @@ class ChatController extends Controller
 
         $conversationIds = $conversations->pluck('id')->filter()->all();
 
+        // Get active incident for each conversation (non-archived incidents only)
+        $activeIncidentsByConversation = Incident::query()
+            ->whereIn('conversation_id', $conversationIds)
+            ->whereNotIn('status', [Incident::STATUS_RESOLVED, Incident::STATUS_CANCELLED])
+            ->orderByDesc('created_at')
+            ->get()
+            ->keyBy('conversation_id');
+
+        // Only fetch messages that belong to active (non-archived) incidents
+        // or messages without an incident_id (legacy/general chat)
         $messagesByConversation = Message::query()
             ->with([
                 'sender:id,name,role',
                 'receiver:id,name,role',
             ])
             ->whereIn('conversation_id', $conversationIds)
+            ->where(function ($query) {
+                // Include messages without incident (legacy)
+                $query->whereNull('incident_id')
+                    // Or messages from non-archived incidents
+                    ->orWhereHas('incident', function ($incidentQuery) {
+                        $incidentQuery->whereNotIn('status', [
+                            Incident::STATUS_RESOLVED,
+                            Incident::STATUS_CANCELLED,
+                        ]);
+                    });
+            })
             ->orderBy('created_at')
             ->get()
             ->groupBy('conversation_id');
 
         $normalized = $conversations
-            ->map(function (Conversation $conversation) use ($user, $messagesByConversation) {
+            ->map(function (Conversation $conversation) use ($user, $messagesByConversation, $activeIncidentsByConversation) {
                 $otherUser = $conversation->user_id1 === $user->id
                     ? $conversation->user2
                     : $conversation->user1;
@@ -77,6 +103,9 @@ class ChatController extends Controller
                     'profile_image' => $selfUser->profile_image,
                 ] : null;
 
+                // Get active incident for this conversation (if any)
+                $activeIncident = $activeIncidentsByConversation[$conversation->id] ?? null;
+
                 $messages = ($messagesByConversation[$conversation->id] ?? collect())
                     ->map(function (Message $message) {
                         return [
@@ -85,9 +114,11 @@ class ChatController extends Controller
                             'senderId' => $message->sender_id,
                             'receiverId' => $message->receiver_id,
                             'sender' => $message->sender?->name,
+                            'senderRole' => $message->sender?->role,
                             'timestamp' => optional($message->created_at)->toIso8601String(),
                             'isRead' => true,
                             'isSystemMessage' => false,
+                            'incidentId' => $message->incident_id,
                         ];
                     })
                     ->values();
@@ -102,6 +133,9 @@ class ChatController extends Controller
                     'category' => $this->mapCategory($otherUser->role ?? null),
                     'unreadCount' => 0,
                     'isArchived' => (bool) $conversation->is_archived,
+                    // Include active incident ID for incident-scoped messaging
+                    'activeIncidentId' => $activeIncident?->id,
+                    'incidentStatus' => $activeIncident?->status,
                     'lastMessage' => $lastMessage['text'] ?? $conversation->lastMessage?->message,
                     'lastMessageTime' => $lastMessage['timestamp']
                         ?? optional($conversation->lastMessage?->created_at)->toIso8601String(),
@@ -123,14 +157,45 @@ class ChatController extends Controller
     public function getMessages(Request $request, int $otherUserId)
     {
         $user = $request->user();
+        $incidentId = $request->query('incident_id');
+        $conversationId = $request->query('conversation_id');
 
-        $messages = Message::with([
-            'sender:id,name',
-            'receiver:id,name',
+        $query = Message::with([
+            'sender:id,name,role',
+            'receiver:id,name,role',
         ])
-            ->whereNull('group_id')
-            ->where(function ($query) use ($user, $otherUserId) {
-                $query->where(function ($inner) use ($user, $otherUserId) {
+            ->whereNull('group_id');
+
+        // STRICT INCIDENT SCOPING: If incident_id is provided, ONLY return messages for that incident.
+        // This prevents archived/closed incident messages from appearing in new conversations.
+        if ($incidentId) {
+            $incidentId = (int) $incidentId;
+
+            // Verify the incident exists and is not resolved/cancelled if strict isolation is needed
+            $incident = Incident::find($incidentId);
+            if (!$incident) {
+                return response()->json(['data' => []]);
+            }
+
+            // Strictly filter by incident_id only - no fallback to user pair
+            $query->where('incident_id', $incidentId);
+        } elseif ($conversationId) {
+            // If conversation_id is provided without incident_id, filter by conversation
+            // but exclude messages from archived/resolved incidents
+            $query->where('conversation_id', (int) $conversationId)
+                ->where(function ($q) {
+                    $q->whereNull('incident_id')
+                        ->orWhereHas('incident', function ($incidentQuery) {
+                            $incidentQuery->whereNotIn('status', [
+                                Incident::STATUS_RESOLVED,
+                                Incident::STATUS_CANCELLED,
+                            ]);
+                        });
+                });
+        } else {
+            // Legacy fallback: filter by user pair but exclude messages from archived incidents
+            $query->where(function ($q) use ($user, $otherUserId) {
+                $q->where(function ($inner) use ($user, $otherUserId) {
                     $inner->where('sender_id', $user->id)
                         ->where('receiver_id', $otherUserId);
                 })->orWhere(function ($inner) use ($user, $otherUserId) {
@@ -138,7 +203,20 @@ class ChatController extends Controller
                         ->where('receiver_id', $user->id);
                 });
             })
+            ->where(function ($q) {
+                $q->whereNull('incident_id')
+                    ->orWhereHas('incident', function ($incidentQuery) {
+                        $incidentQuery->whereNotIn('status', [
+                            Incident::STATUS_RESOLVED,
+                            Incident::STATUS_CANCELLED,
+                        ]);
+                    });
+            });
+        }
+
+        $messages = $query
             ->orderBy('created_at')
+            ->limit(500)
             ->get()
             ->map(function (Message $message) use ($user) {
                 return [
@@ -147,10 +225,12 @@ class ChatController extends Controller
                     'senderId' => $message->sender_id,
                     'receiverId' => $message->receiver_id,
                     'sender' => $message->sender?->name,
+                    'senderRole' => $message->sender?->role,
                     'timestamp' => optional($message->created_at)->toIso8601String(),
                     'isRead' => true,
                     'isSystemMessage' => false,
                     'isOwn' => $message->sender_id === $user->id,
+                    'incidentId' => $message->incident_id,
                 ];
             });
 
@@ -168,6 +248,7 @@ class ChatController extends Controller
             'message' => ['required_without:group_id', 'nullable', 'string'],
             'group_id' => ['nullable', 'integer', 'exists:groups,id'],
             'emergency_payload' => ['nullable', 'array'],
+            'incident_id' => ['nullable', 'integer', 'exists:incidents,id'],
         ]);
 
         if ((int) $validated['receiver_id'] === $user->id && empty($validated['group_id'])) {
@@ -181,10 +262,41 @@ class ChatController extends Controller
 
         $conversationId = null;
         $conversationModel = null;
+        $incidentId = $validated['incident_id'] ?? null;
+        $incident = null;
 
         if (!$groupId) {
             $conversationModel = $this->firstOrCreateConversation($user->id, $receiverId);
             $conversationId = $conversationModel->id;
+        }
+
+        if ($incidentId && !$conversationId) {
+            throw ValidationException::withMessages([
+                'conversation_id' => 'Incident-scoped messages require a direct conversation.',
+            ]);
+        }
+
+        if ($incidentId) {
+            $incident = Incident::query()->find($incidentId);
+
+            if (!$incident) {
+                throw ValidationException::withMessages([
+                    'incident_id' => 'Incident not found.',
+                ]);
+            }
+
+            if ($conversationId && $incident->conversation_id && (int) $incident->conversation_id !== (int) $conversationId) {
+                throw ValidationException::withMessages([
+                    'conversation_id' => 'Conversation does not match the specified incident.',
+                ]);
+            }
+
+            if ($conversationId && !$incident->conversation_id) {
+                $incident->conversation_id = $conversationId;
+                $incident->save();
+            } elseif (!$conversationId && $incident->conversation_id) {
+                $conversationId = $incident->conversation_id;
+            }
         }
 
         $message = Message::create([
@@ -193,6 +305,7 @@ class ChatController extends Controller
             'receiver_id' => $groupId ? null : $receiverId,
             'group_id' => $groupId,
             'conversation_id' => $conversationId,
+            'incident_id' => $incidentId,
         ]);
 
         if ($conversationId) {
@@ -206,6 +319,33 @@ class ChatController extends Controller
         }
 
         $message->load(['sender:id,name,role,profile_image', 'receiver:id,name,role,profile_image']);
+
+        if (!$incident && $conversationId) {
+            $incident = Incident::query()
+                ->where('conversation_id', $conversationId)
+                ->whereNotIn('status', [Incident::STATUS_RESOLVED, Incident::STATUS_CANCELLED])
+                ->latest('created_at')
+                ->first();
+
+            if ($incident && !$incidentId) {
+                $incidentId = $incident->id;
+                $message->incident_id = $incidentId;
+                $message->save();
+            }
+        }
+
+        if ($incidentId && !$message->incident_id) {
+            $message->incident_id = $incidentId;
+            $message->save();
+        }
+
+        if ($incident && optional($message->sender)->role === 'patient') {
+            $updatedInsights = $this->incidentIntelService->updateFromMessage($incident, $message);
+
+            if ($updatedInsights) {
+                broadcast(new IncidentUpdated($incident))->toOthers();
+            }
+        }
 
         $senderPayload = $message->sender ? [
             'id' => $message->sender->id,
@@ -241,6 +381,7 @@ class ChatController extends Controller
         $conversationPayload = [
             'id' => $conversationId ?? 'user-' . ($participant['id'] ?? 'unknown'),
             'conversationId' => $conversationId,
+            'incident_id' => $incidentId,
             'participant' => $participant,
             'participants' => collect([$senderPayload, $receiverPayload])->filter()->values()->all(),
             'sender' => $senderPayload,
@@ -267,6 +408,7 @@ class ChatController extends Controller
             conversationPayload: $conversationPayload,
             receiverPayload: $receiverPayload,
             emergencyPayload: $emergencyPayload,
+            activeIncident: $incident,
         );
 
         $responseData = array_merge($messagePayload, [
@@ -292,7 +434,8 @@ class ChatController extends Controller
         Message $patientMessage,
         array $conversationPayload,
         ?array $receiverPayload,
-        ?array $emergencyPayload
+        ?array $emergencyPayload,
+        ?Incident $activeIncident = null
     ): ?array {
         if (empty($emergencyPayload) || $sender->role !== 'patient') {
             return null;
@@ -369,7 +512,12 @@ class ChatController extends Controller
             ]);
         }
 
-        $incident = Incident::create($incidentData);
+        $incident = $activeIncident ?? Incident::create($incidentData);
+
+        if (!$activeIncident) {
+            $patientMessage->incident_id = $incident->id;
+            $patientMessage->save();
+        }
 
         IncidentStatusUpdate::create([
             'incident_id' => $incident->id,
@@ -395,6 +543,7 @@ class ChatController extends Controller
             'receiver_id' => $sender->id,
             'group_id' => null,
             'conversation_id' => $conversationId,
+            'incident_id' => $incident->id,
         ]);
 
         Conversation::whereKey($conversationId)->update([

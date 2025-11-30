@@ -119,7 +119,8 @@ class IncidentApiController extends Controller
         $messages = $this->fetchConversationMessages(
             $patient->id,
             $responder->id,
-            $conversation?->id
+            $conversation?->id,
+            $incident->id
         );
 
         $payload = $this->formatConversationPayload(
@@ -532,9 +533,22 @@ class IncidentApiController extends Controller
     }
 
     /**
+     * Fetch messages strictly scoped to an incident.
+     *
+     * IMPORTANT: This method enforces incident-scoped message isolation.
+     * When an incident_id is provided, ONLY messages belonging to that incident
+     * are returned. This prevents archived/closed incident messages from leaking
+     * into new conversations between the same patient/responder pair.
+     *
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
-    private function fetchConversationMessages(int $userA, int $userB, ?int $conversationId = null, int $limit = 200): Collection
+    private function fetchConversationMessages(
+        int $userA,
+        int $userB,
+        ?int $conversationId = null,
+        ?int $incidentId = null,
+        int $limit = 200
+    ): Collection
     {
         $query = Message::query()
             ->with([
@@ -544,19 +558,42 @@ class IncidentApiController extends Controller
             ->whereNull('group_id')
             ->orderByDesc('created_at');
 
-        $query->where(function ($builder) use ($userA, $userB, $conversationId) {
-            if ($conversationId) {
-                $builder->where('conversation_id', $conversationId);
-            }
-
-            $builder->orWhere(function ($inner) use ($userA, $userB) {
-                $inner->where(function ($q) use ($userA, $userB) {
-                    $q->where('sender_id', $userA)->where('receiver_id', $userB);
-                })->orWhere(function ($q) use ($userA, $userB) {
-                    $q->where('sender_id', $userB)->where('receiver_id', $userA);
+        // STRICT INCIDENT SCOPING: Always prioritize incident_id filtering.
+        // This ensures that each incident's conversation is completely isolated.
+        if ($incidentId) {
+            // Only return messages for this specific incident - no fallbacks
+            $query->where('incident_id', $incidentId);
+        } elseif ($conversationId) {
+            // Filter by conversation but exclude messages from archived/resolved incidents
+            $query->where('conversation_id', $conversationId)
+                ->where(function ($q) {
+                    $q->whereNull('incident_id')
+                        ->orWhereHas('incident', function ($incidentQuery) {
+                            $incidentQuery->whereNotIn('status', [
+                                Incident::STATUS_RESOLVED,
+                                Incident::STATUS_CANCELLED,
+                            ]);
+                        });
                 });
+        } else {
+            // Legacy fallback: filter by user pair but exclude archived incident messages
+            $query->where(function ($builder) use ($userA, $userB) {
+                $builder->where(function ($inner) use ($userA, $userB) {
+                    $inner->where('sender_id', $userA)->where('receiver_id', $userB);
+                })->orWhere(function ($inner) use ($userA, $userB) {
+                    $inner->where('sender_id', $userB)->where('receiver_id', $userA);
+                });
+            })
+            ->where(function ($q) {
+                $q->whereNull('incident_id')
+                    ->orWhereHas('incident', function ($incidentQuery) {
+                        $incidentQuery->whereNotIn('status', [
+                            Incident::STATUS_RESOLVED,
+                            Incident::STATUS_CANCELLED,
+                        ]);
+                    });
             });
-        });
+        }
 
         return $query
             ->limit($limit)
@@ -574,8 +611,10 @@ class IncidentApiController extends Controller
                     'receiverId' => $message->receiver_id,
                     'sender' => $message->sender?->name,
                     'sender_name' => $message->sender?->name,
+                    'senderRole' => $message->sender?->role,
                     'timestamp' => $timestamp,
                     'createdAt' => $timestamp,
+                    'incidentId' => $message->incident_id,
                 ];
             });
     }

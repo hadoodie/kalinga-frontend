@@ -1,27 +1,9 @@
 import { Loader2 } from "lucide-react";
-import { useState, useEffect } from "react";
-import { formatDistanceToNow } from 'date-fns';
-import api from "../services/api"; 
+import { formatDistanceToNow } from "date-fns";
+import { useNotifications } from "../hooks/useNotifications";
 
 export default function Notifs() {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true); // Set loading to true at the start
-        const response = await api.get('/notifications');
-        setNotifications(response.data);
-      } catch (error) {
-        console.error("Failed to fetch notifications:", error);
-      } finally {
-        setLoading(false); // Set loading to false at the end
-      }
-    };
-
-    fetchNotifications();
-  }, []); // Empty array means this runs once on mount
+  const { notifications, loading, markAllAsRead } = useNotifications();
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 space-y-6">
@@ -30,7 +12,10 @@ export default function Notifs() {
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary flex items-center gap-3">
           Notifications
         </h1>
-        <button className="mt-3 md:mt-0 px-4 py-2 text-sm rounded-md bg-primary text-white hover:bg-green-700 transition">
+        <button
+          onClick={markAllAsRead}
+          className="mt-3 md:mt-0 px-4 py-2 text-sm rounded-md bg-primary text-white hover:bg-green-700 transition"
+        >
           Mark all as read
         </button>
       </header>
@@ -45,7 +30,9 @@ export default function Notifs() {
           notifications.map((notif) => (
             <div
               key={notif.id}
-              className="flex flex-col text-left sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-gray-50 transition"
+              className={`flex flex-col text-left sm:flex-row sm:items-center justify-between px-4 py-3 hover:bg-gray-50 transition ${
+                !notif.read_at ? "bg-blue-50" : ""
+              }`}
             >
               <div className="flex-1">
                 <h3 className="text-sm font-semibold text-gray-800">
@@ -54,7 +41,9 @@ export default function Notifs() {
                 <p className="text-sm text-gray-600">{notif.description}</p>
               </div>
               <span className="text-xs text-gray-500 mt-1 sm:mt-0 sm:ml-4 whitespace-nowrap">
-                {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                {formatDistanceToNow(new Date(notif.created_at), {
+                  addSuffix: true,
+                })}
               </span>
             </div>
           ))

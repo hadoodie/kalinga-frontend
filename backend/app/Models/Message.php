@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -14,6 +15,7 @@ class Message extends Model
         'receiver_id',
         'group_id',
         'conversation_id',
+        'incident_id',
     ];
 
     public function sender()
@@ -34,6 +36,11 @@ class Message extends Model
     public function conversation()
     {
         return $this->belongsTo(Conversation::class);
+    }
+
+    public function incident()
+    {
+        return $this->belongsTo(Incident::class);
     }
 
     public function attachments()

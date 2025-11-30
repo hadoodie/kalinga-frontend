@@ -140,14 +140,39 @@ const filterMessages = (messages, { lockTimestamp }) => {
   });
 };
 
+const normalizeRoleValue = (value) =>
+  typeof value === "string" ? value.toLowerCase() : null;
+
+const isPatientMessage = (message) => {
+  if (!message) return false;
+
+  const directRole = normalizeRoleValue(
+    message.senderRole || message.sender_role
+  );
+  const infoRole = normalizeRoleValue(
+    message.senderInfo?.role || message.senderInfo?.category
+  );
+  const actorRole = normalizeRoleValue(
+    message.actorRole || message.actor_role || message.metadata?.actor
+  );
+
+  if ([directRole, infoRole, actorRole].includes("patient")) {
+    return true;
+  }
+
+  if (typeof message.isPatient === "boolean") {
+    return message.isPatient;
+  }
+
+  if (typeof message.isOwn === "boolean") {
+    return message.isOwn === false && !message.isSystemMessage;
+  }
+
+  return false;
+};
+
 const extractPatientMessages = (messages) =>
-  messages.filter((message) => {
-    const senderRole = message?.senderRole || message?.sender_role;
-    const actor = message?.actor_role || message?.metadata?.actor;
-    return (
-      senderRole === "patient" || actor === "patient" || message?.isPatient
-    );
-  });
+  Array.isArray(messages) ? messages.filter(isPatientMessage) : [];
 
 const buildHeuristicInsights = (patientMessages) => {
   if (!patientMessages.length) {

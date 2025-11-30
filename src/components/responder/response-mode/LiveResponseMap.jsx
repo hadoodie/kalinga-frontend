@@ -18,6 +18,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { KALINGA_CONFIG } from "../../../constants/mapConfig";
 import LocationSimulator from "../../maps/LocationSimulator";
+import { useBlockades } from "../../../hooks/useBlockades";
 
 const DEFAULT_POSITION = [
   KALINGA_CONFIG.DEFAULT_LOCATION.lat,
@@ -419,9 +420,13 @@ export default function LiveResponseMap({
   const [routeAlert, setRouteAlert] = useState(null);
   const trackingWatchId = useRef(null);
   const mapRef = useRef(null);
-  const [blockades, setBlockades] = useState([]);
-  const [blockadesLoading, setBlockadesLoading] = useState(false);
-  const [blockadesError, setBlockadesError] = useState(null);
+
+  // Use the real-time blockades hook (WebSocket + polling fallback every 2 mins)
+  const {
+    blockades,
+    loading: blockadesLoading,
+    error: blockadesError,
+  } = useBlockades({ pollingInterval: 120000 });
 
   useEffect(() => {
     isSimulatingRef.current = isSimulatingResponder;
@@ -503,53 +508,6 @@ export default function LiveResponseMap({
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchBlockades = async () => {
-      try {
-        setBlockadesLoading(true);
-        setBlockadesError(null);
-        const response = await fetch(
-          `${KALINGA_CONFIG.API_BASE_URL}/api/road-blockades`,
-          {
-            headers: {
-              Accept: "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Blockade fetch failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        if (!cancelled) {
-          setBlockades(Array.isArray(data) ? data : []);
-        }
-      } catch (error) {
-        console.warn("Unable to load road blockades", error);
-        if (!cancelled) {
-          setBlockades([]);
-          setBlockadesError("Road issues unavailable");
-        }
-      } finally {
-        if (!cancelled) {
-          setBlockadesLoading(false);
-        }
-      }
-    };
-
-    fetchBlockades();
-    const interval = setInterval(fetchBlockades, 60 * 1000);
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
 
   const activeStart = useMemo(() => {
     if (mode === "hospital") {

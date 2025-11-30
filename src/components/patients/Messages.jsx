@@ -226,6 +226,13 @@ const normalizeConversation = (conversation = {}, currentUserId = null) => {
     category: conversation.category ?? participant.role ?? "General",
     unreadCount: conversation.unreadCount ?? 0,
     isArchived: conversation.isArchived ?? false,
+    // Include incident tracking for incident-scoped messaging
+    activeIncidentId:
+      conversation.activeIncidentId ??
+      conversation.incident_id ??
+      conversation.incidentId ??
+      null,
+    incidentStatus: conversation.incidentStatus ?? null,
     lastMessage: conversation.lastMessage ?? lastMessage?.text ?? "",
     lastMessageTime:
       conversation.lastMessageTime ?? lastMessage?.timestamp ?? null,
@@ -1327,7 +1334,13 @@ export default function MessagesContact() {
       inflightConversationFetch.current.add(key);
 
       try {
-        const data = await chatService.getMessages(participantId);
+        // Pass incidentId to ensure we only fetch messages for the active incident.
+        // This enforces incident-scoped messaging and prevents archived incident
+        // messages from appearing in new conversations.
+        const data = await chatService.getMessages(participantId, {
+          incidentId: meta.incidentId || meta.activeIncidentId,
+          conversationId: meta.conversationId,
+        });
         const normalizedMessages = data.map((msg) =>
           normalizeMessage(msg, "", user.id)
         );
@@ -2228,6 +2241,11 @@ export default function MessagesContact() {
                 id: autoConversation.id ?? conv.id,
                 conversationId:
                   autoConversation.conversationId ?? conv.conversationId,
+                // Preserve incident tracking from the new conversation data
+                activeIncidentId:
+                  autoConversation.activeIncidentId ?? conv.activeIncidentId,
+                incidentStatus:
+                  autoConversation.incidentStatus ?? conv.incidentStatus,
                 participant: updatedParticipant,
                 participants: updatedParticipants,
                 lastMessage: autoMessage.text,
@@ -2454,14 +2472,34 @@ export default function MessagesContact() {
         emergencyPayload.location_error = locationErrorMessage;
       }
 
+      // Helper to check if a conversation has an active (non-resolved/cancelled) incident
+      const isConversationActiveForEmergency = (conv) => {
+        if (conv.isArchived) return false;
+        // If no incident, conversation is usable
+        if (!conv.activeIncidentId) return true;
+        // If incident exists, check it's not resolved/cancelled
+        if (!conv.incidentStatus) return false;
+        return !["resolved", "cancelled"].includes(
+          conv.incidentStatus.toLowerCase()
+        );
+      };
+
+      // Find an existing NON-archived emergency conversation that has an ACTIVE incident.
+      // We should NOT reuse conversations that have resolved/cancelled incidents,
+      // as those should start fresh with a new incident.
       const emergencyConversation = conversationsWithPresence.find(
-        (conv) => conv.category === "Emergency" && !conv.isArchived
+        (conv) =>
+          conv.category === "Emergency" &&
+          conv.activeIncidentId &&
+          isConversationActiveForEmergency(conv)
       );
+
+      // Fallback: find any non-archived responder conversation without resolved incidents
       const responderConversation = conversationsWithPresence.find(
         (conv) =>
           typeof conv.participant?.role === "string" &&
           conv.participant.role.toLowerCase() === "responder" &&
-          !conv.isArchived
+          isConversationActiveForEmergency(conv)
       );
 
       const presenceResponder = onlineUsers.find((candidate) => {
@@ -2567,11 +2605,18 @@ export default function MessagesContact() {
         user.name
       );
 
+      // If reusing an existing conversation that had old (resolved) incidents,
+      // mark it for a clean slate by clearing messages and resetting incident tracking.
+      // This ensures the new emergency appears with a fresh message history.
       if (targetConversation && targetConversation.category !== "Emergency") {
         const updatedConversation = {
           ...targetConversation,
           category: "Emergency",
           isArchived: false,
+          // Clear messages for new emergency - backend will provide new incident-scoped messages
+          messages: [],
+          activeIncidentId: null,
+          incidentStatus: null,
         };
         setConversations((prev) =>
           prev.map((conv) =>
@@ -2581,6 +2626,9 @@ export default function MessagesContact() {
         targetConversation = updatedConversation;
       }
 
+      // For new emergency SOS, always start with empty messages array.
+      // The backend will create a new incident and subsequent message fetches
+      // will be scoped to the new incident_id only.
       const stubConversation = targetConversation ?? {
         id: `emergency-${receiverId}`,
         conversationId: null,
@@ -2589,6 +2637,8 @@ export default function MessagesContact() {
         category: "Emergency",
         isArchived: false,
         messages: [],
+        activeIncidentId: null,
+        incidentStatus: null,
         lastMessage: null,
         lastMessageTime: null,
         unreadCount: 0,
@@ -2604,6 +2654,8 @@ export default function MessagesContact() {
             : [responderParticipant, patientParticipant],
         category: "Emergency",
         isArchived: false,
+        // Ensure new emergency starts clean
+        messages: [],
       };
 
       selectedConversationIdRef.current = preparedConversation.id;

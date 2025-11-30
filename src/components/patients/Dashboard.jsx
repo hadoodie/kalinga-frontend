@@ -1,21 +1,22 @@
-import { useState, useEffect } from "react";
-import { 
-  Calendar, 
-  ChevronDown, 
-  Sun, 
-  CloudSun, 
-  Cloud, 
-  CloudFog, 
-  CloudDrizzle, 
-  CloudRain, 
-  CloudLightning, 
+import { useState, useEffect, useMemo } from "react";
+import {
+  Calendar,
+  ChevronDown,
+  Sun,
+  CloudSun,
+  Cloud,
+  CloudFog,
+  CloudDrizzle,
+  CloudRain,
+  CloudLightning,
   Loader2,
-  Clock          
+  Clock,
 } from "lucide-react";
-import api from "../../services/api"; 
-import { useAuth } from "../../context/AuthContext"; 
-import { formatDistanceToNow } from 'date-fns'; 
-import { useNavigate } from 'react-router-dom'; 
+import api from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import { formatDistanceToNow } from "date-fns";
+import { useNavigate } from "react-router-dom";
+import { useNotifications } from "../../hooks/useNotifications";
 
 // --- Weather Helper Functions ---
 const describeWeatherCode = (code) => {
@@ -44,14 +45,22 @@ const describeWeatherCode = (code) => {
 
 const iconForVariant = (variant) => {
   switch (variant) {
-    case "clear": return Sun;
-    case "partly": return CloudSun;
-    case "cloudy": return Cloud;
-    case "fog": return CloudFog;
-    case "drizzle": return CloudDrizzle;
-    case "rain": return CloudRain;
-    case "thunder": return CloudLightning;
-    default: return Cloud;
+    case "clear":
+      return Sun;
+    case "partly":
+      return CloudSun;
+    case "cloudy":
+      return Cloud;
+    case "fog":
+      return CloudFog;
+    case "drizzle":
+      return CloudDrizzle;
+    case "rain":
+      return CloudRain;
+    case "thunder":
+      return CloudLightning;
+    default:
+      return Cloud;
   }
 };
 
@@ -71,7 +80,9 @@ const WeatherWidget = () => {
       try {
         setLoading(true);
         setError(false);
-        const response = await fetch("https://api.open-meteo.com/v1/forecast?latitude=14.5995&longitude=120.9842&current=temperature_2m,weathercode&timezone=Asia%2FManila");
+        const response = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=14.5995&longitude=120.9842&current=temperature_2m,weathercode&timezone=Asia%2FManila"
+        );
         if (!response.ok) throw new Error("Failed to fetch");
         const data = await response.json();
         setWeather(data.current);
@@ -109,7 +120,7 @@ const WeatherWidget = () => {
       <Icon size={48} className="text-primary" />
       <div className="text-left">
         <p className="text-3xl font-bold text-primary">
-          {formatTemperature(weather.temperature_2m, 'C')}
+          {formatTemperature(weather.temperature_2m, "C")}
         </p>
         <p className="text-sm text-primary">{weatherInfo.label}</p>
       </div>
@@ -119,42 +130,50 @@ const WeatherWidget = () => {
 
 // --- Notification Widget Component ---
 const NotificationWidget = () => {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Use real-time notifications hook
+  const { notifications: allNotifications, loading } = useNotifications({
+    limit: 5,
+  });
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get('/notifications');
-        setNotifications(response.data.slice(0, 3)); 
-      } catch (err) {
-        console.error("Failed to fetch notifications for widget", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchNotifications();
-  }, []);
+  // Get only the first 3 notifications
+  const notifications = useMemo(
+    () => allNotifications.slice(0, 3),
+    [allNotifications]
+  );
 
   if (loading) {
     return <div className="text-center text-sm text-gray-500">Loading...</div>;
   }
 
   if (notifications.length === 0) {
-    return <div className="text-center text-sm text-gray-500">No new notifications.</div>;
+    return (
+      <div className="text-center text-sm text-gray-500">
+        No new notifications.
+      </div>
+    );
   }
 
   return (
     <ul className="space-y-3 text-left">
       {notifications.map((notif) => (
-        <li key={notif.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg text-primary text-sm">
-          <span className="flex-shrink-0 w-2 h-2 mt-1.5 bg-green-700 rounded-full"></span>
+        <li
+          key={notif.id}
+          className={`flex gap-3 p-3 rounded-lg text-primary text-sm ${
+            !notif.read_at ? "bg-green-50" : "bg-gray-50"
+          }`}
+        >
+          <span
+            className={`flex-shrink-0 w-2 h-2 mt-1.5 rounded-full ${
+              !notif.read_at ? "bg-green-700 animate-pulse" : "bg-green-700"
+            }`}
+          ></span>
           <div className="flex-1">
             <p className="font-semibold">{notif.title}</p>
             <p className="text-xs text-gray-600">{notif.description}</p>
             <p className="text-xs text-gray-500 mt-1">
-              {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+              {formatDistanceToNow(new Date(notif.created_at), {
+                addSuffix: true,
+              })}
             </p>
           </div>
         </li>
@@ -172,14 +191,14 @@ const AppointmentWidget = () => {
     const fetchNextAppointment = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/appointments');
-        
+        const response = await api.get("/appointments");
+
         // Filter for upcoming only and sort by date ascending (soonest first)
         const upcoming = response.data
-          .filter(app => app.status.toLowerCase() === 'upcoming')
-          .map(app => ({
+          .filter((app) => app.status.toLowerCase() === "upcoming")
+          .map((app) => ({
             ...app,
-            dateObj: new Date(app.appointment_at)
+            dateObj: new Date(app.appointment_at),
           }))
           .sort((a, b) => a.dateObj - b.dateObj);
 
@@ -196,54 +215,81 @@ const AppointmentWidget = () => {
     fetchNextAppointment();
   }, []);
 
-  if (loading) return <div className="text-center text-sm text-gray-500">Loading...</div>;
+  if (loading)
+    return <div className="text-center text-sm text-gray-500">Loading...</div>;
 
   if (!appointment) {
     return (
       <div className="text-center p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
         <p className="text-sm text-gray-500">No upcoming appointments.</p>
-        <p className="text-xs text-green-600 font-semibold mt-1">Book a visit now</p>
+        <p className="text-xs text-green-600 font-semibold mt-1">
+          Book a visit now
+        </p>
       </div>
     );
   }
 
   const date = new Date(appointment.appointment_at);
-  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timeStr = date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
   return (
     <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex flex-col gap-2">
-       <div className="flex items-start gap-3">
-          <div className="bg-white p-2 rounded-md shadow-sm text-center min-w-[3.5rem]">
-             <p className="text-xs text-green-800 font-bold uppercase">{date.toLocaleDateString('en-US', { month: 'short' })}</p>
-             <p className="text-xl font-extrabold text-green-700">{date.getDate()}</p>
+      <div className="flex items-start gap-3">
+        <div className="bg-white p-2 rounded-md shadow-sm text-center min-w-[3.5rem]">
+          <p className="text-xs text-green-800 font-bold uppercase">
+            {date.toLocaleDateString("en-US", { month: "short" })}
+          </p>
+          <p className="text-xl font-extrabold text-green-700">
+            {date.getDate()}
+          </p>
+        </div>
+        <div className="flex-1">
+          <p className="font-bold text-primary text-sm line-clamp-1">
+            {appointment.provider_name}
+          </p>
+          <p className="text-xs text-green-700 font-medium mb-1">
+            {appointment.provider_specialty}
+          </p>
+          <div className="flex items-center gap-1 text-xs text-gray-600">
+            <Clock size={12} />
+            {timeStr}
           </div>
-          <div className="flex-1">
-             <p className="font-bold text-primary text-sm line-clamp-1">{appointment.provider_name}</p>
-             <p className="text-xs text-green-700 font-medium mb-1">{appointment.provider_specialty}</p>
-             <div className="flex items-center gap-1 text-xs text-gray-600">
-               <Clock size={12} />
-               {timeStr}
-             </div>
-          </div>
-       </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-
 const DARK = {
-  bg: 'bg-background',
-  card: 'bg-white',
-  header: 'bg-primary',
-  textLight: 'text-primary',
-  textMuted: 'text-primary',
-  accent: 'bg-[#1f883d] hover:bg-[#238636] text-white',
-  inputBorder: 'border-primary',
+  bg: "bg-background",
+  card: "bg-white",
+  header: "bg-primary",
+  textLight: "text-primary",
+  textMuted: "text-primary",
+  accent: "bg-[#1f883d] hover:bg-[#238636] text-white",
+  inputBorder: "border-primary",
 };
 
 const DOWNLOAD_ICON_SVG = (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6 text-green-50 group-hover:text-white transition">
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="h-6 w-6 text-green-50 group-hover:text-white transition"
+  >
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
     <polyline points="14 2 14 8 20 8"></polyline>
     <line x1="12" y1="12" x2="12" y2="18"></line>
@@ -262,7 +308,7 @@ const vitalsData = [
     complaint: "Difficulty breathing",
     mental: "A (Alert)",
     level: "medium",
-    doctor: "Pulmonologist"
+    doctor: "Pulmonologist",
   },
   {
     id: "RM023271",
@@ -273,7 +319,7 @@ const vitalsData = [
     complaint: "Dizziness",
     mental: "A (Alert)",
     level: "medium",
-    doctor: "Neurologist"
+    doctor: "Neurologist",
   },
   {
     id: "RM023271",
@@ -284,7 +330,7 @@ const vitalsData = [
     complaint: "Chest pain",
     mental: "V (Verbal)",
     level: "medium",
-    doctor: "Cardiologist"
+    doctor: "Cardiologist",
   },
   {
     id: "RM023271",
@@ -295,15 +341,15 @@ const vitalsData = [
     complaint: "Chest pain",
     mental: "P (Pain)",
     level: "medium",
-    doctor: "Cardiologist"
-  }
+    doctor: "Cardiologist",
+  },
 ];
 
 // --- Main Component ---
 
 export default function PatientDash() {
   const { user } = useAuth();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -327,12 +373,12 @@ export default function PatientDash() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await api.get('/lab-results', {
+      const response = await api.get("/lab-results", {
         params: {
           date_from: dateFrom,
           date_to: dateTo,
           sort_by: sortBy,
-        }
+        },
       });
       setResults(response.data);
     } catch (err) {
@@ -355,17 +401,21 @@ export default function PatientDash() {
   const handleDownload = (labNo) => {
     console.log(`Downloading result file for Lab No: ${labNo}`);
   };
-  
+
   const totalPages = Math.ceil(results.length / resultsPerPage);
   const paginatedResults = results.slice(
     (currentPage - 1) * resultsPerPage,
     currentPage * resultsPerPage
   );
 
-  const formattedResults = paginatedResults.map(result => ({
+  const formattedResults = paginatedResults.map((result) => ({
     labNo: result.lab_no,
     branch: result.branch,
-    orderDate: new Date(result.order_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
+    orderDate: new Date(result.order_date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "2-digit",
+      year: "numeric",
+    }),
     patientID: result.patient_id_text,
     account: result.account,
     type: result.type,
@@ -376,7 +426,7 @@ export default function PatientDash() {
       onClick={() => setCurrentPage(number)}
       className={`h-8 w-8 rounded font-bold transition ${
         isCurrent
-          ? 'bg-green-700 text-white'
+          ? "bg-green-700 text-white"
           : `bg-gray-200 text-gray-700 hover:bg-gray-300`
       }`}
     >
@@ -386,12 +436,16 @@ export default function PatientDash() {
 
   const Pagination = () => (
     <div className="flex justify-start items-center gap-2 mt-4">
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNumber => (
-         <PageIndicator key={pageNumber} number={pageNumber} isCurrent={currentPage === pageNumber} />
+      {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNumber) => (
+        <PageIndicator
+          key={pageNumber}
+          number={pageNumber}
+          isCurrent={currentPage === pageNumber}
+        />
       ))}
     </div>
   );
-  
+
   const tableHeaders = [
     { key: "labNo", name: "Lab No." },
     { key: "branch", name: "Branch" },
@@ -403,24 +457,41 @@ export default function PatientDash() {
   ];
 
   const MobileResultCard = ({ result }) => (
-    <div className={`p-4 mb-3 border-b-2 border-gray-100 last:border-b-0 flex justify-between items-start`}>
-        <div className="flex flex-col text-left space-y-1">
-        
-        <p className={`text-xs ${DARK.textMuted}`}>Lab No: <span className="font-medium text-green-700">{result.labNo}</span></p>
+    <div
+      className={`p-4 mb-3 border-b-2 border-gray-100 last:border-b-0 flex justify-between items-start`}
+    >
+      <div className="flex flex-col text-left space-y-1">
+        <p className={`text-xs ${DARK.textMuted}`}>
+          Lab No:{" "}
+          <span className="font-medium text-green-700">{result.labNo}</span>
+        </p>
 
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs mt-1">
-            <span className={`font-medium text-green-600 px-2 py-0.5 rounded-full bg-green-50`}>{result.type}</span>
-            <span className={`font-medium ${DARK.textMuted}`}>{result.orderDate}</span>
-            <span className={`font-medium ${DARK.textMuted}`}>{result.branch}</span>
+          <span
+            className={`font-medium text-green-600 px-2 py-0.5 rounded-full bg-green-50`}
+          >
+            {result.type}
+          </span>
+          <span className={`font-medium ${DARK.textMuted}`}>
+            {result.orderDate}
+          </span>
+          <span className={`font-medium ${DARK.textMuted}`}>
+            {result.branch}
+          </span>
         </div>
 
         <div className="text-xs mt-2 space-y-0.5 pt-1 border-t border-dashed border-gray-200">
-            <p className={DARK.textMuted}><span className="font-semibold">Patient ID:</span> {result.patientID}</p>
-            <p className={DARK.textMMuted}><span className="font-semibold">Account:</span> {result.account}</p>
+          <p className={DARK.textMuted}>
+            <span className="font-semibold">Patient ID:</span>{" "}
+            {result.patientID}
+          </p>
+          <p className={DARK.textMMuted}>
+            <span className="font-semibold">Account:</span> {result.account}
+          </p>
         </div>
       </div>
-      
-      <button 
+
+      <button
         onClick={() => handleDownload(result.labNo)}
         className="group p-2 rounded-full bg-green-700 hover:bg-green-800 transition shadow-md shrink-0"
         title="Download Result"
@@ -434,58 +505,69 @@ export default function PatientDash() {
   const MobileVitalsCard = ({ item }) => (
     <div className="p-4 mb-3 bg-white border border-gray-200 rounded-lg shadow-sm text-left">
       <div className="flex justify-between items-start mb-2">
-         <span className="text-xs font-bold text-gray-800 break-words w-2/3">{item.id}</span>
-         <span className="text-xs text-gray-500">{item.date}</span>
+        <span className="text-xs font-bold text-gray-800 break-words w-2/3">
+          {item.id}
+        </span>
+        <span className="text-xs text-gray-500">{item.date}</span>
       </div>
-      
+
       <div className="grid grid-cols-3 gap-2 mb-3 bg-gray-50 p-2 rounded">
-         <div className="text-center">
-            <p className="text-[10px] text-gray-500 uppercase">Temp</p>
-            <p className="font-bold text-gray-800">{item.temp}</p>
-         </div>
-         <div className="text-center">
-            <p className="text-[10px] text-gray-500 uppercase">HR</p>
-            <p className="font-bold text-gray-800">{item.hr}</p>
-         </div>
-         <div className="text-center">
-            <p className="text-[10px] text-gray-500 uppercase">SpO2</p>
-            <p className="font-bold text-gray-800">{item.spo2}</p>
-         </div>
+        <div className="text-center">
+          <p className="text-[10px] text-gray-500 uppercase">Temp</p>
+          <p className="font-bold text-gray-800">{item.temp}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-[10px] text-gray-500 uppercase">HR</p>
+          <p className="font-bold text-gray-800">{item.hr}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-[10px] text-gray-500 uppercase">SpO2</p>
+          <p className="font-bold text-gray-800">{item.spo2}</p>
+        </div>
       </div>
 
       <div className="space-y-1 text-xs text-gray-700">
-         <p><span className="font-semibold">Complaint:</span> {item.complaint}</p>
-         <p><span className="font-semibold">Mental:</span> {item.mental}</p>
-         <p><span className="font-semibold">Doctor:</span> {item.doctor}</p>
+        <p>
+          <span className="font-semibold">Complaint:</span> {item.complaint}
+        </p>
+        <p>
+          <span className="font-semibold">Mental:</span> {item.mental}
+        </p>
+        <p>
+          <span className="font-semibold">Doctor:</span> {item.doctor}
+        </p>
       </div>
-      
-      <div className={`mt-2 text-center text-xs font-bold py-1 px-2 rounded ${item.level === 'medium' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100'}`}>
-         Level: {item.level.toUpperCase()}
+
+      <div
+        className={`mt-2 text-center text-xs font-bold py-1 px-2 rounded ${
+          item.level === "medium"
+            ? "bg-orange-100 text-orange-800"
+            : "bg-gray-100"
+        }`}
+      >
+        Level: {item.level.toUpperCase()}
       </div>
     </div>
   );
 
   return (
     <div className={`min-h-screen p-4 sm:p-6 md:p-8 ${DARK.bg} font-inter`}>
-
       <header className="mb-6 p-4 text-left">
         <h1 className={`text-3xl md:text-4xl font-extrabold ${DARK.textLight}`}>
-          {greeting}, {user ? user.name : 'Patient'}!
+          {greeting}, {user ? user.name : "Patient"}!
         </h1>
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
         {/* --- COLUMN 1: Main Content Card --- */}
         <div className="lg:col-span-2 space-y-8">
-            
           {/* --- Vitals Table (Triage History) --- */}
           <div className="bg-white rounded-xl shadow-lg p-6 overflow-hidden">
             <div className="flex items-center gap-2 mb-4 justify-between">
               <h2 className="text-xl font-bold text-primary">Triage History</h2>
               <button
                 className="text-green-700 font-semibold text-sm hover:underline"
-                onClick={() => navigate('/patient/health-records?tab=triage')}
+                onClick={() => navigate("/patient/health-records?tab=triage")}
               >
                 See All
               </button>
@@ -498,32 +580,72 @@ export default function PatientDash() {
             </div>
             {/* Desktop Vitals Table */}
             <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 min-w-0">
-              <table className="w-full table-auto text-sm"> 
+              <table className="w-full table-auto text-sm">
                 <thead className="bg-primary">
                   <tr>
-                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Patient ID</th>
-                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Date</th>
-                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">Temp</th>
-                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">HR</th>
-                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">SpO₂</th>
-                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Complaint</th>
-                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Mental</th>
-                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Level</th>
-                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Doctor</th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      Patient ID
+                    </th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      Date
+                    </th>
+                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      Temp
+                    </th>
+                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      HR
+                    </th>
+                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      SpO₂
+                    </th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      Complaint
+                    </th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      Mental
+                    </th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      Level
+                    </th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">
+                      Doctor
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {vitalsData.slice(0, 5).map((item, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50 transition text-center">
-                      <td className="px-2 py-3 font-medium text-green-700">{item.id}</td>
+                    <tr
+                      key={idx}
+                      className="hover:bg-gray-50 transition text-center"
+                    >
+                      <td className="px-2 py-3 font-medium text-green-700">
+                        {item.id}
+                      </td>
                       <td className="px-2 py-3 text-primary">{item.date}</td>
                       <td className="px-1 py-3 text-primary">{item.temp}</td>
                       <td className="px-1 py-3 text-primary">{item.hr}</td>
-                      <td className="px-1 py-3 font-bold text-green-600">{item.spo2}</td>
-                      <td className="px-2 py-3 max-w-[100px] truncate text-primary" title={item.complaint}>{item.complaint}</td>
+                      <td className="px-1 py-3 font-bold text-green-600">
+                        {item.spo2}
+                      </td>
+                      <td
+                        className="px-2 py-3 max-w-[100px] truncate text-primary"
+                        title={item.complaint}
+                      >
+                        {item.complaint}
+                      </td>
                       <td className="px-2 py-3 text-primary">{item.mental}</td>
-                      <td className={`px-2 py-3 font-bold ${item.level === 'medium' ? 'bg-orange-50 text-[#C05621]' : ''}`}>{item.level}</td>
-                      <td className="px-2 py-3 text-green-800 break-words">{item.doctor}</td>
+                      <td
+                        className={`px-2 py-3 font-bold ${
+                          item.level === "medium"
+                            ? "bg-orange-50 text-[#C05621]"
+                            : ""
+                        }`}
+                      >
+                        {item.level}
+                      </td>
+                      <td className="px-2 py-3 text-green-800 break-words">
+                        {item.doctor}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -537,25 +659,35 @@ export default function PatientDash() {
               <h2 className="text-xl font-bold text-primary">Lab Results</h2>
               <button
                 className="text-green-700 font-semibold text-sm hover:underline"
-                onClick={() => navigate('/patient/health-records?tab=lab')}
+                onClick={() => navigate("/patient/health-records?tab=lab")}
               >
                 See All
               </button>
             </div>
             {/* Data Table Container */}
-            <div className={`rounded-xl overflow-hidden border border-gray-200`}>
+            <div
+              className={`rounded-xl overflow-hidden border border-gray-200`}
+            >
               {/* Mobile Card List */}
               <div className="sm:hidden">
                 {isLoading ? (
-                  <div className="py-8 text-center text-gray-500 font-medium">Loading results...</div>
+                  <div className="py-8 text-center text-gray-500 font-medium">
+                    Loading results...
+                  </div>
                 ) : error ? (
-                  <div className="py-8 text-center text-red-500 font-medium">{error}</div>
+                  <div className="py-8 text-center text-red-500 font-medium">
+                    {error}
+                  </div>
                 ) : formattedResults.slice(0, 5).length > 0 ? (
-                  formattedResults.slice(0, 5).map((result) => (
-                    <MobileResultCard key={result.labNo} result={result} />
-                  ))
+                  formattedResults
+                    .slice(0, 5)
+                    .map((result) => (
+                      <MobileResultCard key={result.labNo} result={result} />
+                    ))
                 ) : (
-                  <div className="py-8 text-center text-gray-500 font-medium">No results found.</div>
+                  <div className="py-8 text-center text-gray-500 font-medium">
+                    No results found.
+                  </div>
                 )}
               </div>
               {/* Desktop Table View */}
@@ -564,7 +696,11 @@ export default function PatientDash() {
                   <thead className={DARK.header}>
                     <tr>
                       {tableHeaders.map((header) => (
-                        <th key={header.key} scope="col" className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white`}>
+                        <th
+                          key={header.key}
+                          scope="col"
+                          className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white`}
+                        >
                           {header.name}
                         </th>
                       ))}
@@ -572,20 +708,65 @@ export default function PatientDash() {
                   </thead>
                   <tbody className={`divide-y divide-gray-100 ${DARK.card}`}>
                     {isLoading ? (
-                      <tr><td colSpan={tableHeaders.length} className="py-8 text-center text-gray-500 font-medium">Loading results...</td></tr>
+                      <tr>
+                        <td
+                          colSpan={tableHeaders.length}
+                          className="py-8 text-center text-gray-500 font-medium"
+                        >
+                          Loading results...
+                        </td>
+                      </tr>
                     ) : error ? (
-                      <tr><td colSpan={tableHeaders.length} className="py-8 text-center text-red-500 font-medium">{error}</td></tr>
+                      <tr>
+                        <td
+                          colSpan={tableHeaders.length}
+                          className="py-8 text-center text-red-500 font-medium"
+                        >
+                          {error}
+                        </td>
+                      </tr>
                     ) : formattedResults.slice(0, 5).length > 0 ? (
                       formattedResults.slice(0, 5).map((result) => (
-                        <tr key={result.labNo} className="hover:bg-gray-50 transition text-center">
-                          <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${DARK.textLight}`}>{result.labNo}</td>
-                          <td className={`px-4 py-3 whitespace-nowLg text-sm ${DARK.textMuted}`}>{result.branch}</td>
-                          <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.orderDate}</td>
-                          <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.patientID}</td>
-                          <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.account}</td>
-                          <td className={`px-4 py-3 whitespace-nowrap text-sm font-bold text-green-600`}>{result.type}</td>
+                        <tr
+                          key={result.labNo}
+                          className="hover:bg-gray-50 transition text-center"
+                        >
+                          <td
+                            className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${DARK.textLight}`}
+                          >
+                            {result.labNo}
+                          </td>
+                          <td
+                            className={`px-4 py-3 whitespace-nowLg text-sm ${DARK.textMuted}`}
+                          >
+                            {result.branch}
+                          </td>
+                          <td
+                            className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}
+                          >
+                            {result.orderDate}
+                          </td>
+                          <td
+                            className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}
+                          >
+                            {result.patientID}
+                          </td>
+                          <td
+                            className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}
+                          >
+                            {result.account}
+                          </td>
+                          <td
+                            className={`px-4 py-3 whitespace-nowrap text-sm font-bold text-green-600`}
+                          >
+                            {result.type}
+                          </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm">
-                            <button onClick={() => handleDownload(result.labNo)} className="group p-2 rounded-full bg-green-700 hover:bg-green-800 transition" title="Download Result">
+                            <button
+                              onClick={() => handleDownload(result.labNo)}
+                              className="group p-2 rounded-full bg-green-700 hover:bg-green-800 transition"
+                              title="Download Result"
+                            >
                               {DOWNLOAD_ICON_SVG}
                             </button>
                           </td>
@@ -593,7 +774,12 @@ export default function PatientDash() {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={tableHeaders.length} className="py-8 text-center text-gray-500 font-medium">No results found for the selected criteria.</td>
+                        <td
+                          colSpan={tableHeaders.length}
+                          className="py-8 text-center text-gray-500 font-medium"
+                        >
+                          No results found for the selected criteria.
+                        </td>
                       </tr>
                     )}
                   </tbody>
@@ -601,45 +787,44 @@ export default function PatientDash() {
               </div>
             </div>
           </div>
-
-        </div> 
+        </div>
 
         {/* --- COLUMN 2: Sidebar --- */}
         <aside className="lg:col-span-1 space-y-6">
-
           {/* Upcoming Appointment */}
-          <button 
-            onClick={() => navigate('/patient/appointments')}
+          <button
+            onClick={() => navigate("/patient/appointments")}
             className="w-full bg-white rounded-xl shadow-lg p-6 text-left hover:bg-gray-50 transition"
           >
-             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-primary">Upcoming Appointment</h2>
-             </div>
-             <AppointmentWidget />
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-primary">
+                Upcoming Appointment
+              </h2>
+            </div>
+            <AppointmentWidget />
           </button>
-          
+
           {/* Notifications Section */}
-          <button 
-            onClick={() => navigate('/patient/notifications')} 
+          <button
+            onClick={() => navigate("/patient/notifications")}
             className="w-full bg-white rounded-xl shadow-lg p-6 text-left hover:bg-gray-50 transition"
           >
-            <h2 className="text-xl font-bold text-primary mb-4">Notifications</h2>
-            <NotificationWidget /> 
+            <h2 className="text-xl font-bold text-primary mb-4">
+              Notifications
+            </h2>
+            <NotificationWidget />
           </button>
 
           {/* Weather Section */}
-          <button 
-            onClick={() => navigate('/patient/weather')}
+          <button
+            onClick={() => navigate("/patient/weather")}
             className="w-full bg-white rounded-xl shadow-lg p-6 text-left hover:bg-gray-50 transition"
           >
             <h2 className="text-xl font-bold text-primary mb-4">Weather</h2>
             <WeatherWidget />
           </button>
-          
         </aside>
-
-      </div> 
-
+      </div>
     </div>
   );
 }

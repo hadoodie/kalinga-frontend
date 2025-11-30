@@ -4,7 +4,7 @@ import { Search, Bell, UserCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import { useNotifications } from "../hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
 
 export const NavbarB = () => {
@@ -14,8 +14,12 @@ export const NavbarB = () => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
-  const [notifications, setNotifications] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use the real-time notifications hook
+  const {
+    notifications,
+    loading: isLoading,
+    unreadCount,
+  } = useNotifications({ limit: 5, enabled: !!user });
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -29,21 +33,21 @@ export const NavbarB = () => {
   // Sets the base path based on the user's role
   const getDashboardUrl = () => {
     const role = user?.role;
-    if (role === 'admin') return '/admin/dashboard';
-    if (role === 'logistics') return '/logistics/dashboard';
-    if (role === 'responder') return '/responder/dashboard';
-    if (role === 'patient') return '/patient/dashboard';
-    return '/'; // Fallback
+    if (role === "admin") return "/admin/dashboard";
+    if (role === "logistics") return "/logistics/dashboard";
+    if (role === "responder") return "/responder/dashboard";
+    if (role === "patient") return "/patient/dashboard";
+    return "/"; // Fallback
   };
-  
+
   // Gets the base path for links like "profile" or "settings"
   const getRoleBasePath = () => {
     const role = user?.role;
-    if (role === 'admin') return '/admin';
-    if (role === 'logistics') return '/logistics';
-    if (role === 'responder') return '/responder';
-    if (role === 'patient') return '/patient';
-    return ''; // Fallback
+    if (role === "admin") return "/admin";
+    if (role === "logistics") return "/logistics";
+    if (role === "responder") return "/responder";
+    if (role === "patient") return "/patient";
+    return ""; // Fallback
   };
 
   const dashboardUrl = getDashboardUrl();
@@ -53,24 +57,6 @@ export const NavbarB = () => {
     await logout();
     navigate("/login");
   };
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      if (!user) return; 
-
-      setIsLoading(true);
-      try {
-        const response = await api.get("/notifications");
-        setNotifications(response.data.slice(0, 5)); 
-      } catch (error) {
-        console.error("Failed to fetch navbar notifications:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchNotifications();
-  }, [user]); 
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -94,7 +80,7 @@ export const NavbarB = () => {
         {/* Logo (MODIFIED: uses dynamic dashboardUrl) */}
         <HashLink
           smooth
-          to={dashboardUrl} 
+          to={dashboardUrl}
           className="flex items-center space-x-2 text-xl font-bold text-primary"
         >
           <img src={logo} alt="Kalinga Logo" className="h-10 w-auto" />
@@ -127,9 +113,9 @@ export const NavbarB = () => {
               }}
             >
               <Bell />
-              {notifications.length > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {notifications.length}
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </button>
@@ -142,7 +128,7 @@ export const NavbarB = () => {
                   </span>
                   {/* MODIFIED: uses dynamic baseRolePath */}
                   <button
-                    onClick={() => navigate(`${baseRolePath}/notifications`)} 
+                    onClick={() => navigate(`${baseRolePath}/notifications`)}
                     className="text-xs text-blue-600 hover:underline"
                   >
                     See all
@@ -215,7 +201,7 @@ export const NavbarB = () => {
                   <li>
                     {/* MODIFIED: uses dynamic baseRolePath */}
                     <button
-                      onClick={() => navigate(`${baseRolePath}/profile`)} 
+                      onClick={() => navigate(`${baseRolePath}/profile`)}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Profile
@@ -224,7 +210,7 @@ export const NavbarB = () => {
                   <li>
                     {/* MODIFIED: uses dynamic baseRolePath */}
                     <button
-                      onClick={() => navigate(`${baseRolePath}/settings`)} 
+                      onClick={() => navigate(`${baseRolePath}/settings`)}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100"
                     >
                       Settings
