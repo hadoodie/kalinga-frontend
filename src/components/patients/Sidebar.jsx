@@ -13,12 +13,10 @@ import {
   Bell,
   User,
   MapPin,
-  Navigation,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useActiveRescue } from "../../hooks/useActiveRescue";
 // Ensure this path is correct based on your project structure
 import { EmergencyPopup } from "/src/components/emergency-sos/PopUp";
 
@@ -28,14 +26,8 @@ export default function PatientSidebar() {
   const [showEmergencyPopup, setShowEmergencyPopup] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const { toast } = useToast();
-
-  // Check for active rescue to show tracking link
-  const { hasActiveRescue } = useActiveRescue({
-    enabled: !!user,
-    refreshInterval: 30000,
-  });
 
   useEffect(() => {
     const stored = localStorage.getItem("sidebar-collapsed");
@@ -48,8 +40,7 @@ export default function PatientSidebar() {
     localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
   }, [collapsed]);
 
-  // Build menu items dynamically based on active rescue status
-  const baseItems = [
+  const items = [
     {
       label: "Dashboard",
       path: "/patient/dashboard",
@@ -91,20 +82,6 @@ export default function PatientSidebar() {
       icon: <User size={25} />,
     },
   ];
-
-  // Insert "Track Rescue" after Messages when there's an active rescue
-  const items = hasActiveRescue
-    ? [
-        ...baseItems.slice(0, 4), // Dashboard, Appointments, Health Records, Messages
-        {
-          label: "Track Rescue",
-          path: "/patient/rescue-tracker",
-          icon: <Navigation size={25} className="text-orange-300" />,
-          highlight: true, // Flag to style this item specially
-        },
-        ...baseItems.slice(4), // Weather, Hospital Map, Notifications, Profile
-      ]
-    : baseItems;
 
   const handleNavigation = (item) => {
     if (item.path) navigate(item.path);
@@ -271,9 +248,7 @@ export default function PatientSidebar() {
                 className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 relative
                   ${collapsed ? "justify-center" : "gap-2"}
                   ${
-                    item.highlight
-                      ? "bg-orange-500/30 border border-orange-400/50 animate-pulse hover:bg-orange-500/40"
-                      : isActive(item.path)
+                    isActive(item.path)
                       ? "bg-white/20 font-bold"
                       : "hover:bg-white/10"
                   }
@@ -281,7 +256,7 @@ export default function PatientSidebar() {
                 onClick={() => handleNavigation(item)}
               >
                 {/* Icon */}
-                <span className={`flex-shrink-0 transition-transform duration-300 ${item.highlight ? "animate-bounce" : ""}`}>
+                <span className="flex-shrink-0 transition-transform duration-300">
                   {item.icon}
                 </span>
 
@@ -292,8 +267,7 @@ export default function PatientSidebar() {
                       collapsed
                         ? "w-0 opacity-0 hidden"
                         : "w-auto opacity-100 block ml-2"
-                    }
-                    ${item.highlight ? "font-semibold text-orange-200" : ""}`}
+                    }`}
                 >
                   {item.label}
                 </span>
@@ -301,7 +275,7 @@ export default function PatientSidebar() {
 
               {/* Tooltip when collapsed */}
               {collapsed && (
-                <span className={`absolute left-full top-1/2 -translate-y-1/2 ml-3 text-white text-xs px-2 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-md ${item.highlight ? "bg-orange-600" : "bg-green-950"}`}>
+                <span className="absolute left-full top-1/2 -translate-y-1/2 ml-3 bg-green-950 text-white text-xs px-2 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-md">
                   {item.label}
                 </span>
               )}
@@ -376,16 +350,14 @@ export default function PatientSidebar() {
                   key={idx}
                   className={`flex items-center gap-2 cursor-pointer px-2 py-3 rounded-md transition
                   ${
-                    item.highlight
-                      ? "bg-orange-500/30 border border-orange-400/50 font-semibold"
-                      : isActive(item.path)
+                    isActive(item.path)
                       ? "bg-white/20 font-bold"
                       : "hover:bg-white/10"
                   }`}
                   onClick={() => handleNavigation(item)}
                 >
-                  <span className={`scale-90 ${item.highlight ? "text-orange-300" : ""}`}>{item.icon}</span>
-                  <span className={item.highlight ? "text-orange-200" : ""}>{item.label}</span>
+                  <span className="scale-90">{item.icon}</span>
+                  <span>{item.label}</span>
                 </div>
               ))}
             </div>

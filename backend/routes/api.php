@@ -12,7 +12,6 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AllocationController;
 use App\Http\Controllers\Api\RouteLogController;
-use App\Http\Controllers\Api\ResponderTrackingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -154,15 +153,6 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware(['role:admin,patient'])->group(function () {
         Route::get('/lab-results', [LabResultController::class, 'index']);
         Route::get('/appointments', [AppointmentController::class, 'index']);
-        
-        // Patient rescue tracking - view responder location
-        Route::get('/rescue/active', [ResponderTrackingController::class, 'getMyActiveRescue']);
-        Route::get('/incidents/{incident}/responder-location', [ResponderTrackingController::class, 'getResponderLocation']);
-    });
-
-    // Responder location tracking - update location during active response
-    Route::middleware(['role:admin,responder'])->group(function () {
-        Route::post('/incidents/{incident}/responder-location', [ResponderTrackingController::class, 'updateLocation']);
     });
 
     // Chat routes (all authenticated users)
