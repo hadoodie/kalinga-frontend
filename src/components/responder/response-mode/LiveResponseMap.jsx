@@ -425,13 +425,28 @@ export default function LiveResponseMap({
   const trackingWatchId = useRef(null);
   const mapRef = useRef(null);
 
-  // Broadcast responder location to patient via WebSocket
-  const { isTracking: isBroadcasting } = useResponderLocationBroadcast({
+  // Broadcast responder location to patient via WebSocket.
+  // Enable while incident is active (responder en route or on scene) so patient can track.
+  const {
+    position: broadcastPosition,
+    heading: broadcastHeading,
+    isTracking: isBroadcasting,
+    broadcast,
+  } = useResponderLocationBroadcast({
     incidentId: incident?.id,
-    incidentStatus: incident?.status,
-    enabled: navigationEnabled && incident?.status === "en_route",
+    enabled: !!incident && ["acknowledged", "en_route", "on_scene"].includes(incident?.status),
     broadcastInterval: 5000,
   });
+
+  // Keep map responder state in sync with the broadcast hook (if it produces a position)
+  useEffect(() => {
+    if (broadcastPosition && Array.isArray(broadcastPosition) && broadcastPosition.length === 2) {
+      setResponderPosition([broadcastPosition[0], broadcastPosition[1]]);
+    }
+    if (typeof broadcastHeading !== 'undefined' && broadcastHeading !== null) {
+      setResponderHeading(broadcastHeading);
+    }
+  }, [broadcastPosition, broadcastHeading]);
 
   // Use the real-time blockades hook (WebSocket + polling fallback every 2 mins)
   const {
@@ -500,7 +515,12 @@ export default function LiveResponseMap({
         if (isSimulatingRef.current) {
           return;
         }
-        setResponderPosition(coords);
+        // Prefer the broadcast hook's position when available (keeps what we send to server as source of truth)
+        if (broadcastPosition && Array.isArray(broadcastPosition) && broadcastPosition.length === 2) {
+          setResponderPosition([broadcastPosition[0], broadcastPosition[1]]);
+        } else {
+          setResponderPosition(coords);
+        }
       },
       () => {
         if (!responderPosition && !isSimulatingRef.current) {
@@ -628,6 +648,28 @@ export default function LiveResponseMap({
       cancelled = true;
     };
   }, [routingKey, normalizedBlockades]);
+
+  // If we have a selected route and broadcasting is active, send ETA and distance
+  useEffect(() => {
+    if (!routeSelection || !isBroadcasting) return;
+
+    const selected = routeSelection.selected?.original || routeSelection.selected || null;
+    if (!selected) return;
+
+    const durationSec = selected.duration ?? selected?.legs?.[0]?.duration ?? null;
+    const distanceMeters = selected.distance ?? selected?.legs?.[0]?.distance ?? null;
+
+    if (typeof broadcast === 'function') {
+      try {
+        const etaMinutes = durationSec ? Math.round(durationSec / 60) : null;
+        const distanceKm = distanceMeters ? Number((distanceMeters / 1000).toFixed(3)) : null;
+        // Fire a manual broadcast to include ETA and remaining distance
+        broadcast({ eta: etaMinutes, distance: distanceKm });
+      } catch (e) {
+        console.warn('Failed to broadcast ETA/distance', e);
+      }
+    }
+  }, [routeSelection, isBroadcasting, broadcast]);
 
   const currentCenter = useMemo(() => {
     if (mode === "hospital") {
