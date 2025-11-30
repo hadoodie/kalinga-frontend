@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
   Calendar, 
   ChevronDown, 
@@ -16,6 +16,7 @@ import api from "../../services/api";
 import { useAuth } from "../../context/AuthContext"; 
 import { formatDistanceToNow } from 'date-fns'; 
 import { useNavigate } from 'react-router-dom'; 
+import { useNotifications } from "../../hooks/useNotifications"; 
 
 // --- Weather Helper Functions ---
 const describeWeatherCode = (code) => {
@@ -119,23 +120,11 @@ const WeatherWidget = () => {
 
 // --- Notification Widget Component ---
 const NotificationWidget = () => {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get('/notifications');
-        setNotifications(response.data.slice(0, 3)); 
-      } catch (err) {
-        console.error("Failed to fetch notifications for widget", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchNotifications();
-  }, []);
+  // Use real-time notifications hook
+  const { notifications: allNotifications, loading } = useNotifications({ limit: 5 });
+  
+  // Get only the first 3 notifications
+  const notifications = useMemo(() => allNotifications.slice(0, 3), [allNotifications]);
 
   if (loading) {
     return <div className="text-center text-sm text-gray-500">Loading...</div>;
@@ -148,8 +137,12 @@ const NotificationWidget = () => {
   return (
     <ul className="space-y-3 text-left">
       {notifications.map((notif) => (
-        <li key={notif.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg text-primary text-sm">
-          <span className="flex-shrink-0 w-2 h-2 mt-1.5 bg-green-700 rounded-full"></span>
+        <li key={notif.id} className={`flex gap-3 p-3 rounded-lg text-primary text-sm ${
+          !notif.read_at ? "bg-green-50" : "bg-gray-50"
+        }`}>
+          <span className={`flex-shrink-0 w-2 h-2 mt-1.5 rounded-full ${
+            !notif.read_at ? "bg-green-700 animate-pulse" : "bg-green-700"
+          }`}></span>
           <div className="flex-1">
             <p className="font-semibold">{notif.title}</p>
             <p className="text-xs text-gray-600">{notif.description}</p>

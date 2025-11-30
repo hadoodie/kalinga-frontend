@@ -4,7 +4,7 @@ import { Search, Bell, UserCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/kalinga-logo.png";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
+import { useNotifications } from "../hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
 
 export const NavbarB = () => {
@@ -14,8 +14,12 @@ export const NavbarB = () => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
 
-  const [notifications, setNotifications] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use the real-time notifications hook
+  const {
+    notifications,
+    loading: isLoading,
+    unreadCount,
+  } = useNotifications({ limit: 5, enabled: !!user });
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -53,24 +57,6 @@ export const NavbarB = () => {
     await logout();
     navigate("/login");
   };
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      if (!user) return; 
-
-      setIsLoading(true);
-      try {
-        const response = await api.get("/notifications");
-        setNotifications(response.data.slice(0, 5)); 
-      } catch (error) {
-        console.error("Failed to fetch navbar notifications:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchNotifications();
-  }, [user]); 
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -127,9 +113,9 @@ export const NavbarB = () => {
               }}
             >
               <Bell />
-              {notifications.length > 0 && (
+              {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                  {notifications.length}
+                  {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               )}
             </button>

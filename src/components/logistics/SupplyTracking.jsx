@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Construction, 
   Truck, 
@@ -6,7 +6,7 @@ import {
   Package, 
   Loader2 
 } from "lucide-react";
-import api from "../../services/api"; 
+import { useSupplyTracking } from "../../hooks/useSupplyTracking";
 import LiveTrackingMap from "../../components/logistics/LiveTrackingMap"; 
 import { useNavigate } from "react-router-dom"; 
 import { ROUTES } from "../../config/routes";
@@ -43,40 +43,22 @@ const formatRelativeTime = (ping) => {
 };
 
 export default function Supply() {
-  const [shipments, setShipments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Use the real-time supply tracking hook (polls every 60s as fallback, uses WebSocket when available)
+  const { shipments, loading, error } = useSupplyTracking({ pollingInterval: 60000 });
   const [selectedShipment, setSelectedShipment] = useState(null); 
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchSupplyData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await api.get('/supply-tracking'); 
-        setShipments(response.data);
-      } catch (err) {
-        console.error("Failed to fetch supply data:", err);
-        setError("Failed to load tracking data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchSupplyData();
-    const interval = setInterval(fetchSupplyData, 30000); 
-    return () => clearInterval(interval);
-  }, []);
-
-  const criticalShipments = shipments
-    .filter(
-      (s) =>
-        s.status === "Delayed" ||
-        s.priority === "Critical" ||
-        (s.eta && new Date(s.eta) < Date.now() + 4 * 60 * 60 * 1000)
-    )
-    .sort((a, b) => new Date(a.eta) - new Date(b.eta));
+  const criticalShipments = useMemo(() => 
+    shipments
+      .filter(
+        (s) =>
+          s.status === "Delayed" ||
+          s.priority === "Critical" ||
+          (s.eta && new Date(s.eta) < Date.now() + 4 * 60 * 60 * 1000)
+      )
+      .sort((a, b) => new Date(a.eta) - new Date(b.eta)),
+    [shipments]
+  );
 
   return (
     <div className="bg-background min-h-screen p-4 md:p-6 space-y-6 font-inter">

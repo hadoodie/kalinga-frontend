@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"; 
+import { useState, useEffect, useMemo } from "react"; 
 import {
   Truck,
   Package,
@@ -21,6 +21,8 @@ import resourceService from "../../services/resourceService";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import api from "../../services/api"; 
 import { formatDistanceToNow } from 'date-fns';
+import { useNotifications } from "../../hooks/useNotifications";
+import { useSupplyTracking } from "../../hooks/useSupplyTracking";
 
 // IMPORT YOUR LIVE TRACKING MAP COMPONENT HERE
 import LiveTrackingMap from "./LiveTrackingMap"; 
@@ -39,25 +41,16 @@ const MOCK_ASSETS = [
 // ... [Helper Components] ...
 
 const NotificationWidget = () => {
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get('/notifications');
-        const logisticsNotifs = response.data.filter(n => n.type === 'logistics' || !n.type);
-        setNotifications(logisticsNotifs.slice(0, 5));
-      } catch (err) {
-        console.error("Failed to fetch notifications for widget", err);
-        setNotifications([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchNotifications();
-  }, []);
+  // Use real-time notifications hook
+  const { notifications: allNotifications, loading } = useNotifications({ limit: 10 });
+  
+  // Filter for logistics-related notifications
+  const notifications = useMemo(() => 
+    allNotifications
+      .filter(n => n.type === 'logistics' || !n.type)
+      .slice(0, 5),
+    [allNotifications]
+  );
 
   if (loading) return <div className="text-center text-sm text-gray-500">Loading...</div>;
   if (notifications.length === 0) return <div className="text-center text-sm text-gray-500">No new notifications.</div>;
@@ -65,8 +58,12 @@ const NotificationWidget = () => {
   return (
     <ul className="space-y-3 text-left">
       {notifications.map((notif) => (
-        <li key={notif.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg text-green-800 text-sm border-l-4 border-green-700">
-          <span className="flex-shrink-0 w-2 h-2 mt-1.5 bg-green-700 rounded-full"></span>
+        <li key={notif.id} className={`flex gap-3 p-3 rounded-lg text-green-800 text-sm border-l-4 border-green-700 ${
+          !notif.read_at ? "bg-green-50" : "bg-gray-50"
+        }`}>
+          <span className={`flex-shrink-0 w-2 h-2 mt-1.5 rounded-full ${
+            !notif.read_at ? "bg-green-700 animate-pulse" : "bg-green-700"
+          }`}></span>
           <div className="flex-1">
             <p className="font-semibold">{notif.title}</p>
             <p className="text-xs text-gray-600">{notif.description || notif.message}</p>
@@ -362,11 +359,13 @@ const LogisDash = () => {
   const [requests, setRequests] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [facilities, setFacilities] = useState([]);
-  const [shipments, setShipments] = useState([]); // Initialized empty for Real Data
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [assets] = useState(MOCK_ASSETS);
+  
+  // Use real-time supply tracking hook for shipments
+  const { shipments, loading: shipmentsLoading } = useSupplyTracking({ pollingInterval: 60000 });
   
   // NEW STATE FOR MAP
   const [selectedShipment, setSelectedShipment] = useState(null);
@@ -402,9 +401,7 @@ const LogisDash = () => {
         }));
         setRequests(formattedRequests);
 
-        // 3. Fetch Supply Tracking (Shipments) - THIS CONNECTS THE DELAYS
-        const supplyResponse = await api.get('/supply-tracking');
-        setShipments(supplyResponse.data);
+        // 3. Shipments are now handled by useSupplyTracking hook
 
         // 4. Process Inventory for Facility Pie Chart
         const facilityMap = {};
@@ -430,7 +427,7 @@ const LogisDash = () => {
     fetchDashboardData();
   }, []);
 
-  if (loading) {
+  if (loading && shipmentsLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-100">
         <div className="text-center">
