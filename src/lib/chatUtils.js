@@ -231,6 +231,13 @@ export const normalizeConversation = (
     category: conversation.category ?? participant.role ?? "General",
     unreadCount: conversation.unreadCount ?? 0,
     isArchived: conversation.isArchived ?? false,
+    // Include incident tracking for incident-scoped messaging
+    activeIncidentId:
+      conversation.activeIncidentId ??
+      conversation.incident_id ??
+      conversation.incidentId ??
+      null,
+    incidentStatus: conversation.incidentStatus ?? null,
     lastMessage: conversation.lastMessage ?? lastMessage?.text ?? "",
     lastMessageTime:
       conversation.lastMessageTime ?? lastMessage?.timestamp ?? null,
