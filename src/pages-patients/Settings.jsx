@@ -3,6 +3,7 @@ import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
 import PatientSetting from "../components/patients/Settings";
 import PatientSidebar from "../components/patients/Sidebar";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 export const PatientSettings = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -29,6 +30,7 @@ export const PatientSettings = () => {
           <Footer />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

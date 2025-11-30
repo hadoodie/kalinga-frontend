@@ -133,7 +133,6 @@ class UserSeeder extends Seeder
                 'phone' => '09171234571',
                 'is_active' => true,
                 'verification_status' => 'verified',
-                // --- PATIENT DATA ADDED HERE ---
                 'patientId' => 'HN-0012345',
                 'dob' => '1985-10-15',
                 'bloodType' => 'O+',

@@ -9,14 +9,15 @@ import {
   CloudDrizzle, 
   CloudRain, 
   CloudLightning, 
-  Loader2 
+  Loader2,
+  Clock          
 } from "lucide-react";
 import api from "../../services/api"; 
 import { useAuth } from "../../context/AuthContext"; 
 import { formatDistanceToNow } from 'date-fns'; 
 import { useNavigate } from 'react-router-dom'; 
 
-// --- START: Weather Helper Functions ---
+// --- Weather Helper Functions ---
 const describeWeatherCode = (code) => {
   const codes = {
     0: { label: "Clear sky", variant: "clear" },
@@ -58,8 +59,6 @@ const formatTemperature = (value, unit) => {
   if (typeof value !== "number" || Number.isNaN(value)) return "–";
   return `${Math.round(value)}°${unit.toUpperCase()}`;
 };
-// --- END: Weather Helper Functions ---
-
 
 // --- Weather Widget Component ---
 const WeatherWidget = () => {
@@ -117,7 +116,6 @@ const WeatherWidget = () => {
     </div>
   );
 };
-// --- END: Weather Widget Component ---
 
 // --- Notification Widget Component ---
 const NotificationWidget = () => {
@@ -150,7 +148,7 @@ const NotificationWidget = () => {
   return (
     <ul className="space-y-3 text-left">
       {notifications.map((notif) => (
-        <li key={notif.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg text-primary text-sm border-l-4 border-green-700">
+        <li key={notif.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg text-primary text-sm">
           <span className="flex-shrink-0 w-2 h-2 mt-1.5 bg-green-700 rounded-full"></span>
           <div className="flex-1">
             <p className="font-semibold">{notif.title}</p>
@@ -164,7 +162,74 @@ const NotificationWidget = () => {
     </ul>
   );
 };
-// --- END: Notification Widget Component ---
+
+// --- Upcoming Appointment Widget ---
+const AppointmentWidget = () => {
+  const [appointment, setAppointment] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNextAppointment = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get('/appointments');
+        
+        // Filter for upcoming only and sort by date ascending (soonest first)
+        const upcoming = response.data
+          .filter(app => app.status.toLowerCase() === 'upcoming')
+          .map(app => ({
+            ...app,
+            dateObj: new Date(app.appointment_at)
+          }))
+          .sort((a, b) => a.dateObj - b.dateObj);
+
+        // Take the very first one
+        if (upcoming.length > 0) {
+          setAppointment(upcoming[0]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch appointment widget", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchNextAppointment();
+  }, []);
+
+  if (loading) return <div className="text-center text-sm text-gray-500">Loading...</div>;
+
+  if (!appointment) {
+    return (
+      <div className="text-center p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+        <p className="text-sm text-gray-500">No upcoming appointments.</p>
+        <p className="text-xs text-green-600 font-semibold mt-1">Book a visit now</p>
+      </div>
+    );
+  }
+
+  const date = new Date(appointment.appointment_at);
+  const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+  return (
+    <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex flex-col gap-2">
+       <div className="flex items-start gap-3">
+          <div className="bg-white p-2 rounded-md shadow-sm text-center min-w-[3.5rem]">
+             <p className="text-xs text-green-800 font-bold uppercase">{date.toLocaleDateString('en-US', { month: 'short' })}</p>
+             <p className="text-xl font-extrabold text-green-700">{date.getDate()}</p>
+          </div>
+          <div className="flex-1">
+             <p className="font-bold text-primary text-sm line-clamp-1">{appointment.provider_name}</p>
+             <p className="text-xs text-green-700 font-medium mb-1">{appointment.provider_specialty}</p>
+             <div className="flex items-center gap-1 text-xs text-gray-600">
+               <Clock size={12} />
+               {timeStr}
+             </div>
+          </div>
+       </div>
+    </div>
+  );
+};
 
 
 const DARK = {
@@ -186,6 +251,54 @@ const DOWNLOAD_ICON_SVG = (
   </svg>
 );
 
+// --- Vitals Mock Data ---
+const vitalsData = [
+  {
+    id: "RM023271",
+    date: "2024-11-20",
+    temp: 38.1,
+    hr: 66,
+    spo2: 85,
+    complaint: "Difficulty breathing",
+    mental: "A (Alert)",
+    level: "medium",
+    doctor: "Pulmonologist"
+  },
+  {
+    id: "RM023271",
+    date: "2024-11-15",
+    temp: 37.8,
+    hr: 64,
+    spo2: 99,
+    complaint: "Dizziness",
+    mental: "A (Alert)",
+    level: "medium",
+    doctor: "Neurologist"
+  },
+  {
+    id: "RM023271",
+    date: "2024-11-10",
+    temp: 39.1,
+    hr: 103,
+    spo2: 86,
+    complaint: "Chest pain",
+    mental: "V (Verbal)",
+    level: "medium",
+    doctor: "Cardiologist"
+  },
+  {
+    id: "RM023271",
+    date: "2024-11-05",
+    temp: 37.5,
+    hr: 74,
+    spo2: 90,
+    complaint: "Chest pain",
+    mental: "P (Pain)",
+    level: "medium",
+    doctor: "Cardiologist"
+  }
+];
+
 // --- Main Component ---
 
 export default function PatientDash() {
@@ -200,7 +313,7 @@ export default function PatientDash() {
   const [sortBy, setSortBy] = useState("Descending");
 
   const [currentPage, setCurrentPage] = useState(1);
-  const resultsPerPage = 10;
+  const resultsPerPage = 5;
 
   let greeting = "Good morning";
   const currentHour = new Date().getHours();
@@ -317,6 +430,41 @@ export default function PatientDash() {
     </div>
   );
 
+  // --- Mobile Card for Vitals ---
+  const MobileVitalsCard = ({ item }) => (
+    <div className="p-4 mb-3 bg-white border border-gray-200 rounded-lg shadow-sm text-left">
+      <div className="flex justify-between items-start mb-2">
+         <span className="text-xs font-bold text-gray-800 break-words w-2/3">{item.id}</span>
+         <span className="text-xs text-gray-500">{item.date}</span>
+      </div>
+      
+      <div className="grid grid-cols-3 gap-2 mb-3 bg-gray-50 p-2 rounded">
+         <div className="text-center">
+            <p className="text-[10px] text-gray-500 uppercase">Temp</p>
+            <p className="font-bold text-gray-800">{item.temp}</p>
+         </div>
+         <div className="text-center">
+            <p className="text-[10px] text-gray-500 uppercase">HR</p>
+            <p className="font-bold text-gray-800">{item.hr}</p>
+         </div>
+         <div className="text-center">
+            <p className="text-[10px] text-gray-500 uppercase">SpO2</p>
+            <p className="font-bold text-gray-800">{item.spo2}</p>
+         </div>
+      </div>
+
+      <div className="space-y-1 text-xs text-gray-700">
+         <p><span className="font-semibold">Complaint:</span> {item.complaint}</p>
+         <p><span className="font-semibold">Mental:</span> {item.mental}</p>
+         <p><span className="font-semibold">Doctor:</span> {item.doctor}</p>
+      </div>
+      
+      <div className={`mt-2 text-center text-xs font-bold py-1 px-2 rounded ${item.level === 'medium' ? 'bg-orange-100 text-orange-800' : 'bg-gray-100'}`}>
+         Level: {item.level.toUpperCase()}
+      </div>
+    </div>
+  );
+
   return (
     <div className={`min-h-screen p-4 sm:p-6 md:p-8 ${DARK.bg} font-inter`}>
 
@@ -329,115 +477,146 @@ export default function PatientDash() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* --- COLUMN 1: Main Content Card --- */}
-        <div className="lg:col-span-2 space-y-6 bg-white rounded-xl shadow-lg p-6">
-          
-          {/* Filter Bar */}
-          <div className={`flex flex-col md:flex-row md:items-end gap-4`}>
-            <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="flex flex-col text-left">
-                <label className={`text-sm font-semibold mb-1 ${DARK.textMuted}`}>Order Date From:</label>
-                <div className="relative">
-                  <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={`w-full p-2.5 rounded-lg text-sm ${DARK.textLight} bg-gray-50 border-gray-300 border focus:ring-green-500 focus:border-green-500 appearance-none`} />
-                  <Calendar size={16} className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${DARK.textMuted} pointer-events-none`} />
-                </div>
-              </div>
-              <div className="flex flex-col text-left">
-                <label className={`text-sm font-semibold mb-1 ${DARK.textMuted}`}>Order Date To:</label>
-                <div className="relative">
-                  <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={`w-full p-2.5 rounded-lg text-sm ${DARK.textLight} bg-gray-50 border-gray-300 border focus:ring-green-500 focus:border-green-500 appearance-none`} />
-                  <Calendar size={16} className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${DARK.textMuted} pointer-events-none`} />
-                </div>
-              </div>
-              <div className="flex flex-col text-left">
-                <label className={`text-sm font-semibold mb-1 ${DARK.textMuted}`}>Sort By</label>
-                <div className="relative">
-                  <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={`w-full p-2.5 rounded-lg text-sm ${DARK.textLight} bg-gray-50 border-gray-300 border focus:ring-green-500 focus:border-green-500 appearance-none pr-10 cursor-pointer`}>
-                    <option value="Descending">Latest</option>
-                    <option value="Ascending">Oldest</option>
-                  </select>
-                  <ChevronDown size={18} className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${DARK.textMuted} pointer-events-none`} />
-                </div>
-              </div>
+        <div className="lg:col-span-2 space-y-8">
+            
+          {/* --- Vitals Table (Triage History) --- */}
+          <div className="bg-white rounded-xl shadow-lg p-6 overflow-hidden">
+            <div className="flex items-center gap-2 mb-4 justify-between">
+              <h2 className="text-xl font-bold text-primary">Triage History</h2>
+              <button
+                className="text-green-700 font-semibold text-sm hover:underline"
+                onClick={() => navigate('/patient/health-records?tab=triage')}
+              >
+                See All
+              </button>
             </div>
-            <button onClick={handleGoClick} className={`h-11 px-6 font-bold rounded-lg shadow-md transition shrink-0 ${DARK.header} text-white text-sm hover:bg-green-800`}>
-              Show Results
-            </button>
-          </div>
-
-          {/* Data Table Container */}
-          <div className={`rounded-xl overflow-hidden border border-gray-200`}>
-            {/* Mobile Card List */}
-            <div className="sm:hidden">
-              {isLoading ? (
-                <div className="py-8 text-center text-gray-500 font-medium">Loading results...</div>
-              ) : error ? (
-                <div className="py-8 text-center text-red-500 font-medium">{error}</div>
-              ) : formattedResults.length > 0 ? (
-                formattedResults.map((result) => (
-                  <MobileResultCard key={result.labNo} result={result} />
-                ))
-              ) : (
-                <div className="py-8 text-center text-gray-500 font-medium">No results found.</div>
-              )}
+            {/* Mobile Vitals View */}
+            <div className="md:hidden">
+              {vitalsData.slice(0, 5).map((item, idx) => (
+                <MobileVitalsCard key={idx} item={item} />
+              ))}
             </div>
-
-            {/* Desktop Table View */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="min-w-full">
-                <thead className={DARK.header}>
+            {/* Desktop Vitals Table */}
+            <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 min-w-0">
+              <table className="w-full table-auto text-sm"> 
+                <thead className="bg-primary">
                   <tr>
-                    {tableHeaders.map((header) => (
-                      <th key={header.key} scope="col" className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white`}>
-                        {header.name}
-                      </th>
-                    ))}
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Patient ID</th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Date</th>
+                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">Temp</th>
+                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">HR</th>
+                    <th className="px-1 py-3 text-center font-semibold uppercase tracking-wider text-white">SpO₂</th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Complaint</th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Mental</th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Level</th>
+                    <th className="px-2 py-3 text-center font-semibold uppercase tracking-wider text-white">Doctor</th>
                   </tr>
                 </thead>
-                <tbody className={`divide-y divide-gray-100 ${DARK.card}`}>
-                  {isLoading ? (
-                    <tr><td colSpan={tableHeaders.length} className="py-8 text-center text-gray-500 font-medium">Loading results...</td></tr>
-                  ) : error ? (
-                    <tr><td colSpan={tableHeaders.length} className="py-8 text-center text-red-500 font-medium">{error}</td></tr>
-                  ) : formattedResults.length > 0 ? (
-                    formattedResults.map((result) => (
-                      <tr key={result.labNo} className="hover:bg-gray-50 transition text-center">
-                        <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${DARK.textLight}`}>{result.labNo}</td>
-                        <td className={`px-4 py-3 whitespace-nowLg text-sm ${DARK.textMuted}`}>{result.branch}</td>
-                        <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.orderDate}</td>
-                        <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.patientID}</td>
-                        <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.account}</td>
-                        <td className={`px-4 py-3 whitespace-nowrap text-sm font-bold text-green-600`}>{result.type}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-sm">
-                          <button onClick={() => handleDownload(result.labNo)} className="group p-2 rounded-full bg-green-700 hover:bg-green-800 transition" title="Download Result">
-                            {DOWNLOAD_ICON_SVG}
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={tableHeaders.length} className="py-8 text-center text-gray-500 font-medium">No results found for the selected criteria.</td>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {vitalsData.slice(0, 5).map((item, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50 transition text-center">
+                      <td className="px-2 py-3 font-medium text-green-700">{item.id}</td>
+                      <td className="px-2 py-3 text-primary">{item.date}</td>
+                      <td className="px-1 py-3 text-primary">{item.temp}</td>
+                      <td className="px-1 py-3 text-primary">{item.hr}</td>
+                      <td className="px-1 py-3 font-bold text-green-600">{item.spo2}</td>
+                      <td className="px-2 py-3 max-w-[100px] truncate text-primary" title={item.complaint}>{item.complaint}</td>
+                      <td className="px-2 py-3 text-primary">{item.mental}</td>
+                      <td className={`px-2 py-3 font-bold ${item.level === 'medium' ? 'bg-orange-50 text-[#C05621]' : ''}`}>{item.level}</td>
+                      <td className="px-2 py-3 text-green-800 break-words">{item.doctor}</td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
 
-          {/* Pagination & Footer */}
-          <div className="flex justify-between items-center mt-4">
-            {!isLoading && !error && results.length > 0 && <Pagination />}
-            {!isLoading && !error && (
-              <div className={`text-xs ${DARK.textMuted}`}>
-                Showing {paginatedResults.length} of {results.length} total results.
+          {/* --- Lab Results --- */}
+          <div className="bg-white rounded-xl shadow-lg p-6">
+            <div className="flex items-center gap-2 mb-4 justify-between">
+              <h2 className="text-xl font-bold text-primary">Lab Results</h2>
+              <button
+                className="text-green-700 font-semibold text-sm hover:underline"
+                onClick={() => navigate('/patient/health-records?tab=lab')}
+              >
+                See All
+              </button>
+            </div>
+            {/* Data Table Container */}
+            <div className={`rounded-xl overflow-hidden border border-gray-200`}>
+              {/* Mobile Card List */}
+              <div className="sm:hidden">
+                {isLoading ? (
+                  <div className="py-8 text-center text-gray-500 font-medium">Loading results...</div>
+                ) : error ? (
+                  <div className="py-8 text-center text-red-500 font-medium">{error}</div>
+                ) : formattedResults.slice(0, 5).length > 0 ? (
+                  formattedResults.slice(0, 5).map((result) => (
+                    <MobileResultCard key={result.labNo} result={result} />
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-gray-500 font-medium">No results found.</div>
+                )}
               </div>
-            )}
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <table className="min-w-full">
+                  <thead className={DARK.header}>
+                    <tr>
+                      {tableHeaders.map((header) => (
+                        <th key={header.key} scope="col" className={`px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white`}>
+                          {header.name}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y divide-gray-100 ${DARK.card}`}>
+                    {isLoading ? (
+                      <tr><td colSpan={tableHeaders.length} className="py-8 text-center text-gray-500 font-medium">Loading results...</td></tr>
+                    ) : error ? (
+                      <tr><td colSpan={tableHeaders.length} className="py-8 text-center text-red-500 font-medium">{error}</td></tr>
+                    ) : formattedResults.slice(0, 5).length > 0 ? (
+                      formattedResults.slice(0, 5).map((result) => (
+                        <tr key={result.labNo} className="hover:bg-gray-50 transition text-center">
+                          <td className={`px-4 py-3 whitespace-nowrap text-sm font-medium ${DARK.textLight}`}>{result.labNo}</td>
+                          <td className={`px-4 py-3 whitespace-nowLg text-sm ${DARK.textMuted}`}>{result.branch}</td>
+                          <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.orderDate}</td>
+                          <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.patientID}</td>
+                          <td className={`px-4 py-3 whitespace-nowrap text-sm ${DARK.textMuted}`}>{result.account}</td>
+                          <td className={`px-4 py-3 whitespace-nowrap text-sm font-bold text-green-600`}>{result.type}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm">
+                            <button onClick={() => handleDownload(result.labNo)} className="group p-2 rounded-full bg-green-700 hover:bg-green-800 transition" title="Download Result">
+                              {DOWNLOAD_ICON_SVG}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={tableHeaders.length} className="py-8 text-center text-gray-500 font-medium">No results found for the selected criteria.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
         </div> 
 
         {/* --- COLUMN 2: Sidebar --- */}
         <aside className="lg:col-span-1 space-y-6">
+
+          {/* Upcoming Appointment */}
+          <button 
+            onClick={() => navigate('/patient/appointments')}
+            className="w-full bg-white rounded-xl shadow-lg p-6 text-left hover:bg-gray-50 transition"
+          >
+             <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-primary">Upcoming Appointment</h2>
+             </div>
+             <AppointmentWidget />
+          </button>
           
           {/* Notifications Section */}
           <button 

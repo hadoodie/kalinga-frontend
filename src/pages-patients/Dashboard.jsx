@@ -3,6 +3,7 @@ import { useState } from "react";
 import PatientSidebar from "../components/patients/Sidebar";
 import { Footer } from "../components/Footer";
 import PatientDash from "../components/patients/Dashboard";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 
 export const PatientDashboard = () => {
@@ -30,6 +31,7 @@ export const PatientDashboard = () => {
           <Footer />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

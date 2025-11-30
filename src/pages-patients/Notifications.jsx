@@ -2,6 +2,7 @@ import PatientSidebar from "../components/patients/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
 import Notifs from "../components/Notifications";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 export const Notifications = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,7 @@ export const Notifications = () => {
           <Notifs />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

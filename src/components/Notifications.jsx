@@ -1,4 +1,4 @@
-import { Bell, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { formatDistanceToNow } from 'date-fns';
 import api from "../services/api"; 
@@ -26,9 +26,8 @@ export default function Notifs() {
   return (
     <div className="min-h-screen bg-background p-4 md:p-6 lg:p-8 space-y-6">
       {/* Page Header */}
-      <header className="flex flex-col md:flex-row justify-between items-center md:items-center p-4 bg-white rounded-xl shadow-lg">
+      <header className="flex flex-col md:flex-row justify-between items-center md:items-center p-4">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary flex items-center gap-3">
-          <Bell className="w-8 h-8" />
           Notifications
         </h1>
         <button className="mt-3 md:mt-0 px-4 py-2 text-sm rounded-md bg-primary text-white hover:bg-green-700 transition">

@@ -2,6 +2,7 @@ import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
 import PatientSidebar from "../components/patients/Sidebar";
 import { Footer } from "../components/Footer";
+import EmergencyFab from "../components/patients/EmergencyFab";
 import MessagesContact from "../components/patients/Messages";
 
 export const PatientMessages = () => {
@@ -29,6 +30,7 @@ export const PatientMessages = () => {
           <Footer />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

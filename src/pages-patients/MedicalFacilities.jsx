@@ -2,6 +2,7 @@ import Hospital from "../components/dashboard/Hospitals";
 import PatientSidebar from "../components/patients/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 export const MedicalFacilities = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,7 @@ export const MedicalFacilities = () => {
           <Hospital />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

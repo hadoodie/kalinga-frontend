@@ -2,6 +2,7 @@ import PatientSidebar from "../components/patients/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
 import WeatherSection from "../components/dashboard/Weather";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 export const Weather = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,7 @@ export const Weather = () => {
           <WeatherSection />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };
