@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { 
-  AlertCircle, 
-  CheckCircle, 
-  ChevronLeft, 
-  ChevronRight, 
-  Loader2, 
-  Plus, 
-  RefreshCw, 
-  Search, 
-  Shield, 
-  UserCheck, 
-  UserCog, 
-  UserMinus, 
-  UserPlus, 
-  X 
+import {
+  AlertCircle,
+  CheckCircle,
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  Shield,
+  UserCheck,
+  UserCog,
+  UserMinus,
+  UserPlus,
+  X,
 } from "lucide-react";
 import { SectionHeader } from "../SectionHeader";
 import adminService from "../../../services/adminService";
@@ -28,18 +28,23 @@ const roleBadges = {
 
 // Status badge styling
 const statusBadges = {
-  active: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+  active:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
   inactive: "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
-  pending: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+  pending:
+    "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
   verified: "bg-sky-100 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300",
 };
 
 // Verification status styling
 const verificationBadges = {
-  pending: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-  verified: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+  pending:
+    "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+  verified:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
   rejected: "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
-  unverified: "bg-gray-100 text-gray-700 dark:bg-gray-500/10 dark:text-gray-300",
+  unverified:
+    "bg-gray-100 text-gray-700 dark:bg-gray-500/10 dark:text-gray-300",
 };
 
 // Format relative time
@@ -80,7 +85,13 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
       await adminService.createUser(formData);
       onUserCreated();
       onClose();
-      setFormData({ name: "", email: "", password: "", role: "patient", phone: "" });
+      setFormData({
+        name: "",
+        email: "",
+        password: "",
+        role: "patient",
+        phone: "",
+      });
     } catch (err) {
       setError(err.response?.data?.message || "Failed to create user");
     } finally {
@@ -94,8 +105,13 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-6 shadow-xl">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-foreground">Create New User</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-primary/10">
+          <h2 className="text-xl font-semibold text-foreground">
+            Create New User
+          </h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-primary/10"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -109,47 +125,63 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-foreground/70 mb-1">Full Name</label>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Full Name
+            </label>
             <input
               type="text"
               required
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
               className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
               placeholder="Enter full name"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground/70 mb-1">Email</label>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Email
+            </label>
             <input
               type="email"
               required
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
               className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
               placeholder="Enter email address"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground/70 mb-1">Password</label>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Password
+            </label>
             <input
               type="password"
               required
               minLength={8}
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, password: e.target.value })
+              }
               className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
               placeholder="Minimum 8 characters"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground/70 mb-1">Role</label>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Role
+            </label>
             <select
               value={formData.role}
-              onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, role: e.target.value })
+              }
               className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
             >
               <option value="patient">Patient</option>
@@ -160,11 +192,15 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground/70 mb-1">Phone (Optional)</label>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Phone (Optional)
+            </label>
             <input
               type="tel"
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
               className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
               placeholder="+63 XXX XXX XXXX"
             />
@@ -183,7 +219,11 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
               disabled={isLoading}
               className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold flex items-center justify-center gap-2 hover:shadow-md disabled:opacity-50"
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserPlus className="h-4 w-4" />
+              )}
               {isLoading ? "Creating..." : "Create User"}
             </button>
           </div>
@@ -274,18 +314,23 @@ export const UserRoleManagement = () => {
         description="Control privileged access and coordinate multi-agency collaboration. Provision accounts, assign granular roles, and track presence across the command chain."
         actions={
           <div className="flex items-center gap-3">
-            <button 
-              onClick={() => { fetchUsers(); fetchStats(); }}
+            <button
+              onClick={() => {
+                fetchUsers();
+                fetchStats();
+              }}
               className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
               Refresh
             </button>
             <button className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary">
               <Shield className="h-4 w-4" />
               Role matrix
             </button>
-            <button 
+            <button
               onClick={() => setIsCreateModalOpen(true)}
               className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:shadow-md"
             >
@@ -304,7 +349,9 @@ export const UserRoleManagement = () => {
               <UserCog className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.total}
+              </p>
               <p className="text-sm text-foreground/60">Total Users</p>
             </div>
           </div>
@@ -313,7 +360,9 @@ export const UserRoleManagement = () => {
               <UserCheck className="h-6 w-6 text-emerald-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.active}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.active}
+              </p>
               <p className="text-sm text-foreground/60">Active</p>
             </div>
           </div>
@@ -322,7 +371,9 @@ export const UserRoleManagement = () => {
               <Shield className="h-6 w-6 text-sky-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.byRole?.responder || 0}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.byRole?.responder || 0}
+              </p>
               <p className="text-sm text-foreground/60">Responders</p>
             </div>
           </div>
@@ -331,7 +382,9 @@ export const UserRoleManagement = () => {
               <AlertCircle className="h-6 w-6 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.pendingVerification}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.pendingVerification}
+              </p>
               <p className="text-sm text-foreground/60">Pending Verification</p>
             </div>
           </div>
@@ -353,7 +406,10 @@ export const UserRoleManagement = () => {
             </div>
             <select
               value={roleFilter}
-              onChange={(e) => { setRoleFilter(e.target.value); setCurrentPage(1); }}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setCurrentPage(1);
+              }}
               className="h-11 rounded-full border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
             >
               <option value="">All Roles</option>
@@ -396,34 +452,47 @@ export const UserRoleManagement = () => {
                     <th className="px-6 py-3 font-medium">Status</th>
                     <th className="px-6 py-3 font-medium">Verification</th>
                     <th className="px-6 py-3 font-medium">Created</th>
-                    <th className="px-6 py-3 text-right font-medium">Actions</th>
+                    <th className="px-6 py-3 text-right font-medium">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60 bg-background/50">
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-foreground/60">
+                      <td
+                        colSpan={6}
+                        className="px-6 py-12 text-center text-foreground/60"
+                      >
                         No users found
                       </td>
                     </tr>
                   ) : (
                     filteredUsers.map((user) => (
-                      <tr key={user.id} className="hover:bg-primary/5 transition">
+                      <tr
+                        key={user.id}
+                        className="hover:bg-primary/5 transition"
+                      >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
                               {user.name?.[0]?.toUpperCase() || "?"}
                             </div>
                             <div className="space-y-0.5">
-                              <p className="font-semibold text-foreground">{user.name}</p>
-                              <p className="text-xs text-foreground/60">{user.email}</p>
+                              <p className="font-semibold text-foreground">
+                                {user.name}
+                              </p>
+                              <p className="text-xs text-foreground/60">
+                                {user.email}
+                              </p>
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${
-                              roleBadges[user.role] || "bg-gray-500/10 text-gray-600"
+                              roleBadges[user.role] ||
+                              "bg-gray-500/10 text-gray-600"
                             }`}
                           >
                             {user.role}
@@ -432,7 +501,9 @@ export const UserRoleManagement = () => {
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
-                              user.is_active ? statusBadges.active : statusBadges.inactive
+                              user.is_active
+                                ? statusBadges.active
+                                : statusBadges.inactive
                             }`}
                           >
                             {user.is_active ? "Active" : "Inactive"}
@@ -441,7 +512,8 @@ export const UserRoleManagement = () => {
                         <td className="px-6 py-4">
                           <span
                             className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${
-                              verificationBadges[user.verification_status] || verificationBadges.unverified
+                              verificationBadges[user.verification_status] ||
+                              verificationBadges.unverified
                             }`}
                           >
                             {user.verification_status || "Unverified"}
@@ -492,7 +564,9 @@ export const UserRoleManagement = () => {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() =>
+                      setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
                     disabled={currentPage === totalPages}
                     className="h-9 w-9 rounded-full border border-border/60 flex items-center justify-center hover:bg-primary/10 disabled:opacity-50"
                   >
@@ -509,7 +583,10 @@ export const UserRoleManagement = () => {
       <CreateUserModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        onUserCreated={() => { fetchUsers(); fetchStats(); }}
+        onUserCreated={() => {
+          fetchUsers();
+          fetchStats();
+        }}
       />
     </div>
   );

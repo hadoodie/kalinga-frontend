@@ -283,7 +283,7 @@ export default function PatientSidebar() {
                 {/* Icon */}
                 <span
                   className={`flex-shrink-0 transition-transform duration-300 ${
-                    item.highlight ? "animate-bounce" : ""
+                    item.highlight ? "animate-pulse" : ""
                   }`}
                 >
                   {item.icon}

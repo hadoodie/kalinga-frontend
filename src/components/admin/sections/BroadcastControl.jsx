@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { 
+import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  Megaphone, 
-  MessageCircle, 
-  Mic, 
+  Megaphone,
+  MessageCircle,
+  Mic,
   RefreshCw,
-  Send, 
-  Users 
+  Send,
+  Users,
 } from "lucide-react";
 import { SectionHeader } from "../SectionHeader";
 import adminService from "@/services/adminService";
@@ -40,7 +40,7 @@ export const BroadcastControl = () => {
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
   const [sendError, setSendError] = useState(null);
-  
+
   // Form state
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -83,7 +83,7 @@ export const BroadcastControl = () => {
       setSubject("");
       setMessage("");
       fetchNotifications(); // Refresh the list
-      
+
       // Clear success message after 3 seconds
       setTimeout(() => setSendSuccess(false), 3000);
     } catch (error) {
@@ -100,12 +100,14 @@ export const BroadcastControl = () => {
         title="Broadcast Communication Control"
         description="Coordinate city-wide advisories and deliver consistent messaging across digital, SMS, and radio channels."
         actions={
-          <button 
+          <button
             onClick={fetchNotifications}
             disabled={isLoading}
             className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
         }
@@ -196,7 +198,7 @@ export const BroadcastControl = () => {
               </span>
               <span>Auto-translate: Enabled (Tagalog/Ilocano)</span>
             </div>
-            <button 
+            <button
               onClick={handleSendBroadcast}
               disabled={isSending || !subject.trim() || !message.trim()}
               className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
@@ -242,15 +244,21 @@ export const BroadcastControl = () => {
 
           {/* Recent Broadcasts */}
           <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground">Recent Broadcasts</h3>
-            <p className="text-xs text-foreground/60">Last 5 notifications sent</p>
+            <h3 className="text-lg font-semibold text-foreground">
+              Recent Broadcasts
+            </h3>
+            <p className="text-xs text-foreground/60">
+              Last 5 notifications sent
+            </p>
             <div className="mt-4 space-y-3 text-sm">
               {isLoading ? (
                 <div className="flex justify-center py-6">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               ) : recentBroadcasts.length === 0 ? (
-                <p className="text-center py-4 text-foreground/50">No broadcasts yet</p>
+                <p className="text-center py-4 text-foreground/50">
+                  No broadcasts yet
+                </p>
               ) : (
                 recentBroadcasts.map((broadcast) => (
                   <div
@@ -264,13 +272,18 @@ export const BroadcastControl = () => {
                       {broadcast.message}
                     </p>
                     <div className="flex items-center justify-between mt-2">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                        broadcast.type === 'emergency' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300' :
-                        broadcast.type === 'warning' ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300' :
-                        broadcast.type === 'update' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300' :
-                        'bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300'
-                      }`}>
-                        {broadcast.type || 'info'}
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                          broadcast.type === "emergency"
+                            ? "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+                            : broadcast.type === "warning"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
+                            : broadcast.type === "update"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300"
+                            : "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300"
+                        }`}
+                      >
+                        {broadcast.type || "info"}
                       </span>
                       <span className="text-xs text-foreground/50">
                         {new Date(broadcast.created_at).toLocaleDateString()}

@@ -22,18 +22,21 @@ import adminService from "../../../services/adminService";
 const categoryIcons = {
   "Medical Supplies": ClipboardList,
   "Food & Water": Droplet,
-  "Equipment": Boxes,
-  "Transportation": Truck,
-  "Shelter": Warehouse,
-  "default": PackageCheck,
+  Equipment: Boxes,
+  Transportation: Truck,
+  Shelter: Warehouse,
+  default: PackageCheck,
 };
 
 // Status badge styling
 const statusBadges = {
-  "In Stock": "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
-  "Low Stock": "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-  "Critical": "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
-  "Out of Stock": "bg-gray-100 text-gray-700 dark:bg-gray-500/10 dark:text-gray-300",
+  "In Stock":
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+  "Low Stock":
+    "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+  Critical: "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
+  "Out of Stock":
+    "bg-gray-100 text-gray-700 dark:bg-gray-500/10 dark:text-gray-300",
 };
 
 // Format relative time
@@ -42,7 +45,7 @@ const formatRelativeTime = (dateString) => {
   const date = new Date(dateString);
   const now = new Date();
   const diffDays = Math.ceil((date - now) / (1000 * 60 * 60 * 24));
-  
+
   if (diffDays < 0) return `${Math.abs(diffDays)}d overdue`;
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Tomorrow";
@@ -68,14 +71,20 @@ export const ResourceManagement = () => {
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [resourceData, resourceStats, lowStockData, criticalData, expiringData] = await Promise.all([
+      const [
+        resourceData,
+        resourceStats,
+        lowStockData,
+        criticalData,
+        expiringData,
+      ] = await Promise.all([
         adminService.getResources(),
         adminService.getResourceStats(),
         adminService.getLowStockResources(),
         adminService.getCriticalResources(),
         adminService.getExpiringResources(30),
       ]);
-      
+
       setResources(resourceData);
       setStats(resourceStats);
       setLowStock(lowStockData);
@@ -94,8 +103,9 @@ export const ResourceManagement = () => {
 
   // Filter and sort resources
   const filteredResources = resources
-    .filter(r => {
-      const matchesSearch = !searchQuery || 
+    .filter((r) => {
+      const matchesSearch =
+        !searchQuery ||
         r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         r.sku?.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesCategory = !categoryFilter || r.category === categoryFilter;
@@ -104,16 +114,19 @@ export const ResourceManagement = () => {
     .sort((a, b) => {
       const aVal = a[sortField] ?? "";
       const bVal = b[sortField] ?? "";
-      const compare = typeof aVal === 'string' ? aVal.localeCompare(bVal) : aVal - bVal;
+      const compare =
+        typeof aVal === "string" ? aVal.localeCompare(bVal) : aVal - bVal;
       return sortOrder === "asc" ? compare : -compare;
     });
 
   // Group by category for overview
-  const categories = [...new Set(resources.map(r => r.category || 'Uncategorized'))];
+  const categories = [
+    ...new Set(resources.map((r) => r.category || "Uncategorized")),
+  ];
 
   // Toggle category expansion
   const toggleCategory = (category) => {
-    setExpandedCategories(prev => {
+    setExpandedCategories((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(category)) {
         newSet.delete(category);
@@ -127,7 +140,7 @@ export const ResourceManagement = () => {
   // Toggle sort
   const handleSort = (field) => {
     if (sortField === field) {
-      setSortOrder(prev => prev === "asc" ? "desc" : "asc");
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
       setSortField(field);
       setSortOrder("asc");
@@ -146,7 +159,9 @@ export const ResourceManagement = () => {
               disabled={isLoading}
               className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+              />
               Refresh
             </button>
             <button className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:shadow-md">
@@ -165,7 +180,9 @@ export const ResourceManagement = () => {
               <Package className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.total}
+              </p>
               <p className="text-sm text-foreground/60">Total Items</p>
             </div>
           </div>
@@ -174,7 +191,9 @@ export const ResourceManagement = () => {
               <AlertTriangle className="h-6 w-6 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.lowStock}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.lowStock}
+              </p>
               <p className="text-sm text-foreground/60">Low Stock</p>
             </div>
           </div>
@@ -183,7 +202,9 @@ export const ResourceManagement = () => {
               <AlertTriangle className="h-6 w-6 text-rose-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.critical}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.critical}
+              </p>
               <p className="text-sm text-foreground/60">Critical</p>
             </div>
           </div>
@@ -192,7 +213,9 @@ export const ResourceManagement = () => {
               <Calendar className="h-6 w-6 text-purple-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.expiring}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.expiring}
+              </p>
               <p className="text-sm text-foreground/60">Expiring Soon</p>
             </div>
           </div>
@@ -220,8 +243,10 @@ export const ResourceManagement = () => {
               className="h-11 rounded-full border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
             >
               <option value="">All Categories</option>
-              {categories.map(cat => (
-                <option key={cat} value={cat}>{cat}</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
               ))}
             </select>
           </div>
@@ -236,32 +261,46 @@ export const ResourceManagement = () => {
           {/* Resources Table */}
           {!isLoading && (
             <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm overflow-hidden">
-              <h3 className="text-lg font-semibold text-foreground mb-4">Inventory List</h3>
-              
+              <h3 className="text-lg font-semibold text-foreground mb-4">
+                Inventory List
+              </h3>
+
               {filteredResources.length === 0 ? (
-                <p className="text-center py-8 text-foreground/60">No resources found</p>
+                <p className="text-center py-8 text-foreground/60">
+                  No resources found
+                </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-border/60 text-sm">
                     <thead className="bg-primary/5 text-left text-xs uppercase tracking-wide text-foreground/60">
                       <tr>
-                        <th 
+                        <th
                           className="px-4 py-3 font-medium cursor-pointer hover:text-primary"
                           onClick={() => handleSort("name")}
                         >
                           <span className="flex items-center gap-1">
                             Name
-                            {sortField === "name" && (sortOrder === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                            {sortField === "name" &&
+                              (sortOrder === "asc" ? (
+                                <ChevronUp className="h-3 w-3" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" />
+                              ))}
                           </span>
                         </th>
                         <th className="px-4 py-3 font-medium">Category</th>
-                        <th 
+                        <th
                           className="px-4 py-3 font-medium cursor-pointer hover:text-primary"
                           onClick={() => handleSort("quantity")}
                         >
                           <span className="flex items-center gap-1">
                             Qty
-                            {sortField === "quantity" && (sortOrder === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />)}
+                            {sortField === "quantity" &&
+                              (sortOrder === "asc" ? (
+                                <ChevronUp className="h-3 w-3" />
+                              ) : (
+                                <ChevronDown className="h-3 w-3" />
+                              ))}
                           </span>
                         </th>
                         <th className="px-4 py-3 font-medium">Location</th>
@@ -271,29 +310,47 @@ export const ResourceManagement = () => {
                     </thead>
                     <tbody className="divide-y divide-border/60 bg-background/50">
                       {filteredResources.slice(0, 10).map((resource) => (
-                        <tr key={resource.id} className="hover:bg-primary/5 transition">
+                        <tr
+                          key={resource.id}
+                          className="hover:bg-primary/5 transition"
+                        >
                           <td className="px-4 py-3">
                             <div>
-                              <p className="font-medium text-foreground">{resource.name}</p>
+                              <p className="font-medium text-foreground">
+                                {resource.name}
+                              </p>
                               {resource.sku && (
-                                <p className="text-xs text-foreground/60">{resource.sku}</p>
+                                <p className="text-xs text-foreground/60">
+                                  {resource.sku}
+                                </p>
                               )}
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-foreground/70">{resource.category || "—"}</td>
+                          <td className="px-4 py-3 text-foreground/70">
+                            {resource.category || "—"}
+                          </td>
                           <td className="px-4 py-3">
                             <span className="font-semibold text-foreground">
                               {resource.quantity} {resource.unit}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-foreground/70">{resource.location || "—"}</td>
+                          <td className="px-4 py-3 text-foreground/70">
+                            {resource.location || "—"}
+                          </td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${statusBadges[resource.status] || statusBadges["In Stock"]}`}>
+                            <span
+                              className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                statusBadges[resource.status] ||
+                                statusBadges["In Stock"]
+                              }`}
+                            >
                               {resource.status || "In Stock"}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-foreground/60 text-xs">
-                            {resource.expiry_date ? formatRelativeTime(resource.expiry_date) : "—"}
+                            {resource.expiry_date
+                              ? formatRelativeTime(resource.expiry_date)
+                              : "—"}
                           </td>
                         </tr>
                       ))}
@@ -301,7 +358,7 @@ export const ResourceManagement = () => {
                   </table>
                 </div>
               )}
-              
+
               {filteredResources.length > 10 && (
                 <p className="mt-4 text-xs text-foreground/50">
                   Showing 10 of {filteredResources.length} resources
@@ -313,20 +370,26 @@ export const ResourceManagement = () => {
           {/* Category Breakdown */}
           {stats?.byCategory && Object.keys(stats.byCategory).length > 0 && (
             <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground mb-4">By Category</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-4">
+                By Category
+              </h3>
               <div className="space-y-3">
                 {Object.entries(stats.byCategory).map(([category, count]) => {
                   const Icon = categoryIcons[category] || categoryIcons.default;
                   const percentage = Math.round((count / stats.total) * 100);
-                  
+
                   return (
                     <div key={category} className="space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Icon className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium text-foreground">{category}</span>
+                          <span className="text-sm font-medium text-foreground">
+                            {category}
+                          </span>
                         </div>
-                        <span className="text-sm text-foreground/70">{count} items ({percentage}%)</span>
+                        <span className="text-sm text-foreground/70">
+                          {count} items ({percentage}%)
+                        </span>
                       </div>
                       <div className="h-2 rounded-full bg-foreground/10">
                         <div
@@ -348,17 +411,26 @@ export const ResourceManagement = () => {
           <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              <h3 className="text-lg font-semibold text-foreground">Low Stock Alerts</h3>
+              <h3 className="text-lg font-semibold text-foreground">
+                Low Stock Alerts
+              </h3>
             </div>
             {lowStock.length === 0 ? (
               <p className="text-sm text-foreground/60">No low stock items</p>
             ) : (
               <div className="space-y-3">
                 {lowStock.slice(0, 5).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/20">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-amber-500/5 border border-amber-500/20"
+                  >
                     <div>
-                      <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      <p className="text-xs text-foreground/60">{item.location}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-foreground/60">
+                        {item.location}
+                      </p>
                     </div>
                     <span className="text-sm font-semibold text-amber-600">
                       {item.quantity} {item.unit}
@@ -374,14 +446,23 @@ export const ResourceManagement = () => {
             <div className="rounded-3xl border border-rose-500/30 bg-rose-500/5 p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <AlertTriangle className="h-5 w-5 text-rose-500" />
-                <h3 className="text-lg font-semibold text-rose-600">Critical Items</h3>
+                <h3 className="text-lg font-semibold text-rose-600">
+                  Critical Items
+                </h3>
               </div>
               <div className="space-y-3">
                 {critical.slice(0, 5).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-rose-500/10 border border-rose-500/30">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-rose-500/10 border border-rose-500/30"
+                  >
                     <div>
-                      <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      <p className="text-xs text-foreground/60">{item.location}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-foreground/60">
+                        {item.location}
+                      </p>
                     </div>
                     <span className="text-sm font-semibold text-rose-600">
                       {item.quantity} {item.unit}
@@ -396,17 +477,28 @@ export const ResourceManagement = () => {
           <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <Calendar className="h-5 w-5 text-purple-500" />
-              <h3 className="text-lg font-semibold text-foreground">Expiring Soon</h3>
+              <h3 className="text-lg font-semibold text-foreground">
+                Expiring Soon
+              </h3>
             </div>
             {expiring.length === 0 ? (
-              <p className="text-sm text-foreground/60">No items expiring within 30 days</p>
+              <p className="text-sm text-foreground/60">
+                No items expiring within 30 days
+              </p>
             ) : (
               <div className="space-y-3">
                 {expiring.slice(0, 5).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-purple-500/5 border border-purple-500/20">
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-purple-500/5 border border-purple-500/20"
+                  >
                     <div>
-                      <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      <p className="text-xs text-foreground/60">{item.location}</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {item.name}
+                      </p>
+                      <p className="text-xs text-foreground/60">
+                        {item.location}
+                      </p>
                     </div>
                     <span className="text-xs font-medium text-purple-600">
                       {formatRelativeTime(item.expiry_date)}
@@ -420,17 +512,26 @@ export const ResourceManagement = () => {
           {/* Facility Capacity */}
           {stats?.byLocation && Object.keys(stats.byLocation).length > 0 && (
             <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-              <h3 className="text-lg font-semibold text-foreground">Facility Capacity</h3>
-              <p className="mt-1 text-sm text-foreground/60">Resources by location</p>
+              <h3 className="text-lg font-semibold text-foreground">
+                Facility Capacity
+              </h3>
+              <p className="mt-1 text-sm text-foreground/60">
+                Resources by location
+              </p>
               <div className="mt-5 space-y-4 text-sm text-foreground/70">
-                {Object.entries(stats.byLocation).slice(0, 5).map(([location, data]) => (
-                  <div key={location} className="flex items-center justify-between">
-                    <span className="truncate max-w-[150px]">{location}</span>
-                    <span className="font-semibold text-foreground">
-                      {data.count} items ({data.quantity} units)
-                    </span>
-                  </div>
-                ))}
+                {Object.entries(stats.byLocation)
+                  .slice(0, 5)
+                  .map(([location, data]) => (
+                    <div
+                      key={location}
+                      className="flex items-center justify-between"
+                    >
+                      <span className="truncate max-w-[150px]">{location}</span>
+                      <span className="font-semibold text-foreground">
+                        {data.count} items ({data.quantity} units)
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
           )}

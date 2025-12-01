@@ -831,6 +831,7 @@ export default function LiveResponseMap({
           onLocationChange={handleSimulatedLocationChange}
           onStopSimulation={handleStopSimulatedLocation}
           buttonLabel="Simulate responder"
+          position="bottom-right"
         />
         <MapContainer
           center={currentCenter}

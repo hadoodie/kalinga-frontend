@@ -20,19 +20,24 @@ import adminService from "../../../services/adminService";
 
 // Status badge styling
 const statusBadges = {
-  available: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+  available:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
   busy: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
   offline: "bg-gray-100 text-gray-700 dark:bg-gray-500/10 dark:text-gray-300",
-  on_scene: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
+  on_scene:
+    "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
   en_route: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
 };
 
 // Assignment status badges
 const assignmentBadges = {
   assigned: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
-  en_route: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-  on_scene: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
-  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+  en_route:
+    "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+  on_scene:
+    "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
+  completed:
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
   cancelled: "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
 };
 
@@ -68,7 +73,7 @@ export const ResponderOverview = () => {
         adminService.getResponderStats(),
         adminService.getIncidents({ include_resolved: false }),
       ]);
-      
+
       setStats(responderStats);
       setResponders(responderStats.responders || []);
       setIncidents(incidentData);
@@ -85,20 +90,26 @@ export const ResponderOverview = () => {
 
   // Filter responders
   const filteredResponders = responders.filter((r) => {
-    const matchesSearch = !searchQuery || 
+    const matchesSearch =
+      !searchQuery ||
       r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.email?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const status = r.activeAssignments > 0 ? "busy" : r.is_active ? "available" : "offline";
+
+    const status =
+      r.activeAssignments > 0 ? "busy" : r.is_active ? "available" : "offline";
     const matchesStatus = !statusFilter || status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
   // Group responders by status
-  const availableCount = responders.filter(r => r.is_active && !r.activeAssignments).length;
-  const busyCount = responders.filter(r => r.is_active && r.activeAssignments > 0).length;
-  const offlineCount = responders.filter(r => !r.is_active).length;
+  const availableCount = responders.filter(
+    (r) => r.is_active && !r.activeAssignments
+  ).length;
+  const busyCount = responders.filter(
+    (r) => r.is_active && r.activeAssignments > 0
+  ).length;
+  const offlineCount = responders.filter((r) => !r.is_active).length;
 
   return (
     <div className="space-y-8">
@@ -111,7 +122,9 @@ export const ResponderOverview = () => {
             disabled={isLoading}
             className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
             Refresh
           </button>
         }
@@ -124,7 +137,9 @@ export const ResponderOverview = () => {
             <Users className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{stats?.total ?? 0}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {stats?.total ?? 0}
+            </p>
             <p className="text-sm text-foreground/60">Total Responders</p>
           </div>
         </div>
@@ -133,7 +148,9 @@ export const ResponderOverview = () => {
             <UserCheck className="h-6 w-6 text-emerald-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{stats?.available ?? availableCount}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {stats?.available ?? availableCount}
+            </p>
             <p className="text-sm text-foreground/60">Available</p>
           </div>
         </div>
@@ -142,7 +159,9 @@ export const ResponderOverview = () => {
             <Activity className="h-6 w-6 text-amber-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{stats?.busy ?? busyCount}</p>
+            <p className="text-2xl font-bold text-foreground">
+              {stats?.busy ?? busyCount}
+            </p>
             <p className="text-sm text-foreground/60">On Assignment</p>
           </div>
         </div>
@@ -186,21 +205,28 @@ export const ResponderOverview = () => {
 
           {/* Responders Table */}
           <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Responder Directory</h3>
-            
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Responder Directory
+            </h3>
+
             {isLoading ? (
               <div className="flex justify-center py-12">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : filteredResponders.length === 0 ? (
-              <p className="text-center py-8 text-foreground/60">No responders found</p>
+              <p className="text-center py-8 text-foreground/60">
+                No responders found
+              </p>
             ) : (
               <div className="space-y-3">
                 {filteredResponders.slice(0, 10).map((responder) => {
-                  const status = responder.activeAssignments > 0 
-                    ? "busy" 
-                    : responder.is_active ? "available" : "offline";
-                  
+                  const status =
+                    responder.activeAssignments > 0
+                      ? "busy"
+                      : responder.is_active
+                      ? "available"
+                      : "offline";
+
                   return (
                     <div
                       key={responder.id}
@@ -211,8 +237,12 @@ export const ResponderOverview = () => {
                           {responder.name?.[0]?.toUpperCase() || "?"}
                         </div>
                         <div>
-                          <p className="font-semibold text-foreground">{responder.name}</p>
-                          <p className="text-xs text-foreground/60">{responder.email}</p>
+                          <p className="font-semibold text-foreground">
+                            {responder.name}
+                          </p>
+                          <p className="text-xs text-foreground/60">
+                            {responder.email}
+                          </p>
                         </div>
                       </div>
 
@@ -232,9 +262,9 @@ export const ResponderOverview = () => {
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold capitalize ${
-                          statusBadges[status]
-                        }`}>
+                        <span
+                          className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusBadges[status]}`}
+                        >
                           {status === "busy" ? "On Assignment" : status}
                         </span>
                       </div>
@@ -258,9 +288,11 @@ export const ResponderOverview = () => {
           <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
             <div className="flex items-center gap-2 mb-4">
               <Activity className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold text-foreground">Active Incidents</h3>
+              <h3 className="text-lg font-semibold text-foreground">
+                Active Incidents
+              </h3>
             </div>
-            
+
             {isLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -271,10 +303,11 @@ export const ResponderOverview = () => {
               <div className="space-y-3">
                 {incidents.slice(0, 5).map((incident) => {
                   const assignmentCount = incident.assignments?.length || 0;
-                  const activeAssignments = incident.assignments?.filter(
-                    a => !['completed', 'cancelled'].includes(a.status)
-                  ) || [];
-                  
+                  const activeAssignments =
+                    incident.assignments?.filter(
+                      (a) => !["completed", "cancelled"].includes(a.status)
+                    ) || [];
+
                   return (
                     <div
                       key={incident.id}
@@ -289,13 +322,16 @@ export const ResponderOverview = () => {
                             INC-{incident.id}
                           </p>
                         </div>
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${
-                          assignmentBadges[incident.status] || "bg-primary/10 text-primary"
-                        }`}>
-                          {incident.status?.replace('_', ' ')}
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${
+                            assignmentBadges[incident.status] ||
+                            "bg-primary/10 text-primary"
+                          }`}
+                        >
+                          {incident.status?.replace("_", " ")}
                         </span>
                       </div>
-                      
+
                       {activeAssignments.length > 0 && (
                         <div className="mt-2 pt-2 border-t border-border/40">
                           <p className="text-xs text-foreground/50 mb-1">
@@ -308,7 +344,8 @@ export const ResponderOverview = () => {
                                 className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary"
                               >
                                 <User className="h-3 w-3" />
-                                {assignment.responder?.name || `ID ${assignment.responder_id}`}
+                                {assignment.responder?.name ||
+                                  `ID ${assignment.responder_id}`}
                               </span>
                             ))}
                             {activeAssignments.length > 3 && (
@@ -319,7 +356,7 @@ export const ResponderOverview = () => {
                           </div>
                         </div>
                       )}
-                      
+
                       {assignmentCount === 0 && (
                         <div className="flex items-center gap-1 text-xs text-amber-600 mt-2">
                           <AlertCircle className="h-3 w-3" />
@@ -335,16 +372,20 @@ export const ResponderOverview = () => {
 
           {/* Quick Stats */}
           <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Response Metrics</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Response Metrics
+            </h3>
             <div className="space-y-4 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-foreground/70">Active Incidents</span>
-                <span className="font-semibold text-foreground">{incidents.length}</span>
+                <span className="font-semibold text-foreground">
+                  {incidents.length}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-foreground/70">Unassigned Incidents</span>
                 <span className="font-semibold text-amber-600">
-                  {incidents.filter(i => !i.assignments?.length).length}
+                  {incidents.filter((i) => !i.assignments?.length).length}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -354,7 +395,10 @@ export const ResponderOverview = () => {
               <div className="flex items-center justify-between">
                 <span className="text-foreground/70">Coverage Rate</span>
                 <span className="font-semibold text-emerald-600">
-                  {stats?.total > 0 ? Math.round((stats.available / stats.total) * 100) : 0}%
+                  {stats?.total > 0
+                    ? Math.round((stats.available / stats.total) * 100)
+                    : 0}
+                  %
                 </span>
               </div>
             </div>
