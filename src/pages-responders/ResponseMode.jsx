@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { AlertTriangle, Clock, Loader2, Map, Stethoscope } from "lucide-react";
-import ResponderSidebar from "../components/responder/Sidebar";
-import ResponderTopbar from "../components/responder/Topbar";
+import Layout from "../layouts/Layout";
 import ContextGeneratorPanel from "../components/responder/response-mode/ContextGeneratorPanel";
 import ConversationPanel from "../components/responder/response-mode/ConversationPanel";
 import LiveResponseMap from "../components/responder/response-mode/LiveResponseMap";
 import StatusControlPanel from "../components/responder/response-mode/StatusControlPanel";
 import ResponseModeDemoPanel from "../components/responder/response-mode/ResponseModeDemoPanel";
+import ResponseTimelinePanel from "../components/responder/response-mode/ResponseTimelinePanel";
 import responseModeService from "../services/responseMode";
 import { ROUTES } from "../config/routes";
 import { useAuth } from "../context/AuthContext";
@@ -47,6 +47,11 @@ const PANEL_TABS = [
     key: "intel",
     label: "Intel",
     description: "AI insights from patient dialogue",
+  },
+  {
+    key: "timeline",
+    label: "Timeline",
+    description: "Live incident history",
   },
   {
     key: "demo",
@@ -457,264 +462,180 @@ export default function ResponseMode() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex">
-        <ResponderSidebar />
-        <div className="flex-1 flex flex-col">
-          <ResponderTopbar />
-          <main className="flex-1 flex items-center justify-center bg-gray-50">
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          </main>
+      <Layout>
+        <div className="h-full flex items-center justify-center">
+          <Loader2 className="h-8 w-8 text-primary animate-spin" />
         </div>
-      </div>
+      </Layout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex">
-        <ResponderSidebar />
-        <div className="flex-1 flex flex-col">
-          <ResponderTopbar />
-          <main className="flex-1 flex items-center justify-center bg-gray-50">
-            <div className="bg-white border border-red-100 rounded-2xl p-6 text-center max-w-md">
-              <AlertTriangle className="h-6 w-6 text-red-500 mx-auto mb-3" />
-              <p className="text-sm text-gray-600 mb-4">{error}</p>
-              <button
-                type="button"
-                onClick={handleExit}
-                className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold"
-              >
-                Back to dashboard
-              </button>
-            </div>
-          </main>
+      <Layout>
+        <div className="h-full flex items-center justify-center">
+          <div className="bg-white border border-red-100 rounded-2xl p-6 text-center max-w-md">
+            <AlertTriangle className="h-6 w-6 text-red-500 mx-auto mb-3" />
+            <p className="text-sm text-gray-600 mb-4">{error}</p>
+            <button
+              type="button"
+              onClick={handleExit}
+              className="px-4 py-2 rounded-lg bg-primary text-white text-sm font-semibold"
+            >
+              Back to dashboard
+            </button>
+          </div>
         </div>
-      </div>
+      </Layout>
     );
   }
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
-      <ResponderSidebar />
-      <div className="flex-1 flex flex-col">
-        <ResponderTopbar />
-        <main className="flex-1 p-6">
-          <div className="flex flex-col gap-6">
-            <header className="flex flex-wrap items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 uppercase tracking-wide">
-                    Response Mode
-                  </span>
-                  <span className="text-xs font-medium text-gray-500">
-                    Incident #{incident?.id}
-                  </span>
-                </div>
-                <h1 className="text-2xl font-black text-gray-900 flex items-center gap-2">
-                  <Map className="h-6 w-6 text-primary" />
-                  {incident?.type || "Active deployment"}
-                </h1>
-                <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
-                  {incidentAddress || incident?.location}
-                  {incidentAddress &&
-                    incident?.location &&
-                    incidentAddress !== incident.location && (
-                      <span className="text-xs text-gray-400">
-                        ({incident.location})
-                      </span>
-                    )}
-                </p>
-                {selectedHospital && (
-                  <p className="mt-2 flex items-center gap-2 text-xs text-gray-500">
-                    <Stethoscope className="h-4 w-4 text-primary" />
-                    <span>
-                      Destination:
-                      <strong className="ml-1 text-gray-700">
-                        {selectedHospital.name}
-                      </strong>
-                      {typeof selectedHospital.distance_km === "number" && (
-                        <span className="ml-1 text-gray-400">
-                          ({selectedHospital.distance_km.toFixed(2)} km)
-                        </span>
-                      )}
+    <Layout>
+      <div className="h-full flex flex-col gap-4 p-4 overflow-hidden">
+        <header className="flex-none flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700 uppercase tracking-wide">
+                Response Mode
+              </span>
+              <span className="text-xs font-medium text-gray-500">
+                Incident #{incident?.id}
+              </span>
+            </div>
+            <h1 className="text-xl font-black text-gray-900 flex items-center gap-2">
+              <Map className="h-5 w-5 text-primary" />
+              {incident?.type || "Active deployment"}
+            </h1>
+            <p className="text-xs text-gray-600 mt-1 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+              {incidentAddress || incident?.location}
+            </p>
+            {selectedHospital && (
+              <p className="mt-1 flex items-center gap-2 text-xs text-gray-500">
+                <Stethoscope className="h-3 w-3 text-primary" />
+                <span>
+                  Destination:
+                  <strong className="ml-1 text-gray-700">
+                    {selectedHospital.name}
+                  </strong>
+                  {typeof selectedHospital.distance_km === "number" && (
+                    <span className="ml-1 text-gray-400">
+                      ({selectedHospital.distance_km.toFixed(2)} km)
                     </span>
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="text-right hidden sm:block">
-                  <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                    Status
-                  </p>
-                  <p className="text-sm font-bold text-gray-900">
-                    {incident?.status?.replace(/_/g, " ").toUpperCase() ||
-                      "UNKNOWN"}
-                  </p>
-                </div>
-                <div className="h-8 w-px bg-gray-200 hidden sm:block" />
-                <button
-                  type="button"
-                  onClick={handleExit}
-                  className="px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors"
-                >
-                  Exit Response Mode
-                </button>
-              </div>
-            </header>
+                  )}
+                </span>
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">
+                Status
+              </p>
+              <p className="text-sm font-bold text-gray-900">
+                {incident?.status?.replace(/_/g, " ").toUpperCase() ||
+                  "UNKNOWN"}
+              </p>
+            </div>
+            <div className="h-8 w-px bg-gray-200 hidden sm:block" />
+            <button
+              type="button"
+              onClick={handleExit}
+              className="px-4 py-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors"
+            >
+              Exit Response Mode
+            </button>
+          </div>
+        </header>
 
-            <section className="grid grid-cols-1 xl:grid-cols-5 gap-6">
-              <div className="xl:col-span-3">
-                <LiveResponseMap
+        <section className="flex-1 min-h-0 grid grid-cols-1 xl:grid-cols-5 gap-4">
+          <div className="xl:col-span-3 h-full rounded-2xl overflow-hidden border border-gray-200 shadow-sm">
+            <LiveResponseMap
+              incident={incident}
+              hospitals={hospitals}
+              selectedHospital={selectedHospital}
+              onAutoAssignHospital={handleAutoAssignHospital}
+            />
+          </div>
+          <div className="xl:col-span-2 h-full flex flex-col gap-4 overflow-hidden">
+            <div className="flex-none rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                Mission Console
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {PANEL_TABS.map((tab) => {
+                  const isActive = tab.key === activeTab;
+                  return (
+                    <button
+                      key={tab.key}
+                      type="button"
+                      onClick={() => setActiveTab(tab.key)}
+                      className={`flex-1 min-w-[80px] rounded-lg border px-2 py-1.5 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+                        isActive
+                          ? "border-primary bg-primary/5 text-primary shadow-sm"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-primary/40"
+                      }`}
+                    >
+                      <span className="block text-xs font-bold">
+                        {tab.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+              {activeTab === "control" && (
+                <StatusControlPanel
                   incident={incident}
                   hospitals={hospitals}
+                  nearestHospital={nearestHospital}
+                  selectedHospitalId={selectedHospitalId}
                   selectedHospital={selectedHospital}
-                  onAutoAssignHospital={handleAutoAssignHospital}
+                  onHospitalChange={handleHospitalChange}
+                  onStatusChange={handleStatusChange}
+                  statusUpdating={statusUpdating}
+                  statusError={statusError}
                 />
-              </div>
-              <div className="xl:col-span-2 space-y-4">
-                <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
-                    Mission Console
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {PANEL_TABS.map((tab) => {
-                      const isActive = tab.key === activeTab;
-                      return (
-                        <button
-                          key={tab.key}
-                          type="button"
-                          onClick={() => setActiveTab(tab.key)}
-                          className={`flex-1 min-w-[120px] rounded-xl border px-3 py-2 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-                            isActive
-                              ? "border-primary bg-primary/5 text-primary shadow-sm"
-                              : "border-gray-200 bg-white text-gray-600 hover:border-primary/40"
-                          }`}
-                        >
-                          <span className="block text-sm font-bold">
-                            {tab.label}
-                          </span>
-                          <span className="block text-[11px] text-gray-400">
-                            {tab.description}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+              )}
 
-                {activeTab === "control" && (
-                  <StatusControlPanel
-                    incident={incident}
-                    hospitals={hospitals}
-                    nearestHospital={nearestHospital}
-                    selectedHospitalId={selectedHospitalId}
-                    selectedHospital={selectedHospital}
-                    onHospitalChange={handleHospitalChange}
-                    onStatusChange={handleStatusChange}
-                    statusUpdating={statusUpdating}
-                    statusError={statusError}
-                  />
-                )}
+              {activeTab === "comms" && (
+                <ConversationPanel
+                  conversation={conversation}
+                  messages={messages}
+                  loading={loading}
+                  onBack={handleExit}
+                  currentUserId={user?.id}
+                />
+              )}
 
-                {activeTab === "comms" && (
-                  <ConversationPanel
-                    conversation={conversation}
-                    messages={messages}
-                    loading={loading}
-                    onBack={handleExit}
-                    currentUserId={user?.id}
-                  />
-                )}
+              {activeTab === "intel" && (
+                <ContextGeneratorPanel
+                  insights={insights}
+                  loading={insightsLoading}
+                  error={insightsError}
+                  source={insightsSource}
+                  locked={Boolean(lockTimestamp)}
+                />
+              )}
 
-                {activeTab === "intel" && (
-                  <ContextGeneratorPanel
-                    insights={insights}
-                    loading={insightsLoading}
-                    error={insightsError}
-                    source={insightsSource}
-                    locked={Boolean(lockTimestamp)}
-                  />
-                )}
+              {activeTab === "timeline" && (
+                <ResponseTimelinePanel incident={incident} />
+              )}
 
-                {activeTab === "demo" && (
-                  <ResponseModeDemoPanel
-                    incident={incident}
-                    hospitals={hospitals}
-                  />
-                )}
-              </div>
-            </section>
-
-            <section className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-primary" />
-                  Response Timeline
-                </h2>
-                <span className="text-xs font-medium text-gray-500 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-                  Live Updates
-                </span>
-              </div>
-
-              <div className="relative pl-4 border-l-2 border-gray-100 space-y-6">
-                {incident?.history?.length ? (
-                  incident.history.map((entry, index) => (
-                    <div key={entry.id || index} className="relative">
-                      <div
-                        className={`absolute -left-[21px] top-1 h-3 w-3 rounded-full ring-4 ring-white ${
-                          index === 0 ? "bg-primary" : "bg-gray-300"
-                        }`}
-                      />
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                        <p className="text-sm font-semibold text-gray-900 capitalize">
-                          {entry.status?.replace(/_/g, " ")}
-                        </p>
-                        <span className="text-xs text-gray-500 font-mono">
-                          {entry.created_at_human ||
-                            (entry.created_at
-                              ? new Date(entry.created_at).toLocaleTimeString(
-                                  [],
-                                  {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )
-                              : "")}
-                        </span>
-                      </div>
-                      {entry.notes && (
-                        <p className="text-xs text-gray-600 mt-1">
-                          {entry.notes}
-                        </p>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="relative">
-                    <div className="absolute -left-[21px] top-1 h-3 w-3 rounded-full bg-primary ring-4 ring-white" />
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                      <p className="text-sm font-semibold text-gray-900">
-                        Incident Created
-                      </p>
-                      <span className="text-xs text-gray-500 font-mono">
-                        {new Date().toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Waiting for updates...
-                    </p>
-                  </div>
-                )}
-              </div>
-            </section>
+              {activeTab === "demo" && (
+                <ResponseModeDemoPanel
+                  incident={incident}
+                  hospitals={hospitals}
+                />
+              )}
+            </div>
           </div>
-        </main>
+        </section>
       </div>
-    </div>
+    </Layout>
   );
 }
 

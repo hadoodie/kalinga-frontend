@@ -7,8 +7,7 @@ import React, {
 } from "react";
 import { KALINGA_CONFIG } from "../../constants/mapConfig";
 import { useAuth } from "../../context/AuthContext";
-import ResponderTopbar from "../../components/responder/Topbar";
-import ResponderSidebar from "../../components/responder/Sidebar";
+import Layout from "../../layouts/Layout";
 import LocationSimulator from "../../components/maps/LocationSimulator";
 import {
   createRouteLog,
@@ -2742,12 +2741,10 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <ResponderSidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <ResponderTopbar />
+    <Layout>
+      <div className="flex flex-col h-full w-full overflow-hidden">
         {mapShell}
       </div>
-    </div>
+    </Layout>
   );
 }
