@@ -5,10 +5,12 @@ import {
   MapPin,
   RefreshCcw,
   Sparkles,
+  Activity,
 } from "lucide-react";
 import { MapContainer, CircleMarker, TileLayer, Tooltip } from "react-leaflet";
 import { SectionHeader } from "../SectionHeader";
 import { formatRelativeTime } from "@/lib/datetime";
+import adminService from "@/services/adminService";
 
 const INCIDENT_FEED_ENDPOINT =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
@@ -88,7 +90,49 @@ export const IncidentHeatMap = () => {
     fetchedAt: null,
     status: "idle",
   });
+  const [systemIncidents, setSystemIncidents] = useState([]);
   const [selectedSeverity, setSelectedSeverity] = useState("all");
+  const [viewMode, setViewMode] = useState("all"); // "all", "usgs", "system"
+
+  // Fetch system incidents from backend
+  const fetchSystemIncidents = useCallback(async () => {
+    try {
+      const data = await adminService.getIncidents({ include_resolved: false });
+      const mapped = (data || []).map((incident) => {
+        // Map priority/severity to our severity scale
+        const priority = incident.priority || incident.severity || "moderate";
+        const severity =
+          priority === "critical"
+            ? "Severe"
+            : priority === "high"
+            ? "High"
+            : priority === "moderate"
+            ? "Moderate"
+            : "Minor";
+
+        // Extract coordinates from incident
+        const lat = incident.latitude || incident.location?.latitude || 14.5995;
+        const lng = incident.longitude || incident.location?.longitude || 120.9842;
+
+        return {
+          id: `SYS-${incident.id}`,
+          type: incident.type || "System Incident",
+          barangay: incident.address || incident.location?.address || "Reported Location",
+          teams: incident.assignments?.length || 0,
+          status: incident.status || "reported",
+          severity,
+          magnitude: priority === "critical" ? 5.5 : priority === "high" ? 4.5 : 3.5,
+          coordinates: { lat, lng },
+          updatedAt: new Date(incident.updated_at || incident.created_at),
+          source: "system",
+          patientId: incident.patient_id,
+        };
+      });
+      setSystemIncidents(mapped);
+    } catch (error) {
+      console.error("Failed to fetch system incidents:", error);
+    }
+  }, []);
 
   const fetchIncidents = useCallback(async () => {
     setIncidentFeed((prev) => ({
@@ -174,7 +218,7 @@ export const IncidentHeatMap = () => {
 
     const load = async () => {
       if (ignore) return;
-      await fetchIncidents();
+      await Promise.all([fetchIncidents(), fetchSystemIncidents()]);
     };
 
     load();
@@ -184,9 +228,14 @@ export const IncidentHeatMap = () => {
       ignore = true;
       clearInterval(interval);
     };
-  }, [fetchIncidents]);
+  }, [fetchIncidents, fetchSystemIncidents]);
 
-  const incidents = incidentFeed.items;
+  // Combine incidents based on view mode
+  const incidents = useMemo(() => {
+    if (viewMode === "usgs") return incidentFeed.items;
+    if (viewMode === "system") return systemIncidents;
+    return [...incidentFeed.items, ...systemIncidents];
+  }, [incidentFeed.items, systemIncidents, viewMode]);
 
   const filteredIncidents = useMemo(() => {
     if (selectedSeverity === "all") {
@@ -247,9 +296,54 @@ export const IncidentHeatMap = () => {
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs text-foreground/70">
-          <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-          {incidents.length} active telemetry points
+        <div className="flex items-center gap-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs text-foreground/70">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+            {incidents.length} active telemetry points
+          </div>
+          {systemIncidents.length > 0 && (
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-3 py-1 text-xs text-primary">
+              <Activity className="h-3.5 w-3.5" />
+              {systemIncidents.length} system incidents
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-background/60 px-2 py-1">
+            Source:
+          </div>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setViewMode("all")}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                viewMode === "all"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "border border-border/60 bg-background/60 text-foreground/70 hover:border-primary/40 hover:text-primary"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setViewMode("system")}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                viewMode === "system"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "border border-border/60 bg-background/60 text-foreground/70 hover:border-primary/40 hover:text-primary"
+              }`}
+            >
+              System
+            </button>
+            <button
+              onClick={() => setViewMode("usgs")}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                viewMode === "usgs"
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "border border-border/60 bg-background/60 text-foreground/70 hover:border-primary/40 hover:text-primary"
+              }`}
+            >
+              USGS
+            </button>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-background/60 px-2 py-1">
@@ -282,7 +376,10 @@ export const IncidentHeatMap = () => {
           </div>
         </div>
         <button
-          onClick={fetchIncidents}
+          onClick={() => {
+            fetchIncidents();
+            fetchSystemIncidents();
+          }}
           className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
         >
           <RefreshCcw className="h-4 w-4" /> Refresh feed

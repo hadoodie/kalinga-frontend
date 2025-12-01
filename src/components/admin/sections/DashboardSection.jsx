@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -7,14 +7,20 @@ import {
   CircleDot,
   Clock3,
   Headphones,
+  Loader2,
+  Package,
   Radio,
+  RefreshCw,
   ShieldCheck,
+  Truck,
+  UserCheck,
   Users,
   Waves,
 } from "lucide-react";
 import { SectionHeader } from "../SectionHeader";
 import { StatCard } from "../StatCard";
 import { formatRelativeTime } from "@/lib/datetime";
+import adminService from "../../../services/adminService";
 
 const INCIDENT_FEED_ENDPOINT =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
@@ -119,11 +125,45 @@ const dispatchQueue = [
 ];
 
 export const DashboardSection = () => {
+  // Backend dashboard stats
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [backendIncidents, setBackendIncidents] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(null);
+
+  // USGS incident feed (existing)
   const [incidentFeed, setIncidentFeed] = useState({
     items: fallbackIncidents,
     fetchedAt: null,
     status: "idle",
   });
+
+  // Fetch backend statistics
+  const fetchDashboardStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const [stats, incidents] = await Promise.all([
+        adminService.getDashboardStats(),
+        adminService.getIncidents({ include_resolved: false }),
+      ]);
+      setDashboardStats(stats);
+      setBackendIncidents(incidents);
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error("Failed to fetch dashboard stats:", error);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, []);
+
+  // Initial fetch and periodic refresh of backend data
+  useEffect(() => {
+    fetchDashboardStats();
+    const interval = setInterval(fetchDashboardStats, 30_000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, [fetchDashboardStats]);
+
+  // USGS feed fetch (existing logic)
 
   useEffect(() => {
     let ignore = false;
@@ -284,49 +324,122 @@ export const DashboardSection = () => {
         title="Command Center Dashboard"
         description="Monitor live incidents, operational tempo, and resource readiness across the municipality."
         actions={
-          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-foreground/60">
-            <Clock3 className="h-3.5 w-3.5" />
-            {updatedLabel}
-          </span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={fetchDashboardStats}
+              disabled={statsLoading}
+              className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-foreground/60 hover:bg-primary/10 transition"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${statsLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-foreground/60">
+              <Clock3 className="h-3.5 w-3.5" />
+              {updatedLabel}
+            </span>
+          </div>
         }
       />
 
+      {/* Primary Stats from Backend */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           icon={Activity}
           label="Active Incidents"
           value={
-            incidentFeed.status === "loading" && !incidentFeed.fetchedAt
+            statsLoading && !dashboardStats
               ? "…"
-              : String(activeIncidents)
+              : String(dashboardStats?.incidents?.active ?? backendIncidents.length ?? activeIncidents)
           }
-          change={incidentSummary.change}
+          change={dashboardStats?.incidents?.todayCount ? `${dashboardStats.incidents.todayCount} today` : incidentSummary.change}
           trend={incidentSummary.trend}
-          tone={incidentSummary.tone}
+          tone={dashboardStats?.incidents?.active > 5 ? "warning" : "primary"}
         />
         <StatCard
           icon={Users}
-          label="Responders Deployed"
-          value="126"
-          change="+8 deployed"
+          label="Responders Available"
+          value={
+            statsLoading && !dashboardStats
+              ? "…"
+              : String(dashboardStats?.responders?.available ?? "—")
+          }
+          change={dashboardStats?.responders?.busy ? `${dashboardStats.responders.busy} on assignment` : "+8 deployed"}
           tone="primary"
         />
         <StatCard
           icon={ShieldCheck}
-          label="Readiness Index"
-          value="92%"
-          change="steady"
+          label="Total Users"
+          value={
+            statsLoading && !dashboardStats
+              ? "…"
+              : String(dashboardStats?.users?.total ?? "—")
+          }
+          change={dashboardStats?.users?.active ? `${dashboardStats.users.active} active` : "steady"}
           tone="success"
         />
         <StatCard
-          icon={Waves}
-          label="Early Warning Alerts"
-          value="5"
-          change="-2 today"
-          trend="down"
-          tone="neutral"
+          icon={Package}
+          label="Low Stock Alerts"
+          value={
+            statsLoading && !dashboardStats
+              ? "…"
+              : String(dashboardStats?.resources?.lowStock ?? 0)
+          }
+          change={dashboardStats?.resources?.critical ? `${dashboardStats.resources.critical} critical` : "monitoring"}
+          trend={dashboardStats?.resources?.lowStock > 0 ? "up" : "down"}
+          tone={dashboardStats?.resources?.lowStock > 0 ? "warning" : "success"}
         />
       </div>
+
+      {/* Secondary Stats Row */}
+      {dashboardStats && (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10">
+              <UserCheck className="h-6 w-6 text-sky-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">
+                {dashboardStats.responders?.total ?? 0}
+              </p>
+              <p className="text-sm text-foreground/60">Total Responders</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10">
+              <Users className="h-6 w-6 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">
+                {dashboardStats.users?.byRole?.patient ?? 0}
+              </p>
+              <p className="text-sm text-foreground/60">Registered Patients</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
+              <Truck className="h-6 w-6 text-amber-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">
+                {dashboardStats.users?.byRole?.logistics ?? 0}
+              </p>
+              <p className="text-sm text-foreground/60">Logistics Staff</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10">
+              <Package className="h-6 w-6 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">
+                {dashboardStats.resources?.total ?? 0}
+              </p>
+              <p className="text-sm text-foreground/60">Total Resources</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="rounded-3xl border border-border/60 bg-card/70 p-6 shadow-sm">
@@ -427,10 +540,90 @@ export const DashboardSection = () => {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-foreground">
-              Live Incident Feed
+              System Incidents
             </h3>
             <p className="text-sm text-foreground/60">
-              Rapid snapshot of open incidents and team allocations.
+              Active incidents from the Kalinga system database.
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-1 text-xs font-semibold text-primary">
+            <Activity className="h-3.5 w-3.5" /> Live from Backend
+          </span>
+        </div>
+        {statsLoading && backendIncidents.length === 0 ? (
+          <div className="mt-6 flex justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : backendIncidents.length === 0 ? (
+          <div className="mt-6 py-8 text-center text-sm text-foreground/60">
+            No active incidents in the system
+          </div>
+        ) : (
+          <div className="mt-6 divide-y divide-border/60 text-sm">
+            {backendIncidents.slice(0, 5).map((incident) => {
+              const statusColors = {
+                reported: "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
+                acknowledged: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                en_route: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
+                on_scene: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
+                resolved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+              };
+              const statusTone = statusColors[incident.status] ?? "bg-primary/10 text-primary";
+              
+              return (
+                <div
+                  key={incident.id}
+                  className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <p className="font-semibold text-foreground">
+                      {incident.type || "Emergency Incident"}
+                    </p>
+                    <p className="text-xs text-foreground/60">
+                      INC-{incident.id} • {incident.location || "Location pending"}
+                    </p>
+                  </div>
+                  <div className="flex flex-col justify-between gap-2 text-xs text-foreground/60 md:flex-row md:items-center md:gap-6">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5" /> 
+                      {incident.assignments?.length || 0} responder{incident.assignments?.length !== 1 ? 's' : ''} assigned
+                    </div>
+                    {incident.latest_status_update && (
+                      <span className="flex items-center gap-2 text-foreground/70">
+                        Last update by {incident.latest_status_update.user?.name || "System"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusTone}`}
+                    >
+                      {incident.status?.replace('_', ' ')}
+                    </span>
+                    <span className="text-xs text-foreground/50">
+                      {formatRelativeTime(new Date(incident.created_at))}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {backendIncidents.length > 5 && (
+          <p className="mt-4 text-xs text-foreground/50">
+            Showing 5 of {backendIncidents.length} active incidents
+          </p>
+        )}
+      </div>
+
+      <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">
+              External Seismic Feed
+            </h3>
+            <p className="text-sm text-foreground/60">
+              Live earthquake data from USGS for situational awareness.
             </p>
           </div>
           <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-1 text-xs font-semibold text-emerald-500">
