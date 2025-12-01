@@ -1285,7 +1285,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         setDestMarker(null);
       }
     }
-  };
+  }
 
   async function drawRoute(
     destLat,
@@ -2087,6 +2087,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         onLocationChange={handleSimulatedLocationChange}
         onStopSimulation={handleStopSimulatedLocation}
         buttonLabel="Simulate patient"
+        position="bottom-right"
       />
       {/* Mobile Bottom Interface - Google Maps Style */}
       <div className="md:hidden">
