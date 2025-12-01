@@ -961,6 +961,23 @@ export default function LiveResponseMap({
                 setRoutePoints(coords);
               }
             }}
+            onLocationBroadcast={(payload) => {
+              // Forward navigation's location/eta/distance updates to the responder broadcast hook
+              try {
+                if (typeof broadcast === "function") {
+                  // TurnByTurnNavigation sends { latitude, longitude, heading, eta_minutes, distance_remaining_km }
+                  broadcast({
+                    latitude: payload.latitude,
+                    longitude: payload.longitude,
+                    heading: payload.heading ?? null,
+                    eta: payload.eta_minutes ?? payload.eta ?? null,
+                    distance: payload.distance_remaining_km ?? payload.distance ?? null,
+                  });
+                }
+              } catch (e) {
+                console.warn("Failed to forward navigation broadcast", e);
+              }
+            }}
             incident={incident}
           />
         )}
