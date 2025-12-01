@@ -66,8 +66,13 @@ export function useResponderLocationBroadcast({
     (geoPosition) => {
       if (!isMountedRef.current) return;
 
-      const { latitude, longitude, heading: geoHeading, speed: geoSpeed, accuracy: geoAccuracy } =
-        geoPosition.coords;
+      const {
+        latitude,
+        longitude,
+        heading: geoHeading,
+        speed: geoSpeed,
+        accuracy: geoAccuracy,
+      } = geoPosition.coords;
 
       setPosition([latitude, longitude]);
       setHeading(geoHeading);

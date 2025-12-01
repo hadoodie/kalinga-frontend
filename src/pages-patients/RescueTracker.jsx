@@ -112,13 +112,17 @@ const patientIcon = L.divIcon({
 });
 
 // Map auto-center component
-const MapController = ({ responderPosition, patientPosition, shouldCenter }) => {
+const MapController = ({
+  responderPosition,
+  patientPosition,
+  shouldCenter,
+}) => {
   const map = useMap();
   const hasCenteredRef = useRef(false);
 
   useEffect(() => {
     if (!shouldCenter || hasCenteredRef.current) return;
-    
+
     if (responderPosition && patientPosition) {
       const bounds = L.latLngBounds([responderPosition, patientPosition]);
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
@@ -231,7 +235,8 @@ export const RescueTracker = () => {
 
     try {
       const { lat: respLat, lng: respLng } = responderLocation;
-      const { latitude: patLat, longitude: patLng } = rescueData.incident.coordinates;
+      const { latitude: patLat, longitude: patLng } =
+        rescueData.incident.coordinates;
 
       const params = new URLSearchParams({
         overview: "full",
@@ -471,7 +476,9 @@ export const RescueTracker = () => {
               {/* Map */}
               <div className="flex-1 relative">
                 <MapContainer
-                  center={patientPosition || responderPosition || DEFAULT_POSITION}
+                  center={
+                    patientPosition || responderPosition || DEFAULT_POSITION
+                  }
                   zoom={14}
                   className="h-full w-full"
                 >

@@ -280,7 +280,11 @@ export default function TurnByTurnNavigation({
     let minDistance = Infinity;
 
     // Sample route points to find closest
-    for (let i = 0; i < routeCoords.length; i += Math.max(1, Math.floor(routeCoords.length / 50))) {
+    for (
+      let i = 0;
+      i < routeCoords.length;
+      i += Math.max(1, Math.floor(routeCoords.length / 50))
+    ) {
       const dist = haversineDistance(
         currentPosition[0],
         currentPosition[1],
@@ -356,7 +360,14 @@ export default function TurnByTurnNavigation({
     const avgSpeed = 30; // km/h average for emergency response
     const remainingDuration = (remaining / 1000 / avgSpeed) * 3600;
     setTotalDuration(remainingDuration);
-  }, [currentPosition, steps, currentStepIndex, isActive, checkOffRoute, fetchRoute]);
+  }, [
+    currentPosition,
+    steps,
+    currentStepIndex,
+    isActive,
+    checkOffRoute,
+    fetchRoute,
+  ]);
 
   // Voice navigation
   useEffect(() => {

@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  Activity,
   GraduationCap,
+  Heart,
   LayoutDashboard,
   Map,
   Megaphone,
   Package,
   Server,
   Shield,
+  Truck,
+  UserCheck,
   Users,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -19,6 +23,9 @@ import { TrainingSection } from "@/components/admin/sections/TrainingSection";
 import { ConnectivityMonitoring } from "@/components/admin/sections/ConnectivityMonitoring";
 import { MonitoringSecurity } from "@/components/admin/sections/MonitoringSecurity";
 import { BroadcastControl } from "@/components/admin/sections/BroadcastControl";
+import { LogisticsOverview } from "@/components/admin/sections/LogisticsOverview";
+import { ResponderOverview } from "@/components/admin/sections/ResponderOverview";
+import { PatientOverview } from "@/components/admin/sections/PatientOverview";
 import { useAuth } from "@/context/AuthContext";
 
 const adminSections = [
@@ -39,6 +46,22 @@ const adminSections = [
     component: UserRoleManagement,
   },
   {
+    id: "responders",
+    title: "Responder Overview",
+    description:
+      "Monitor responder availability, assignments, and deployment status across all teams.",
+    icon: UserCheck,
+    component: ResponderOverview,
+  },
+  {
+    id: "patients",
+    title: "Patient Overview",
+    description:
+      "Track registered patients, active emergencies, and health metrics across the system.",
+    icon: Heart,
+    component: PatientOverview,
+  },
+  {
     id: "incidents",
     title: "Incident Logs",
     description:
@@ -53,6 +76,14 @@ const adminSections = [
       "Track logistics pipelines, staging capacity, and resupply cadence.",
     icon: Package,
     component: ResourceManagement,
+  },
+  {
+    id: "logistics",
+    title: "Logistics Overview",
+    description:
+      "Monitor supply chain, allocation requests, and shipment tracking.",
+    icon: Truck,
+    component: LogisticsOverview,
   },
   {
     id: "training",

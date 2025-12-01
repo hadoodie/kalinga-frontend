@@ -1,124 +1,65 @@
-import React from "react";
+import React, { useState } from "react";
 import Layout from "../layouts/Layout";
-import "../styles/personnel-style.css";
 import Footer from "../components/responder/Footer";
+import { useTriage } from "../context/TriageProvider";
+import { generateIncidentLogsFromTriage, hospitals } from "../lib/triageUtils";
+import "../styles/incident-logs.css";
 
 const IncidentLogs = () => {
-  const incidents = [
-    {
-      id: "INC-20230923-001",
-      name: "Juan Dela Cruz",
-      role: "Reporter",
-      type: "Fire Outbreak",
-      location: "Zone 3, Brgy. Mabini",
-      time: "2023-09-23 14:32",
-      status: "Pending",
-      response: "Unassigned",
-    },
-    {
-      id: "INC-20230923-002",
-      name: "Maria Santos",
-      role: "Responder",
-      type: "Medical Emergency",
-      location: "Zone 5, Brgy. Mabini",
-      time: "2023-09-23 15:00",
-      status: "Resolved",
-      response: "Assigned",
-    },
-    {
-      id: "INC-20230923-003",
-      name: "Pedro Ramos",
-      role: "Reporter",
-      type: "Flooding",
-      location: "Zone 2, Brgy. Mabini",
-      time: "2023-09-23 16:15",
-      status: "Ongoing",
-      response: "Assigned",
-    },
-    {
-      id: "INC-20230923-004",
-      name: "Ana Dizon",
-      role: "Reporter",
-      type: "Missing Person",
-      location: "Zone 4, Brgy. Mabini",
-      time: "2023-09-23 17:45",
-      status: "Critical",
-      response: "Unassigned",
-    },
-    {
-      id: "INC-20230923-005",
-      name: "Mark Lopez",
-      role: "Responder",
-      type: "Collapsed Structure",
-      location: "Zone 1, Brgy. Mabini",
-      time: "2023-09-23 18:20",
-      status: "Ongoing",
-      response: "Assigned",
-    },
-    {
-      id: "INC-20230923-006",
-      name: "Carla Reyes",
-      role: "Reporter",
-      type: "Road Accident",
-      location: "Zone 6, Brgy. Mabini",
-      time: "2023-09-23 19:10",
-      status: "Resolved",
-      response: "Assigned",
-    },
-    {
-      id: "INC-20230923-007",
-      name: "James Cruz",
-      role: "Reporter",
-      type: "Fire Outbreak",
-      location: "Zone 7, Brgy. Mabini",
-      time: "2023-09-23 20:30",
-      status: "Pending",
-      response: "Unassigned",
-    },
-  ];
+  const { triageData } = useTriage();
+  const incidentLogs = generateIncidentLogsFromTriage(triageData);
+  const [selectedHospital, setSelectedHospital] = useState("All");
 
-  // Status/type based row colors
-  const getRowClass = (log) => {
-    if (log.status === "Resolved") return "status-resolved"; // green
-    if (log.status === "Pending" || log.status === "Ongoing")
-      return "status-ongoing"; // yellow
-    if (log.status === "Critical" || log.type === "Missing Person")
-      return "status-critical"; // red
-    return "";
-  };
+  const filteredLogs = selectedHospital === "All"
+    ? incidentLogs
+    : incidentLogs.filter(log => log.hospital === selectedHospital);
 
   return (
     <Layout>
-      <div className="incident-logs">
+      <div className="incident-logs-container">
         <h2>Incident Logs</h2>
-        <table className="incident-table">
-          <thead>
-            <tr>
-              <th>Log ID</th>
-              <th>Name</th>
-              <th>Role</th>
-              <th>Incident Type</th>
-              <th>Location</th>
-              <th>Time Logged</th>
-              <th>Status</th>
-              <th>Response Assigned</th>
-            </tr>
-          </thead>
-          <tbody>
-            {incidents.map((log, index) => (
-              <tr key={index} className={getRowClass(log)}>
-                <td>{log.id}</td>
-                <td>{log.name}</td>
-                <td>{log.role}</td>
-                <td>{log.type}</td>
-                <td>{log.location}</td>
-                <td>{log.time}</td>
-                <td>{log.status}</td>
-                <td>{log.response}</td>
-              </tr>
+        <p className="subtitle">Real-time incident tracking from the Triage System</p>
+
+        <div className="filter-container">
+          <label>Filter by Hospital:</label>
+          <select
+            className="hospital-filter"
+            value={selectedHospital}
+            onChange={(e) => setSelectedHospital(e.target.value)}
+          >
+            <option value="All">All Hospitals</option>
+            {hospitals.map((h) => (
+              <option key={h.name} value={h.name}>{h.name}</option>
             ))}
-          </tbody>
-        </table>
+          </select>
+        </div>
+
+        <div className="incident-grid">
+          {filteredLogs.length === 0 ? (
+            <p className="no-incidents">No incidents found.</p>
+          ) : (
+            filteredLogs.map((log) => (
+              <div
+                key={log.id}
+                className="incident-card"
+                data-severity={log.severity}
+              >
+                <div className="card-content">
+                  <div className="incident-header">
+                    <h3>{log.hospital}</h3>
+                    <span className="incident-icon">{log.icon}</span>
+                  </div>
+                  <p className="incident-type">{log.type}</p>
+                  <p className="incident-status">
+                    Status: <span className={`status-${log.severity}`}>{log.status}</span>
+                  </p>
+                  <p className="text-xs">Patient: {log.patientName}</p>
+                  <p className="text-xs">Time: {log.time}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
       <Footer />
     </Layout>

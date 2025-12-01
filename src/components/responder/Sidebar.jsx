@@ -116,6 +116,12 @@ export default function ResponderSidebar() {
       icon: <AlertCircle size={25} />,
     },
     {
+      label: "SOS Dashboard",
+      path: "/responder/emergency-sos",
+      icon: <AlertCircle size={20} />,
+      isSubmenu: true,
+    },
+    {
       label: "Response Map",
       path: "/responder/response-map",
       icon: <MapPin size={20} />,

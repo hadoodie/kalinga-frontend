@@ -731,11 +731,17 @@ export default function LiveResponseMap({
         let distance_remaining_km = null;
 
         try {
-          const selected = routeSelection?.selected?.original || routeSelection?.selected || null;
-          const durationSec = selected?.duration ?? selected?.legs?.[0]?.duration ?? null;
-          const distanceMeters = selected?.distance ?? selected?.legs?.[0]?.distance ?? null;
+          const selected =
+            routeSelection?.selected?.original ||
+            routeSelection?.selected ||
+            null;
+          const durationSec =
+            selected?.duration ?? selected?.legs?.[0]?.duration ?? null;
+          const distanceMeters =
+            selected?.distance ?? selected?.legs?.[0]?.distance ?? null;
           if (durationSec) eta_minutes = Math.round(durationSec / 60);
-          if (distanceMeters) distance_remaining_km = Number((distanceMeters / 1000).toFixed(3));
+          if (distanceMeters)
+            distance_remaining_km = Number((distanceMeters / 1000).toFixed(3));
         } catch (e) {
           // ignore route parse errors
         }
@@ -959,6 +965,24 @@ export default function LiveResponseMap({
                   lng,
                 ]);
                 setRoutePoints(coords);
+              }
+            }}
+            onLocationBroadcast={(payload) => {
+              // Forward navigation's location/eta/distance updates to the responder broadcast hook
+              try {
+                if (typeof broadcast === "function") {
+                  // TurnByTurnNavigation sends { latitude, longitude, heading, eta_minutes, distance_remaining_km }
+                  broadcast({
+                    latitude: payload.latitude,
+                    longitude: payload.longitude,
+                    heading: payload.heading ?? null,
+                    eta: payload.eta_minutes ?? payload.eta ?? null,
+                    distance:
+                      payload.distance_remaining_km ?? payload.distance ?? null,
+                  });
+                }
+              } catch (e) {
+                console.warn("Failed to forward navigation broadcast", e);
               }
             }}
             incident={incident}

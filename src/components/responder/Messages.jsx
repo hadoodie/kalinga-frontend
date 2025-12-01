@@ -23,14 +23,18 @@ import {
   Smile,
   MoreVertical,
   Loader2,
+  Image,
 } from "lucide-react";
+import "../../styles/chat.css";
 import EchoClient, {
   reconnectEcho,
   getEchoInstance,
 } from "../../services/echo";
 import chatService from "../../services/chatService";
+import { updateIncidentStatus } from "../../services/incidents";
 import { useAuth } from "../../context/AuthContext";
 import { useRealtime } from "../../context/RealtimeContext";
+import { useToast } from "../../hooks/use-toast";
 import {
   conversationStore,
   updateConversationStore,
@@ -41,6 +45,7 @@ import {
   insertMessageChronologically,
   isSameConversation,
   mergeConversationSnapshot,
+  normalizePerson,
   normalizeConversation,
   normalizeMessage,
   sortConversationsByRecency,
@@ -61,7 +66,20 @@ const INCOMING_QUEUE_HIGH_PRESSURE_THRESHOLD = 40;
 const INCOMING_QUEUE_AGGRESSIVE_INTERVAL_MS = 2;
 
 /**
- * Component 1. Conversation List Item (Messenger-style)
+ * Get initials from name for avatar
+ */
+const getInitials = (name) => {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+/**
+ * Component 1. Conversation List Item (iMessage-style)
  */
 const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -71,18 +89,8 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
   });
   const isEmergency = conversation.category === "Emergency";
   const hasUnread = conversation.unreadCount > 0;
+  const isResolved = conversation.isArchived || conversation.status === "resolved";
 
-  // Emergency conversations get special red styling
-  // Selected state uses blue background for clean, non-conflicting selection
-  const statusClass = isSelected
-    ? "border-blue-300 bg-blue-50"
-    : isEmergency
-    ? hasUnread
-      ? "border-red-400 bg-red-50"
-      : "border-red-200 bg-red-50/50"
-    : hasUnread
-    ? "border-green-200 bg-green-50"
-    : "bg-white hover:bg-gray-50 border-gray-100";
   const timeFormatted = conversation.lastMessageTime
     ? new Date(conversation.lastMessageTime).toLocaleString("en-US", {
         month: "short",
@@ -130,83 +138,66 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
 
   return (
     <>
-      <li
+      <div
         onClick={() => onSelect(conversation)}
         onContextMenu={handleContextMenu}
-        className={`group relative p-3 cursor-pointer transition rounded-xl mb-2 border ${statusClass} ${
-          isSelected ? "shadow-md" : ""
-        }`}
+        className={`conversation-item ${isSelected ? "active" : ""}`}
       >
-        <div className="flex items-start gap-3">
-          {/* Avatar */}
-          <div className="relative shrink-0">
+        {/* Avatar with initials */}
+        <div className="conv-avatar">
+          {conversation.participant.avatar ? (
             <img
               src={conversation.participant.avatar}
               alt={conversation.participant.name}
-              className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm"
+              className="conv-avatar-img"
             />
-            {conversation.participant.isOnline && (
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-            )}
-          </div>
-          {/* Content - Strictly Left-Aligned Vertical Stack */}
-          <div className="flex-1 min-w-0 flex flex-col">
-            {/* Top Row: Name with Emergency Icon + Timestamp */}
-            <div className="flex justify-between items-center gap-2 mb-0.5">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span
-                  className={`font-semibold text-sm truncate ${
-                    isEmergency ? "text-red-700" : "text-gray-900"
-                  }`}
-                >
-                  {conversation.participant.name}
-                </span>
-                {isEmergency && (
-                  <AlertCircle
-                    size={14}
-                    className={`shrink-0 text-red-600 ${
-                      conversation.isActive ? "animate-pulse" : ""
-                    }`}
-                  />
-                )}
-              </div>
-              <span className="text-xs text-gray-500 shrink-0 ml-2">
-                {timeFormatted}
-              </span>
+          ) : (
+            <div className="conv-avatar-initials">
+              {getInitials(conversation.participant.name)}
             </div>
-
-            {/* Last Message - Left Aligned */}
-            <p
-              className={`text-sm text-left truncate mb-0.5 ${
-                hasUnread
-                  ? "font-semibold text-gray-900"
-                  : "text-gray-600 font-normal"
-              }`}
-            >
-              {conversation.lastMessage || "No messages yet"}
-            </p>
-
-            {/* Bottom Row: Role + Unread Badge - Left Aligned */}
-            <div className="flex justify-between items-center gap-2">
-              <span className="text-xs text-gray-500 text-left truncate">
-                {conversation.participant.role}
-              </span>
-              {/* Show unread badge if unreadCount > 0 */}
-              {conversation.unreadCount > 0 && (
-                <span
-                  className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full ${
-                    isEmergency
-                      ? "bg-red-600 text-white"
-                      : "bg-green-600 text-white"
-                  }`}
-                >
-                  {conversation.unreadCount}
+          )}
+          <div
+            className={`conv-status-dot ${conversation.participant.isOnline ? "online" : "offline"}`}
+          />
+        </div>
+        
+        {/* Content */}
+        <div className="conv-info">
+          <div className="conv-header">
+            <span className={`conv-name ${isEmergency ? "text-red-600" : ""}`}>
+              {conversation.participant.name}
+              {isEmergency && (
+                <AlertCircle
+                  size={12}
+                  className={`inline ml-1 ${conversation.isActive ? "animate-pulse" : ""}`}
+                />
+              )}
+            </span>
+            <span className="conv-time">{timeFormatted}</span>
+          </div>
+          <div className="conv-preview">
+            {conversation.messages?.length > 0 &&
+              conversation.messages[conversation.messages.length - 1]?.isOwn && (
+                <span className="check-icon">
+                  {conversation.messages[conversation.messages.length - 1]?.isRead ? (
+                    <CheckCheck size={14} />
+                  ) : (
+                    <Check size={14} />
+                  )}
                 </span>
               )}
-            </div>
+            <span>
+              {conversation.lastMessage?.slice(0, 35) || "No messages yet"}
+              {conversation.lastMessage?.length > 35 ? "..." : ""}
+            </span>
           </div>
+          {isResolved ? (
+            <span className="conv-resolved-badge">Resolved</span>
+          ) : hasUnread ? (
+            <span className="conv-unread-badge">{conversation.unreadCount}</span>
+          ) : null}
         </div>
-      </li>
+      </div>
       {/* Context Menu - Shows on Right Click */}
       {showContextMenu && (
         <div
@@ -235,30 +226,106 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
 };
 
 /**
- * Component 2. Chat Thread View (Messenger-style)
+ * Component 2. Chat Thread View (iMessage-style)
  */
-const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
+const ChatThread = ({
+  conversation,
+  currentUserId,
+  onBack,
+  onSendMessage,
+  onResolveConversation,
+}) => {
   const [newMessage, setNewMessage] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [filePreview, setFilePreview] = useState(null);
+  const [showResolveModal, setShowResolveModal] = useState(false);
+  const [resolveLoading, setResolveLoading] = useState(false);
+  const [resolveError, setResolveError] = useState("");
   const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const isEmergency = conversation.category === "Emergency";
   const isArchived = conversation.isArchived;
+  const canResolveIncident =
+    Boolean(conversation.activeIncidentId) && !isArchived;
+
+  useEffect(() => {
+    if (isArchived) {
+      setShowResolveModal(false);
+      setResolveLoading(false);
+    }
+  }, [isArchived]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation.messages]);
+  }, [conversation.messages, isTyping]);
+
+  // Handle file selection
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFilePreview({
+        name: file.name,
+        type: file.type.startsWith("image/") ? "image" : "file",
+      });
+    }
+  };
 
   const handleSend = (e) => {
     e.preventDefault();
-    if (!newMessage.trim() || isArchived) return;
+    if ((!newMessage.trim() && !filePreview) || isArchived) return;
 
-    const textToSend = newMessage.trim();
+    const textToSend = filePreview
+      ? `📎 ${filePreview.name}${newMessage.trim() ? `\n${newMessage.trim()}` : ""}`
+      : newMessage.trim();
+    
     setNewMessage("");
+    setFilePreview(null);
 
     Promise.resolve(onSendMessage(conversation, textToSend)).catch((error) => {
       console.error("Failed to send message:", error);
     });
+  };
+
+  const handleResolveClick = () => {
+    if (!canResolveIncident) return;
+    setResolveError("");
+    setShowResolveModal(true);
+  };
+
+  const handleConfirmResolve = async () => {
+    if (!canResolveIncident) {
+      setResolveError("No active incident is linked to this chat.");
+      return;
+    }
+
+    if (typeof onResolveConversation !== "function") {
+      setResolveError("Resolve action is currently unavailable.");
+      return;
+    }
+
+    setResolveLoading(true);
+    setResolveError("");
+
+    try {
+      await onResolveConversation(conversation);
+      setShowResolveModal(false);
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Unable to resolve this conversation.";
+      setResolveError(message);
+    } finally {
+      setResolveLoading(false);
+    }
+  };
+
+  const handleDismissResolveModal = () => {
+    if (resolveLoading) return;
+    setShowResolveModal(false);
+    setResolveError("");
   };
 
   const formatMessageTime = (timestamp) => {
@@ -282,243 +349,303 @@ const ChatThread = ({ conversation, currentUserId, onBack, onSendMessage }) => {
     });
   };
 
+  // Group messages by date for display
+  const groupMessages = (messages) => {
+    const groups = {};
+    messages.forEach((msg) => {
+      const date = msg.timestamp ? new Date(msg.timestamp) : new Date();
+      const today = new Date();
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      let header;
+      if (date.toDateString() === today.toDateString()) {
+        header = "Today";
+      } else if (date.toDateString() === yesterday.toDateString()) {
+        header = "Yesterday";
+      } else {
+        header = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+      
+      if (!groups[header]) groups[header] = [];
+      groups[header].push(msg);
+    });
+    return groups;
+  };
+
+  const groupedMessages = groupMessages(conversation.messages || []);
+
   return (
-    <div
-      className={`flex flex-col h-full bg-white rounded-xl shadow-lg border ${
-        isEmergency ? "border-red-400" : "border-gray-200"
-      }`}
-    >
+    <div className="chat-right-panel" style={{ borderRadius: 0, overflow: 'hidden' }}>
       {/* Chat Header */}
-      <div
-        className={`shrink-0 p-4 border-b flex items-center justify-between rounded-t-xl ${
-          isEmergency ? "bg-red-50 border-red-200" : "bg-gray-50"
-        }`}
-      >
-        <div className="flex items-center gap-3 flex-1">
+      <div className="chat-header">
+        <div className="chat-header-info">
           <button
             onClick={onBack}
-            className={`p-2 rounded-full hover:bg-white/50 transition ${
-              isEmergency ? "text-red-700" : "text-gray-700"
-            }`}
+            className="chat-header-back lg:hidden"
           >
-            <ChevronLeft size={20} />
+            ‹
           </button>
-
-          {/* Participant Info */}
-          <div className="relative">
+          
+          {/* Avatar with initials */}
+          {conversation.participant.avatar ? (
             <img
               src={conversation.participant.avatar}
               alt={conversation.participant.name}
-              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow"
+              className="chat-header-avatar"
             />
-            {conversation.participant.isOnline && !isArchived && (
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
-            )}
-          </div>
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3
-                className={`font-bold text-lg truncate ${
-                  isEmergency ? "text-red-900" : "text-gray-900"
-                }`}
-              >
-                {conversation.participant.name}
-              </h3>
+          ) : (
+            <div className="chat-header-avatar-initials">
+              {getInitials(conversation.participant.name)}
+            </div>
+          )}
+          
+          <div className="chat-header-text">
+            <h3>
+              {conversation.participant.name}
               {isEmergency && (
                 <AlertCircle
-                  size={18}
-                  className={`text-red-600 ${
+                  size={14}
+                  className={`inline ml-2 text-red-600 ${
                     conversation.isActive ? "animate-pulse" : ""
                   }`}
                 />
               )}
-            </div>
-            <p className="text-sm text-gray-600 text-left">
-              {conversation.participant.isOnline && !isArchived && (
-                <span className="text-green-600">● Online</span>
-              )}
-              {isArchived && <span className="text-gray-500">● Archived</span>}
+            </h3>
+            <p style={{ color: conversation.participant.isOnline ? '#34c759' : '#8e8e93' }}>
+              {conversation.participant.isOnline && !isArchived
+                ? "Online"
+                : isArchived
+                ? "Archived"
+                : "Offline"}
             </p>
           </div>
         </div>
-
-        <button className="p-2 hover:bg-white/50 rounded-full transition text-gray-600">
-          <MoreVertical size={20} />
-        </button>
+        
+        <div className="chat-header-actions">
+          {!isArchived && (
+            <button
+              className="chat-header-btn resolve"
+              onClick={handleResolveClick}
+              disabled={!canResolveIncident}
+              style={!canResolveIncident ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+              title={
+                !canResolveIncident
+                  ? "This conversation is not linked to an active incident."
+                  : undefined
+              }
+            >
+              <Check size={16} />
+              Mark Resolved
+            </button>
+          )}
+          <button className="chat-header-btn more">
+            <MoreVertical size={16} />
+          </button>
+        </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 bg-gray-50/30">
-        {conversation.messages.map((msg, index) => {
-          const isOwnMessage =
-            msg.senderId === currentUserId || msg.isOwn === true;
-          const isSystemMessage = msg.isSystemMessage;
-          const showAvatar =
-            index === 0 ||
-            conversation.messages[index - 1]?.senderId !== msg.senderId;
-
-          if (isSystemMessage) {
-            return (
-              <div key={msg.id} className="flex justify-center my-4">
-                <div className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-xs font-medium max-w-md text-center border border-blue-200">
-                  {msg.text}
-                </div>
-              </div>
-            );
-          }
-
-          return (
-            <div
-              key={msg.id}
-              className={`flex items-end gap-2 ${
-                isOwnMessage ? "flex-row-reverse" : "flex-row"
-              }`}
-            >
-              {/* Avatar */}
-              <div className="w-8 h-8 shrink-0">
-                {showAvatar && !isOwnMessage && (
-                  <img
-                    src={conversation.participant.avatar}
-                    alt={msg.sender}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                )}
-              </div>
-
-              {/* Message Bubble */}
-              <div
-                className={`flex flex-col max-w-[70%] ${
-                  isOwnMessage ? "items-end" : "items-start"
-                }`}
-              >
-                {showAvatar && (
-                  <span className="text-xs text-gray-500 mb-1 px-2">
-                    {msg.sender ||
-                      (isOwnMessage ? "You" : conversation.participant.name)}
-                  </span>
-                )}
-                <div
-                  className={`px-4 py-2 rounded-2xl shadow-sm ${
-                    isOwnMessage
-                      ? isEmergency
-                        ? "bg-red-600 text-white"
-                        : "bg-primary text-white"
-                      : "bg-white text-gray-900 border border-gray-200"
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap break-words text-left">
-                    {msg.text}
-                  </p>
-                </div>
-                <div
-                  className={`flex items-center gap-1 mt-1 px-2 ${
-                    isOwnMessage ? "flex-row-reverse" : "flex-row"
-                  }`}
-                >
-                  <span className="text-xs text-gray-500">
-                    {formatMessageTime(msg.timestamp)}
-                  </span>
-                  {isOwnMessage && msg.deliveryStatus === "sending" && (
-                    <span className="text-xs text-gray-400 flex items-center gap-1">
-                      <Loader2 size={12} className="animate-spin" />
-                      Sending…
-                    </span>
-                  )}
-                  {isOwnMessage && msg.deliveryStatus === "failed" && (
-                    <span className="text-xs text-red-500 flex items-center gap-1">
-                      <AlertCircle size={12} />
-                      Not sent
-                    </span>
-                  )}
-                  {isOwnMessage &&
-                    (!msg.deliveryStatus ||
-                      msg.deliveryStatus === "sent" ||
-                      msg.deliveryStatus === "delivered") && (
-                      <span className="text-gray-500">
-                        {msg.isRead ? (
-                          <CheckCheck size={14} className="text-blue-500" />
-                        ) : (
-                          <Check size={14} />
-                        )}
-                      </span>
-                    )}
-                </div>
-              </div>
+      {/* Messages Area - iMessage style */}
+      <div className="chat-messages">
+        {Object.entries(groupedMessages).map(([date, msgs]) => (
+          <div key={date}>
+            {/* Date Separator */}
+            <div className="chat-date-separator">
+              <span>{date}</span>
             </div>
-          );
-        })}
+            
+            {msgs.map((msg, index) => {
+              const isOwnMessage =
+                msg.senderId === currentUserId || msg.isOwn === true;
+              const isSystemMessage = msg.isSystemMessage;
+              const showAvatar =
+                index === 0 || msgs[index - 1]?.senderId !== msg.senderId;
+
+              if (isSystemMessage) {
+                return (
+                  <div key={msg.id} className="chat-date-separator">
+                    <span style={{ background: '#dbeafe', color: '#1e40af' }}>{msg.text}</span>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={msg.id}
+                  className={`message-row ${isOwnMessage ? "personnel" : "patient"}`}
+                >
+                  {/* Avatar for received messages */}
+                  {!isOwnMessage && showAvatar && (
+                    <div className="message-avatar">
+                      {getInitials(conversation.participant.name)}
+                    </div>
+                  )}
+                  {!isOwnMessage && !showAvatar && <div style={{ width: 28 }} />}
+
+                  {/* Message Bubble */}
+                  <div className="message-bubble">
+                    <p className="message-text">{msg.text}</p>
+                    <div className="message-time">
+                      {formatMessageTime(msg.timestamp)}
+                      {isOwnMessage && (
+                        <span className="message-status">
+                          {msg.deliveryStatus === "sending" ? (
+                            <Loader2 size={12} className="animate-spin" />
+                          ) : msg.deliveryStatus === "failed" ? (
+                            <AlertCircle size={12} className="text-red-500" />
+                          ) : msg.isRead ? (
+                            <CheckCheck size={14} />
+                          ) : (
+                            <Check size={14} />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+
+        {/* Typing Indicator */}
+        {isTyping && (
+          <div className="typing-indicator">
+            <div className="typing-dots">
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+              <div className="typing-dot"></div>
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input Area */}
-      <div
-        className={`shrink-0 p-4 border-t bg-white rounded-b-xl ${
-          isArchived ? "opacity-50" : ""
-        }`}
-      >
-        {isArchived ? (
-          <div className="text-center p-3 bg-gray-100 rounded-xl">
-            <p className="text-gray-600 font-semibold flex items-center justify-center gap-2">
-              <AlertCircle size={18} className="text-gray-500" />
-              This conversation has been closed and archived.
-            </p>
-          </div>
-        ) : (
-          <form onSubmit={handleSend} className="flex items-center gap-2">
-            <button
-              type="button"
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition shrink-0"
-            >
-              <Paperclip size={20} />
-            </button>
+      {/* File Preview */}
+      {filePreview && (
+        <div className="file-preview">
+          <span className="file-preview-icon">
+            {filePreview.type === "image" ? <Image size={18} /> : <Paperclip size={18} />}
+          </span>
+          <span className="file-preview-name">{filePreview.name}</span>
+          <button
+            className="file-preview-remove"
+            onClick={() => setFilePreview(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
 
-            <div className="flex-1 relative">
-              <textarea
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend(e);
-                  }
-                }}
-                placeholder={
-                  isEmergency
-                    ? "Type your message to responder..."
-                    : "Type a message..."
+      {/* Message Input Area - iMessage style */}
+      {isArchived ? (
+        <div className="chat-input-bar" style={{ justifyContent: 'center' }}>
+          <p style={{ color: '#6e6e73', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertCircle size={18} />
+            This conversation has been closed and archived.
+          </p>
+        </div>
+      ) : (
+        <div className="chat-input-bar">
+          <div className="chat-input-attachments">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              style={{ display: "none" }}
+              accept="image/*,.pdf,.doc,.docx"
+            />
+            <button
+              className="chat-input-btn"
+              onClick={() => fileInputRef.current?.click()}
+              type="button"
+            >
+              <Paperclip size={18} />
+            </button>
+            <button
+              className="chat-input-btn"
+              onClick={() => {
+                if (fileInputRef.current) {
+                  fileInputRef.current.accept = "image/*";
+                  fileInputRef.current.click();
                 }
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-primary focus:border-primary resize-none max-h-32 transition"
-                rows="1"
-              />
+              }}
+              type="button"
+            >
+              <Image size={18} />
+            </button>
+          </div>
+          
+          <div className="chat-input-wrapper">
+            <input
+              type="text"
+              placeholder={isEmergency ? "Type your emergency message..." : "Type a message..."}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleSend(e)}
+            />
+          </div>
+          
+          <button
+            className="chat-send-btn"
+            onClick={handleSend}
+            disabled={!newMessage.trim() && !filePreview}
+            style={isEmergency ? { background: '#ff3b30' } : {}}
+          >
+            <Send size={18} />
+          </button>
+        </div>
+      )}
+
+      {isEmergency && !isArchived && (
+        <p style={{ textAlign: 'center', fontSize: '12px', color: '#8e8e93', padding: '8px' }}>
+          Emergency chat - Responder will reply as soon as possible
+        </p>
+      )}
+
+      {showResolveModal && (
+        <div className="chat-modal-overlay" role="dialog" aria-modal="true">
+          <div className="chat-modal">
+            <div className="chat-modal-icon warning">
+              <Check size={22} />
+            </div>
+            <h3>Resolve &amp; Archive Conversation?</h3>
+            <p>
+              Confirm that the incident with {conversation.participant?.name || "this resident"}
+              has been handled. This will archive the thread and disable further replies.
+            </p>
+            {resolveError && (
+              <p style={{ color: '#dc2626', fontSize: 13, textAlign: 'center', marginTop: -8, marginBottom: 18 }}>
+                {resolveError}
+              </p>
+            )}
+            <div className="chat-modal-actions">
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition"
+                className="chat-modal-btn cancel"
+                onClick={handleDismissResolveModal}
+                disabled={resolveLoading}
               >
-                <Smile size={20} />
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="chat-modal-btn confirm"
+                onClick={handleConfirmResolve}
+                disabled={resolveLoading}
+              >
+                {resolveLoading ? (
+                  <Loader2 size={16} className="spinner" />
+                ) : (
+                  <Check size={16} />
+                )}
+                Confirm
               </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={!newMessage.trim()}
-              className={`p-3 rounded-full transition shadow-md shrink-0 disabled:opacity-50 disabled:cursor-not-allowed ${
-                isEmergency
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "bg-primary hover:bg-green-700 text-white"
-              }`}
-            >
-              <Send size={20} />
-            </button>
-          </form>
-        )}
-
-        {isEmergency && !isArchived && (
-          <p className="text-xs text-center mt-2 text-gray-500">
-            Emergency chat - Responder will reply as soon as possible
-          </p>
-        )}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -655,6 +782,7 @@ const MessageComposer = ({ initialSubject = "", onSend }) => {
 
 export default function MessagesContact() {
   const { user, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(MainContentTabs.INBOX);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
@@ -1730,6 +1858,62 @@ export default function MessagesContact() {
     [user]
   );
 
+  const handleResolveConversation = useCallback(
+    async (conversation) => {
+      const incidentId =
+        conversation?.activeIncidentId ??
+        conversation?.incidentId ??
+        null;
+
+      if (!incidentId) {
+        throw new Error("This conversation is not linked to an active incident.");
+      }
+
+      try {
+        const response = await updateIncidentStatus(incidentId, {
+          status: "resolved",
+          notes: "Marked resolved from the responder messaging workspace.",
+        });
+
+        setConversations((prev) =>
+          prev.map((conv) =>
+            isSameConversation(conv, conversation)
+              ? {
+                  ...conv,
+                  isArchived: true,
+                  status: "resolved",
+                  incidentStatus: "resolved",
+                }
+              : conv
+          )
+        );
+
+        toast({
+          title: "Incident resolved",
+          description: `${conversation.participant?.name || "Conversation"} archived successfully.`,
+        });
+
+        return response;
+      } catch (error) {
+        const message =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Unable to resolve incident.";
+
+        toast({
+          variant: "destructive",
+          title: "Failed to resolve",
+          description: message,
+        });
+
+        const err = new Error(message);
+        err.cause = error;
+        throw err;
+      }
+    },
+    [toast]
+  );
+
   // Handlers for navigation
   const navigateToInbox = () => {
     setActiveTab(MainContentTabs.INBOX);
@@ -1789,127 +1973,118 @@ export default function MessagesContact() {
               currentUserId={user?.id ?? null}
               onBack={() => setSelectedConversationId(null)}
               onSendMessage={handleSendMessage}
+              onResolveConversation={handleResolveConversation}
             />
           );
         }
         return (
-          <div className="p-6 text-center h-full flex flex-col justify-center items-center bg-white rounded-xl shadow-lg border">
-            <MessageSquare size={64} className="text-gray-300 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700">
-              Select a Conversation
-            </h3>
-            <p className="text-gray-500 mt-2">
-              Choose a conversation from the list to view and send messages
-            </p>
+          <div className="chat-empty-state" style={{ background: '#ffffff', height: '100%' }}>
+            <div className="chat-empty-icon">💬</div>
+            <h3>Select a Conversation</h3>
+            <p>Choose a conversation from the list to start messaging</p>
           </div>
         );
     }
   };
 
   return (
-    <div className="flex flex-col h-full p-4 md:p-8 font-sans">
-      {/* <header className="shrink-0 mb-6 p-4 bg-white rounded-xl shadow-lg">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-primary text-left">
-          Messages & Contact
-        </h1>
-      </header> */}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
-        {/* Left Column: Conversation List and Navigation */}
-        <aside
-          className={`flex flex-col min-h-0 ${
-            isDetailViewActive ? "hidden lg:flex" : "flex"
-          }`}
-        >
-          <div className="bg-white p-4 rounded-xl shadow-xl border flex flex-col min-h-0 flex-1">
-            {activeTab === MainContentTabs.INBOX && (
-              <>
-                <h3 className="shrink-0 text-lg font-bold text-gray-800 border-t pt-4 mb-2">
-                  Conversations
-                </h3>
-
-                <div
-                  className={`shrink-0 mb-3 rounded-xl border p-3 transition-colors ${presenceContainerClass}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5">{presenceIcon}</span>
-                    <div className="flex-1">
-                      <p
-                        className={`text-sm font-semibold ${presenceLabelClass}`}
-                      >
-                        {presenceLabel}
-                      </p>
-                      <p
-                        className={`text-xs mt-1 leading-snug ${presenceDescriptionClass}`}
-                      >
-                        {presenceDescription}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Search Bar */}
-                <div className="shrink-0 relative mb-3">
-                  <Search
-                    size={16}
-                    className="absolute left-3 top-3.5 text-gray-400"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Search conversations..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full py-2.5 pl-10 pr-4 border border-gray-300 rounded-xl focus:ring-green-500 focus:border-green-500 transition"
-                  />
-                </div>
-
-                {/* Conversation List */}
-                {isRefreshingConversations && !isLoadingConversations ? (
-                  <p className="text-center text-xs text-gray-400 pb-2">
-                    Syncing latest messages…
-                  </p>
-                ) : null}
-                <ul className="flex-1 min-h-0 space-y-1 overflow-y-auto">
-                  {isLoadingConversations ? (
-                    <p className="text-center text-sm text-gray-500 p-4">
-                      Loading conversations...
-                    </p>
-                  ) : conversationsError ? (
-                    <p className="text-center text-sm text-red-500 p-4">
-                      {conversationsError}
-                    </p>
-                  ) : filteredConversations.length > 0 ? (
-                    filteredConversations.map((conv) => (
-                      <ConversationListItem
-                        key={conv.id}
-                        conversation={conv}
-                        onSelect={handleSelectConversation}
-                        isSelected={
-                          selectedConversation &&
-                          selectedConversation.id === conv.id
-                        }
-                      />
-                    ))
-                  ) : (
-                    <p className="text-center text-sm text-gray-500 p-4">
-                      No conversations found
-                      {searchTerm && ` matching "${searchTerm}"`}
-                    </p>
-                  )}
-                </ul>
-              </>
-            )}
+    <div className="chat-container">
+      {/* Left Panel - Conversation List */}
+      <div
+        className={`chat-left-panel ${isDetailViewActive ? "hidden lg:flex" : "flex"}`}
+      >
+        <div className="chat-left-header">
+          <h2>Messages</h2>
+          <div className="chat-search">
+            <span className="chat-search-icon">🔍</span>
+            <input
+              type="text"
+              placeholder="Search conversations..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        </aside>
+        </div>
 
-        {/* Right Column: Main Content Area */}
-        <section
-          className={`lg:col-span-2 flex flex-col items-center min-h-0 ${
-            isDetailViewActive ? "flex" : "hidden lg:flex"
-          }`}
+        {/* Filter Tabs */}
+        <div className="chat-filters">
+          <button
+            className={`chat-filter-btn ${categoryFilter === "All" ? "active" : ""}`}
+            onClick={() => setCategoryFilter("All")}
+          >
+            All
+          </button>
+          <button
+            className={`chat-filter-btn ${categoryFilter === "Emergency" ? "active" : ""}`}
+            onClick={() => setCategoryFilter("Emergency")}
+          >
+            Emergency
+          </button>
+          <button
+            className={`chat-filter-btn ${categoryFilter === "General" ? "active" : ""}`}
+            onClick={() => setCategoryFilter("General")}
+          >
+            General
+          </button>
+        </div>
+
+        {/* Presence Status */}
+        <div
+          className={`shrink-0 mx-2 mb-2 rounded-xl border p-3 transition-colors ${presenceContainerClass}`}
         >
-          <div className="w-full max-w-5xl h-full">{renderMainPanel()}</div>
-        </section>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5">{presenceIcon}</span>
+            <div className="flex-1">
+              <p className={`text-sm font-semibold ${presenceLabelClass}`}>
+                {presenceLabel}
+              </p>
+              <p className={`text-xs mt-1 leading-snug ${presenceDescriptionClass}`}>
+                {presenceDescription}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Conversation List */}
+        <div className="conversation-list">
+          {isLoadingConversations ? (
+            <p style={{ textAlign: 'center', color: '#8e8e93', padding: '16px' }}>
+              Loading conversations...
+            </p>
+          ) : conversationsError ? (
+            <p style={{ textAlign: 'center', color: '#ff3b30', padding: '16px' }}>
+              {conversationsError}
+            </p>
+          ) : filteredConversations.length > 0 ? (
+            filteredConversations.map((conv) => (
+              <ConversationListItem
+                key={conv.id}
+                conversation={conv}
+                onSelect={handleSelectConversation}
+                isSelected={
+                  selectedConversation && selectedConversation.id === conv.id
+                }
+              />
+            ))
+          ) : (
+            <p style={{ textAlign: 'center', color: '#8e8e93', padding: '16px' }}>
+              No conversations found
+              {searchTerm && ` matching "${searchTerm}"`}
+            </p>
+          )}
+          {isRefreshingConversations && !isLoadingConversations && (
+            <p style={{ textAlign: 'center', fontSize: '12px', color: '#8e8e93', padding: '8px' }}>
+              Syncing latest messages…
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Right Panel - Chat Area */}
+      <div
+        className={`chat-right-panel ${isDetailViewActive ? "flex" : "hidden lg:flex"}`}
+      >
+        {renderMainPanel()}
       </div>
     </div>
   );

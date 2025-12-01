@@ -1,94 +1,265 @@
+/* ==== INCIDENT LOGS – CLEAN MODERN DASHBOARD ==== */
+
 .incident-logs-container {
-  background: #fff;
-  padding: 20px;
-  border-radius: 10px;
-  margin: 20px;
+  min-height: 100%;
+  padding: 2rem 2.5rem;
+  background: linear-gradient(145deg, #f7f9fb 0%, #eef1f5 100%);
+  color: #0f172a;
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  overflow-y: visible;
 }
 
-.incident-title {
-  font-size: 22px;
-  font-weight: bold;
-  color: #064420;
-  margin-bottom: 15px;
+/* ==== HEADER ==== */
+.incident-logs-container h2 {
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.3px;
 }
 
-.incident-table {
-  width: 100%;
-  border-collapse: collapse;
+.incident-logs-container .subtitle {
+  color: #64748b;
+  font-size: 0.95rem;
+  margin-bottom: 1.2rem;
 }
 
-.incident-table th {
-  background: #f4f4f4;
-  padding: 10px;
-  text-align: left;
-  font-weight: bold;
+/* ==== FILTER CONTAINER ==== */
+.filter-container {
+  margin: 15px 0;
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
-.incident-table td {
-  padding: 10px;
-  text-align: left;
+.filter-container label {
+  font-weight: 500;
+  color: #475569;
 }
 
-.incident-table tr:nth-child(even) {
-  background: #fafafa;
+.hospital-filter {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  font-size: 0.9rem;
+  color: #1e293b;
+  cursor: pointer;
+  min-width: 200px;
+  transition: all 0.2s ease;
 }
 
-/* Status colors */
-.incident-table td.ongoing {
-  background: #ffcccb; /* light red */
-  color: #900;
-  font-weight: bold;
+.hospital-filter:hover {
+  border-color: #94a3b8;
 }
 
-.incident-table td.resolved {
-  background: #c8facc; /* light green */
-  color: #065f1f;
-  font-weight: bold;
+.hospital-filter:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.incident-table td.pending {
-  background: #ffe79a; /* yellow */
-  color: #9a7400;
-  font-weight: bold;
+/* ==== GRID LAYOUT ==== */
+.incident-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
 }
 
-/* Footer */
-.footer {
-  margin-top: 30px;
-  background: #f8f8f8;
-  padding: 20px;
+/* ==== CARD BASE ==== */
+.incident-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 18px;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: all 0.25s ease;
+  overflow: hidden;
+  position: relative;
+}
+
+.incident-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* ==== CARD CONTENT ==== */
+.incident-card .card-content {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+/* ==== HEADER (Hospital + Icon) ==== */
+.incident-header {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.3rem;
 }
 
-.footer-feedback {
-  flex: 1;
-  margin-right: 20px;
+.incident-header h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.footer-feedback textarea {
-  width: 100%;
-  min-height: 60px;
-  margin-top: 10px;
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+.incident-icon {
+  font-size: 1.5rem;
+  opacity: 0.9;
 }
 
-.footer-feedback button {
-  margin-top: 10px;
-  padding: 8px 15px;
-  border: none;
-  background: #0b6e4f;
-  color: #fff;
-  border-radius: 6px;
-  cursor: pointer;
+/* ==== DETAILS TEXT ==== */
+.incident-type {
+  color: #475569;
+  font-size: 0.9rem;
 }
 
-.footer-feedback button:hover {
-  background: #064420;
+.incident-status {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #0f172a;
 }
 
-.footer-social, .footer-contact {
-  flex: 0.5;
+.text-xs {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+/* ==== BADGES (Subtle, Eye-Friendly) ==== */
+.status-critical,
+.status-high,
+.status-medium,
+.status-low {
+  border-radius: 8px;
+  padding: 0.2rem 0.55rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-block;
+}
+
+/* Muted palette for better eye comfort */
+.status-critical {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.status-high {
+  background: #fef3c7;
+  color: #b45309;
+}
+.status-medium {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+.status-low {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+/* ==== CARD BORDER HINT (Subtle color accent) ==== */
+.incident-card[data-severity="critical"] {
+  border-left: 4px solid #dc2626;
+}
+.incident-card[data-severity="high"] {
+  border-left: 4px solid #f59e0b;
+}
+.incident-card[data-severity="medium"] {
+  border-left: 4px solid #3b82f6;
+}
+.incident-card[data-severity="low"] {
+  border-left: 4px solid #22c55e;
+}
+
+/* ==== NO INCIDENT MESSAGE ==== */
+.no-incidents {
+  text-align: center;
+  font-style: italic;
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin-top: 1rem;
+  grid-column: 1 / -1;
+}
+
+/* ==== ANIMATIONS (Soft pulse for active/critical) ==== */
+@keyframes subtlePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(220, 38, 38, 0);
+  }
+  50% {
+    box-shadow: 0 0 8px rgba(220, 38, 38, 0.25);
+  }
+}
+
+.incident-card[data-severity="critical"]:hover {
+  animation: subtlePulse 2s infinite ease-in-out;
+}
+
+/* ==== RESPONSIVE ==== */
+@media (max-width: 768px) {
+  .incident-logs-container {
+    padding: 1.5rem;
+  }
+  .incident-logs-container h2 {
+    font-size: 1.5rem;
+  }
+  .incident-card .card-content {
+    padding: 1.2rem;
+  }
+  .filter-container {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .hospital-filter {
+    width: 100%;
+  }
+}
+
+/* ==== DARK MODE SUPPORT ==== */
+.dark .incident-logs-container {
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 100%);
+  color: #f1f5f9;
+}
+
+.dark .incident-logs-container h2 {
+  color: #f1f5f9;
+}
+
+.dark .incident-logs-container .subtitle {
+  color: #94a3b8;
+}
+
+.dark .incident-card {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(51, 65, 85, 0.7);
+}
+
+.dark .incident-header h3 {
+  color: #f1f5f9;
+}
+
+.dark .incident-type {
+  color: #cbd5e1;
+}
+
+.dark .incident-status {
+  color: #f1f5f9;
+}
+
+.dark .text-xs {
+  color: #94a3b8;
+}
+
+.dark .hospital-filter {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+.dark .filter-container label {
+  color: #cbd5e1;
 }
