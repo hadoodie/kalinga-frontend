@@ -7,6 +7,7 @@ A comprehensive, real-time emergency response and healthcare management platform
 ## 🌟 Project Overview
 
 Kalinga is a full-stack web application built to handle the complexities of emergency management. It features a robust role-based system catering to four distinct user types:
+
 - **Patients:** For emergency SOS reporting, health record management, and appointment scheduling.
 - **Responders:** For real-time incident navigation, secure communication, and on-scene assessment.
 - **Logistics:** For hospital resource tracking, inventory management, and supply chain coordination.
@@ -15,6 +16,7 @@ Kalinga is a full-stack web application built to handle the complexities of emer
 ## 🚀 Key Features
 
 ### 🚑 Responder Workspace (New & Enhanced)
+
 - **Unified Layout:** A consistent, responsive interface across all responder tools with sticky navigation and optimized screen real estate.
 - **Response Mode:** A dedicated, distraction-free interface for active incidents, featuring:
   - **Live Navigation:** Turn-by-turn routing to patients and hospitals using Leaflet.
@@ -26,16 +28,19 @@ Kalinga is a full-stack web application built to handle the complexities of emer
   - **Hospital Map:** Locate nearby medical facilities and check their real-time status.
 
 ### 🏥 Healthcare & Patient Portal
+
 - **Digital Health Records:** Secure storage for medical history, lab results, and prescriptions.
 - **Emergency SOS:** One-tap emergency alerts that instantly notify nearby responders with precise geolocation.
 - **Appointment System:** Easy scheduling with healthcare providers.
 
 ### 📦 Logistics & Resource Management
+
 - **Inventory Tracking:** Real-time monitoring of hospital supplies, blood banks, and equipment.
 - **Resource Allocation:** Automated suggestions for resource distribution based on hospital capacity and emergency severity.
 - **Failover Database:** Robust architecture ensuring data availability even during cloud connectivity issues (Local <-> Cloud Sync).
 
 ### 🔐 Security & Architecture
+
 - **Authentication:** Secure JWT-based auth via Laravel Sanctum.
 - **RBAC:** Strict Role-Based Access Control ensuring users only access data relevant to their role.
 - **Real-time Infrastructure:** Built on Laravel Reverb (WebSocket server) for sub-second data updates across clients.
@@ -43,6 +48,7 @@ Kalinga is a full-stack web application built to handle the complexities of emer
 ## 🛠️ Tech Stack
 
 ### Frontend
+
 - **Framework:** React 19
 - **Build Tool:** Vite 7
 - **Styling:** TailwindCSS 4
@@ -52,6 +58,7 @@ Kalinga is a full-stack web application built to handle the complexities of emer
 - **UI Components:** Lucide React, Radix UI, Framer Motion
 
 ### Backend
+
 - **Framework:** Laravel 11
 - **Language:** PHP 8.2+
 - **Database:** PostgreSQL 17 (Supabase Cloud + Local Failover)
@@ -62,6 +69,7 @@ Kalinga is a full-stack web application built to handle the complexities of emer
 ## ⚡ Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - PHP 8.2+
 - PostgreSQL 17
@@ -70,12 +78,14 @@ Kalinga is a full-stack web application built to handle the complexities of emer
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/jrdyfrdy/kalinga-frontend.git
    cd kalinga
    ```
 
 2. **Frontend Setup**
+
    ```bash
    # Install dependencies
    npm install
@@ -83,9 +93,11 @@ Kalinga is a full-stack web application built to handle the complexities of emer
    # Start the development server
    npm run dev
    ```
+
    The frontend will be available at `http://localhost:5173`.
 
 3. **Backend Setup**
+
    ```bash
    cd backend
 
@@ -105,9 +117,11 @@ Kalinga is a full-stack web application built to handle the complexities of emer
    # Start the Backend Server
    php artisan serve
    ```
+
    The backend API will be available at `http://localhost:8000`.
 
 4. **Real-time Server (WebSockets)**
+
    ```bash
    cd backend
    php artisan reverb:start
@@ -123,27 +137,30 @@ Kalinga is a full-stack web application built to handle the complexities of emer
 
 Use the password `password123` for all accounts below:
 
-| Role | Email | Description |
-|------|-------|-------------|
-| **Admin** | `admin@kalinga.com` | Full system access |
-| **Responder** | `responder@kalinga.com` | Access to Responder Workspace & Maps |
+| Role          | Email                   | Description                               |
+| ------------- | ----------------------- | ----------------------------------------- |
+| **Admin**     | `admin@kalinga.com`     | Full system access                        |
+| **Responder** | `responder@kalinga.com` | Access to Responder Workspace & Maps      |
 | **Logistics** | `logistics@kalinga.com` | Access to Inventory & Hospital Management |
-| **Patient** | `patient@kalinga.com` | Access to SOS & Health Records |
+| **Patient**   | `patient@kalinga.com`   | Access to SOS & Health Records            |
 
 ## 📅 Recent Updates (December 2025)
 
 ### Responder Experience Overhaul
+
 - **Layout Standardization:** Refactored `ResponseMap`, `HospitalMap`, and `ResponseMode` to use a shared `Layout` component, fixing overflow issues and ensuring a consistent sticky sidebar experience.
 - **Chat UI Polish:** Enhanced the secure messaging interface with better spacing, bubble alignment, and visual hierarchy (iMessage style).
 - **Map Integration:** Improved the integration of Leaflet maps within the application shell, ensuring controls are accessible and responsive on mobile devices.
 
 ### System Stability
+
 - **Database Failover:** Enhanced the synchronization logic between local and cloud databases to prevent data loss during intermittent connectivity.
 - **Real-time Reliability:** Tuned Laravel Reverb configurations for more stable WebSocket connections during high-traffic emergency events.
 
 ## 🤝 Contributing
 
 We welcome contributions! Please follow these steps:
+
 1. Fork the repository.
 2. Create a feature branch (`git checkout -b feature/AmazingFeature`).
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`).
@@ -155,4 +172,5 @@ We welcome contributions! Please follow these steps:
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-*Built with ❤️ by the Kalinga Development Team*
+
+_Built with ❤️ by the Kalinga Development Team_
