@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   FileText,
   AlertCircle,
+  AlertTriangle,
   Activity,
   GraduationCap,
   BookOpen,
@@ -83,14 +84,14 @@ export default function ResponderSidebar() {
 
   const items = [
     {
+      label: "Emergency Console",
+      path: "/responder/emergency-console",
+      icon: <LayoutDashboard size={25} />,
+    },
+    {
       label: "Dashboard",
       path: "/responder/dashboard",
       icon: <Home size={25} />,
-    },
-    {
-      label: "Emergency Console",
-      path: "/responder/dashboard-v2",
-      icon: <LayoutDashboard size={25} />,
     },
     {
       label: "Incident Logs",
@@ -247,14 +248,15 @@ export default function ResponderSidebar() {
         {/* Menu */}
         <ul className="list-none flex-1 p-2 space-y-1">
           {items.map((item, idx) => {
-            const isEmergencyItem = item.path === "/responder/dashboard-v2";
+            const isEmergencyItem = item.path === "/responder/emergency-console";
             const active = isActive(item.path);
-            const baseClasses = "flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300";
+            const baseClasses =
+              "flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300";
             const stateGap = collapsed ? "justify-center" : "gap-2";
             const stateBg = isEmergencyItem
               ? active
-                ? "bg-red-800 font-bold"
-                : "bg-red-600/80 hover:bg-red-700"
+                ? "bg-red-800 text-white font-bold text-base py-3 my-2 border-t border-b border-red-700"
+                : "bg-red-700 text-white font-bold text-base py-3 my-2 border-t border-b border-red-600"
               : active
               ? "bg-white/20 font-bold"
               : "hover:bg-white/10";
@@ -266,17 +268,30 @@ export default function ResponderSidebar() {
                   onClick={() => handleNavigation(item)}
                 >
                   {collapsed && (
-                    <span className={`transition-transform duration-300 ${isEmergencyItem ? "p-1 rounded-md bg-red-600" : ""}`}>
+                    <span
+                      className={`transition-transform duration-300 ${
+                        isEmergencyItem ? "p-1 rounded-md bg-red-600/80" : ""
+                      }`}
+                    >
                       {item.icon}
                     </span>
                   )}
                   {!collapsed && (
                     <span
                       className={`transition-all duration-300 transform ${
-                        collapsed ? "opacity-0 -translate-x-2" : "opacity-100 translate-x-0"
+                        collapsed
+                          ? "opacity-0 -translate-x-2"
+                          : "opacity-100 translate-x-0"
                       }`}
                     >
-                      {item.label}
+                      <span className="flex items-center">
+                        {isEmergencyItem && (
+                          <AlertTriangle size={18} className="mr-2 text-white" />
+                        )}
+                        <span className={isEmergencyItem ? "text-white text-base font-bold" : ""}>
+                          {item.label}
+                        </span>
+                      </span>
                     </span>
                   )}
                 </div>
@@ -294,20 +309,11 @@ export default function ResponderSidebar() {
           {/* Emergency SOS Section */}
           <li className="group relative">
             <div
-              className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
-                ${collapsed ? "justify-center" : "gap-2"}
-                ${
-                  emergencySOSOpen
-                    ? "bg-white/20 font-bold"
-                    : "hover:bg-white/10"
-                }
-              `}
+              className={`flex items-center px-2 py-2 rounded-md transition-all duration-300 ${
+                collapsed ? "justify-center" : "gap-2"
+              } text-gray-400 opacity-80 cursor-not-allowed`}
               onClick={() => {
-                if (!collapsed) {
-                  setEmergencySOSOpen((prev) => !prev);
-                } else {
-                  navigate("/responder/emergency-sos");
-                }
+                /* Emergency SOS intentionally obsolete/disabled */
               }}
             >
               {collapsed && (
@@ -317,13 +323,8 @@ export default function ResponderSidebar() {
               )}
               {!collapsed && (
                 <>
-                  <span>Emergency SOS</span>
-                  <span
-                    className={`ml-auto transition-transform duration-300 ${
-                      emergencySOSOpen ? "rotate-180" : ""
-                    }`}
-                  >
-                    ▼
+                  <span className="flex items-center gap-2">
+                    <span className="ml-0 text-gray-300">Emergency SOS</span>
                   </span>
                 </>
               )}
@@ -332,24 +333,17 @@ export default function ResponderSidebar() {
             {/* Tooltip when collapsed */}
             {collapsed && (
               <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-green-950 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                Emergency SOS
+                Emergency SOS (obsolete)
               </span>
             )}
 
-            {/* Submenu */}
-            {!collapsed && emergencySOSOpen && (
+            {/* Submenu - visible but disabled (grayed out) */}
+            {!collapsed && (
               <ul className="ml-4 mt-1 space-y-1">
                 {emergencySOSItems.slice(1).map((subItem, idx) => (
                   <li key={idx}>
                     <div
-                      className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition-all duration-300
-                        ${
-                          isActive(subItem.path)
-                            ? "bg-white/20 font-bold"
-                            : "hover:bg-white/10"
-                        }
-                      `}
-                      onClick={() => handleNavigation(subItem)}
+                      className={`flex items-center gap-2 px-2 py-2 rounded-md transition-all duration-300 text-gray-400 opacity-70 cursor-not-allowed`}
                     >
                       {subItem.icon}
                       <span>{subItem.label}</span>
@@ -363,17 +357,10 @@ export default function ResponderSidebar() {
           {/* Online Training Section */}
           <li className="group relative">
             <div
-              className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
-                ${collapsed ? "justify-center" : "gap-2"}
-                ${trainingOpen ? "bg-white/20 font-bold" : "hover:bg-white/10"}
-              `}
-              onClick={() => {
-                if (!collapsed) {
-                  setTrainingOpen((prev) => !prev);
-                } else {
-                  navigate("/responder/online-training");
-                }
-              }}
+              className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 ${
+                collapsed ? "justify-center" : "gap-2"
+              } ${trainingOpen ? "bg-white/20 font-bold" : "hover:bg-white/10"}`}
+              onClick={() => handleNavigation({ path: "/responder/online-training" })}
             >
               {collapsed && (
                 <span className="transition-transform duration-300">
@@ -387,6 +374,10 @@ export default function ResponderSidebar() {
                     className={`ml-auto transition-transform duration-300 ${
                       trainingOpen ? "rotate-180" : ""
                     }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTrainingOpen((prev) => !prev);
+                    }}
                   >
                     ▼
                   </span>
@@ -401,19 +392,15 @@ export default function ResponderSidebar() {
               </span>
             )}
 
-            {/* Submenu */}
+            {/* Submenu - show when opened */}
             {!collapsed && trainingOpen && (
               <ul className="ml-4 mt-1 space-y-1">
                 {trainingItems.slice(1).map((subItem, idx) => (
                   <li key={idx}>
                     <div
-                      className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition-all duration-300
-                        ${
-                          isActive(subItem.path)
-                            ? "bg-white/20 font-bold"
-                            : "hover:bg-white/10"
-                        }
-                      `}
+                      className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition-all duration-300 ${
+                        isActive(subItem.path) ? "bg-white/20 font-bold" : "hover:bg-white/10"
+                      }`}
                       onClick={() => handleNavigation(subItem)}
                     >
                       {subItem.icon}
@@ -460,20 +447,30 @@ export default function ResponderSidebar() {
         {mobileOpen && (
           <div className="absolute right-0 mt-2 w-56 bg-green-900 text-white rounded-md shadow-lg p-4 space-y-3 max-h-[80vh] overflow-y-auto">
             {/* Main Menu Items */}
-            {items.map((item, idx) => (
-              <div
-                key={idx}
-                className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition
-                  ${
-                    isActive(item.path)
-                      ? "bg-white/20 font-bold"
-                      : "hover:bg-white/10"
-                  }`}
-                onClick={() => handleNavigation(item)}
-              >
-                <span>{item.label}</span>
-              </div>
-            ))}
+            {items.map((item, idx) => {
+                const isEmergencyItem = item.path === "/responder/emergency-console";
+                const active = isActive(item.path);
+                const mobileBg = isEmergencyItem
+                  ? active
+                    ? "bg-red-800 text-white font-bold text-base py-3 my-2 border-t border-b border-red-700"
+                    : "bg-red-700 text-white font-bold text-base py-3 my-2 border-t border-b border-red-600"
+                  : active
+                  ? "bg-white/20 font-bold"
+                  : "hover:bg-white/10";
+
+                return (
+                  <div
+                    key={idx}
+                    className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition ${mobileBg}`}
+                    onClick={() => handleNavigation(item)}
+                  >
+                    {isEmergencyItem && <AlertTriangle size={16} className="mr-2 text-white" />}
+                    <span className={isEmergencyItem ? "text-white text-base font-bold" : ""}>
+                      {item.label}
+                    </span>
+                  </div>
+                );
+            })}
 
             {/* Emergency SOS Expandable */}
             <div>
