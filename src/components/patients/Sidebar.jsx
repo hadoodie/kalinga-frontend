@@ -164,7 +164,7 @@ export default function PatientSidebar() {
     setShowEmergencyPopup(false);
     const triggeredAt = new Date().toISOString();
     let locationPayload = { location: null, error: null };
-    
+
     try {
       locationPayload = await resolveLocation();
     } catch (error) {
@@ -180,8 +180,12 @@ export default function PatientSidebar() {
         filterCategory: "Emergency",
         startEmergencyChat: {
           triggeredAt,
-          ...(locationPayload.location ? { location: locationPayload.location } : {}),
-          ...(locationPayload.error ? { locationError: locationPayload.error } : {}),
+          ...(locationPayload.location
+            ? { location: locationPayload.location }
+            : {}),
+          ...(locationPayload.error
+            ? { locationError: locationPayload.error }
+            : {}),
         },
       },
     });
@@ -209,11 +213,7 @@ export default function PatientSidebar() {
         {/* Top Section with Logo + Hamburger */}
         <div
           className={`flex items-center transition-all duration-300 flex-shrink-0
-          ${
-            collapsed
-              ? "justify-center h-16"
-              : "justify-between h-16 px-3"
-          }`}
+          ${collapsed ? "justify-center h-16" : "justify-between h-16 px-3"}`}
         >
           {!collapsed && (
             <img
@@ -281,7 +281,11 @@ export default function PatientSidebar() {
                 onClick={() => handleNavigation(item)}
               >
                 {/* Icon */}
-                <span className={`flex-shrink-0 transition-transform duration-300 ${item.highlight ? "animate-bounce" : ""}`}>
+                <span
+                  className={`flex-shrink-0 transition-transform duration-300 ${
+                    item.highlight ? "animate-bounce" : ""
+                  }`}
+                >
                   {item.icon}
                 </span>
 
@@ -301,7 +305,11 @@ export default function PatientSidebar() {
 
               {/* Tooltip when collapsed */}
               {collapsed && (
-                <span className={`absolute left-full top-1/2 -translate-y-1/2 ml-3 text-white text-xs px-2 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-md ${item.highlight ? "bg-orange-600" : "bg-green-950"}`}>
+                <span
+                  className={`absolute left-full top-1/2 -translate-y-1/2 ml-3 text-white text-xs px-2 py-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 pointer-events-none shadow-md ${
+                    item.highlight ? "bg-orange-600" : "bg-green-950"
+                  }`}
+                >
                   {item.label}
                 </span>
               )}
@@ -319,7 +327,9 @@ export default function PatientSidebar() {
           >
             <Settings size={25} className="flex-shrink-0" />
             {!collapsed && (
-              <span className="whitespace-nowrap overflow-hidden">Settings</span>
+              <span className="whitespace-nowrap overflow-hidden">
+                Settings
+              </span>
             )}
 
             {collapsed && (
@@ -368,7 +378,7 @@ export default function PatientSidebar() {
               <AlertCircle size={20} />
               <span>EMERGENCY SOS</span>
             </button>
-            
+
             {/* Menu Items */}
             <div className="max-h-[60vh] overflow-y-auto space-y-1">
               {items.map((item, idx) => (
@@ -384,8 +394,16 @@ export default function PatientSidebar() {
                   }`}
                   onClick={() => handleNavigation(item)}
                 >
-                  <span className={`scale-90 ${item.highlight ? "text-orange-300" : ""}`}>{item.icon}</span>
-                  <span className={item.highlight ? "text-orange-200" : ""}>{item.label}</span>
+                  <span
+                    className={`scale-90 ${
+                      item.highlight ? "text-orange-300" : ""
+                    }`}
+                  >
+                    {item.icon}
+                  </span>
+                  <span className={item.highlight ? "text-orange-200" : ""}>
+                    {item.label}
+                  </span>
                 </div>
               ))}
             </div>

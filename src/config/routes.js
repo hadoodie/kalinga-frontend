@@ -71,7 +71,7 @@ export const ROUTES = {
     SETTINGS: "/logistics/settings",
     NOTIFICATIONS: "/logistics/notifications",
     LIVE_MAP: "/logistics/live-map",
-    PROFILE: '/logistics/profile',
+    PROFILE: "/logistics/profile",
   },
 };
 

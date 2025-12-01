@@ -23,7 +23,7 @@ const fetcher = async (url) => {
  * @param {Object} options - Configuration options
  * @param {boolean} options.enabled - Whether to fetch (default: true)
  * @param {number} options.refreshInterval - Refresh interval in ms (default: 30000)
- * @returns {{ 
+ * @returns {{
  *   hasActiveRescue: boolean,
  *   activeRescue: Object | null,
  *   incident: Object | null,
@@ -34,7 +34,10 @@ const fetcher = async (url) => {
  *   mutate: Function
  * }}
  */
-export function useActiveRescue({ enabled = true, refreshInterval = 30000 } = {}) {
+export function useActiveRescue({
+  enabled = true,
+  refreshInterval = 30000,
+} = {}) {
   const { data, error, isLoading, mutate } = useSWR(
     enabled ? "/rescue/active" : null,
     fetcher,
