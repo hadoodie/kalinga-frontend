@@ -246,45 +246,50 @@ export default function ResponderSidebar() {
 
         {/* Menu */}
         <ul className="list-none flex-1 p-2 space-y-1">
-          {items.map((item, idx) => (
-            <li key={idx} className="group relative">
-              <div
-                className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300
-                  ${collapsed ? "justify-center" : "gap-2"}
-                  ${
-                    isActive(item.path)
-                      ? "bg-white/20 font-bold"
-                      : "hover:bg-white/10"
-                  }
-                `}
-                onClick={() => handleNavigation(item)}
-              >
+          {items.map((item, idx) => {
+            const isEmergencyItem = item.path === "/responder/dashboard-v2";
+            const active = isActive(item.path);
+            const baseClasses = "flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300";
+            const stateGap = collapsed ? "justify-center" : "gap-2";
+            const stateBg = isEmergencyItem
+              ? active
+                ? "bg-red-800 font-bold"
+                : "bg-red-600/80 hover:bg-red-700"
+              : active
+              ? "bg-white/20 font-bold"
+              : "hover:bg-white/10";
+
+            return (
+              <li key={idx} className="group relative">
+                <div
+                  className={`${baseClasses} ${stateGap} ${stateBg}`}
+                  onClick={() => handleNavigation(item)}
+                >
+                  {collapsed && (
+                    <span className={`transition-transform duration-300 ${isEmergencyItem ? "p-1 rounded-md bg-red-600" : ""}`}>
+                      {item.icon}
+                    </span>
+                  )}
+                  {!collapsed && (
+                    <span
+                      className={`transition-all duration-300 transform ${
+                        collapsed ? "opacity-0 -translate-x-2" : "opacity-100 translate-x-0"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  )}
+                </div>
+
+                {/* Tooltip when collapsed */}
                 {collapsed && (
-                  <span className="transition-transform duration-300">
-                    {item.icon}
-                  </span>
-                )}
-                {!collapsed && (
-                  <span
-                    className={`transition-all duration-300 transform ${
-                      collapsed
-                        ? "opacity-0 -translate-x-2"
-                        : "opacity-100 translate-x-0"
-                    }`}
-                  >
+                  <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-green-950 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
                     {item.label}
                   </span>
                 )}
-              </div>
-
-              {/* Tooltip when collapsed */}
-              {collapsed && (
-                <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-green-950 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                  {item.label}
-                </span>
-              )}
-            </li>
-          ))}
+              </li>
+            );
+          })}
 
           {/* Emergency SOS Section */}
           <li className="group relative">
