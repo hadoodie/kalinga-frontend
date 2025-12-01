@@ -64,7 +64,8 @@ export const determineTriageLevel = ({
   ) {
     level = "high";
   } else if (
-    (temp > 39 || temp < 35) ||
+    temp > 39 ||
+    temp < 35 ||
     (heartRate > 130 && heartRate <= 140) ||
     (spo2 >= 85 && spo2 < 88) ||
     (mentalStatus === "P (Pain)" && complaint === "Seizure") ||
@@ -96,7 +97,8 @@ export const getRecommendedDoctor = ({
 }) => {
   if (complaint === "Chest pain") return "Cardiologist";
   if (complaint === "Difficulty breathing" || spo2 < 90) return "Pulmonologist";
-  if (complaint === "Seizure" || complaint === "Dizziness") return "Neurologist";
+  if (complaint === "Seizure" || complaint === "Dizziness")
+    return "Neurologist";
   if (temp > 38.5) return "Infectious Disease Specialist";
   if (mentalStatus === "U (Unresponsive)" || level === "critical")
     return "Emergency Medicine";

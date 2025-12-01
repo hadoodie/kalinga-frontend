@@ -10,15 +10,18 @@ const IncidentLogs = () => {
   const incidentLogs = generateIncidentLogsFromTriage(triageData);
   const [selectedHospital, setSelectedHospital] = useState("All");
 
-  const filteredLogs = selectedHospital === "All"
-    ? incidentLogs
-    : incidentLogs.filter(log => log.hospital === selectedHospital);
+  const filteredLogs =
+    selectedHospital === "All"
+      ? incidentLogs
+      : incidentLogs.filter((log) => log.hospital === selectedHospital);
 
   return (
     <Layout>
       <div className="incident-logs-container">
         <h2>Incident Logs</h2>
-        <p className="subtitle">Real-time incident tracking from the Triage System</p>
+        <p className="subtitle">
+          Real-time incident tracking from the Triage System
+        </p>
 
         <div className="filter-container">
           <label>Filter by Hospital:</label>
@@ -29,7 +32,9 @@ const IncidentLogs = () => {
           >
             <option value="All">All Hospitals</option>
             {hospitals.map((h) => (
-              <option key={h.name} value={h.name}>{h.name}</option>
+              <option key={h.name} value={h.name}>
+                {h.name}
+              </option>
             ))}
           </select>
         </div>
@@ -51,7 +56,10 @@ const IncidentLogs = () => {
                   </div>
                   <p className="incident-type">{log.type}</p>
                   <p className="incident-status">
-                    Status: <span className={`status-${log.severity}`}>{log.status}</span>
+                    Status:{" "}
+                    <span className={`status-${log.severity}`}>
+                      {log.status}
+                    </span>
                   </p>
                   <p className="text-xs">Patient: {log.patientName}</p>
                   <p className="text-xs">Time: {log.time}</p>

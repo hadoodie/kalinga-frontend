@@ -83,14 +83,14 @@ const OnlineTraining = () => {
     <Layout>
       <div className="online-training">
         {/* Hero Section */}
-        <motion.section 
+        <motion.section
           className="hero-section"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6 }}
         >
           <div className="hero-content">
-            <motion.div 
+            <motion.div
               className="hero-text"
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
@@ -99,7 +99,9 @@ const OnlineTraining = () => {
               <span className="hero-badge">
                 <FaGraduationCap /> Kalinga Training Portal
               </span>
-              <h1>Equip Citizens & Government Employees with In-Demand Skills</h1>
+              <h1>
+                Equip Citizens & Government Employees with In-Demand Skills
+              </h1>
               <p>
                 Drive sustainable economic growth and build a competitive
                 workforce with online learning from leading universities and
@@ -114,7 +116,7 @@ const OnlineTraining = () => {
                 </button>
               </div>
             </motion.div>
-            <motion.div 
+            <motion.div
               className="hero-visual"
               initial={{ opacity: 0, x: 30 }}
               animate={{ opacity: 1, x: 0 }}
@@ -139,7 +141,7 @@ const OnlineTraining = () => {
         </motion.section>
 
         {/* Stats Section */}
-        <motion.section 
+        <motion.section
           className="stats-section"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -147,8 +149,8 @@ const OnlineTraining = () => {
         >
           <div className="stats-grid">
             {stats.map((stat, index) => (
-              <motion.div 
-                key={index} 
+              <motion.div
+                key={index}
                 className="stat-card"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -166,18 +168,20 @@ const OnlineTraining = () => {
 
         {/* Career Solutions Section */}
         <section className="career-section">
-          <motion.div 
+          <motion.div
             className="section-header"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
             <h2>Choose the Right Career Solutions</h2>
-            <p>Tailored training programs for citizens and government employees</p>
+            <p>
+              Tailored training programs for citizens and government employees
+            </p>
           </motion.div>
-          
+
           <div className="career-cards">
-            <motion.div 
+            <motion.div
               className="career-card"
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -188,17 +192,25 @@ const OnlineTraining = () => {
                 <FaUsers />
               </div>
               <div className="career-content">
-                <span className="career-label">GOVERNMENT EMPLOYEE UPSKILLING</span>
+                <span className="career-label">
+                  GOVERNMENT EMPLOYEE UPSKILLING
+                </span>
                 <h3>Train Your Government Workforce</h3>
                 <p>
                   Build the skilled workforce needed to improve service
-                  efficiency and drive performance results in public health
-                  and emergency response.
+                  efficiency and drive performance results in public health and
+                  emergency response.
                 </p>
                 <ul className="career-features">
-                  <li><FaChalkboardTeacher /> Expert-led workshops</li>
-                  <li><FaCertificate /> Accredited certifications</li>
-                  <li><FaChartLine /> Progress tracking</li>
+                  <li>
+                    <FaChalkboardTeacher /> Expert-led workshops
+                  </li>
+                  <li>
+                    <FaCertificate /> Accredited certifications
+                  </li>
+                  <li>
+                    <FaChartLine /> Progress tracking
+                  </li>
                 </ul>
                 <a href="#" className="career-link">
                   Learn More <FaArrowRight />
@@ -206,7 +218,7 @@ const OnlineTraining = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="career-card"
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -217,16 +229,24 @@ const OnlineTraining = () => {
                 <FaGraduationCap />
               </div>
               <div className="career-content">
-                <span className="career-label">CITIZEN WORKFORCE DEVELOPMENT</span>
+                <span className="career-label">
+                  CITIZEN WORKFORCE DEVELOPMENT
+                </span>
                 <h3>Empower Your Community</h3>
                 <p>
                   Enable your workforce to develop job-relevant skills to help
                   reduce unemployment and increase community health awareness.
                 </p>
                 <ul className="career-features">
-                  <li><FaBookOpen /> Self-paced learning</li>
-                  <li><FaStethoscope /> Medical skills training</li>
-                  <li><FaAmbulance /> Emergency preparedness</li>
+                  <li>
+                    <FaBookOpen /> Self-paced learning
+                  </li>
+                  <li>
+                    <FaStethoscope /> Medical skills training
+                  </li>
+                  <li>
+                    <FaAmbulance /> Emergency preparedness
+                  </li>
                 </ul>
                 <a href="#" className="career-link">
                   Learn More <FaArrowRight />
@@ -239,7 +259,7 @@ const OnlineTraining = () => {
         {/* Talent Section */}
         <section className="talent-section">
           <div className="talent-container">
-            <motion.div 
+            <motion.div
               className="talent-left"
               initial={{ opacity: 0, x: -30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -262,7 +282,7 @@ const OnlineTraining = () => {
               </div>
             </motion.div>
 
-            <motion.div 
+            <motion.div
               className="talent-right"
               initial={{ opacity: 0, x: 30 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -288,8 +308,8 @@ const OnlineTraining = () => {
                 <div>
                   <h4>In-Demand Skills</h4>
                   <p>
-                    Training in medical technology, emergency response,
-                    and healthcare leadership.
+                    Training in medical technology, emergency response, and
+                    healthcare leadership.
                   </p>
                 </div>
               </div>
@@ -301,8 +321,8 @@ const OnlineTraining = () => {
                 <div>
                   <h4>Hands-on Learning</h4>
                   <p>
-                    Practical assessments, simulations, and real-world
-                    project experience.
+                    Practical assessments, simulations, and real-world project
+                    experience.
                   </p>
                 </div>
               </div>
@@ -325,20 +345,23 @@ const OnlineTraining = () => {
 
         {/* Courses Component */}
         <section className="courses-section">
-          <motion.div 
+          <motion.div
             className="section-header"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
             <h2>Explore Our Training Programs</h2>
-            <p>Comprehensive courses designed for healthcare and emergency response professionals</p>
+            <p>
+              Comprehensive courses designed for healthcare and emergency
+              response professionals
+            </p>
           </motion.div>
           <Courses />
         </section>
 
         {/* CTA Section */}
-        <motion.section 
+        <motion.section
           className="cta-section"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -347,16 +370,14 @@ const OnlineTraining = () => {
           <div className="cta-content">
             <h2>Ready to Start Your Learning Journey?</h2>
             <p>
-              Join thousands of healthcare professionals and responders
-              who have enhanced their skills through Kalinga.
+              Join thousands of healthcare professionals and responders who have
+              enhanced their skills through Kalinga.
             </p>
             <div className="cta-actions">
               <button className="btn-primary large">
                 Get Started Today <FaArrowRight />
               </button>
-              <button className="btn-outline large">
-                View All Courses
-              </button>
+              <button className="btn-outline large">View All Courses</button>
             </div>
           </div>
         </motion.section>

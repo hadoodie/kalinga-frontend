@@ -7,10 +7,13 @@ import {
   useRef,
   useState,
 } from "react";
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "../config/routes";
 import {
   fetchResponderIncidents,
   getCachedIncidents,
   mergeIncidentToCache,
+  assignNearestIncident,
 } from "../services/incidents";
 import { useRealtime } from "./RealtimeContext";
 import { getEchoInstance } from "../services/echo";
@@ -45,18 +48,23 @@ const sortIncidents = (list) => {
 
 export const IncidentProvider = ({ children }) => {
   const { ensureConnected } = useRealtime();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
+  const navigate = useNavigate();
 
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
+  const [autoAssignEnabled, setAutoAssignEnabled] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
 
   const subscriptionRef = useRef(null);
   const refreshTimerRef = useRef(null);
   const incidentsRef = useRef([]);
   const lastFetchedRef = useRef(null);
+  const autoAssignInProgressRef = useRef(false);
+  const knownIncidentIdsRef = useRef(new Set());
 
   const mergeIncident = useCallback((incoming) => {
     if (!incoming) {
@@ -172,6 +180,100 @@ export const IncidentProvider = ({ children }) => {
     };
   }, [authLoading, isAuthenticated, loadIncidents]);
 
+  // Track user geolocation for auto-assignment
+  useEffect(() => {
+    if (!isAuthenticated || !autoAssignEnabled) {
+      return;
+    }
+
+    let watchId = null;
+
+    if (navigator.geolocation) {
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude,
+          });
+        },
+        (error) => {
+          console.warn("Geolocation error:", error.message);
+        },
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 }
+      );
+    }
+
+    return () => {
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
+  }, [isAuthenticated, autoAssignEnabled]);
+
+  // Auto-assign nearest incident handler
+  const attemptAutoAssign = useCallback(
+    async (newIncident) => {
+      if (!autoAssignEnabled || !userLocation || !user?.id) {
+        return;
+      }
+
+      // Check if user is already assigned to an active incident
+      const userHasActiveAssignment = incidentsRef.current.some((incident) => {
+        if (["resolved", "cancelled"].includes(incident.status)) {
+          return false;
+        }
+        return incident.assignments?.some(
+          (assignment) =>
+            assignment?.responder?.id === user.id &&
+            !["completed", "cancelled"].includes(assignment.status)
+        );
+      });
+
+      if (userHasActiveAssignment) {
+        console.log(
+          "User already has an active assignment, skipping auto-assign"
+        );
+        return;
+      }
+
+      if (autoAssignInProgressRef.current) {
+        return;
+      }
+
+      autoAssignInProgressRef.current = true;
+
+      try {
+        const response = await assignNearestIncident({
+          responder_lat: userLocation.lat,
+          responder_lng: userLocation.lng,
+          responder_id: user.id,
+        });
+
+        const assignedIncident = response?.data?.incident;
+        if (assignedIncident) {
+          mergeIncident(assignedIncident);
+
+          // Navigate to response mode
+          const responseModePath = ROUTES.RESPONDER.RESPONSE_MODE.replace(
+            ":incidentId",
+            assignedIncident.id
+          );
+          navigate(responseModePath, {
+            state: { incident: assignedIncident, autoAssigned: true },
+          });
+        }
+      } catch (err) {
+        // 404 means no available incidents - not an error
+        if (err?.response?.status !== 404) {
+          console.error("Auto-assign failed:", err);
+        }
+      } finally {
+        autoAssignInProgressRef.current = false;
+      }
+    },
+    [autoAssignEnabled, userLocation, user?.id, mergeIncident, navigate]
+  );
+
   useEffect(() => {
     let isMounted = true;
 
@@ -200,7 +302,26 @@ export const IncidentProvider = ({ children }) => {
           .join("incidents")
           .listen(".IncidentUpdated", (payload) => {
             if (!payload?.incident) return;
-            mergeIncident(payload.incident);
+
+            const incomingIncident = payload.incident;
+            const isNewIncident = !knownIncidentIdsRef.current.has(
+              incomingIncident.id
+            );
+
+            // Track known incidents
+            knownIncidentIdsRef.current.add(incomingIncident.id);
+
+            mergeIncident(incomingIncident);
+
+            // Auto-assign if this is a NEW incident in "reported" status
+            if (
+              isNewIncident &&
+              incomingIncident.status === "reported" &&
+              autoAssignEnabled
+            ) {
+              attemptAutoAssign(incomingIncident);
+            }
+
             if (refreshTimerRef.current) {
               clearTimeout(refreshTimerRef.current);
             }
@@ -233,7 +354,16 @@ export const IncidentProvider = ({ children }) => {
     isAuthenticated,
     mergeIncident,
     loadIncidents,
+    autoAssignEnabled,
+    attemptAutoAssign,
   ]);
+
+  // Initialize known incident IDs from initial load
+  useEffect(() => {
+    incidentsRef.current.forEach((incident) => {
+      knownIncidentIdsRef.current.add(incident.id);
+    });
+  }, [incidents]);
 
   const value = useMemo(
     () => ({
@@ -244,6 +374,9 @@ export const IncidentProvider = ({ children }) => {
       lastFetchedAt,
       refresh: (options) => loadIncidents({ force: true, ...(options ?? {}) }),
       mergeIncident,
+      autoAssignEnabled,
+      setAutoAssignEnabled,
+      userLocation,
     }),
     [
       incidents,
@@ -253,6 +386,8 @@ export const IncidentProvider = ({ children }) => {
       lastFetchedAt,
       loadIncidents,
       mergeIncident,
+      autoAssignEnabled,
+      userLocation,
     ]
   );
 

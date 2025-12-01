@@ -1,5 +1,11 @@
 // src/context/TriageProvider.jsx
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { generatePatientTriage } from "../lib/triageUtils";
 
 const TriageContext = createContext(null);
@@ -76,5 +82,7 @@ export const TriageProvider = ({ children, refreshInterval = 30000 }) => {
     },
   };
 
-  return <TriageContext.Provider value={value}>{children}</TriageContext.Provider>;
+  return (
+    <TriageContext.Provider value={value}>{children}</TriageContext.Provider>
+  );
 };

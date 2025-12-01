@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  FaExclamationTriangle, 
-  FaUserMd, 
-  FaHospital, 
+import {
+  FaExclamationTriangle,
+  FaUserMd,
+  FaHospital,
   FaBell,
   FaChevronDown,
   FaChevronUp,
   FaClock,
-  FaMapMarkerAlt
+  FaMapMarkerAlt,
 } from "react-icons/fa";
 import "../../styles/reports-card.css";
 
@@ -25,7 +25,7 @@ const Reports = () => {
       action: "Prepare for patient redirection",
       severity: "high",
       occupancy: 94,
-      time: "10 mins ago"
+      time: "10 mins ago",
     },
     {
       id: 2,
@@ -34,7 +34,7 @@ const Reports = () => {
       action: "Coordinate overflow arrangements",
       severity: "critical",
       occupancy: 92,
-      time: "25 mins ago"
+      time: "25 mins ago",
     },
     {
       id: 3,
@@ -43,7 +43,7 @@ const Reports = () => {
       action: "Request urgent replenishment",
       severity: "high",
       occupancy: 78,
-      time: "1 hour ago"
+      time: "1 hour ago",
     },
     {
       id: 4,
@@ -52,7 +52,7 @@ const Reports = () => {
       action: "Redirect overflow to PGH Pediatrics",
       severity: "medium",
       occupancy: 88,
-      time: "2 hours ago"
+      time: "2 hours ago",
     },
   ];
 
@@ -64,7 +64,7 @@ const Reports = () => {
       specialty: "Cardiologists",
       status: "unavailable",
       redirect: "St. Luke's Medical Center (QC)",
-      time: "Active"
+      time: "Active",
     },
     {
       id: 2,
@@ -72,7 +72,7 @@ const Reports = () => {
       specialty: "Neurologists",
       status: "unavailable",
       redirect: "East Avenue Medical Center",
-      time: "Active"
+      time: "Active",
     },
     {
       id: 3,
@@ -80,7 +80,7 @@ const Reports = () => {
       specialty: "Orthopedic Team",
       status: "on rotation leave",
       redirect: "Rizal Medical Center",
-      time: "Until 6:00 PM"
+      time: "Until 6:00 PM",
     },
     {
       id: 4,
@@ -88,16 +88,20 @@ const Reports = () => {
       specialty: "Pediatricians",
       status: "limited",
       redirect: "National Children's Hospital",
-      time: "Active"
+      time: "Active",
     },
   ];
 
   const getSeverityClass = (severity) => {
-    switch(severity) {
-      case 'critical': return 'severity-critical';
-      case 'high': return 'severity-high';
-      case 'medium': return 'severity-medium';
-      default: return 'severity-low';
+    switch (severity) {
+      case "critical":
+        return "severity-critical";
+      case "high":
+        return "severity-high";
+      case "medium":
+        return "severity-medium";
+      default:
+        return "severity-low";
     }
   };
 
@@ -112,7 +116,9 @@ const Reports = () => {
           <FaHospital className="title-icon" />
           <div>
             <h3>DOH Hospital Reports</h3>
-            <span className="subtitle">Real-time capacity & specialist alerts</span>
+            <span className="subtitle">
+              Real-time capacity & specialist alerts
+            </span>
           </div>
         </div>
         <div className="alert-badge">
@@ -123,29 +129,31 @@ const Reports = () => {
 
       {/* Hospital Capacity Section */}
       <div className="reports-section">
-        <button 
-          className={`section-header ${expandedSection === 'capacity' ? 'expanded' : ''}`}
-          onClick={() => toggleSection('capacity')}
+        <button
+          className={`section-header ${
+            expandedSection === "capacity" ? "expanded" : ""
+          }`}
+          onClick={() => toggleSection("capacity")}
         >
           <div className="section-title">
             <FaExclamationTriangle className="section-icon warning" />
             <span>Hospital Capacity Alerts</span>
             <span className="alert-count">{hospitalAlerts.length}</span>
           </div>
-          {expandedSection === 'capacity' ? <FaChevronUp /> : <FaChevronDown />}
+          {expandedSection === "capacity" ? <FaChevronUp /> : <FaChevronDown />}
         </button>
-        
+
         <AnimatePresence>
-          {expandedSection === 'capacity' && (
-            <motion.div 
+          {expandedSection === "capacity" && (
+            <motion.div
               className="section-content"
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
+              animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
               {hospitalAlerts.map((alert, index) => (
-                <motion.div 
+                <motion.div
                   key={alert.id}
                   className={`alert-item ${getSeverityClass(alert.severity)}`}
                   initial={{ opacity: 0, x: -20 }}
@@ -161,7 +169,7 @@ const Reports = () => {
                   <p className="alert-message">{alert.message}</p>
                   <div className="alert-meta">
                     <div className="occupancy-bar">
-                      <div 
+                      <div
                         className="occupancy-fill"
                         style={{ width: `${alert.occupancy}%` }}
                       />
@@ -183,29 +191,35 @@ const Reports = () => {
 
       {/* Specialist Availability Section */}
       <div className="reports-section">
-        <button 
-          className={`section-header ${expandedSection === 'specialist' ? 'expanded' : ''}`}
-          onClick={() => toggleSection('specialist')}
+        <button
+          className={`section-header ${
+            expandedSection === "specialist" ? "expanded" : ""
+          }`}
+          onClick={() => toggleSection("specialist")}
         >
           <div className="section-title">
             <FaUserMd className="section-icon resource" />
             <span>Specialist Availability</span>
             <span className="alert-count">{specialistAlerts.length}</span>
           </div>
-          {expandedSection === 'specialist' ? <FaChevronUp /> : <FaChevronDown />}
+          {expandedSection === "specialist" ? (
+            <FaChevronUp />
+          ) : (
+            <FaChevronDown />
+          )}
         </button>
-        
+
         <AnimatePresence>
-          {expandedSection === 'specialist' && (
-            <motion.div 
+          {expandedSection === "specialist" && (
+            <motion.div
               className="section-content"
               initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
+              animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
               {specialistAlerts.map((alert, index) => (
-                <motion.div 
+                <motion.div
                   key={alert.id}
                   className="specialist-item"
                   initial={{ opacity: 0, x: -20 }}
@@ -214,7 +228,12 @@ const Reports = () => {
                 >
                   <div className="specialist-header">
                     <span className="hospital-name">{alert.hospital}</span>
-                    <span className={`status-badge ${alert.status.replace(/\s+/g, '-')}`}>
+                    <span
+                      className={`status-badge ${alert.status.replace(
+                        /\s+/g,
+                        "-"
+                      )}`}
+                    >
                       {alert.status}
                     </span>
                   </div>
@@ -226,7 +245,9 @@ const Reports = () => {
                   </div>
                   <div className="redirect-info">
                     <FaMapMarkerAlt />
-                    <span>Redirect to: <strong>{alert.redirect}</strong></span>
+                    <span>
+                      Redirect to: <strong>{alert.redirect}</strong>
+                    </span>
                   </div>
                 </motion.div>
               ))}

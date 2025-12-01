@@ -26,18 +26,78 @@ const Grades = () => {
 
   // Course data with categories
   const courses = [
-    { id: 1, title: "Professional Development Training Certificate (PDTC)", category: "Professional Development", duration: "40 hours" },
-    { id: 2, title: "Emergency Management Certificate Program", category: "Emergency Response", duration: "32 hours" },
-    { id: 3, title: "Basic Life Support/Emergency Medical Responder (EMR)", category: "Medical", duration: "24 hours" },
-    { id: 4, title: "Psychological First Aid Basics", category: "Mental Health", duration: "16 hours" },
-    { id: 5, title: "Hazardous Materials Awareness Training", category: "Safety", duration: "20 hours" },
-    { id: 6, title: "Emergency Shelter Management & Logistics", category: "Emergency Response", duration: "28 hours" },
-    { id: 7, title: "First Aid and CPR Certification", category: "Medical", duration: "18 hours" },
-    { id: 8, title: "Pediatric Advanced Life Support (PALS)", category: "Medical", duration: "24 hours" },
-    { id: 9, title: "Infections Disease Control Essentials", category: "Medical", duration: "20 hours" },
-    { id: 10, title: "Telemedicine Practices in Modern Healthcare", category: "Technology", duration: "16 hours" },
-    { id: 11, title: "Nursing Care for Post-Operative Patients", category: "Medical", duration: "32 hours" },
-    { id: 12, title: "Ethics & Legal Issues in Clinical Practice", category: "Professional Development", duration: "12 hours" },
+    {
+      id: 1,
+      title: "Professional Development Training Certificate (PDTC)",
+      category: "Professional Development",
+      duration: "40 hours",
+    },
+    {
+      id: 2,
+      title: "Emergency Management Certificate Program",
+      category: "Emergency Response",
+      duration: "32 hours",
+    },
+    {
+      id: 3,
+      title: "Basic Life Support/Emergency Medical Responder (EMR)",
+      category: "Medical",
+      duration: "24 hours",
+    },
+    {
+      id: 4,
+      title: "Psychological First Aid Basics",
+      category: "Mental Health",
+      duration: "16 hours",
+    },
+    {
+      id: 5,
+      title: "Hazardous Materials Awareness Training",
+      category: "Safety",
+      duration: "20 hours",
+    },
+    {
+      id: 6,
+      title: "Emergency Shelter Management & Logistics",
+      category: "Emergency Response",
+      duration: "28 hours",
+    },
+    {
+      id: 7,
+      title: "First Aid and CPR Certification",
+      category: "Medical",
+      duration: "18 hours",
+    },
+    {
+      id: 8,
+      title: "Pediatric Advanced Life Support (PALS)",
+      category: "Medical",
+      duration: "24 hours",
+    },
+    {
+      id: 9,
+      title: "Infections Disease Control Essentials",
+      category: "Medical",
+      duration: "20 hours",
+    },
+    {
+      id: 10,
+      title: "Telemedicine Practices in Modern Healthcare",
+      category: "Technology",
+      duration: "16 hours",
+    },
+    {
+      id: 11,
+      title: "Nursing Care for Post-Operative Patients",
+      category: "Medical",
+      duration: "32 hours",
+    },
+    {
+      id: 12,
+      title: "Ethics & Legal Issues in Clinical Practice",
+      category: "Professional Development",
+      duration: "12 hours",
+    },
   ];
 
   // Mock grades with unlocked status
@@ -57,7 +117,9 @@ const Grades = () => {
   };
 
   const computeOverall = (grades) => {
-    const scores = [grades.pretest, grades.quiz, grades.final].filter(s => s !== null);
+    const scores = [grades.pretest, grades.quiz, grades.final].filter(
+      (s) => s !== null
+    );
     if (scores.length === 0) return null;
     return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   };
@@ -70,11 +132,11 @@ const Grades = () => {
   };
 
   const claimCertificate = (courseId) => {
-    setCertificates(prev => ({ ...prev, [courseId]: true }));
+    setCertificates((prev) => ({ ...prev, [courseId]: true }));
   };
 
   const revokeCertificate = (courseId) => {
-    setCertificates(prev => {
+    setCertificates((prev) => {
       const updated = { ...prev };
       delete updated[courseId];
       return updated;
@@ -83,25 +145,33 @@ const Grades = () => {
 
   // Filter and search courses
   const filteredCourses = useMemo(() => {
-    return courses.filter(course => {
+    return courses.filter((course) => {
       const grades = mockGrades[course.id];
       const overall = computeOverall(grades);
-      const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           course.category.toLowerCase().includes(searchTerm.toLowerCase());
-      
+      const matchesSearch =
+        course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        course.category.toLowerCase().includes(searchTerm.toLowerCase());
+
       if (filterStatus === "all") return matchesSearch;
-      if (filterStatus === "passed") return matchesSearch && overall !== null && overall >= 80;
-      if (filterStatus === "inprogress") return matchesSearch && overall !== null && overall < 80;
-      if (filterStatus === "notstarted") return matchesSearch && overall === null;
-      if (filterStatus === "certified") return matchesSearch && certificates[course.id];
+      if (filterStatus === "passed")
+        return matchesSearch && overall !== null && overall >= 80;
+      if (filterStatus === "inprogress")
+        return matchesSearch && overall !== null && overall < 80;
+      if (filterStatus === "notstarted")
+        return matchesSearch && overall === null;
+      if (filterStatus === "certified")
+        return matchesSearch && certificates[course.id];
       return matchesSearch;
     });
   }, [searchTerm, filterStatus, certificates]);
 
   // Stats calculation
   const stats = useMemo(() => {
-    let completed = 0, passed = 0, inProgress = 0, certified = 0;
-    courses.forEach(course => {
+    let completed = 0,
+      passed = 0,
+      inProgress = 0,
+      certified = 0;
+    courses.forEach((course) => {
       const grades = mockGrades[course.id];
       const overall = computeOverall(grades);
       if (overall !== null) {
@@ -119,7 +189,7 @@ const Grades = () => {
       <div className="grades-container">
         <div className="grades-content">
           {/* Header */}
-          <motion.div 
+          <motion.div
             className="grades-header"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -129,17 +199,22 @@ const Grades = () => {
               <div>
                 <h1 className="grades-title">My Grades & Certificates</h1>
                 <p className="grades-subtitle">
-                  Track your assessment results across all training courses. Green = passed (≥80%), Orange = borderline (60-79%), Red = below 60%.
+                  Track your assessment results across all training courses.
+                  Green = passed (≥80%), Orange = borderline (60-79%), Red =
+                  below 60%.
                 </p>
               </div>
             </div>
-            <button className="refresh-btn" onClick={() => window.location.reload()}>
+            <button
+              className="refresh-btn"
+              onClick={() => window.location.reload()}
+            >
               <FaSyncAlt /> Refresh
             </button>
           </motion.div>
 
           {/* Stats Cards */}
-          <motion.div 
+          <motion.div
             className="grades-stats"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -150,7 +225,9 @@ const Grades = () => {
                 <FaChartLine />
               </div>
               <div className="stat-info">
-                <h4>{stats.completed}/{stats.total}</h4>
+                <h4>
+                  {stats.completed}/{stats.total}
+                </h4>
                 <p>Courses Completed</p>
               </div>
             </div>
@@ -184,7 +261,7 @@ const Grades = () => {
           </motion.div>
 
           {/* Controls */}
-          <motion.div 
+          <motion.div
             className="grades-controls"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -192,17 +269,17 @@ const Grades = () => {
           >
             <div className="search-box">
               <FaSearch />
-              <input 
-                type="text" 
-                placeholder="Search courses..." 
+              <input
+                type="text"
+                placeholder="Search courses..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <div className="filter-group">
               <FaFilter className="filter-icon" />
-              <select 
-                value={filterStatus} 
+              <select
+                value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="filter-select"
               >
@@ -219,15 +296,20 @@ const Grades = () => {
           <div className="grades-grid">
             <AnimatePresence>
               {filteredCourses.map((course, index) => {
-                const grades = mockGrades[course.id] || { pretest: null, quiz: null, final: null, unlocked: false };
+                const grades = mockGrades[course.id] || {
+                  pretest: null,
+                  quiz: null,
+                  final: null,
+                  unlocked: false,
+                };
                 const overall = computeOverall(grades);
                 const statusColor = getStatusColor(overall);
                 const finalPassed = grades.final !== null && grades.final >= 80;
                 const certClaimed = certificates[course.id];
 
                 return (
-                  <motion.div 
-                    key={course.id} 
+                  <motion.div
+                    key={course.id}
                     className={`grade-card status-${statusColor}`}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -237,12 +319,28 @@ const Grades = () => {
                   >
                     <div className="grade-card-header">
                       <div className="course-meta">
-                        <span className="category-badge">{course.category}</span>
-                        <span className="duration-badge">{course.duration}</span>
+                        <span className="category-badge">
+                          {course.category}
+                        </span>
+                        <span className="duration-badge">
+                          {course.duration}
+                        </span>
                       </div>
                       <div className="status-badges">
-                        <span className={`badge ${grades.unlocked ? "badge-unlocked" : "badge-locked"}`}>
-                          {grades.unlocked ? <><FaLockOpen /> Unlocked</> : <><FaLock /> Locked</>}
+                        <span
+                          className={`badge ${
+                            grades.unlocked ? "badge-unlocked" : "badge-locked"
+                          }`}
+                        >
+                          {grades.unlocked ? (
+                            <>
+                              <FaLockOpen /> Unlocked
+                            </>
+                          ) : (
+                            <>
+                              <FaLock /> Locked
+                            </>
+                          )}
                         </span>
                         {finalPassed && (
                           <span className="badge badge-passed">
@@ -257,15 +355,21 @@ const Grades = () => {
                     <div className="grades-list">
                       <div className="grade-row">
                         <span className="label">Pre-Test:</span>
-                        <span className="value">{grades.pretest !== null ? `${grades.pretest}%` : "—"}</span>
+                        <span className="value">
+                          {grades.pretest !== null ? `${grades.pretest}%` : "—"}
+                        </span>
                       </div>
                       <div className="grade-row">
                         <span className="label">Quiz:</span>
-                        <span className="value">{grades.quiz !== null ? `${grades.quiz}%` : "—"}</span>
+                        <span className="value">
+                          {grades.quiz !== null ? `${grades.quiz}%` : "—"}
+                        </span>
                       </div>
                       <div className="grade-row">
                         <span className="label">Final Exam:</span>
-                        <span className="value">{grades.final !== null ? `${grades.final}%` : "—"}</span>
+                        <span className="value">
+                          {grades.final !== null ? `${grades.final}%` : "—"}
+                        </span>
                       </div>
                     </div>
 
@@ -278,20 +382,25 @@ const Grades = () => {
                       </div>
                       <div className="progress-wrapper">
                         <div className="progress-bar">
-                          <motion.div 
+                          <motion.div
                             className={`progress-fill ${statusColor}`}
                             initial={{ width: 0 }}
                             animate={{ width: `${overall || 0}%` }}
                             transition={{ duration: 0.8, ease: "easeOut" }}
                           />
                         </div>
-                        <span className="progress-percent">{overall || 0}%</span>
+                        <span className="progress-percent">
+                          {overall || 0}%
+                        </span>
                       </div>
                     </div>
 
                     <div className="card-actions">
                       {finalPassed && !certClaimed && (
-                        <button className="btn btn-primary" onClick={() => claimCertificate(course.id)}>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => claimCertificate(course.id)}
+                        >
                           <FaAward /> Claim Certificate
                         </button>
                       )}
@@ -300,7 +409,10 @@ const Grades = () => {
                           <button className="btn btn-success">
                             <FaDownload /> Download
                           </button>
-                          <button className="btn btn-outline" onClick={() => revokeCertificate(course.id)}>
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => revokeCertificate(course.id)}
+                          >
                             Revoke
                           </button>
                         </>
@@ -311,9 +423,7 @@ const Grades = () => {
                         </button>
                       )}
                       {overall === null && (
-                        <button className="btn btn-light">
-                          Not Started
-                        </button>
+                        <button className="btn btn-light">Not Started</button>
                       )}
                     </div>
                   </motion.div>

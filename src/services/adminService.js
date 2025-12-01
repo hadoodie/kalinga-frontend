@@ -26,7 +26,7 @@ const adminService = {
 
   /**
    * Activate a user account
-   * @param {number} userId 
+   * @param {number} userId
    */
   activateUser: async (userId) => {
     try {
@@ -40,7 +40,7 @@ const adminService = {
 
   /**
    * Deactivate a user account
-   * @param {number} userId 
+   * @param {number} userId
    */
   deactivateUser: async (userId) => {
     try {
@@ -74,22 +74,26 @@ const adminService = {
    */
   getUserStats: async () => {
     try {
-      const response = await api.get("/admin/users", { params: { per_page: 1000 } });
+      const response = await api.get("/admin/users", {
+        params: { per_page: 1000 },
+      });
       const users = response.data.data || [];
-      
+
       const stats = {
         total: users.length,
         byRole: {
-          admin: users.filter(u => u.role === 'admin').length,
-          responder: users.filter(u => u.role === 'responder').length,
-          patient: users.filter(u => u.role === 'patient').length,
-          logistics: users.filter(u => u.role === 'logistics').length,
+          admin: users.filter((u) => u.role === "admin").length,
+          responder: users.filter((u) => u.role === "responder").length,
+          patient: users.filter((u) => u.role === "patient").length,
+          logistics: users.filter((u) => u.role === "logistics").length,
         },
-        active: users.filter(u => u.is_active).length,
-        inactive: users.filter(u => !u.is_active).length,
-        pendingVerification: users.filter(u => u.verification_status === 'pending').length,
+        active: users.filter((u) => u.is_active).length,
+        inactive: users.filter((u) => !u.is_active).length,
+        pendingVerification: users.filter(
+          (u) => u.verification_status === "pending"
+        ).length,
       };
-      
+
       return stats;
     } catch (error) {
       console.error("Error fetching user stats:", error);
@@ -121,29 +125,32 @@ const adminService = {
    */
   getIncidentStats: async () => {
     try {
-      const response = await api.get("/incidents", { 
-        params: { include_resolved: true, include_cancelled: true } 
+      const response = await api.get("/incidents", {
+        params: { include_resolved: true, include_cancelled: true },
       });
       const incidents = response.data?.data || response.data || [];
-      
+
       const stats = {
         total: incidents.length,
         byStatus: {
-          reported: incidents.filter(i => i.status === 'reported').length,
-          acknowledged: incidents.filter(i => i.status === 'acknowledged').length,
-          en_route: incidents.filter(i => i.status === 'en_route').length,
-          on_scene: incidents.filter(i => i.status === 'on_scene').length,
-          resolved: incidents.filter(i => i.status === 'resolved').length,
-          cancelled: incidents.filter(i => i.status === 'cancelled').length,
+          reported: incidents.filter((i) => i.status === "reported").length,
+          acknowledged: incidents.filter((i) => i.status === "acknowledged")
+            .length,
+          en_route: incidents.filter((i) => i.status === "en_route").length,
+          on_scene: incidents.filter((i) => i.status === "on_scene").length,
+          resolved: incidents.filter((i) => i.status === "resolved").length,
+          cancelled: incidents.filter((i) => i.status === "cancelled").length,
         },
-        active: incidents.filter(i => !['resolved', 'cancelled'].includes(i.status)).length,
-        todayCount: incidents.filter(i => {
+        active: incidents.filter(
+          (i) => !["resolved", "cancelled"].includes(i.status)
+        ).length,
+        todayCount: incidents.filter((i) => {
           const created = new Date(i.created_at);
           const today = new Date();
           return created.toDateString() === today.toDateString();
         }).length,
       };
-      
+
       return stats;
     } catch (error) {
       console.error("Error fetching incident stats:", error);
@@ -153,7 +160,7 @@ const adminService = {
 
   /**
    * Get a single incident with details
-   * @param {number} incidentId 
+   * @param {number} incidentId
    */
   getIncident: async (incidentId) => {
     try {
@@ -175,8 +182,8 @@ const adminService = {
    */
   getResources: async (params = {}) => {
     try {
-      const response = await api.get("/resources", { 
-        params: { ...params, all: true } 
+      const response = await api.get("/resources", {
+        params: { ...params, all: true },
       });
       return response.data?.resources || response.data || [];
     } catch (error) {
@@ -217,7 +224,9 @@ const adminService = {
    */
   getExpiringResources: async (days = 30) => {
     try {
-      const response = await api.get("/resources/expiring", { params: { days } });
+      const response = await api.get("/resources/expiring", {
+        params: { days },
+      });
       return response.data?.resources || response.data || [];
     } catch (error) {
       console.error("Error fetching expiring resources:", error);
@@ -239,16 +248,16 @@ const adminService = {
 
       // Group by category
       const byCategory = {};
-      all.forEach(r => {
-        const cat = r.category || 'Other';
+      all.forEach((r) => {
+        const cat = r.category || "Other";
         if (!byCategory[cat]) byCategory[cat] = 0;
         byCategory[cat]++;
       });
 
       // Group by location
       const byLocation = {};
-      all.forEach(r => {
-        const loc = r.location || 'Unknown';
+      all.forEach((r) => {
+        const loc = r.location || "Unknown";
         if (!byLocation[loc]) byLocation[loc] = { count: 0, quantity: 0 };
         byLocation[loc].count++;
         byLocation[loc].quantity += r.quantity || 0;
@@ -352,9 +361,11 @@ const adminService = {
       ]);
 
       return {
-        pendingRequests: incoming.filter(r => r.status === 'Pending').length,
-        inTransit: tracking.filter(t => ['Shipped', 'On-the-Way'].includes(t.status)).length,
-        delivered: history.filter(h => h.status === 'Delivered').length,
+        pendingRequests: incoming.filter((r) => r.status === "Pending").length,
+        inTransit: tracking.filter((t) =>
+          ["Shipped", "On-the-Way"].includes(t.status)
+        ).length,
+        delivered: history.filter((h) => h.status === "Delivered").length,
         totalRequests: incoming.length + outgoing.length,
         incoming,
         outgoing,
@@ -392,8 +403,8 @@ const adminService = {
    */
   getResponders: async () => {
     try {
-      const response = await api.get("/admin/users", { 
-        params: { role: 'responder', per_page: 1000 } 
+      const response = await api.get("/admin/users", {
+        params: { role: "responder", per_page: 1000 },
       });
       return response.data.data || [];
     } catch (error) {
@@ -414,25 +425,30 @@ const adminService = {
 
       // Count assignments per responder
       const assignmentCounts = {};
-      incidents.forEach(incident => {
+      incidents.forEach((incident) => {
         const assignments = incident.assignments || [];
-        assignments.forEach(a => {
-          if (!['completed', 'cancelled'].includes(a.status)) {
-            assignmentCounts[a.responder_id] = (assignmentCounts[a.responder_id] || 0) + 1;
+        assignments.forEach((a) => {
+          if (!["completed", "cancelled"].includes(a.status)) {
+            assignmentCounts[a.responder_id] =
+              (assignmentCounts[a.responder_id] || 0) + 1;
           }
         });
       });
 
-      const activeResponders = responders.filter(r => r.is_active);
-      const availableResponders = activeResponders.filter(r => !assignmentCounts[r.id]);
-      const busyResponders = activeResponders.filter(r => assignmentCounts[r.id]);
+      const activeResponders = responders.filter((r) => r.is_active);
+      const availableResponders = activeResponders.filter(
+        (r) => !assignmentCounts[r.id]
+      );
+      const busyResponders = activeResponders.filter(
+        (r) => assignmentCounts[r.id]
+      );
 
       return {
         total: responders.length,
         active: activeResponders.length,
         available: availableResponders.length,
         busy: busyResponders.length,
-        responders: responders.map(r => ({
+        responders: responders.map((r) => ({
           ...r,
           activeAssignments: assignmentCounts[r.id] || 0,
         })),
@@ -452,8 +468,8 @@ const adminService = {
    */
   getPatients: async () => {
     try {
-      const response = await api.get("/admin/users", { 
-        params: { role: 'patient', per_page: 1000 } 
+      const response = await api.get("/admin/users", {
+        params: { role: "patient", per_page: 1000 },
       });
       return response.data.data || [];
     } catch (error) {
@@ -474,7 +490,7 @@ const adminService = {
 
       // Count incidents per patient
       const incidentCounts = {};
-      incidents.forEach(incident => {
+      incidents.forEach((incident) => {
         const userId = incident.user_id;
         if (userId) {
           incidentCounts[userId] = (incidentCounts[userId] || 0) + 1;
@@ -484,16 +500,18 @@ const adminService = {
       // Find patients with active incidents
       const activeIncidentPatients = new Set();
       incidents
-        .filter(i => !['resolved', 'cancelled'].includes(i.status))
-        .forEach(i => i.user_id && activeIncidentPatients.add(i.user_id));
+        .filter((i) => !["resolved", "cancelled"].includes(i.status))
+        .forEach((i) => i.user_id && activeIncidentPatients.add(i.user_id));
 
       return {
         total: patients.length,
-        verified: patients.filter(p => p.verification_status === 'verified').length,
-        pending: patients.filter(p => p.verification_status === 'pending').length,
-        active: patients.filter(p => p.is_active).length,
+        verified: patients.filter((p) => p.verification_status === "verified")
+          .length,
+        pending: patients.filter((p) => p.verification_status === "pending")
+          .length,
+        active: patients.filter((p) => p.is_active).length,
         withActiveIncident: activeIncidentPatients.size,
-        patients: patients.map(p => ({
+        patients: patients.map((p) => ({
           ...p,
           incidentCount: incidentCounts[p.id] || 0,
           hasActiveIncident: activeIncidentPatients.has(p.id),
@@ -545,12 +563,13 @@ const adminService = {
    */
   getDashboardStats: async () => {
     try {
-      const [userStats, incidentStats, resourceStats, responderStats] = await Promise.all([
-        adminService.getUserStats().catch(() => null),
-        adminService.getIncidentStats().catch(() => null),
-        adminService.getResourceStats().catch(() => null),
-        adminService.getResponderStats().catch(() => null),
-      ]);
+      const [userStats, incidentStats, resourceStats, responderStats] =
+        await Promise.all([
+          adminService.getUserStats().catch(() => null),
+          adminService.getIncidentStats().catch(() => null),
+          adminService.getResourceStats().catch(() => null),
+          adminService.getResponderStats().catch(() => null),
+        ]);
 
       return {
         users: userStats,

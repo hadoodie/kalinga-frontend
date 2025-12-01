@@ -89,7 +89,8 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
   });
   const isEmergency = conversation.category === "Emergency";
   const hasUnread = conversation.unreadCount > 0;
-  const isResolved = conversation.isArchived || conversation.status === "resolved";
+  const isResolved =
+    conversation.isArchived || conversation.status === "resolved";
 
   const timeFormatted = conversation.lastMessageTime
     ? new Date(conversation.lastMessageTime).toLocaleString("en-US", {
@@ -157,10 +158,12 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
             </div>
           )}
           <div
-            className={`conv-status-dot ${conversation.participant.isOnline ? "online" : "offline"}`}
+            className={`conv-status-dot ${
+              conversation.participant.isOnline ? "online" : "offline"
+            }`}
           />
         </div>
-        
+
         {/* Content */}
         <div className="conv-info">
           <div className="conv-header">
@@ -169,7 +172,9 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
               {isEmergency && (
                 <AlertCircle
                   size={12}
-                  className={`inline ml-1 ${conversation.isActive ? "animate-pulse" : ""}`}
+                  className={`inline ml-1 ${
+                    conversation.isActive ? "animate-pulse" : ""
+                  }`}
                 />
               )}
             </span>
@@ -177,9 +182,11 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
           </div>
           <div className="conv-preview">
             {conversation.messages?.length > 0 &&
-              conversation.messages[conversation.messages.length - 1]?.isOwn && (
+              conversation.messages[conversation.messages.length - 1]
+                ?.isOwn && (
                 <span className="check-icon">
-                  {conversation.messages[conversation.messages.length - 1]?.isRead ? (
+                  {conversation.messages[conversation.messages.length - 1]
+                    ?.isRead ? (
                     <CheckCheck size={14} />
                   ) : (
                     <Check size={14} />
@@ -194,7 +201,9 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
           {isResolved ? (
             <span className="conv-resolved-badge">Resolved</span>
           ) : hasUnread ? (
-            <span className="conv-unread-badge">{conversation.unreadCount}</span>
+            <span className="conv-unread-badge">
+              {conversation.unreadCount}
+            </span>
           ) : null}
         </div>
       </div>
@@ -277,9 +286,11 @@ const ChatThread = ({
     if ((!newMessage.trim() && !filePreview) || isArchived) return;
 
     const textToSend = filePreview
-      ? `📎 ${filePreview.name}${newMessage.trim() ? `\n${newMessage.trim()}` : ""}`
+      ? `📎 ${filePreview.name}${
+          newMessage.trim() ? `\n${newMessage.trim()}` : ""
+        }`
       : newMessage.trim();
-    
+
     setNewMessage("");
     setFilePreview(null);
 
@@ -357,16 +368,19 @@ const ChatThread = ({
       const today = new Date();
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
+
       let header;
       if (date.toDateString() === today.toDateString()) {
         header = "Today";
       } else if (date.toDateString() === yesterday.toDateString()) {
         header = "Yesterday";
       } else {
-        header = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        header = date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
       }
-      
+
       if (!groups[header]) groups[header] = [];
       groups[header].push(msg);
     });
@@ -376,17 +390,17 @@ const ChatThread = ({
   const groupedMessages = groupMessages(conversation.messages || []);
 
   return (
-    <div className="chat-right-panel" style={{ borderRadius: 0, overflow: 'hidden' }}>
+    <div
+      className="chat-right-panel"
+      style={{ borderRadius: 0, overflow: "hidden" }}
+    >
       {/* Chat Header */}
       <div className="chat-header">
         <div className="chat-header-info">
-          <button
-            onClick={onBack}
-            className="chat-header-back lg:hidden"
-          >
+          <button onClick={onBack} className="chat-header-back lg:hidden">
             ‹
           </button>
-          
+
           {/* Avatar with initials */}
           {conversation.participant.avatar ? (
             <img
@@ -399,7 +413,7 @@ const ChatThread = ({
               {getInitials(conversation.participant.name)}
             </div>
           )}
-          
+
           <div className="chat-header-text">
             <h3>
               {conversation.participant.name}
@@ -412,7 +426,13 @@ const ChatThread = ({
                 />
               )}
             </h3>
-            <p style={{ color: conversation.participant.isOnline ? '#34c759' : '#8e8e93' }}>
+            <p
+              style={{
+                color: conversation.participant.isOnline
+                  ? "#34c759"
+                  : "#8e8e93",
+              }}
+            >
               {conversation.participant.isOnline && !isArchived
                 ? "Online"
                 : isArchived
@@ -421,14 +441,18 @@ const ChatThread = ({
             </p>
           </div>
         </div>
-        
+
         <div className="chat-header-actions">
           {!isArchived && (
             <button
               className="chat-header-btn resolve"
               onClick={handleResolveClick}
               disabled={!canResolveIncident}
-              style={!canResolveIncident ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
+              style={
+                !canResolveIncident
+                  ? { opacity: 0.5, cursor: "not-allowed" }
+                  : undefined
+              }
               title={
                 !canResolveIncident
                   ? "This conversation is not linked to an active incident."
@@ -453,7 +477,7 @@ const ChatThread = ({
             <div className="chat-date-separator">
               <span>{date}</span>
             </div>
-            
+
             {msgs.map((msg, index) => {
               const isOwnMessage =
                 msg.senderId === currentUserId || msg.isOwn === true;
@@ -464,7 +488,9 @@ const ChatThread = ({
               if (isSystemMessage) {
                 return (
                   <div key={msg.id} className="chat-date-separator">
-                    <span style={{ background: '#dbeafe', color: '#1e40af' }}>{msg.text}</span>
+                    <span style={{ background: "#dbeafe", color: "#1e40af" }}>
+                      {msg.text}
+                    </span>
                   </div>
                 );
               }
@@ -472,7 +498,9 @@ const ChatThread = ({
               return (
                 <div
                   key={msg.id}
-                  className={`message-row ${isOwnMessage ? "personnel" : "patient"}`}
+                  className={`message-row ${
+                    isOwnMessage ? "personnel" : "patient"
+                  }`}
                 >
                   {/* Avatar for received messages */}
                   {!isOwnMessage && showAvatar && (
@@ -480,7 +508,9 @@ const ChatThread = ({
                       {getInitials(conversation.participant.name)}
                     </div>
                   )}
-                  {!isOwnMessage && !showAvatar && <div style={{ width: 28 }} />}
+                  {!isOwnMessage && !showAvatar && (
+                    <div style={{ width: 28 }} />
+                  )}
 
                   {/* Message Bubble */}
                   <div className="message-bubble">
@@ -526,7 +556,11 @@ const ChatThread = ({
       {filePreview && (
         <div className="file-preview">
           <span className="file-preview-icon">
-            {filePreview.type === "image" ? <Image size={18} /> : <Paperclip size={18} />}
+            {filePreview.type === "image" ? (
+              <Image size={18} />
+            ) : (
+              <Paperclip size={18} />
+            )}
           </span>
           <span className="file-preview-name">{filePreview.name}</span>
           <button
@@ -540,8 +574,15 @@ const ChatThread = ({
 
       {/* Message Input Area - iMessage style */}
       {isArchived ? (
-        <div className="chat-input-bar" style={{ justifyContent: 'center' }}>
-          <p style={{ color: '#6e6e73', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div className="chat-input-bar" style={{ justifyContent: "center" }}>
+          <p
+            style={{
+              color: "#6e6e73",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
             <AlertCircle size={18} />
             This conversation has been closed and archived.
           </p>
@@ -576,22 +617,26 @@ const ChatThread = ({
               <Image size={18} />
             </button>
           </div>
-          
+
           <div className="chat-input-wrapper">
             <input
               type="text"
-              placeholder={isEmergency ? "Type your emergency message..." : "Type a message..."}
+              placeholder={
+                isEmergency
+                  ? "Type your emergency message..."
+                  : "Type a message..."
+              }
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleSend(e)}
             />
           </div>
-          
+
           <button
             className="chat-send-btn"
             onClick={handleSend}
             disabled={!newMessage.trim() && !filePreview}
-            style={isEmergency ? { background: '#ff3b30' } : {}}
+            style={isEmergency ? { background: "#ff3b30" } : {}}
           >
             <Send size={18} />
           </button>
@@ -599,7 +644,14 @@ const ChatThread = ({
       )}
 
       {isEmergency && !isArchived && (
-        <p style={{ textAlign: 'center', fontSize: '12px', color: '#8e8e93', padding: '8px' }}>
+        <p
+          style={{
+            textAlign: "center",
+            fontSize: "12px",
+            color: "#8e8e93",
+            padding: "8px",
+          }}
+        >
           Emergency chat - Responder will reply as soon as possible
         </p>
       )}
@@ -612,11 +664,21 @@ const ChatThread = ({
             </div>
             <h3>Resolve &amp; Archive Conversation?</h3>
             <p>
-              Confirm that the incident with {conversation.participant?.name || "this resident"}
-              has been handled. This will archive the thread and disable further replies.
+              Confirm that the incident with{" "}
+              {conversation.participant?.name || "this resident"}
+              has been handled. This will archive the thread and disable further
+              replies.
             </p>
             {resolveError && (
-              <p style={{ color: '#dc2626', fontSize: 13, textAlign: 'center', marginTop: -8, marginBottom: 18 }}>
+              <p
+                style={{
+                  color: "#dc2626",
+                  fontSize: 13,
+                  textAlign: "center",
+                  marginTop: -8,
+                  marginBottom: 18,
+                }}
+              >
                 {resolveError}
               </p>
             )}
@@ -1861,12 +1923,12 @@ export default function MessagesContact() {
   const handleResolveConversation = useCallback(
     async (conversation) => {
       const incidentId =
-        conversation?.activeIncidentId ??
-        conversation?.incidentId ??
-        null;
+        conversation?.activeIncidentId ?? conversation?.incidentId ?? null;
 
       if (!incidentId) {
-        throw new Error("This conversation is not linked to an active incident.");
+        throw new Error(
+          "This conversation is not linked to an active incident."
+        );
       }
 
       try {
@@ -1890,7 +1952,9 @@ export default function MessagesContact() {
 
         toast({
           title: "Incident resolved",
-          description: `${conversation.participant?.name || "Conversation"} archived successfully.`,
+          description: `${
+            conversation.participant?.name || "Conversation"
+          } archived successfully.`,
         });
 
         return response;
@@ -1978,7 +2042,10 @@ export default function MessagesContact() {
           );
         }
         return (
-          <div className="chat-empty-state" style={{ background: '#ffffff', height: '100%' }}>
+          <div
+            className="chat-empty-state"
+            style={{ background: "#ffffff", height: "100%" }}
+          >
             <div className="chat-empty-icon">💬</div>
             <h3>Select a Conversation</h3>
             <p>Choose a conversation from the list to start messaging</p>
@@ -1991,7 +2058,9 @@ export default function MessagesContact() {
     <div className="chat-container">
       {/* Left Panel - Conversation List */}
       <div
-        className={`chat-left-panel ${isDetailViewActive ? "hidden lg:flex" : "flex"}`}
+        className={`chat-left-panel ${
+          isDetailViewActive ? "hidden lg:flex" : "flex"
+        }`}
       >
         <div className="chat-left-header">
           <h2>Messages</h2>
@@ -2009,19 +2078,25 @@ export default function MessagesContact() {
         {/* Filter Tabs */}
         <div className="chat-filters">
           <button
-            className={`chat-filter-btn ${categoryFilter === "All" ? "active" : ""}`}
+            className={`chat-filter-btn ${
+              categoryFilter === "All" ? "active" : ""
+            }`}
             onClick={() => setCategoryFilter("All")}
           >
             All
           </button>
           <button
-            className={`chat-filter-btn ${categoryFilter === "Emergency" ? "active" : ""}`}
+            className={`chat-filter-btn ${
+              categoryFilter === "Emergency" ? "active" : ""
+            }`}
             onClick={() => setCategoryFilter("Emergency")}
           >
             Emergency
           </button>
           <button
-            className={`chat-filter-btn ${categoryFilter === "General" ? "active" : ""}`}
+            className={`chat-filter-btn ${
+              categoryFilter === "General" ? "active" : ""
+            }`}
             onClick={() => setCategoryFilter("General")}
           >
             General
@@ -2038,7 +2113,9 @@ export default function MessagesContact() {
               <p className={`text-sm font-semibold ${presenceLabelClass}`}>
                 {presenceLabel}
               </p>
-              <p className={`text-xs mt-1 leading-snug ${presenceDescriptionClass}`}>
+              <p
+                className={`text-xs mt-1 leading-snug ${presenceDescriptionClass}`}
+              >
                 {presenceDescription}
               </p>
             </div>
@@ -2048,11 +2125,15 @@ export default function MessagesContact() {
         {/* Conversation List */}
         <div className="conversation-list">
           {isLoadingConversations ? (
-            <p style={{ textAlign: 'center', color: '#8e8e93', padding: '16px' }}>
+            <p
+              style={{ textAlign: "center", color: "#8e8e93", padding: "16px" }}
+            >
               Loading conversations...
             </p>
           ) : conversationsError ? (
-            <p style={{ textAlign: 'center', color: '#ff3b30', padding: '16px' }}>
+            <p
+              style={{ textAlign: "center", color: "#ff3b30", padding: "16px" }}
+            >
               {conversationsError}
             </p>
           ) : filteredConversations.length > 0 ? (
@@ -2067,13 +2148,22 @@ export default function MessagesContact() {
               />
             ))
           ) : (
-            <p style={{ textAlign: 'center', color: '#8e8e93', padding: '16px' }}>
+            <p
+              style={{ textAlign: "center", color: "#8e8e93", padding: "16px" }}
+            >
               No conversations found
               {searchTerm && ` matching "${searchTerm}"`}
             </p>
           )}
           {isRefreshingConversations && !isLoadingConversations && (
-            <p style={{ textAlign: 'center', fontSize: '12px', color: '#8e8e93', padding: '8px' }}>
+            <p
+              style={{
+                textAlign: "center",
+                fontSize: "12px",
+                color: "#8e8e93",
+                padding: "8px",
+              }}
+            >
               Syncing latest messages…
             </p>
           )}
@@ -2082,7 +2172,9 @@ export default function MessagesContact() {
 
       {/* Right Panel - Chat Area */}
       <div
-        className={`chat-right-panel ${isDetailViewActive ? "flex" : "hidden lg:flex"}`}
+        className={`chat-right-panel ${
+          isDetailViewActive ? "flex" : "hidden lg:flex"
+        }`}
       >
         {renderMainPanel()}
       </div>

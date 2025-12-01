@@ -112,16 +112,21 @@ export const IncidentHeatMap = () => {
 
         // Extract coordinates from incident
         const lat = incident.latitude || incident.location?.latitude || 14.5995;
-        const lng = incident.longitude || incident.location?.longitude || 120.9842;
+        const lng =
+          incident.longitude || incident.location?.longitude || 120.9842;
 
         return {
           id: `SYS-${incident.id}`,
           type: incident.type || "System Incident",
-          barangay: incident.address || incident.location?.address || "Reported Location",
+          barangay:
+            incident.address ||
+            incident.location?.address ||
+            "Reported Location",
           teams: incident.assignments?.length || 0,
           status: incident.status || "reported",
           severity,
-          magnitude: priority === "critical" ? 5.5 : priority === "high" ? 4.5 : 3.5,
+          magnitude:
+            priority === "critical" ? 5.5 : priority === "high" ? 4.5 : 3.5,
           coordinates: { lat, lng },
           updatedAt: new Date(incident.updated_at || incident.created_at),
           source: "system",

@@ -359,24 +359,24 @@
   .reports-header {
     padding: 1rem 1.25rem;
   }
-  
+
   .section-header {
     padding: 0.875rem 1.25rem;
   }
-  
+
   .section-content {
     padding: 0 0.75rem 0.75rem;
   }
-  
+
   .alert-meta {
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .occupancy-bar {
     width: 100%;
   }
-  
+
   .occupancy-bar span {
     position: static;
     margin-top: 0.25rem;

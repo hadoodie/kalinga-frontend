@@ -30,7 +30,7 @@
 }
 
 .hero-section::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -199,18 +199,33 @@
 }
 
 @keyframes float1 {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes float2 {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 @keyframes float3 {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-12px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
 }
 
 /* Stats Section */
@@ -474,7 +489,7 @@
   height: 48px;
   min-width: 48px;
   background: rgba(30, 42, 120, 0.1);
-  color: #1E2A78;
+  color: #1e2a78;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -558,23 +573,23 @@
     gap: 3rem;
     text-align: center;
   }
-  
+
   .hero-text p {
     max-width: 100%;
   }
-  
+
   .hero-actions {
     justify-content: center;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .career-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .talent-container {
     grid-template-columns: 1fr;
     gap: 3rem;
@@ -585,61 +600,61 @@
   .hero-section {
     padding: 3rem 1.5rem;
   }
-  
+
   .hero-text h1 {
     font-size: 2rem;
   }
-  
+
   .hero-card-stack {
     width: 250px;
     height: 250px;
   }
-  
+
   .hero-card {
     padding: 1.25rem;
   }
-  
+
   .hero-card svg {
     font-size: 1.75rem;
   }
-  
+
   .stats-section {
     padding: 0 1rem;
   }
-  
+
   .stats-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .career-section,
   .talent-section,
   .courses-section,
   .cta-section {
     padding: 3rem 1.5rem;
   }
-  
+
   .section-header h2 {
     font-size: 1.5rem;
   }
-  
+
   .talent-left h2 {
     font-size: 1.75rem;
   }
-  
+
   .talent-stats {
     flex-direction: column;
     gap: 1.5rem;
   }
-  
+
   .cta-content h2 {
     font-size: 1.75rem;
   }
-  
+
   .cta-actions {
     flex-direction: column;
   }
-  
+
   .btn-primary.large,
   .btn-outline.large {
     width: 100%;
@@ -651,15 +666,15 @@
   .hero-text h1 {
     font-size: 1.75rem;
   }
-  
+
   .hero-visual {
     display: none;
   }
-  
+
   .career-card {
     padding: 1.5rem;
   }
-  
+
   .career-content h3 {
     font-size: 1.25rem;
   }

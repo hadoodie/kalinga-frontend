@@ -11,7 +11,7 @@
   --grades-radius: 16px;
   --grades-radius-sm: 10px;
   --grades-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  
+
   /* Status colors */
   --status-green: #16a34a;
   --status-green-bg: rgba(22, 163, 74, 0.1);
@@ -409,10 +409,18 @@
   font-size: 1.25rem;
 }
 
-.overall-value.green { color: var(--status-green); }
-.overall-value.orange { color: var(--status-orange); }
-.overall-value.red { color: var(--status-red); }
-.overall-value.muted { color: var(--status-muted); }
+.overall-value.green {
+  color: var(--status-green);
+}
+.overall-value.orange {
+  color: var(--status-orange);
+}
+.overall-value.red {
+  color: var(--status-red);
+}
+.overall-value.muted {
+  color: var(--status-muted);
+}
 
 /* Progress Bar */
 .progress-wrapper {
@@ -435,10 +443,18 @@
   transition: width 0.8s ease-out;
 }
 
-.progress-fill.green { background: var(--status-green); }
-.progress-fill.orange { background: var(--status-orange); }
-.progress-fill.red { background: var(--status-red); }
-.progress-fill.muted { background: var(--status-muted); }
+.progress-fill.green {
+  background: var(--status-green);
+}
+.progress-fill.orange {
+  background: var(--status-orange);
+}
+.progress-fill.red {
+  background: var(--status-red);
+}
+.progress-fill.muted {
+  background: var(--status-muted);
+}
 
 .progress-percent {
   font-size: 0.875rem;
@@ -538,41 +554,41 @@
   .grades-content {
     padding: 1rem;
   }
-  
+
   .grades-header {
     flex-direction: column;
   }
-  
+
   .header-title {
     flex-direction: column;
     text-align: center;
     align-items: center;
   }
-  
+
   .grades-title {
     font-size: 1.5rem;
   }
-  
+
   .grades-controls {
     flex-direction: column;
   }
-  
+
   .search-box {
     min-width: 100%;
   }
-  
+
   .filter-group {
     width: 100%;
   }
-  
+
   .filter-select {
     flex: 1;
   }
-  
+
   .grades-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .grades-stats {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -582,15 +598,15 @@
   .grades-stats {
     grid-template-columns: 1fr;
   }
-  
+
   .grade-card-header {
     flex-direction: column;
   }
-  
+
   .card-actions {
     flex-direction: column;
   }
-  
+
   .btn {
     width: 100%;
     justify-content: center;

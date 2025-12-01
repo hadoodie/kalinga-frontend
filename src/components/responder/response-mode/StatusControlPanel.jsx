@@ -6,6 +6,8 @@ import {
   MapPin,
   Route,
   ShieldCheck,
+  Users,
+  X,
 } from "lucide-react";
 
 const STATUS_FLOW = [
@@ -79,6 +81,9 @@ export default function StatusControlPanel({
   statusError = null,
 }) {
   const [noteDraft, setNoteDraft] = useState("");
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const [supportCount, setSupportCount] = useState(1);
+  const [supportNotes, setSupportNotes] = useState("");
 
   const currentStatus = incident?.status ?? "reported";
   const currentIndex = statusOrder[currentStatus] ?? -1;
@@ -94,6 +99,12 @@ export default function StatusControlPanel({
 
   const handleStatusClick = async (value) => {
     if (!onStatusChange || value === currentStatus || statusUpdating) {
+      return;
+    }
+
+    // Show support modal instead of direct status change
+    if (value === "needs_support") {
+      setShowSupportModal(true);
       return;
     }
 
@@ -400,6 +411,152 @@ export default function StatusControlPanel({
           Updates post to the incident timeline in real time.
         </span>
       </footer>
+
+      {/* Need Support Modal */}
+      {showSupportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+                  <Users className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Request Support
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Specify how many additional responders you need
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSupportModal(false);
+                  setSupportCount(1);
+                  setSupportNotes("");
+                }}
+                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 px-6 py-5">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Additional Responders Needed
+                </label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSupportCount(Math.max(1, supportCount - 1))
+                    }
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-lg font-bold text-gray-600 hover:bg-gray-50"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={supportCount}
+                    onChange={(e) =>
+                      setSupportCount(
+                        Math.max(1, Math.min(10, parseInt(e.target.value) || 1))
+                      )
+                    }
+                    className="h-10 w-20 rounded-lg border border-gray-300 text-center text-lg font-bold text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSupportCount(Math.min(10, supportCount + 1))
+                    }
+                    className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 text-lg font-bold text-gray-600 hover:bg-gray-50"
+                  >
+                    +
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-400">
+                  Currently assigned: {incident?.responders_assigned ?? 0} /{" "}
+                  {incident?.responders_required ?? 1}
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-gray-700">
+                  Support Details <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={supportNotes}
+                  onChange={(e) => setSupportNotes(e.target.value)}
+                  placeholder="Describe what kind of support you need (e.g., medical backup, additional equipment, specialized personnel...)"
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-gray-300 p-3 text-sm shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  This information helps dispatch assign the right responders.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSupportModal(false);
+                  setSupportCount(1);
+                  setSupportNotes("");
+                }}
+                disabled={statusUpdating}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!supportNotes.trim()) {
+                    alert("Please describe what kind of support you need.");
+                    return;
+                  }
+
+                  const currentAssigned = incident?.responders_assigned ?? 0;
+                  const newRequired = currentAssigned + supportCount;
+
+                  await Promise.resolve(
+                    onStatusChange("needs_support", supportNotes.trim(), {
+                      responders_required: newRequired,
+                      support_mode: true,
+                      support_details: supportNotes.trim(),
+                    })
+                  );
+
+                  setShowSupportModal(false);
+                  setSupportCount(1);
+                  setSupportNotes("");
+                }}
+                disabled={statusUpdating || !supportNotes.trim()}
+                className="flex-1 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {statusUpdating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Requesting...
+                  </span>
+                ) : (
+                  `Request ${supportCount} Responder${
+                    supportCount > 1 ? "s" : ""
+                  }`
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

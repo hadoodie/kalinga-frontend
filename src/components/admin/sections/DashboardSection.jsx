@@ -330,7 +330,9 @@ export const DashboardSection = () => {
               disabled={statsLoading}
               className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-foreground/60 hover:bg-primary/10 transition"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${statsLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${statsLoading ? "animate-spin" : ""}`}
+              />
               Refresh
             </button>
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-foreground/60">
@@ -349,9 +351,17 @@ export const DashboardSection = () => {
           value={
             statsLoading && !dashboardStats
               ? "…"
-              : String(dashboardStats?.incidents?.active ?? backendIncidents.length ?? activeIncidents)
+              : String(
+                  dashboardStats?.incidents?.active ??
+                    backendIncidents.length ??
+                    activeIncidents
+                )
           }
-          change={dashboardStats?.incidents?.todayCount ? `${dashboardStats.incidents.todayCount} today` : incidentSummary.change}
+          change={
+            dashboardStats?.incidents?.todayCount
+              ? `${dashboardStats.incidents.todayCount} today`
+              : incidentSummary.change
+          }
           trend={incidentSummary.trend}
           tone={dashboardStats?.incidents?.active > 5 ? "warning" : "primary"}
         />
@@ -363,7 +373,11 @@ export const DashboardSection = () => {
               ? "…"
               : String(dashboardStats?.responders?.available ?? "—")
           }
-          change={dashboardStats?.responders?.busy ? `${dashboardStats.responders.busy} on assignment` : "+8 deployed"}
+          change={
+            dashboardStats?.responders?.busy
+              ? `${dashboardStats.responders.busy} on assignment`
+              : "+8 deployed"
+          }
           tone="primary"
         />
         <StatCard
@@ -374,7 +388,11 @@ export const DashboardSection = () => {
               ? "…"
               : String(dashboardStats?.users?.total ?? "—")
           }
-          change={dashboardStats?.users?.active ? `${dashboardStats.users.active} active` : "steady"}
+          change={
+            dashboardStats?.users?.active
+              ? `${dashboardStats.users.active} active`
+              : "steady"
+          }
           tone="success"
         />
         <StatCard
@@ -385,7 +403,11 @@ export const DashboardSection = () => {
               ? "…"
               : String(dashboardStats?.resources?.lowStock ?? 0)
           }
-          change={dashboardStats?.resources?.critical ? `${dashboardStats.resources.critical} critical` : "monitoring"}
+          change={
+            dashboardStats?.resources?.critical
+              ? `${dashboardStats.resources.critical} critical`
+              : "monitoring"
+          }
           trend={dashboardStats?.resources?.lowStock > 0 ? "up" : "down"}
           tone={dashboardStats?.resources?.lowStock > 0 ? "warning" : "success"}
         />
@@ -562,14 +584,20 @@ export const DashboardSection = () => {
           <div className="mt-6 divide-y divide-border/60 text-sm">
             {backendIncidents.slice(0, 5).map((incident) => {
               const statusColors = {
-                reported: "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
-                acknowledged: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-                en_route: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
-                on_scene: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
-                resolved: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+                reported:
+                  "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
+                acknowledged:
+                  "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+                en_route:
+                  "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
+                on_scene:
+                  "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
+                resolved:
+                  "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
               };
-              const statusTone = statusColors[incident.status] ?? "bg-primary/10 text-primary";
-              
+              const statusTone =
+                statusColors[incident.status] ?? "bg-primary/10 text-primary";
+
               return (
                 <div
                   key={incident.id}
@@ -580,17 +608,20 @@ export const DashboardSection = () => {
                       {incident.type || "Emergency Incident"}
                     </p>
                     <p className="text-xs text-foreground/60">
-                      INC-{incident.id} • {incident.location || "Location pending"}
+                      INC-{incident.id} •{" "}
+                      {incident.location || "Location pending"}
                     </p>
                   </div>
                   <div className="flex flex-col justify-between gap-2 text-xs text-foreground/60 md:flex-row md:items-center md:gap-6">
                     <div className="flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5" /> 
-                      {incident.assignments?.length || 0} responder{incident.assignments?.length !== 1 ? 's' : ''} assigned
+                      <Users className="h-3.5 w-3.5" />
+                      {incident.assignments?.length || 0} responder
+                      {incident.assignments?.length !== 1 ? "s" : ""} assigned
                     </div>
                     {incident.latest_status_update && (
                       <span className="flex items-center gap-2 text-foreground/70">
-                        Last update by {incident.latest_status_update.user?.name || "System"}
+                        Last update by{" "}
+                        {incident.latest_status_update.user?.name || "System"}
                       </span>
                     )}
                   </div>
@@ -598,7 +629,7 @@ export const DashboardSection = () => {
                     <span
                       className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusTone}`}
                     >
-                      {incident.status?.replace('_', ' ')}
+                      {incident.status?.replace("_", " ")}
                     </span>
                     <span className="text-xs text-foreground/50">
                       {formatRelativeTime(new Date(incident.created_at))}

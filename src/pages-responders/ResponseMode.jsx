@@ -165,7 +165,7 @@ export default function ResponseMode() {
   }, []);
 
   const handleStatusChange = useCallback(
-    async (nextStatus, note) => {
+    async (nextStatus, noteOrPayload) => {
       if (!incident?.id) {
         return;
       }
@@ -174,9 +174,15 @@ export default function ResponseMode() {
       setStatusError(null);
 
       try {
-        const payload = { status: nextStatus };
-        if (note) {
-          payload.notes = note;
+        let payload = { status: nextStatus };
+
+        // Handle both simple note strings and full payload objects
+        if (typeof noteOrPayload === "object" && noteOrPayload !== null) {
+          // Full payload from support request modal
+          payload = { ...payload, ...noteOrPayload };
+        } else if (noteOrPayload) {
+          // Simple note string
+          payload.notes = noteOrPayload;
         }
 
         const response = await updateIncidentStatus(incident.id, payload);
