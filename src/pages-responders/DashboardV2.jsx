@@ -149,7 +149,7 @@ const DashboardV2 = () => {
             <EmergencyNotifications />
           </section>
 
-          {/* Maps Section - Side by Side on Large Screens */}
+          {/* Maps Section - Clean Side by Side on Large Screens */}
           <section>
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-lg font-bold text-gray-900">Tactical Maps</h2>
@@ -157,23 +157,27 @@ const DashboardV2 = () => {
                 Real-time Tracking
               </span>
             </div>
-            <div className="grid grid-cols-1 gap-6 2xl:grid-cols-2">
-              <div className="flex flex-col bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-                <h3 className="mb-3 text-sm font-bold text-gray-700 flex items-center gap-2">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              <div className="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/50">
                   <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Emergency Response Map
-                </h3>
-                <div className="h-[480px] overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-                  <ResponseMap embedded className="rounded-xl" />
+                  <h3 className="text-sm font-semibold text-gray-700">
+                    Emergency Response Map
+                  </h3>
+                </div>
+                <div className="h-[400px] relative">
+                  <ResponseMap embedded className="rounded-b-xl" />
                 </div>
               </div>
-              <div className="flex flex-col bg-white p-4 rounded-2xl border border-gray-200 shadow-sm">
-                <h3 className="mb-3 text-sm font-bold text-gray-700 flex items-center gap-2">
+              <div className="flex flex-col bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50/50">
                   <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  Hospital Navigation
-                </h3>
-                <div className="h-[480px] overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-                  <HospitalMap embedded className="rounded-xl" />
+                  <h3 className="text-sm font-semibold text-gray-700">
+                    Hospital Navigation
+                  </h3>
+                </div>
+                <div className="h-[400px] relative">
+                  <HospitalMap embedded className="rounded-b-xl" />
                 </div>
               </div>
             </div>
