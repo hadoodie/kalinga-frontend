@@ -88,7 +88,7 @@ export default function ResponderSidebar() {
       icon: <Home size={25} />,
     },
     {
-      label: "Dashboard V2",
+      label: "Emergency Console",
       path: "/responder/dashboard-v2",
       icon: <LayoutDashboard size={25} />,
     },
