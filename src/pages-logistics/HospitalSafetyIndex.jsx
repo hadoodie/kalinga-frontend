@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Activity, 
   Droplets, 
   Fuel, 
   Wind, 
@@ -8,20 +7,11 @@ import {
   CheckCircle, 
   XCircle,
   Building2,
-  TrendingDown,
-  TrendingUp,
-  Clock,
   RefreshCw,
   Shield,
   AlertOctagon,
-  Users,
   FileText
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   getHsiDashboard, 
   getHospitalCompliance,
@@ -30,6 +20,21 @@ import {
   formatSurvivalHours 
 } from '@/services/hsiApi';
 import hospitalService from '@/services/hospitalService';
+
+// Simple Badge Component
+const Badge = ({ children, variant = 'default', className = '' }) => {
+  const variants = {
+    default: 'bg-gray-100 text-gray-800 border-gray-200',
+    destructive: 'bg-red-100 text-red-800 border-red-200',
+    secondary: 'bg-gray-100 text-gray-600 border-gray-200',
+  };
+  
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${variants[variant]} ${className}`}>
+      {children}
+    </span>
+  );
+};
 
 const HospitalSafetyIndex = () => {
   const [loading, setLoading] = useState(true);
@@ -92,58 +97,56 @@ const HospitalSafetyIndex = () => {
     };
     
     return (
-      <Badge className={`${colorClasses[info.color]} border`}>
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClasses[info.color]}`}>
         Category {category}: {info.label}
-      </Badge>
+      </span>
     );
   };
 
-  const ResourceStatusCard = ({ title, icon: Icon, current, required, unit, status }) => {
+  const ResourceStatusCard = ({ title, icon: Icon, current, required }) => {
     const percent = required > 0 ? Math.min((current / required) * 100, 100) : 0;
     const isCompliant = current >= required;
     
     return (
-      <Card className={`${!isCompliant ? 'border-red-200 bg-red-50/50' : ''}`}>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Icon className={`h-5 w-5 ${isCompliant ? 'text-green-600' : 'text-red-600'}`} />
-              <CardTitle className="text-sm font-medium">{title}</CardTitle>
-            </div>
-            {isCompliant ? (
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            ) : (
-              <XCircle className="h-5 w-5 text-red-600" />
-            )}
+      <div className={`rounded-lg border p-4 ${!isCompliant ? 'border-red-200 bg-red-50/50' : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700'}`}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Icon className={`h-5 w-5 ${isCompliant ? 'text-green-600' : 'text-red-600'}`} />
+            <span className="text-sm font-medium">{title}</span>
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Current</span>
-              <span className="font-medium">{formatSurvivalHours(current)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">HSI Required</span>
-              <span className="font-medium">{formatSurvivalHours(required)}</span>
-            </div>
-            <Progress 
-              value={percent} 
-              className={`h-2 ${!isCompliant ? '[&>div]:bg-red-500' : '[&>div]:bg-green-500'}`} 
+          {isCompliant ? (
+            <CheckCircle className="h-5 w-5 text-green-600" />
+          ) : (
+            <XCircle className="h-5 w-5 text-red-600" />
+          )}
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500 dark:text-gray-400">Current</span>
+            <span className="font-medium">{formatSurvivalHours(current)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-500 dark:text-gray-400">HSI Required</span>
+            <span className="font-medium">{formatSurvivalHours(required)}</span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+            <div 
+              className={`h-2 rounded-full transition-all duration-300 ${!isCompliant ? 'bg-red-500' : 'bg-green-500'}`}
+              style={{ width: `${percent}%` }}
             />
-            <div className="text-xs text-center text-muted-foreground">
-              {percent.toFixed(0)}% of HSI requirement
-            </div>
           </div>
-        </CardContent>
-      </Card>
+          <div className="text-xs text-center text-gray-500 dark:text-gray-400">
+            {percent.toFixed(0)}% of HSI requirement
+          </div>
+        </div>
+      </div>
     );
   };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+        <RefreshCw className="h-8 w-8 animate-spin text-green-600" />
       </div>
     );
   }
@@ -154,366 +157,345 @@ const HospitalSafetyIndex = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Shield className="h-7 w-7 text-primary" />
+            <Shield className="h-7 w-7 text-green-600" />
             Hospital Safety Index
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-gray-500 dark:text-gray-400">
             WHO/DOH Hospital Safety Index Compliance Dashboard
           </p>
         </div>
-        <Button onClick={fetchDashboardData} variant="outline" size="sm">
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <button 
+          onClick={fetchDashboardData}
+          className="flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        >
+          <RefreshCw className="h-4 w-4" />
           Refresh
-        </Button>
+        </button>
       </div>
 
       {/* System Overview Cards */}
       {dashboardData && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardDescription>Total Hospitals</CardDescription>
-              <CardTitle className="text-3xl">{dashboardData.total_hospitals}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Building2 className="h-4 w-4" />
-                <span>{dashboardData.hospitals_in_disaster_mode} in disaster mode</span>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Hospitals</p>
+            <p className="text-3xl font-bold">{dashboardData.total_hospitals}</p>
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mt-2">
+              <Building2 className="h-4 w-4" />
+              <span>{dashboardData.hospitals_in_disaster_mode} in disaster mode</span>
+            </div>
+          </div>
 
-          <Card className="border-green-200 bg-green-50/50">
-            <CardHeader className="pb-2">
-              <CardDescription>Category A (Safe)</CardDescription>
-              <CardTitle className="text-3xl text-green-700">
-                {dashboardData.safety_categories?.A || 0}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 text-sm text-green-600">
-                <CheckCircle className="h-4 w-4" />
-                <span>Likely to remain functional</span>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border border-green-200 bg-green-50/50 dark:bg-green-900/20 p-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Category A (Safe)</p>
+            <p className="text-3xl font-bold text-green-700 dark:text-green-400">
+              {dashboardData.safety_categories?.A || 0}
+            </p>
+            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 mt-2">
+              <CheckCircle className="h-4 w-4" />
+              <span>Likely to remain functional</span>
+            </div>
+          </div>
 
-          <Card className="border-yellow-200 bg-yellow-50/50">
-            <CardHeader className="pb-2">
-              <CardDescription>Category B (Intervention)</CardDescription>
-              <CardTitle className="text-3xl text-yellow-700">
-                {dashboardData.safety_categories?.B || 0}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 text-sm text-yellow-600">
-                <AlertTriangle className="h-4 w-4" />
-                <span>Intervention recommended</span>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50/50 dark:bg-yellow-900/20 p-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Category B (Intervention)</p>
+            <p className="text-3xl font-bold text-yellow-700 dark:text-yellow-400">
+              {dashboardData.safety_categories?.B || 0}
+            </p>
+            <div className="flex items-center gap-2 text-sm text-yellow-600 dark:text-yellow-400 mt-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Intervention recommended</span>
+            </div>
+          </div>
 
-          <Card className="border-red-200 bg-red-50/50">
-            <CardHeader className="pb-2">
-              <CardDescription>Category C (Urgent)</CardDescription>
-              <CardTitle className="text-3xl text-red-700">
-                {dashboardData.safety_categories?.C || 0}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2 text-sm text-red-600">
-                <AlertOctagon className="h-4 w-4" />
-                <span>Urgent action required</span>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="rounded-lg border border-red-200 bg-red-50/50 dark:bg-red-900/20 p-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Category C (Urgent)</p>
+            <p className="text-3xl font-bold text-red-700 dark:text-red-400">
+              {dashboardData.safety_categories?.C || 0}
+            </p>
+            <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 mt-2">
+              <AlertOctagon className="h-4 w-4" />
+              <span>Urgent action required</span>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Critical Alerts */}
       {dashboardData?.total_critical_alerts > 0 && (
-        <Card className="border-red-300 bg-red-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-700">
-              <AlertOctagon className="h-5 w-5" />
-              Critical Alerts ({dashboardData.total_critical_alerts})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(dashboardData.critical_resources || {}).map(([category, data]) => (
-                <div key={category} className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
-                  <div>
-                    <span className="font-medium capitalize">{category.replace('_', ' ')}</span>
-                    <p className="text-sm text-muted-foreground">
-                      {data.hospitals?.join(', ')}
-                    </p>
-                  </div>
-                  <Badge variant="destructive">{data.count} critical</Badge>
+        <div className="rounded-lg border-2 border-red-300 bg-red-50 dark:bg-red-900/30 p-4">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-red-700 dark:text-red-400 mb-4">
+            <AlertOctagon className="h-5 w-5" />
+            Critical Alerts ({dashboardData.total_critical_alerts})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(dashboardData.critical_resources || {}).map(([category, data]) => (
+              <div key={category} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-red-200">
+                <div>
+                  <span className="font-medium capitalize">{category.replace('_', ' ')}</span>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {data.hospitals?.join(', ')}
+                  </p>
                 </div>
-              ))}
-              {Object.entries(dashboardData.critical_tanks || {}).map(([tankType, data]) => (
-                <div key={tankType} className="flex items-center justify-between p-3 bg-white rounded-lg border border-red-200">
-                  <div>
-                    <span className="font-medium capitalize">{tankType.replace('_', ' ')} Tanks</span>
-                    <p className="text-sm text-muted-foreground">
-                      {data.hospitals?.join(', ')}
-                    </p>
-                  </div>
-                  <Badge variant="destructive">{data.count} critical</Badge>
+                <Badge variant="destructive">{data.count} critical</Badge>
+              </div>
+            ))}
+            {Object.entries(dashboardData.critical_tanks || {}).map(([tankType, data]) => (
+              <div key={tankType} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-red-200">
+                <div>
+                  <span className="font-medium capitalize">{tankType.replace('_', ' ')} Tanks</span>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {data.hospitals?.join(', ')}
+                  </p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <Badge variant="destructive">{data.count} critical</Badge>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Hospital Selector & Details */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Hospital Compliance Details</CardTitle>
-            <select
-              value={selectedHospital || ''}
-              onChange={(e) => setSelectedHospital(Number(e.target.value))}
-              className="px-3 py-2 border rounded-md text-sm"
-            >
-              {hospitals.map((hospital) => (
-                <option key={hospital.id} value={hospital.id}>
-                  {hospital.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-lg font-semibold">Hospital Compliance Details</h2>
+          <select
+            value={selectedHospital || ''}
+            onChange={(e) => setSelectedHospital(Number(e.target.value))}
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            {hospitals.map((hospital) => (
+              <option key={hospital.id} value={hospital.id}>
+                {hospital.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        
+        <div className="p-4">
           {hospitalCompliance ? (
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="resources">Resources</TabsTrigger>
-                <TabsTrigger value="assessment">Assessment</TabsTrigger>
-              </TabsList>
+            <>
+              {/* Tabs */}
+              <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
+                {['overview', 'resources', 'assessment'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 text-sm font-medium capitalize transition-colors -mb-px
+                      ${activeTab === tab 
+                        ? 'border-b-2 border-green-600 text-green-600' 
+                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
 
-              <TabsContent value="overview" className="space-y-4">
-                {/* Hospital Summary */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Safety Index</CardDescription>
+              {/* Overview Tab */}
+              {activeTab === 'overview' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Safety Index</p>
                       <div className="flex items-center gap-3">
-                        <CardTitle className="text-4xl">
+                        <span className="text-4xl font-bold">
                           {hospitalCompliance.assessment?.overall_index?.toFixed(1) || 'N/A'}
-                        </CardTitle>
+                        </span>
                         {hospitalCompliance.assessment?.category && (
                           <SafetyCategoryBadge category={hospitalCompliance.assessment.category} />
                         )}
                       </div>
-                    </CardHeader>
-                  </Card>
+                    </div>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Bed Capacity</CardDescription>
-                      <CardTitle className="text-2xl">
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Bed Capacity</p>
+                      <p className="text-2xl font-bold">
                         {hospitalCompliance.capacity?.routine_beds || 0} / {hospitalCompliance.capacity?.maximum_beds || 0}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center gap-2 text-sm">
+                      </p>
+                      <div className="mt-2">
                         {hospitalCompliance.capacity?.disaster_mode_active ? (
                           <Badge variant="destructive">Disaster Mode Active</Badge>
                         ) : (
                           <Badge variant="secondary">Normal Operations</Badge>
                         )}
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
 
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Vendor Agreements</CardDescription>
-                      <CardTitle className="text-2xl">
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Vendor Agreements</p>
+                      <p className="text-2xl font-bold">
                         {hospitalCompliance.vendor_agreements?.active || 0} Active
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-sm text-muted-foreground">
+                      </p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                         {hospitalCompliance.vendor_agreements?.auto_trigger_enabled || 0} with auto-trigger
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                      </p>
+                    </div>
+                  </div>
 
-                {/* WHO Scoring Breakdown */}
-                {hospitalCompliance.assessment && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">WHO Safety Index Breakdown</CardTitle>
-                      <CardDescription>
+                  {/* WHO Scoring Breakdown */}
+                  {hospitalCompliance.assessment && (
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <h3 className="text-lg font-medium mb-1">WHO Safety Index Breakdown</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                         Structural (50%) + Non-Structural (30%) + Emergency Management (20%)
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                      </p>
                       <div className="space-y-4">
                         <div>
                           <div className="flex justify-between text-sm mb-1">
                             <span>Module 2: Structural Safety (50%)</span>
                             <span className="font-medium">{hospitalCompliance.assessment.structural_score?.toFixed(1)}%</span>
                           </div>
-                          <Progress value={hospitalCompliance.assessment.structural_score} className="h-2" />
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full transition-all"
+                              style={{ width: `${hospitalCompliance.assessment.structural_score || 0}%` }}
+                            />
+                          </div>
                         </div>
                         <div>
                           <div className="flex justify-between text-sm mb-1">
                             <span>Module 3: Non-Structural Safety (30%)</span>
                             <span className="font-medium">{hospitalCompliance.assessment.non_structural_score?.toFixed(1)}%</span>
                           </div>
-                          <Progress value={hospitalCompliance.assessment.non_structural_score} className="h-2" />
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full transition-all"
+                              style={{ width: `${hospitalCompliance.assessment.non_structural_score || 0}%` }}
+                            />
+                          </div>
                         </div>
                         <div>
                           <div className="flex justify-between text-sm mb-1">
                             <span>Module 4: Emergency Management (20%)</span>
                             <span className="font-medium">{hospitalCompliance.assessment.emergency_mgmt_score?.toFixed(1)}%</span>
                           </div>
-                          <Progress value={hospitalCompliance.assessment.emergency_mgmt_score} className="h-2" />
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full transition-all"
+                              style={{ width: `${hospitalCompliance.assessment.emergency_mgmt_score || 0}%` }}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-
-              <TabsContent value="resources" className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Water */}
-                  <ResourceStatusCard
-                    title="Water Reserve"
-                    icon={Droplets}
-                    current={hospitalCompliance.water?.survival_hours || 0}
-                    required={HSI_CONSTANTS.WATER_MINIMUM_HOURS}
-                    unit="hours"
-                    status={hospitalCompliance.water?.meets_hsi}
-                  />
-
-                  {/* Fuel */}
-                  <ResourceStatusCard
-                    title="Fuel Reserve"
-                    icon={Fuel}
-                    current={hospitalCompliance.fuel?.survival_hours || 0}
-                    required={HSI_CONSTANTS.FUEL_MINIMUM_HOURS}
-                    unit="hours"
-                    status={hospitalCompliance.fuel?.meets_hsi}
-                  />
-
-                  {/* Oxygen */}
-                  {hospitalCompliance.oxygen && (
-                    <ResourceStatusCard
-                      title="Oxygen Reserve"
-                      icon={Wind}
-                      current={hospitalCompliance.oxygen.survival_hours || 0}
-                      required={HSI_CONSTANTS.OXYGEN_MINIMUM_HOURS}
-                      unit="hours"
-                      status={hospitalCompliance.oxygen.meets_hsi}
-                    />
+                    </div>
                   )}
                 </div>
+              )}
 
-                {/* Tank Details */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Tank Status</CardTitle>
-                  </CardHeader>
-                  <CardContent>
+              {/* Resources Tab */}
+              {activeTab === 'resources' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <ResourceStatusCard
+                      title="Water Reserve"
+                      icon={Droplets}
+                      current={hospitalCompliance.water?.survival_hours || 0}
+                      required={HSI_CONSTANTS.WATER_MINIMUM_HOURS}
+                    />
+                    <ResourceStatusCard
+                      title="Fuel Reserve"
+                      icon={Fuel}
+                      current={hospitalCompliance.fuel?.survival_hours || 0}
+                      required={HSI_CONSTANTS.FUEL_MINIMUM_HOURS}
+                    />
+                    {hospitalCompliance.oxygen && (
+                      <ResourceStatusCard
+                        title="Oxygen Reserve"
+                        icon={Wind}
+                        current={hospitalCompliance.oxygen.survival_hours || 0}
+                        required={HSI_CONSTANTS.OXYGEN_MINIMUM_HOURS}
+                      />
+                    )}
+                  </div>
+
+                  {/* Tank Details */}
+                  <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                    <h3 className="text-lg font-medium mb-4">Tank Status</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="p-4 border rounded-lg">
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
                           <Droplets className="h-5 w-5 text-blue-500" />
                           <span className="font-medium">Water Tanks</span>
                         </div>
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Count</span>
+                            <span className="text-gray-500 dark:text-gray-400">Count</span>
                             <span>{hospitalCompliance.water?.tank_count || 0}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Total</span>
+                            <span className="text-gray-500 dark:text-gray-400">Total</span>
                             <span>{(hospitalCompliance.water?.total_liters || 0).toLocaleString()} L</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Required (72h)</span>
+                            <span className="text-gray-500 dark:text-gray-400">Required (72h)</span>
                             <span>{(hospitalCompliance.water?.required_72h_liters || 0).toLocaleString()} L</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="p-4 border rounded-lg">
+                      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
                           <Fuel className="h-5 w-5 text-amber-500" />
                           <span className="font-medium">Fuel Tanks</span>
                         </div>
                         <div className="space-y-1 text-sm">
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Count</span>
+                            <span className="text-gray-500 dark:text-gray-400">Count</span>
                             <span>{hospitalCompliance.fuel?.tank_count || 0}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Total</span>
+                            <span className="text-gray-500 dark:text-gray-400">Total</span>
                             <span>{(hospitalCompliance.fuel?.total_liters || 0).toLocaleString()} L</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Daily Usage</span>
+                            <span className="text-gray-500 dark:text-gray-400">Daily Usage</span>
                             <span>{(hospitalCompliance.fuel?.daily_usage_liters || 0).toLocaleString()} L/day</span>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
 
-                {/* Generator Status */}
-                {hospitalCompliance.generator && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Generator Status</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                  {/* Generator Status */}
+                  {hospitalCompliance.generator && (
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <h3 className="text-lg font-medium mb-4">Generator Status</h3>
                       <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center p-4 border rounded-lg">
+                        <div className="text-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                           <div className={`text-2xl mb-1 ${hospitalCompliance.generator.starts_within_10s ? 'text-green-600' : 'text-red-600'}`}>
                             {hospitalCompliance.generator.starts_within_10s ? '✓' : '✗'}
                           </div>
-                          <div className="text-sm text-muted-foreground">Starts within 10s</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Starts within 10s</div>
                         </div>
-                        <div className="text-center p-4 border rounded-lg">
+                        <div className="text-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                           <div className="text-2xl font-bold mb-1">
                             {hospitalCompliance.generator.coverage_percent}%
                           </div>
-                          <div className="text-sm text-muted-foreground">Load Coverage</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Load Coverage</div>
                         </div>
-                        <div className="text-center p-4 border rounded-lg">
+                        <div className="text-center p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
                           <div className="text-2xl font-bold mb-1">
                             {formatSurvivalHours(hospitalCompliance.generator.fuel_reserve_hours)}
                           </div>
-                          <div className="text-sm text-muted-foreground">Fuel Reserve</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">Fuel Reserve</div>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <TabsContent value="assessment">
-                {hospitalCompliance.assessment ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-lg">Latest Assessment</CardTitle>
-                      <CardDescription>
+              {/* Assessment Tab */}
+              {activeTab === 'assessment' && (
+                <div>
+                  {hospitalCompliance.assessment ? (
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                      <h3 className="text-lg font-medium mb-1">Latest Assessment</h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                         Conducted on {new Date(hospitalCompliance.assessment.date).toLocaleDateString()}
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
+                      </p>
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                           <div>
                             <div className="font-medium">Overall Safety Index</div>
                             <div className="text-3xl font-bold">
@@ -522,33 +504,31 @@ const HospitalSafetyIndex = () => {
                           </div>
                           <SafetyCategoryBadge category={hospitalCompliance.assessment.category} />
                         </div>
-                        <Button className="w-full" variant="outline">
-                          <FileText className="h-4 w-4 mr-2" />
+                        <button className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                          <FileText className="h-4 w-4" />
                           View Full Assessment Report
-                        </Button>
+                        </button>
                       </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card>
-                    <CardContent className="py-8 text-center">
-                      <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-muted-foreground">No assessment on record</p>
-                      <Button className="mt-4">
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
+                      <FileText className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+                      <p className="text-gray-500 dark:text-gray-400">No assessment on record</p>
+                      <button className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                         Start New Assessment
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-            </Tabs>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               Select a hospital to view compliance details
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 };
