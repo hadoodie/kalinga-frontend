@@ -686,7 +686,7 @@ export default function ResourceMngmt() {
                                 Add
                               </button>
                               <button
-                                className="px-3 py-1 rounded-lg text-gray-800 font-semibold  hover:bg-gray-200 text-xs font-semibold"
+                                className="px-3 py-1 rounded-lg text-gray-800 font-semibold hover:bg-gray-200 text-xs"
                                 onClick={() => handleEditResource(item)}
                                 title="Edit"
                                 type="button"
@@ -694,7 +694,7 @@ export default function ResourceMngmt() {
                                 Edit
                               </button>
                               <button
-                                className="px-3 py-1 rounded-lg text-gray-800 font-semibold  hover:bg-red-600 text-xs font-semibold"
+                                className="px-3 py-1 rounded-lg text-gray-800 font-semibold hover:bg-red-600 text-xs"
                                 onClick={() => handleDeleteResource(item.id)}
                                 title="Delete"
                                 type="button"

@@ -207,7 +207,7 @@ export default function PatientSidebar() {
 
       {/* Desktop Sidebar */}
       <aside
-        className={`h-screen bg-gradient-to-b from-green-950 to-green-600 text-white flex flex-col font-sans transition-[width] duration-300 ease-in-out hidden lg:flex relative z-40
+        className={`h-screen bg-gradient-to-b from-green-950 to-green-600 text-white flex-col font-sans transition-[width] duration-300 ease-in-out relative z-40 hidden lg:flex
         ${collapsed ? "w-20" : "w-64"}`}
       >
         {/* Top Section with Logo + Hamburger */}

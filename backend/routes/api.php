@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AllocationController;
 use App\Http\Controllers\Api\RouteLogController;
 use App\Http\Controllers\Api\ResponderTrackingController;
+use App\Http\Controllers\HospitalSafetyIndexController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
@@ -123,6 +124,50 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         // Full CRUD resources (except index which stays public)
         Route::apiResource('resources', ResourceController::class)->except(['index']);
         Route::apiResource('hospitals', HospitalController::class)->except(['index']);
+
+        // ==========================================
+        // Hospital Safety Index (HSI) Routes
+        // ==========================================
+        Route::prefix('hsi')->group(function () {
+            // Dashboard & Overview
+            Route::get('/dashboard', [HospitalSafetyIndexController::class, 'dashboard']);
+            
+            // Hospital-specific routes
+            Route::prefix('hospitals/{hospital}')->group(function () {
+                // Compliance & Simulation
+                Route::get('/compliance', [HospitalSafetyIndexController::class, 'hospitalCompliance']);
+                Route::post('/simulate-disaster', [HospitalSafetyIndexController::class, 'simulateDisaster']);
+                Route::post('/recalculate', [HospitalSafetyIndexController::class, 'recalculateResilience']);
+                
+                // Disaster Mode
+                Route::post('/disaster-mode/activate', [HospitalSafetyIndexController::class, 'activateDisasterMode']);
+                Route::post('/disaster-mode/deactivate', [HospitalSafetyIndexController::class, 'deactivateDisasterMode']);
+                
+                // Safety Assessments
+                Route::get('/assessments', [HospitalSafetyIndexController::class, 'assessments']);
+                Route::post('/assessments', [HospitalSafetyIndexController::class, 'storeAssessment']);
+                
+                // Tanks
+                Route::get('/tanks', [HospitalSafetyIndexController::class, 'tanks']);
+                Route::post('/tanks', [HospitalSafetyIndexController::class, 'storeTank']);
+                
+                // Vendors
+                Route::get('/vendors', [HospitalSafetyIndexController::class, 'vendors']);
+                Route::post('/vendors', [HospitalSafetyIndexController::class, 'storeVendor']);
+                
+                // Resilience Configs
+                Route::get('/resilience-configs', [HospitalSafetyIndexController::class, 'resilienceConfigs']);
+                Route::post('/resilience-configs', [HospitalSafetyIndexController::class, 'storeResilienceConfig']);
+            });
+            
+            // Individual resource routes
+            Route::get('/assessments/{assessment}', [HospitalSafetyIndexController::class, 'showAssessment']);
+            Route::patch('/tanks/{tank}/level', [HospitalSafetyIndexController::class, 'updateTankLevel']);
+            Route::post('/tanks/{tank}/refill', [HospitalSafetyIndexController::class, 'refillTank']);
+            Route::get('/tanks/{tank}/history', [HospitalSafetyIndexController::class, 'tankHistory']);
+            Route::patch('/vendors/{vendor}', [HospitalSafetyIndexController::class, 'updateVendor']);
+            Route::post('/vendors/{vendor}/trigger', [HospitalSafetyIndexController::class, 'triggerVendor']);
+        });
     });
 
     // Shared read-only situational awareness (patients need visibility too)

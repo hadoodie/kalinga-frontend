@@ -35,6 +35,12 @@ const SettingsLogistics = lazy(() =>
   }))
 );
 
+const HospitalSafetyIndex = lazy(() =>
+  import("../pages-logistics/HospitalSafetyIndex").then((module) => ({
+    default: module.default,
+  }))
+);
+
 const Notifications = lazy(() =>
   import("../pages-patients/Notifications").then((module) => ({
     default: module.Notifications,
@@ -100,6 +106,14 @@ export const LogisticsRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={logisticsRoles}>
           <RequestAllocation />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.LOGISTICS.HOSPITAL_SAFETY_INDEX}
+      element={
+        <ProtectedRoute allowedRoles={logisticsRoles}>
+          <HospitalSafetyIndex />
         </ProtectedRoute>
       }
     />

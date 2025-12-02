@@ -9,6 +9,7 @@ import {
   Settings,
   FolderInput,
   Archive,
+  Shield,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
 import { useAuth } from "../../context/AuthContext";
@@ -58,6 +59,11 @@ export default function LogisticSidebar() {
       label: "Requested Allocation",
       path: "/logistics/requested-allocation",
       icon: <PackageOpen size={25} />,
+    },
+    {
+      label: "Hospital Safety Index",
+      path: "/logistics/hospital-safety-index",
+      icon: <Shield size={25} />,
     },
   ];
 
