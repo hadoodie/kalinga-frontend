@@ -89,7 +89,7 @@ export const IncidentHeatMap = () => {
   const [systemIncidents, setSystemIncidents] = useState([]);
   const [selectedSeverity, setSelectedSeverity] = useState("all");
   const [viewMode, setViewMode] = useState("all"); // "all", "usgs", "system"
-  const [lifecycleView, setLifecycleView] = useState("active");
+  const [lifecycleView, setLifecycleView] = useState("all");
   const [historicalRoutes, setHistoricalRoutes] = useState([]);
   const [showRoutes, setShowRoutes] = useState(false);
   const [routesLoading, setRoutesLoading] = useState(false);
@@ -181,7 +181,8 @@ export const IncidentHeatMap = () => {
           id: `SYS-${incident.id}`,
           type: incident.type || "System Incident",
           barangay: locationStr,
-          teams: incident.responders_assigned || incident.assignments?.length || 0,
+          teams:
+            incident.responders_assigned || incident.assignments?.length || 0,
           status: incident.status || "reported",
           severity,
           magnitude,
@@ -258,6 +259,7 @@ export const IncidentHeatMap = () => {
                 magnitude,
                 coordinates: { lat, lng },
                 updatedAt: timestamp,
+                source: "usgs",
               };
             })
             .filter(Boolean)
@@ -393,7 +395,7 @@ export const IncidentHeatMap = () => {
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs text-foreground/70">
             <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-            {incidents.length} active telemetry points
+            {incidents.length} telemetry points
           </div>
           {systemIncidents.length > 0 && (
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-3 py-1 text-xs text-primary">
@@ -605,18 +607,33 @@ export const IncidentHeatMap = () => {
             {filteredIncidents.map((incident) => {
               const severityStyle =
                 severityStyles[incident.severity] ?? severityStyles.Minor;
-              const radius = Math.max(8, incident.magnitude * 2.5);
+              const magnitude =
+                typeof incident.magnitude === "number"
+                  ? incident.magnitude
+                  : 3.5;
+              const radius = Math.max(8, magnitude * 2.5);
+              const isEarthquake = incident.source === "usgs";
+              const markerStyle = isEarthquake
+                ? {
+                    color: "#0ea5e9",
+                    fillColor: "#0ea5e9",
+                    fillOpacity: 0.1,
+                    weight: 2,
+                    dashArray: "4 4",
+                  }
+                : {
+                    color: severityStyle.hex,
+                    fillColor: severityStyle.hex,
+                    fillOpacity: 0.35,
+                    weight: 1,
+                  };
+
               return (
                 <CircleMarker
                   key={incident.id}
                   center={[incident.coordinates.lat, incident.coordinates.lng]}
                   radius={radius}
-                  pathOptions={{
-                    color: severityStyle.hex,
-                    fillColor: severityStyle.hex,
-                    fillOpacity: 0.35,
-                    weight: 1,
-                  }}
+                  pathOptions={markerStyle}
                 >
                   <Tooltip
                     direction="top"
@@ -629,10 +646,11 @@ export const IncidentHeatMap = () => {
                         {incident.type}
                       </p>
                       <p className="text-foreground/70">{incident.barangay}</p>
-                      <p className="text-foreground/60">
-                        Magnitude {incident.magnitude.toFixed(1)} •{" "}
-                        {incident.teams} team(s)
-                      </p>
+                      {isEarthquake && (
+                        <p className="text-foreground/60">
+                          Magnitude {magnitude.toFixed(1)} • USGS telemetry
+                        </p>
+                      )}
                       <p className="text-foreground/50">
                         Updated{" "}
                         {formatRelativeTime(incident.updatedAt, {
