@@ -35,12 +35,6 @@ const SettingsLogistics = lazy(() =>
   }))
 );
 
-const HospitalSafetyIndex = lazy(() =>
-  import("../pages-logistics/HospitalSafetyIndex").then((module) => ({
-    default: module.default,
-  }))
-);
-
 const Notifications = lazy(() =>
   import("../pages-patients/Notifications").then((module) => ({
     default: module.Notifications,
@@ -53,9 +47,9 @@ const LiveMapPage = lazy(() =>
   }))
 );
 
-const ProfileLogistics = lazy(() => 
+const ProfileLogistics = lazy(() =>
   import("../pages-logistics/Profile").then((module) => ({
-    default: module.ProfileLogistics, 
+    default: module.ProfileLogistics,
   }))
 );
 
@@ -112,8 +106,12 @@ export const LogisticsRoutes = () => (
     <Route
       path={ROUTES.LOGISTICS.HOSPITAL_SAFETY_INDEX}
       element={
-        <ProtectedRoute allowedRoles={logisticsRoles}>
-          <HospitalSafetyIndex />
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <Navigate
+            to={ROUTES.ADMIN.ROOT}
+            replace
+            state={{ adminSection: "hospital-safety" }}
+          />
         </ProtectedRoute>
       }
     />
