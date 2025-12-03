@@ -28,6 +28,39 @@ const DashboardV2 = () => {
     );
   }, [incidents, user?.id]);
 
+  const assignmentBreakdown = useMemo(() => {
+    if (!user?.id) {
+      return { active: 0, closed: 0 };
+    }
+
+    return assignedIncidents.reduce(
+      (acc, incident) => {
+        const assignment = incident.assignments?.find(
+          (record) => record?.responder?.id === user.id
+        );
+        if (!assignment) return acc;
+
+        const incidentStatus = (incident.status || "").toLowerCase();
+        const assignmentStatus = (assignment.status || "").toLowerCase();
+        const incidentClosed = ["resolved", "cancelled"].includes(
+          incidentStatus
+        );
+        const assignmentClosed = ["completed", "cancelled"].includes(
+          assignmentStatus
+        );
+
+        if (incidentClosed || assignmentClosed) {
+          acc.closed += 1;
+        } else {
+          acc.active += 1;
+        }
+
+        return acc;
+      },
+      { active: 0, closed: 0 }
+    );
+  }, [assignedIncidents, user?.id]);
+
   const latestIncident = useMemo(() => {
     if (assignedIncidents.length === 0) return null;
 
@@ -95,7 +128,10 @@ const DashboardV2 = () => {
                     Active Assignments
                   </p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {assignedIncidents.length}
+                    {assignmentBreakdown.active}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {assignmentBreakdown.closed} closed tracked
                   </p>
                 </div>
               </div>
