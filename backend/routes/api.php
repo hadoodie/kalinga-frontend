@@ -87,6 +87,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/route-logs', [RouteLogController::class, 'store']);
     Route::post('/route-logs/{routeLog}/deviations', [RouteLogController::class, 'storeDeviation']);
+    Route::get('/route-logs', [RouteLogController::class, 'index']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {

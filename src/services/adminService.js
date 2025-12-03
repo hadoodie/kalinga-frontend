@@ -578,6 +578,24 @@ const adminService = {
   },
 
   // =====================
+  // ROUTE LOGS (Historical Routes)
+  // =====================
+
+  /**
+   * Get historical route logs from responders
+   * @param {Object} params - { days, user_id, per_page }
+   */
+  getRouteLogs: async (params = {}) => {
+    try {
+      const response = await api.get("/route-logs", { params });
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error("Error fetching route logs:", error);
+      throw error;
+    }
+  },
+
+  // =====================
   // DASHBOARD AGGREGATES
   // =====================
 

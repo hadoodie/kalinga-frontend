@@ -6,13 +6,40 @@ import {
   Flame,
   History,
   MapPin,
+  Navigation,
   RefreshCcw,
+  Route,
   Sparkles,
 } from "lucide-react";
-import { MapContainer, CircleMarker, TileLayer, Tooltip } from "react-leaflet";
+import {
+  MapContainer,
+  CircleMarker,
+  TileLayer,
+  Tooltip,
+  Polyline,
+  useMap,
+} from "react-leaflet";
 import { SectionHeader } from "../SectionHeader";
 import { formatRelativeTime } from "@/lib/datetime";
 import adminService from "@/services/adminService";
+
+// Map tile configurations - using CartoDB for clean, minimal style
+const MAP_TILES = {
+  base: "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+  labels: "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+};
+
+// Route colors for historical paths
+const ROUTE_COLORS = [
+  "#3b82f6", // blue
+  "#10b981", // emerald
+  "#8b5cf6", // violet
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#06b6d4", // cyan
+];
 
 const INCIDENT_FEED_ENDPOINT =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
@@ -63,6 +90,38 @@ export const IncidentHeatMap = () => {
   const [selectedSeverity, setSelectedSeverity] = useState("all");
   const [viewMode, setViewMode] = useState("all"); // "all", "usgs", "system"
   const [lifecycleView, setLifecycleView] = useState("active");
+  const [historicalRoutes, setHistoricalRoutes] = useState([]);
+  const [showRoutes, setShowRoutes] = useState(false);
+  const [routesLoading, setRoutesLoading] = useState(false);
+
+  // Fetch historical response routes from backend
+  const fetchHistoricalRoutes = useCallback(async () => {
+    setRoutesLoading(true);
+    try {
+      // Fetch route logs using adminService
+      const routes = await adminService.getRouteLogs({ days: 7, per_page: 20 });
+      setHistoricalRoutes(
+        routes.map((route, index) => ({
+          id: route.id,
+          path: route.route_path || [],
+          color: ROUTE_COLORS[index % ROUTE_COLORS.length],
+          responder: route.user?.name || `Responder ${route.user_id}`,
+          startedAt: route.started_at,
+          distance: route.distance,
+          duration: route.duration,
+          deviationCount: route.deviation_count || 0,
+        }))
+      );
+    } catch (error) {
+      // Backend may not have data yet - gracefully degrade
+      if (error?.response?.status !== 404 && error?.response?.status !== 405) {
+        console.warn("Failed to fetch historical routes:", error?.message);
+      }
+      setHistoricalRoutes([]);
+    } finally {
+      setRoutesLoading(false);
+    }
+  }, []);
 
   // Fetch system incidents from backend (including resolved AND cancelled for Closed tab)
   const fetchSystemIncidents = useCallback(async () => {
@@ -234,6 +293,13 @@ export const IncidentHeatMap = () => {
       clearInterval(interval);
     };
   }, [fetchIncidents, fetchSystemIncidents]);
+
+  // Fetch routes when toggle is enabled
+  useEffect(() => {
+    if (showRoutes && historicalRoutes.length === 0) {
+      fetchHistoricalRoutes();
+    }
+  }, [showRoutes, historicalRoutes.length, fetchHistoricalRoutes]);
 
   const filteredSystemIncidents = useMemo(() => {
     if (lifecycleView === "all") return systemIncidents;
@@ -429,11 +495,56 @@ export const IncidentHeatMap = () => {
           onClick={() => {
             fetchIncidents();
             fetchSystemIncidents();
+            if (showRoutes) fetchHistoricalRoutes();
           }}
           className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
         >
           <RefreshCcw className="h-4 w-4" /> Refresh feed
         </button>
+      </div>
+
+      {/* Route toggle bar */}
+      <div className="flex items-center justify-between rounded-2xl border border-border/40 bg-background/60 px-4 py-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowRoutes(!showRoutes)}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium transition ${
+              showRoutes
+                ? "bg-blue-500 text-white shadow-sm"
+                : "border border-border/60 bg-background/60 text-foreground/70 hover:border-blue-400 hover:text-blue-600"
+            }`}
+          >
+            <Route className="h-3.5 w-3.5" />
+            {showRoutes ? "Hide Routes" : "Show Response Routes"}
+          </button>
+          {showRoutes && (
+            <span className="text-xs text-foreground/60">
+              {routesLoading
+                ? "Loading routes..."
+                : historicalRoutes.length > 0
+                ? `${historicalRoutes.length} historical routes`
+                : "No route history available"}
+            </span>
+          )}
+        </div>
+        {showRoutes && historicalRoutes.length > 0 && (
+          <div className="flex items-center gap-2">
+            {historicalRoutes.slice(0, 5).map((route) => (
+              <div
+                key={route.id}
+                className="flex items-center gap-1.5 rounded-full border border-border/40 bg-background/80 px-2 py-1 text-xs"
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: route.color }}
+                />
+                <span className="text-foreground/70 truncate max-w-[80px]">
+                  {route.responder}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -444,10 +555,53 @@ export const IncidentHeatMap = () => {
             scrollWheelZoom
             className="h-full w-full"
           >
+            {/* Base map layer - roads without labels for clean visualization */}
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution={MAP_TILES.attribution}
+              url={MAP_TILES.base}
             />
+            {/* Labels layer on top */}
+            <TileLayer url={MAP_TILES.labels} />
+
+            {/* Historical response routes */}
+            {showRoutes &&
+              historicalRoutes.map((route) =>
+                route.path?.length >= 2 ? (
+                  <Polyline
+                    key={`route-${route.id}`}
+                    positions={route.path.map(([lat, lng]) => [lat, lng])}
+                    pathOptions={{
+                      color: route.color,
+                      weight: 3,
+                      opacity: 0.7,
+                      dashArray: route.deviationCount > 0 ? "5, 10" : undefined,
+                    }}
+                  >
+                    <Tooltip sticky>
+                      <div className="text-xs">
+                        <p className="font-semibold">{route.responder}</p>
+                        {route.distance && (
+                          <p className="text-foreground/70">
+                            {(route.distance / 1000).toFixed(1)} km
+                          </p>
+                        )}
+                        {route.deviationCount > 0 && (
+                          <p className="text-amber-600">
+                            {route.deviationCount} route deviation(s)
+                          </p>
+                        )}
+                        {route.startedAt && (
+                          <p className="text-foreground/50">
+                            {formatRelativeTime(new Date(route.startedAt))}
+                          </p>
+                        )}
+                      </div>
+                    </Tooltip>
+                  </Polyline>
+                ) : null
+              )}
+
+            {/* Incident markers */}
             {filteredIncidents.map((incident) => {
               const severityStyle =
                 severityStyles[incident.severity] ?? severityStyles.Minor;
