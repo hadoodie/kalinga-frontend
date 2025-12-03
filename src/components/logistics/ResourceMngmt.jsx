@@ -62,12 +62,33 @@ const StatCard = ({ title, value, icon: Icon, colorClass }) => (
 
 export default function ResourceMngmt() {
   // MOVE facilityCategories INSIDE the component
-  const DEFAULT_CATEGORIES = ["All", "Medicine", "First Aid Kit", "Critical Only"];
+  const DEFAULT_CATEGORIES = [
+    "All",
+    "Medicine",
+    "First Aid Kit",
+    "Critical Only",
+  ];
 
   const [categoriesByFacility, setCategoriesByFacility] = useState({
-    "Central General Hospital": ["All", "Medicine", "First Aid Kit", "Critical Only"],
-    "Emergency Field Hospital": ["All", "Medicine", "First Aid Kit", "Critical Only"],
-    "St. Luke's Medical Center": ["All", "Medicine", "First Aid Kit", "Specialized Items", "Critical Only"],
+    "Central General Hospital": [
+      "All",
+      "Medicine",
+      "First Aid Kit",
+      "Critical Only",
+    ],
+    "Emergency Field Hospital": [
+      "All",
+      "Medicine",
+      "First Aid Kit",
+      "Critical Only",
+    ],
+    "St. Luke's Medical Center": [
+      "All",
+      "Medicine",
+      "First Aid Kit",
+      "Specialized Items",
+      "Critical Only",
+    ],
   });
 
   const [filter, setFilter] = useState("All");
@@ -84,7 +105,7 @@ export default function ResourceMngmt() {
   const [editing, setEditing] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockResource, setStockResource] = useState(null);
-  const [stockAdjustment, setStockAdjustment] = useState('');
+  const [stockAdjustment, setStockAdjustment] = useState("");
   const [adjusting, setAdjusting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newResource, setNewResource] = useState({
@@ -95,20 +116,20 @@ export default function ResourceMngmt() {
     location: "",
   });
   const [adding, setAdding] = useState(false);
-  
+
   // NEW: Calendar tab state
-  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' or 'calendar'
+  const [activeTab, setActiveTab] = useState("inventory"); // 'inventory' or 'calendar'
 
   const getCategoriesForFacility = (facilityName) => {
     return categoriesByFacility[facilityName] || DEFAULT_CATEGORIES;
   };
 
   // Fetch hospitals on component mount
-   useEffect(() => {
+  useEffect(() => {
     const fetchHospitals = async () => {
       try {
         const hospitalsData = await hospitalService.getAll();
-        const facilitiesData = hospitalsData.map(hospital => ({
+        const facilitiesData = hospitalsData.map((hospital) => ({
           id: hospital.id,
           name: hospital.name,
           value: hospital.name,
@@ -117,9 +138,9 @@ export default function ResourceMngmt() {
         }));
 
         setFacilities(facilitiesData);
-        
+
         const newCategoriesMap = { ...categoriesByFacility };
-        facilitiesData.forEach(f => {
+        facilitiesData.forEach((f) => {
           if (!newCategoriesMap[f.name]) {
             newCategoriesMap[f.name] = DEFAULT_CATEGORIES;
           }
@@ -129,10 +150,11 @@ export default function ResourceMngmt() {
         if (facilitiesData.length > 0) {
           const firstHospital = facilitiesData[0].name;
           setFacility(firstHospital);
-          
-          const firstCategories = categoriesByFacility[firstHospital] || DEFAULT_CATEGORIES;
-+         setCategories(firstCategories);
-          setNewResource(prev => ({ ...prev, location: firstHospital }));
+
+          const firstCategories =
+            categoriesByFacility[firstHospital] || DEFAULT_CATEGORIES;
+          +setCategories(firstCategories);
+          setNewResource((prev) => ({ ...prev, location: firstHospital }));
         }
       } catch (err) {
         console.error("Error fetching hospitals:", err);
@@ -154,7 +176,9 @@ export default function ResourceMngmt() {
 
       console.log("Fetched ALL resources:", data); // DEBUG
       console.log("Current facility:", facility); // DEBUG
-      console.log("Available locations in data:", [...new Set(data.map(r => r.location))]); // DEBUG
+      console.log("Available locations in data:", [
+        ...new Set(data.map((r) => r.location)),
+      ]); // DEBUG
 
       // Map backend data to the frontend's format
       const mappedData = data.map((item) => ({
@@ -172,8 +196,8 @@ export default function ResourceMngmt() {
       console.log("Mapped inventory data:", mappedData); // DEBUG
 
       // Filter by facility client-side if needed
-      const filtered = facility 
-        ? mappedData.filter(item => item.facility === facility)
+      const filtered = facility
+        ? mappedData.filter((item) => item.facility === facility)
         : mappedData;
 
       console.log("Filtered inventory:", filtered); // DEBUG
@@ -181,61 +205,55 @@ export default function ResourceMngmt() {
       setInventory(filtered);
 
       const cats = Array.from(
-        new Set(
-          filtered
-            .map(i => i.category)
-            .filter(Boolean)
-        )
+        new Set(filtered.map((i) => i.category).filter(Boolean))
       );
       const ordered = [
         "All",
-        ...cats.filter(c => c !== "All" && c !== "Critical Only"),
+        ...cats.filter((c) => c !== "All" && c !== "Critical Only"),
         "Critical Only",
       ];
-      setCategoriesByFacility(prev => ({ ...prev, [facility]: ordered }));
+      setCategoriesByFacility((prev) => ({ ...prev, [facility]: ordered }));
       setCategories(ordered);
-
     } catch (err) {
-        console.error("Error fetching resources:", err);
-        setError("Failed to load resources. Please try again.");
+      console.error("Error fetching resources:", err);
+      setError("Failed to load resources. Please try again.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   };
 
-    // Fetch resources on component mount and when filters change
-    useEffect(() => {
-      if (facility) {
-        fetchResources();
-      }
-    }, [facility]); // fetch once per facility; category is filtered client-side
+  // Fetch resources on component mount and when filters change
+  useEffect(() => {
+    if (facility) {
+      fetchResources();
+    }
+  }, [facility]); // fetch once per facility; category is filtered client-side
 
-    const filteredInventory = useMemo(() => {
-      let list = inventory;
-      if (filter === "Critical Only") {
-        list = list.filter(i => i.status === "Critical");
-      } else if (filter !== "All") {
-        list = list.filter(i => i.category === filter);
-      }
-      return list;
-    }, [inventory, filter]);
+  const filteredInventory = useMemo(() => {
+    let list = inventory;
+    if (filter === "Critical Only") {
+      list = list.filter((i) => i.status === "Critical");
+    } else if (filter !== "All") {
+      list = list.filter((i) => i.category === filter);
+    }
+    return list;
+  }, [inventory, filter]);
 
-
-    const criticalCount = filteredInventory.filter(
-      (item) => item.status === "Critical"
-    ).length;
-    const totalRemaining = filteredInventory.reduce(
-      (sum, i) => sum + i.remaining,
-      0
-    );
-    const totalReceived = filteredInventory.reduce(
-      (sum, i) => sum + i.received,
-      0
-    );
-    const totalDistributed = filteredInventory.reduce(
-      (sum, i) => sum + i.distributed,
-      0
-    );
+  const criticalCount = filteredInventory.filter(
+    (item) => item.status === "Critical"
+  ).length;
+  const totalRemaining = filteredInventory.reduce(
+    (sum, i) => sum + i.remaining,
+    0
+  );
+  const totalReceived = filteredInventory.reduce(
+    (sum, i) => sum + i.received,
+    0
+  );
+  const totalDistributed = filteredInventory.reduce(
+    (sum, i) => sum + i.distributed,
+    0
+  );
 
   // Handle Add Resource form submit
   const handleAddResource = async (e) => {
@@ -244,20 +262,21 @@ export default function ResourceMngmt() {
     try {
       await resourceService.create({
         ...newResource,
-        location: newResource.location || facility, 
-        quantity: newResource.quantity === "" ? 0 : Number(newResource.quantity),
+        location: newResource.location || facility,
+        quantity:
+          newResource.quantity === "" ? 0 : Number(newResource.quantity),
       });
 
       // If user typed a new category, add it for that facility
       const loc = newResource.location || facility;
       const cat = (newResource.category || "").trim();
       if (cat && cat !== "All" && cat !== "Critical Only") {
-        setCategoriesByFacility(prev => {
+        setCategoriesByFacility((prev) => {
           const current = prev[loc] || DEFAULT_CATEGORIES;
           if (current.includes(cat)) return prev;
 
           // Insert before "Critical Only"
-          const withoutCritical = current.filter(c => c !== "Critical Only");
+          const withoutCritical = current.filter((c) => c !== "Critical Only");
           const updated = [...withoutCritical, cat, "Critical Only"];
           const next = { ...prev, [loc]: updated };
           // Also update visible categories if we're on the same facility
@@ -270,7 +289,7 @@ export default function ResourceMngmt() {
       setNewResource({
         name: "",
         category: "",
-        unit: "",        
+        unit: "",
         quantity: "",
         location: facility,
       });
@@ -287,13 +306,13 @@ export default function ResourceMngmt() {
   const handleAddStock = (item) => {
     setStockResource(item);
     setShowStockModal(true);
-    setStockAdjustment('');
+    setStockAdjustment("");
   };
 
   const handleStockAdjustmentSubmit = async (e) => {
     e.preventDefault();
     setAdjusting(true);
-    
+
     const adjustmentValue = Number(stockAdjustment);
     if (adjustmentValue <= 0) {
       alert("Please enter a valid quantity greater than 0.");
@@ -306,7 +325,7 @@ export default function ResourceMngmt() {
         id: stockResource.id,
         quantity: adjustmentValue,
         type: "add",
-        currentQuantity: stockResource.remaining
+        currentQuantity: stockResource.remaining,
       });
 
       await resourceService.adjustStock(stockResource.id, {
@@ -314,12 +333,11 @@ export default function ResourceMngmt() {
         type: "add",
         reason: "Manual stock addition",
       });
-            
+
       setShowStockModal(false);
       setStockResource(null);
-      setStockAdjustment('');
-      fetchResources(); 
-        
+      setStockAdjustment("");
+      fetchResources();
     } catch (err) {
       console.error("Stock adjustment failed:", err);
       console.error("Error details:", err.response?.data);
@@ -350,11 +368,11 @@ export default function ResourceMngmt() {
       const loc = editResource.facility;
       const cat = (editResource.category || "").trim();
       if (cat && cat !== "All" && cat !== "Critical Only") {
-        setCategoriesByFacility(prev => {
+        setCategoriesByFacility((prev) => {
           const current = prev[loc] || DEFAULT_CATEGORIES;
           if (current.includes(cat)) return prev;
 
-          const withoutCritical = current.filter(c => c !== "Critical Only");
+          const withoutCritical = current.filter((c) => c !== "Critical Only");
           const updated = [...withoutCritical, cat, "Critical Only"];
           const next = { ...prev, [loc]: updated };
           if (loc === facility) setCategories(updated);
@@ -389,13 +407,13 @@ export default function ResourceMngmt() {
   const handleFacilityChange = (newFacility) => {
     setFacility(newFacility);
     setFilter("All"); // Reset filter on facility change
-    setCategories(getCategoriesForFacility(newFacility)); 
+    setCategories(getCategoriesForFacility(newFacility));
     setDropdownOpen(false);
   };
 
   // NEW: Handle calendar event click
   const handleCalendarEventClick = (event) => {
-    console.log('Calendar event clicked:', event);
+    console.log("Calendar event clicked:", event);
     // You can implement detailed event modal here if needed
   };
 
@@ -450,22 +468,22 @@ export default function ResourceMngmt() {
           {/* Tab Navigation */}
           <div className="flex border-b border-gray-200 bg-none mt-0 rounded-lg ">
             <button
-              onClick={() => setActiveTab('inventory')}
+              onClick={() => setActiveTab("inventory")}
               className={`flex items-center gap-2 px-3 py-3 font-medium text-sm border-b-2 ${
-                activeTab === 'inventory'
-                  ? 'border-yellow-500 text-yellow-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === "inventory"
+                  ? "border-yellow-500 text-yellow-500"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
               <div className="h-4 w-4" />
               Inventory Management
             </button>
             <button
-              onClick={() => setActiveTab('calendar')}
+              onClick={() => setActiveTab("calendar")}
               className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 ${
-                activeTab === 'calendar'
-                  ? 'border-yellow-500 text-yellow-500'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                activeTab === "calendar"
+                  ? "border-yellow-500 text-yellow-500"
+                  : "border-transparent text-gray-500 hover:text-gray-700"
               }`}
             >
               <div className="h-4 w-4" />
@@ -474,7 +492,7 @@ export default function ResourceMngmt() {
           </div>
 
           {/* Tab Content */}
-          {activeTab === 'inventory' ? (
+          {activeTab === "inventory" ? (
             <>
               {/* Overview/Metrics Section */}
               <div
@@ -578,7 +596,7 @@ export default function ResourceMngmt() {
                     {/* Add Resource Button */}
                     <button
                       className="px-2 py-1.5 rounded-lg text-gray-800 font-semibold shadow-md hover:bg-yellow-600 transition text-sm"
-                      onClick={() => setShowAddModal(true)} 
+                      onClick={() => setShowAddModal(true)}
                     >
                       + Add Resource
                     </button>
@@ -757,9 +775,13 @@ export default function ResourceMngmt() {
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-gray-700">
-                        <span className="font-medium text-gray-500">Category:</span>{" "}
+                        <span className="font-medium text-gray-500">
+                          Category:
+                        </span>{" "}
                         <span>{item.category}</span>
-                        <span className="font-medium text-gray-500">Received:</span>{" "}
+                        <span className="font-medium text-gray-500">
+                          Received:
+                        </span>{" "}
                         <span className="font-medium text-green-700">
                           {item.received}
                         </span>
@@ -786,7 +808,8 @@ export default function ResourceMngmt() {
                         TOTAL INVENTORY SUMMARY
                       </div>
                       <div className="flex justify-between">
-                        <span>Total Received:</span> <span>{totalReceived}</span>
+                        <span>Total Received:</span>{" "}
+                        <span>{totalReceived}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Total Distributed:</span>{" "}
@@ -813,7 +836,7 @@ export default function ResourceMngmt() {
             </>
           ) : (
             // Calendar View
-            <CalendarView 
+            <CalendarView
               facility={facility}
               onEventClick={handleCalendarEventClick}
             />
@@ -827,11 +850,13 @@ export default function ResourceMngmt() {
                 className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md flex flex-col gap-4"
               >
                 <h2 className="text-xl font-bold mb-2">Add Resource</h2>
-                {/* Facility Select */}                
+                {/* Facility Select */}
                 <select
                   className="border rounded-lg px-3 py-2"
                   value={newResource.location}
-                  onChange={e => setNewResource({ ...newResource, location: e.target.value })}
+                  onChange={(e) =>
+                    setNewResource({ ...newResource, location: e.target.value })
+                  }
                   required
                 >
                   {facilities.map((fac) => (
@@ -839,34 +864,42 @@ export default function ResourceMngmt() {
                       {fac.name}
                     </option>
                   ))}
-                </select>                     
+                </select>
                 <input
                   className="border rounded px-3 py-2"
                   placeholder="Resource Name"
                   value={newResource.name}
-                  onChange={e => setNewResource({ ...newResource, name: e.target.value })}
+                  onChange={(e) =>
+                    setNewResource({ ...newResource, name: e.target.value })
+                  }
                   required
                 />
                 <input
                   className="border rounded px-3 py-2"
                   placeholder="Category"
                   value={newResource.category}
-                  onChange={e => setNewResource({ ...newResource, category: e.target.value })}
+                  onChange={(e) =>
+                    setNewResource({ ...newResource, category: e.target.value })
+                  }
                   required
                 />
                 <input
                   className="border rounded px-3 py-2"
                   placeholder="Unit (e.g. pcs, box)"
                   value={newResource.unit}
-                  onChange={e => setNewResource({ ...newResource, unit: e.target.value })}
+                  onChange={(e) =>
+                    setNewResource({ ...newResource, unit: e.target.value })
+                  }
                   required
-                  />                     
+                />
                 <input
                   className="border rounded px-3 py-2"
                   placeholder="Quantity"
                   type="number"
                   value={newResource.quantity}
-                  onChange={e => setNewResource({ ...newResource, quantity: e.target.value })}
+                  onChange={(e) =>
+                    setNewResource({ ...newResource, quantity: e.target.value })
+                  }
                   required
                 />
                 <div className="flex gap-2 justify-end">
@@ -896,9 +929,16 @@ export default function ResourceMngmt() {
                 onSubmit={handleStockAdjustmentSubmit}
                 className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md flex flex-col gap-4"
               >
-                <h2 className="text-xl font-bold mb-2">Add Stock to {stockResource.resource}</h2>
-                
-                <p className="text-sm text-gray-600">Current Quantity: <span className="font-bold text-green-700">{stockResource.remaining} {stockResource.unit}</span></p>
+                <h2 className="text-xl font-bold mb-2">
+                  Add Stock to {stockResource.resource}
+                </h2>
+
+                <p className="text-sm text-gray-600">
+                  Current Quantity:{" "}
+                  <span className="font-bold text-green-700">
+                    {stockResource.remaining} {stockResource.unit}
+                  </span>
+                </p>
 
                 <input
                   className="border rounded px-3 py-2"
@@ -906,7 +946,7 @@ export default function ResourceMngmt() {
                   type="number"
                   min="1"
                   value={stockAdjustment}
-                  onChange={e => setStockAdjustment(e.target.value)}
+                  onChange={(e) => setStockAdjustment(e.target.value)}
                   required
                   disabled={adjusting}
                 />
@@ -942,7 +982,12 @@ export default function ResourceMngmt() {
                 <select
                   className="border rounded-lg px-3 py-2"
                   value={editResource.facility}
-                  onChange={e => setEditResource({ ...editResource, facility: e.target.value })}
+                  onChange={(e) =>
+                    setEditResource({
+                      ...editResource,
+                      facility: e.target.value,
+                    })
+                  }
                   required
                 >
                   {facilities.map((fac) => (
@@ -955,21 +1000,33 @@ export default function ResourceMngmt() {
                   className="border rounded px-3 py-2"
                   placeholder="Resource Name"
                   value={editResource.resource}
-                  onChange={e => setEditResource({ ...editResource, resource: e.target.value })}
+                  onChange={(e) =>
+                    setEditResource({
+                      ...editResource,
+                      resource: e.target.value,
+                    })
+                  }
                   required
                 />
                 <input
                   className="border rounded px-3 py-2"
                   placeholder="Category"
                   value={editResource.category}
-                  onChange={e => setEditResource({ ...editResource, category: e.target.value })}
+                  onChange={(e) =>
+                    setEditResource({
+                      ...editResource,
+                      category: e.target.value,
+                    })
+                  }
                   required
                 />
                 <input
                   className="border rounded px-3 py-2"
                   placeholder="Unit (e.g. pcs, box)"
                   value={editResource.unit}
-                  onChange={e => setEditResource({ ...editResource, unit: e.target.value })}
+                  onChange={(e) =>
+                    setEditResource({ ...editResource, unit: e.target.value })
+                  }
                   required
                 />
                 <input
@@ -977,7 +1034,12 @@ export default function ResourceMngmt() {
                   placeholder="Quantity"
                   type="number"
                   value={editResource.remaining}
-                  onChange={e => setEditResource({ ...editResource, remaining: e.target.value })}
+                  onChange={(e) =>
+                    setEditResource({
+                      ...editResource,
+                      remaining: e.target.value,
+                    })
+                  }
                   required
                 />
                 <div className="flex gap-2 justify-end">
