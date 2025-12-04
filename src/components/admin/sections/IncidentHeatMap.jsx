@@ -26,7 +26,8 @@ import adminService from "@/services/adminService";
 // Map tile configurations - using CartoDB for clean, minimal style
 const MAP_TILES = {
   base: "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
-  labels: "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+  labels:
+    "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
   attribution:
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
 };
@@ -69,9 +70,7 @@ const lifecycleOptions = [
 const isClosedLifecycleStatus = (status) => {
   if (!status) return false;
   const normalized = status.toLowerCase();
-  return ["resolved", "cancelled", "closed", "completed"].includes(
-    normalized
-  );
+  return ["resolved", "cancelled", "closed", "completed"].includes(normalized);
 };
 
 const isWithinPhilippines = (lat, lng) =>
@@ -265,11 +264,11 @@ export const IncidentHeatMap = () => {
             .filter(Boolean)
         : [];
 
-        setIncidentFeed({
-          items: mapped,
-          fetchedAt: new Date(),
-          status: "success",
-        });
+      setIncidentFeed({
+        items: mapped,
+        fetchedAt: new Date(),
+        status: "success",
+      });
     } catch (error) {
       console.error("Failed to fetch incidents", error);
       setIncidentFeed((prev) => ({
@@ -306,7 +305,9 @@ export const IncidentHeatMap = () => {
   const filteredSystemIncidents = useMemo(() => {
     if (lifecycleView === "all") return systemIncidents;
     return systemIncidents.filter((incident) => {
-      const closed = isClosedLifecycleStatus((incident.status || "").toLowerCase());
+      const closed = isClosedLifecycleStatus(
+        (incident.status || "").toLowerCase()
+      );
       return lifecycleView === "resolved" ? closed : !closed;
     });
   }, [lifecycleView, systemIncidents]);
@@ -765,7 +766,10 @@ export const IncidentHeatMap = () => {
                         {(incident.status || "resolved").replace(/_/g, " ")}
                       </p>
                       <p>
-                        Closed {formatRelativeTime(incident.updatedAt, { short: true })}
+                        Closed{" "}
+                        {formatRelativeTime(incident.updatedAt, {
+                          short: true,
+                        })}
                       </p>
                     </div>
                   </div>

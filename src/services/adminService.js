@@ -623,6 +623,41 @@ const adminService = {
       throw error;
     }
   },
+
+  // =====================
+  // AI SMART ROUTING
+  // =====================
+
+  /**
+   * Get AI-powered smart responder recommendations for an incident
+   * Uses multiple factors: proximity, workload, experience, and response time history
+   * @param {number} incidentId - The incident ID
+   * @param {Object} params - { limit }
+   */
+  getSmartResponderRecommendations: async (incidentId, params = {}) => {
+    try {
+      const response = await api.get(`/incidents/${incidentId}/smart-responder-recommendations`, { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching smart responder recommendations:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Auto-assign the best available responder using AI routing
+   * @param {number} incidentId - The incident ID
+   * @param {Object} data - { notes }
+   */
+  smartAutoAssign: async (incidentId, data = {}) => {
+    try {
+      const response = await api.post(`/incidents/${incidentId}/smart-auto-assign`, data);
+      return response.data;
+    } catch (error) {
+      console.error("Error with smart auto-assign:", error);
+      throw error;
+    }
+  },
 };
 
 export default adminService;
