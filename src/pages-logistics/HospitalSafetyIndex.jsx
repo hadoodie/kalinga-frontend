@@ -21,7 +21,6 @@ import {
   formatSurvivalHours,
   getHsiDashboard,
   getHospitalCompliance,
-  getSafetyCategoryInfo,
 } from "@/services/hsiApi";
 import hospitalService from "@/services/hospitalService";
 
