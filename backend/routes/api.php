@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\AllocationController;
 use App\Http\Controllers\Api\RouteLogController;
 use App\Http\Controllers\Api\ResponderTrackingController;
+use App\Http\Controllers\Api\NLPController;
 use App\Http\Controllers\HospitalSafetyIndexController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -217,6 +218,19 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/messages/{userId}', [ChatController::class, 'getMessages']);
         Route::post('/messages', [ChatController::class, 'sendMessage']);
         Route::delete('/messages/{messageId}', [ChatController::class, 'deleteMessage']);
+    });
+
+    // NLP Analysis routes (AI-powered message analysis)
+    Route::prefix('nlp')->group(function () {
+        Route::post('/analyze-message', [NLPController::class, 'analyzeMessage']);
+        Route::post('/urgency-check', [NLPController::class, 'urgencyCheck']);
+        Route::post('/analyze-conversation', [NLPController::class, 'analyzeConversation']);
+        Route::post('/bulk-urgency', [NLPController::class, 'bulkUrgencyAnalysis']);
+    });
+
+    // NLP Analysis for incidents (admin/responder only)
+    Route::middleware(['role:admin,responder'])->group(function () {
+        Route::get('/nlp/incident/{incident}/analysis', [NLPController::class, 'analyzeIncidentMessages']);
     });
 });
 
