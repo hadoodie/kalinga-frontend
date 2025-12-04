@@ -66,18 +66,16 @@ export const ResourceManagement = () => {
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("asc");
   const [expandedCategories, setExpandedCategories] = useState(new Set());
+  const [warnings, setWarnings] = useState([]);
+  const [expiringUnavailable, setExpiringUnavailable] = useState(false);
 
   // Fetch resources and stats
   const fetchData = useCallback(async () => {
     setIsLoading(true);
+    setWarnings([]);
+    setExpiringUnavailable(false);
     try {
-      const [
-        resourceData,
-        resourceStats,
-        lowStockData,
-        criticalData,
-        expiringData,
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         adminService.getResources(),
         adminService.getResourceStats(),
         adminService.getLowStockResources(),
@@ -85,13 +83,63 @@ export const ResourceManagement = () => {
         adminService.getExpiringResources(30),
       ]);
 
-      setResources(resourceData);
-      setStats(resourceStats);
-      setLowStock(lowStockData);
-      setCritical(criticalData);
-      setExpiring(expiringData);
+      const [
+        resourcesResult,
+        statsResult,
+        lowStockResult,
+        criticalResult,
+        expiringResult,
+      ] = results;
+
+      const nextWarnings = [];
+
+      if (resourcesResult.status === "fulfilled") {
+        setResources(resourcesResult.value);
+      } else {
+        setResources([]);
+        nextWarnings.push("Inventory list is temporarily unavailable.");
+      }
+
+      if (statsResult.status === "fulfilled") {
+        setStats(statsResult.value);
+      } else {
+        setStats(null);
+        nextWarnings.push("Resource insights could not be loaded.");
+      }
+
+      if (lowStockResult.status === "fulfilled") {
+        setLowStock(lowStockResult.value);
+      } else {
+        setLowStock([]);
+        nextWarnings.push("Low stock alerts are unavailable.");
+      }
+
+      if (criticalResult.status === "fulfilled") {
+        setCritical(criticalResult.value);
+      } else {
+        setCritical([]);
+        nextWarnings.push("Critical inventory list is unavailable.");
+      }
+
+      if (expiringResult.status === "fulfilled") {
+        const expiringValue = expiringResult.value || [];
+        setExpiring(expiringValue);
+        if (expiringValue?.__partial) {
+          setExpiringUnavailable(true);
+          nextWarnings.push("Expiring items endpoint returned an error; other data remains live.");
+        }
+      } else {
+        setExpiring([]);
+        setExpiringUnavailable(true);
+        nextWarnings.push("Expiring items are unavailable right now.");
+      }
+
+      setWarnings(nextWarnings);
     } catch (error) {
       console.error("Error fetching resources:", error);
+      setWarnings([
+        "The resource dashboard is currently unavailable. Please try again shortly.",
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -171,6 +219,17 @@ export const ResourceManagement = () => {
           </div>
         }
       />
+
+      {warnings.length > 0 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/5 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <div className="space-y-1">
+            {warnings.map((message) => (
+              <p key={message}>{message}</p>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats Overview */}
       {stats && (
@@ -483,7 +542,9 @@ export const ResourceManagement = () => {
             </div>
             {expiring.length === 0 ? (
               <p className="text-sm text-foreground/60">
-                No items expiring within 30 days
+                {expiringUnavailable
+                  ? "Expiring inventory is temporarily unavailable."
+                  : "No items are expiring within 30 days."}
               </p>
             ) : (
               <div className="space-y-3">

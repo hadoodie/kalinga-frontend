@@ -223,12 +223,30 @@ const adminService = {
    * @param {number} days - number of days to check for expiration
    */
   getExpiringResources: async (days = 30) => {
+    // Suppress repeated warnings after first failure
+    if (adminService._expiringEndpointFailed) {
+      const fallback = [];
+      fallback.__partial = true;
+      return fallback;
+    }
+
     try {
       const response = await api.get("/resources/expiring", {
         params: { days },
       });
       return response.data?.resources || response.data || [];
     } catch (error) {
+      const status = error?.response?.status;
+      // The backend endpoint is still stabilizing, so degrade gracefully on server failures
+      if (status === 404 || status === 500) {
+        if (!adminService._expiringEndpointFailed) {
+          console.warn("Expiring resources endpoint unavailable (will suppress further warnings):", error?.message || error);
+          adminService._expiringEndpointFailed = true;
+        }
+        const fallback = [];
+        fallback.__partial = true;
+        return fallback;
+      }
       console.error("Error fetching expiring resources:", error);
       throw error;
     }
@@ -243,7 +261,10 @@ const adminService = {
         adminService.getResources(),
         adminService.getLowStockResources(),
         adminService.getCriticalResources(),
-        adminService.getExpiringResources(30),
+        adminService.getExpiringResources(30).catch((error) => {
+          console.warn("Expiring resources unavailable, continuing without them", error);
+          return [];
+        }),
       ]);
 
       // Group by category
@@ -428,9 +449,11 @@ const adminService = {
       incidents.forEach((incident) => {
         const assignments = incident.assignments || [];
         assignments.forEach((a) => {
+          const responderId = a?.responder_id || a?.responder?.id;
+          if (!responderId) return;
           if (!["completed", "cancelled"].includes(a.status)) {
-            assignmentCounts[a.responder_id] =
-              (assignmentCounts[a.responder_id] || 0) + 1;
+            assignmentCounts[responderId] =
+              (assignmentCounts[responderId] || 0) + 1;
           }
         });
       });
@@ -550,6 +573,24 @@ const adminService = {
       return response.data;
     } catch (error) {
       console.error("Error creating notification:", error);
+      throw error;
+    }
+  },
+
+  // =====================
+  // ROUTE LOGS (Historical Routes)
+  // =====================
+
+  /**
+   * Get historical route logs from responders
+   * @param {Object} params - { days, user_id, per_page }
+   */
+  getRouteLogs: async (params = {}) => {
+    try {
+      const response = await api.get("/route-logs", { params });
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error("Error fetching route logs:", error);
       throw error;
     }
   },

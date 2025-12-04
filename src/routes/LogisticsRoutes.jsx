@@ -47,9 +47,9 @@ const LiveMapPage = lazy(() =>
   }))
 );
 
-const ProfileLogistics = lazy(() => 
+const ProfileLogistics = lazy(() =>
   import("../pages-logistics/Profile").then((module) => ({
-    default: module.ProfileLogistics, 
+    default: module.ProfileLogistics,
   }))
 );
 
@@ -100,6 +100,18 @@ export const LogisticsRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={logisticsRoles}>
           <RequestAllocation />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.LOGISTICS.HOSPITAL_SAFETY_INDEX}
+      element={
+        <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+          <Navigate
+            to={ROUTES.ADMIN.ROOT}
+            replace
+            state={{ adminSection: "hospital-safety" }}
+          />
         </ProtectedRoute>
       }
     />

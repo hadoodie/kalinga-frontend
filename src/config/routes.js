@@ -68,6 +68,7 @@ export const ROUTES = {
     ASSET_REGISTRY: "/logistics/asset-registry",
     SUPPLY_TRACKING: "/logistics/supply-tracking",
     REQUESTED_ALLOCATION: "/logistics/requested-allocation",
+    HOSPITAL_SAFETY_INDEX: "/logistics/hospital-safety-index",
     SETTINGS: "/logistics/settings",
     NOTIFICATIONS: "/logistics/notifications",
     LIVE_MAP: "/logistics/live-map",

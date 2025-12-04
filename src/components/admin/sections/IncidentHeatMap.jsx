@@ -1,16 +1,44 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  AlertTriangle,
-  Flame,
-  MapPin,
-  RefreshCcw,
-  Sparkles,
   Activity,
+  AlertTriangle,
+  Archive,
+  Flame,
+  History,
+  MapPin,
+  Navigation,
+  RefreshCcw,
+  Route,
+  Sparkles,
 } from "lucide-react";
-import { MapContainer, CircleMarker, TileLayer, Tooltip } from "react-leaflet";
+import {
+  MapContainer,
+  CircleMarker,
+  TileLayer,
+  Tooltip,
+  Polyline,
+} from "react-leaflet";
 import { SectionHeader } from "../SectionHeader";
 import { formatRelativeTime } from "@/lib/datetime";
 import adminService from "@/services/adminService";
+
+// Map tile configurations - using CartoDB for clean, minimal style
+const MAP_TILES = {
+  base: "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
+  labels: "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+  attribution:
+    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+};
+
+// Route colors for historical paths
+const ROUTE_COLORS = [
+  "#3b82f6", // blue
+  "#10b981", // emerald
+  "#8b5cf6", // violet
+  "#f59e0b", // amber
+  "#ef4444", // red
+  "#06b6d4", // cyan
+];
 
 const INCIDENT_FEED_ENDPOINT =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
@@ -31,52 +59,19 @@ const severityStyles = {
 
 const severityOrder = ["Severe", "High", "Moderate", "Minor"];
 
-const fallbackIncidents = [
-  {
-    id: "PH-MAKATI-01",
-    type: "Flood Advisory",
-    barangay: "Poblacion, Makati",
-    teams: 3,
-    status: "Mitigating",
-    severity: "High",
-    magnitude: 4.6,
-    coordinates: { lat: 14.5657, lng: 121.0288 },
-    updatedAt: new Date(Date.now() - 1000 * 60 * 8),
-  },
-  {
-    id: "PH-PAMPANGA-02",
-    type: "Lahar Watch",
-    barangay: "San Fernando, Pampanga",
-    teams: 2,
-    status: "Coordinating",
-    severity: "Moderate",
-    magnitude: 3.8,
-    coordinates: { lat: 15.0333, lng: 120.6833 },
-    updatedAt: new Date(Date.now() - 1000 * 60 * 18),
-  },
-  {
-    id: "PH-ALBAY-03",
-    type: "Volcanic Tremor",
-    barangay: "Legazpi, Albay",
-    teams: 4,
-    status: "Mitigating",
-    severity: "Severe",
-    magnitude: 5.2,
-    coordinates: { lat: 13.1372, lng: 123.7344 },
-    updatedAt: new Date(Date.now() - 1000 * 60 * 25),
-  },
-  {
-    id: "PH-DAVAO-04",
-    type: "Landslide Risk",
-    barangay: "Marilog, Davao",
-    teams: 1,
-    status: "Monitoring",
-    severity: "Minor",
-    magnitude: 2.9,
-    coordinates: { lat: 7.2476, lng: 125.3417 },
-    updatedAt: new Date(Date.now() - 1000 * 60 * 33),
-  },
+const lifecycleOptions = [
+  { value: "active", label: "Active" },
+  { value: "resolved", label: "Closed" },
+  { value: "all", label: "All" },
 ];
+
+const isClosedLifecycleStatus = (status) => {
+  if (!status) return false;
+  const normalized = status.toLowerCase();
+  return ["resolved", "cancelled", "closed", "completed"].includes(
+    normalized
+  );
+};
 
 const isWithinPhilippines = (lat, lng) =>
   lat >= PH_BOUNDING_BOX.minLat &&
@@ -86,51 +81,115 @@ const isWithinPhilippines = (lat, lng) =>
 
 export const IncidentHeatMap = () => {
   const [incidentFeed, setIncidentFeed] = useState({
-    items: fallbackIncidents,
+    items: [],
     fetchedAt: null,
     status: "idle",
   });
   const [systemIncidents, setSystemIncidents] = useState([]);
   const [selectedSeverity, setSelectedSeverity] = useState("all");
   const [viewMode, setViewMode] = useState("all"); // "all", "usgs", "system"
+  const [lifecycleView, setLifecycleView] = useState("all");
+  const [historicalRoutes, setHistoricalRoutes] = useState([]);
+  const [showRoutes, setShowRoutes] = useState(false);
+  const [routesLoading, setRoutesLoading] = useState(false);
 
-  // Fetch system incidents from backend
+  // Fetch historical response routes from backend
+  const fetchHistoricalRoutes = useCallback(async () => {
+    setRoutesLoading(true);
+    try {
+      // Fetch route logs using adminService
+      const routes = await adminService.getRouteLogs({ days: 7, per_page: 20 });
+      setHistoricalRoutes(
+        routes.map((route, index) => ({
+          id: route.id,
+          path: route.route_path || [],
+          color: ROUTE_COLORS[index % ROUTE_COLORS.length],
+          responder: route.user?.name || `Responder ${route.user_id}`,
+          startedAt: route.started_at,
+          distance: route.distance,
+          duration: route.duration,
+          deviationCount: route.deviation_count || 0,
+        }))
+      );
+    } catch (error) {
+      // Backend may not have data yet - gracefully degrade
+      if (error?.response?.status !== 404 && error?.response?.status !== 405) {
+        console.warn("Failed to fetch historical routes:", error?.message);
+      }
+      setHistoricalRoutes([]);
+    } finally {
+      setRoutesLoading(false);
+    }
+  }, []);
+
+  // Fetch system incidents from backend (including resolved AND cancelled for Closed tab)
   const fetchSystemIncidents = useCallback(async () => {
     try {
-      const data = await adminService.getIncidents({ include_resolved: false });
+      const data = await adminService.getIncidents({
+        include_resolved: true,
+        include_cancelled: true,
+      });
       const mapped = (data || []).map((incident) => {
-        // Map priority/severity to our severity scale
-        const priority = incident.priority || incident.severity || "moderate";
-        const severity =
-          priority === "critical"
-            ? "Severe"
-            : priority === "high"
-            ? "High"
-            : priority === "moderate"
-            ? "Moderate"
-            : "Minor";
+        // Infer severity from incident type if not available
+        const type = (incident.type || "").toLowerCase();
+        let severity = "Moderate";
+        let magnitude = 3.5;
 
-        // Extract coordinates from incident
-        const lat = incident.latitude || incident.location?.latitude || 14.5995;
-        const lng =
-          incident.longitude || incident.location?.longitude || 120.9842;
+        // Infer severity from incident type
+        if (
+          type.includes("fire") ||
+          type.includes("collision") ||
+          type.includes("cardiac") ||
+          type.includes("critical")
+        ) {
+          severity = "Severe";
+          magnitude = 5.5;
+        } else if (
+          type.includes("flood") ||
+          type.includes("accident") ||
+          type.includes("emergency")
+        ) {
+          severity = "High";
+          magnitude = 4.5;
+        } else if (type.includes("minor") || type.includes("routine")) {
+          severity = "Minor";
+          magnitude = 2.5;
+        }
+
+        // Override with explicit priority/severity if available
+        const priority = incident.priority || incident.severity;
+        if (priority === "critical") {
+          severity = "Severe";
+          magnitude = 5.5;
+        } else if (priority === "high") {
+          severity = "High";
+          magnitude = 4.5;
+        } else if (priority === "low" || priority === "minor") {
+          severity = "Minor";
+          magnitude = 2.5;
+        }
+
+        // Extract coordinates - API returns lat/lng directly
+        const lat = incident.lat ?? incident.latitude ?? 14.5995;
+        const lng = incident.lng ?? incident.longitude ?? 120.9842;
+
+        // Use location string from API
+        const locationStr = incident.location || "Reported Location";
 
         return {
           id: `SYS-${incident.id}`,
           type: incident.type || "System Incident",
-          barangay:
-            incident.address ||
-            incident.location?.address ||
-            "Reported Location",
-          teams: incident.assignments?.length || 0,
+          barangay: locationStr,
+          teams:
+            incident.responders_assigned || incident.assignments?.length || 0,
           status: incident.status || "reported",
           severity,
-          magnitude:
-            priority === "critical" ? 5.5 : priority === "high" ? 4.5 : 3.5,
+          magnitude,
           coordinates: { lat, lng },
-          updatedAt: new Date(incident.updated_at || incident.created_at),
+          updatedAt: new Date(incident.reported_at || incident.created_at),
           source: "system",
-          patientId: incident.patient_id,
+          patientId: incident.user_id,
+          description: incident.description,
         };
       });
       setSystemIncidents(mapped);
@@ -199,16 +258,17 @@ export const IncidentHeatMap = () => {
                 magnitude,
                 coordinates: { lat, lng },
                 updatedAt: timestamp,
+                source: "usgs",
               };
             })
             .filter(Boolean)
         : [];
 
-      setIncidentFeed({
-        items: mapped.length ? mapped : fallbackIncidents,
-        fetchedAt: new Date(),
-        status: "success",
-      });
+        setIncidentFeed({
+          items: mapped,
+          fetchedAt: new Date(),
+          status: "success",
+        });
     } catch (error) {
       console.error("Failed to fetch incidents", error);
       setIncidentFeed((prev) => ({
@@ -235,12 +295,27 @@ export const IncidentHeatMap = () => {
     };
   }, [fetchIncidents, fetchSystemIncidents]);
 
+  // Fetch routes when toggle is enabled
+  useEffect(() => {
+    if (showRoutes && historicalRoutes.length === 0) {
+      fetchHistoricalRoutes();
+    }
+  }, [showRoutes, historicalRoutes.length, fetchHistoricalRoutes]);
+
+  const filteredSystemIncidents = useMemo(() => {
+    if (lifecycleView === "all") return systemIncidents;
+    return systemIncidents.filter((incident) => {
+      const closed = isClosedLifecycleStatus((incident.status || "").toLowerCase());
+      return lifecycleView === "resolved" ? closed : !closed;
+    });
+  }, [lifecycleView, systemIncidents]);
+
   // Combine incidents based on view mode
   const incidents = useMemo(() => {
     if (viewMode === "usgs") return incidentFeed.items;
-    if (viewMode === "system") return systemIncidents;
-    return [...incidentFeed.items, ...systemIncidents];
-  }, [incidentFeed.items, systemIncidents, viewMode]);
+    if (viewMode === "system") return filteredSystemIncidents;
+    return [...incidentFeed.items, ...filteredSystemIncidents];
+  }, [filteredSystemIncidents, incidentFeed.items, viewMode]);
 
   const filteredIncidents = useMemo(() => {
     if (selectedSeverity === "all") {
@@ -273,6 +348,14 @@ export const IncidentHeatMap = () => {
     return ranked.slice(0, 4);
   }, [incidents]);
 
+  const closedIncidents = useMemo(() => {
+    return [...systemIncidents]
+      .filter((incident) =>
+        isClosedLifecycleStatus((incident.status || "").toLowerCase())
+      )
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [systemIncidents]);
+
   const lastUpdatedLabel = useMemo(() => {
     if (incidentFeed.status === "loading" && !incidentFeed.fetchedAt) {
       return "Fetching live data…";
@@ -287,6 +370,13 @@ export const IncidentHeatMap = () => {
       short: true,
     })}`;
   }, [incidentFeed.status, incidentFeed.fetchedAt]);
+
+  const lifecycleBadgeLabel =
+    lifecycleView === "resolved"
+      ? "closed incidents"
+      : lifecycleView === "all"
+      ? "system incidents"
+      : "active incidents";
 
   return (
     <div className="space-y-8">
@@ -304,12 +394,12 @@ export const IncidentHeatMap = () => {
         <div className="flex items-center gap-2">
           <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/80 px-3 py-1 text-xs text-foreground/70">
             <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-            {incidents.length} active telemetry points
+            {incidents.length} telemetry points
           </div>
           {systemIncidents.length > 0 && (
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/5 px-3 py-1 text-xs text-primary">
               <Activity className="h-3.5 w-3.5" />
-              {systemIncidents.length} system incidents
+              {filteredSystemIncidents.length} {lifecycleBadgeLabel}
             </div>
           )}
         </div>
@@ -352,6 +442,28 @@ export const IncidentHeatMap = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <div className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-background/60 px-2 py-1">
+            <History className="h-3 w-3 text-slate-500" /> Lifecycle:
+          </div>
+          <div className="flex items-center gap-1">
+            {lifecycleOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setLifecycleView(option.value)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  lifecycleView === option.value
+                    ? option.value === "resolved"
+                      ? "bg-emerald-500 text-white shadow-sm"
+                      : "bg-primary text-primary-foreground shadow-sm"
+                    : "border border-border/60 bg-background/60 text-foreground/70 hover:border-primary/40 hover:text-primary"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="inline-flex items-center gap-1 rounded-full border border-border/40 bg-background/60 px-2 py-1">
             <Flame className="h-3 w-3 text-rose-400" /> Severity filter:
           </div>
           <div className="flex items-center gap-1">
@@ -384,11 +496,56 @@ export const IncidentHeatMap = () => {
           onClick={() => {
             fetchIncidents();
             fetchSystemIncidents();
+            if (showRoutes) fetchHistoricalRoutes();
           }}
           className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
         >
           <RefreshCcw className="h-4 w-4" /> Refresh feed
         </button>
+      </div>
+
+      {/* Route toggle bar */}
+      <div className="flex items-center justify-between rounded-2xl border border-border/40 bg-background/60 px-4 py-2">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowRoutes(!showRoutes)}
+            className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium transition ${
+              showRoutes
+                ? "bg-blue-500 text-white shadow-sm"
+                : "border border-border/60 bg-background/60 text-foreground/70 hover:border-blue-400 hover:text-blue-600"
+            }`}
+          >
+            <Route className="h-3.5 w-3.5" />
+            {showRoutes ? "Hide Routes" : "Show Response Routes"}
+          </button>
+          {showRoutes && (
+            <span className="text-xs text-foreground/60">
+              {routesLoading
+                ? "Loading routes..."
+                : historicalRoutes.length > 0
+                ? `${historicalRoutes.length} historical routes`
+                : "No route history available"}
+            </span>
+          )}
+        </div>
+        {showRoutes && historicalRoutes.length > 0 && (
+          <div className="flex items-center gap-2">
+            {historicalRoutes.slice(0, 5).map((route) => (
+              <div
+                key={route.id}
+                className="flex items-center gap-1.5 rounded-full border border-border/40 bg-background/80 px-2 py-1 text-xs"
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: route.color }}
+                />
+                <span className="text-foreground/70 truncate max-w-[80px]">
+                  {route.responder}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -399,25 +556,83 @@ export const IncidentHeatMap = () => {
             scrollWheelZoom
             className="h-full w-full"
           >
+            {/* Base map layer - roads without labels for clean visualization */}
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution={MAP_TILES.attribution}
+              url={MAP_TILES.base}
             />
+            {/* Labels layer on top */}
+            <TileLayer url={MAP_TILES.labels} />
+
+            {/* Historical response routes */}
+            {showRoutes &&
+              historicalRoutes.map((route) =>
+                route.path?.length >= 2 ? (
+                  <Polyline
+                    key={`route-${route.id}`}
+                    positions={route.path.map(([lat, lng]) => [lat, lng])}
+                    pathOptions={{
+                      color: route.color,
+                      weight: 3,
+                      opacity: 0.7,
+                      dashArray: route.deviationCount > 0 ? "5, 10" : undefined,
+                    }}
+                  >
+                    <Tooltip sticky>
+                      <div className="text-xs">
+                        <p className="font-semibold">{route.responder}</p>
+                        {route.distance && (
+                          <p className="text-foreground/70">
+                            {(route.distance / 1000).toFixed(1)} km
+                          </p>
+                        )}
+                        {route.deviationCount > 0 && (
+                          <p className="text-amber-600">
+                            {route.deviationCount} route deviation(s)
+                          </p>
+                        )}
+                        {route.startedAt && (
+                          <p className="text-foreground/50">
+                            {formatRelativeTime(new Date(route.startedAt))}
+                          </p>
+                        )}
+                      </div>
+                    </Tooltip>
+                  </Polyline>
+                ) : null
+              )}
+
+            {/* Incident markers */}
             {filteredIncidents.map((incident) => {
               const severityStyle =
                 severityStyles[incident.severity] ?? severityStyles.Minor;
-              const radius = Math.max(8, incident.magnitude * 2.5);
+              const magnitude =
+                typeof incident.magnitude === "number"
+                  ? incident.magnitude
+                  : 3.5;
+              const radius = Math.max(8, magnitude * 2.5);
+              const isEarthquake = incident.source === "usgs";
+              const markerStyle = isEarthquake
+                ? {
+                    color: "#0ea5e9",
+                    fillColor: "#0ea5e9",
+                    fillOpacity: 0.1,
+                    weight: 2,
+                    dashArray: "4 4",
+                  }
+                : {
+                    color: severityStyle.hex,
+                    fillColor: severityStyle.hex,
+                    fillOpacity: 0.35,
+                    weight: 1,
+                  };
+
               return (
                 <CircleMarker
                   key={incident.id}
                   center={[incident.coordinates.lat, incident.coordinates.lng]}
                   radius={radius}
-                  pathOptions={{
-                    color: severityStyle.hex,
-                    fillColor: severityStyle.hex,
-                    fillOpacity: 0.35,
-                    weight: 1,
-                  }}
+                  pathOptions={markerStyle}
                 >
                   <Tooltip
                     direction="top"
@@ -430,10 +645,11 @@ export const IncidentHeatMap = () => {
                         {incident.type}
                       </p>
                       <p className="text-foreground/70">{incident.barangay}</p>
-                      <p className="text-foreground/60">
-                        Magnitude {incident.magnitude.toFixed(1)} •{" "}
-                        {incident.teams} team(s)
-                      </p>
+                      {isEarthquake && (
+                        <p className="text-foreground/60">
+                          Magnitude {magnitude.toFixed(1)} • USGS telemetry
+                        </p>
+                      )}
                       <p className="text-foreground/50">
                         Updated{" "}
                         {formatRelativeTime(incident.updatedAt, {
@@ -485,30 +701,77 @@ export const IncidentHeatMap = () => {
             <p className="text-sm text-foreground/60">
               Most recent escalations with automated status updates.
             </p>
-            <div className="mt-5 space-y-4 divide-y divide-border/60 text-sm">
-              {highlights.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-start gap-3 pt-4 first:pt-0"
-                >
-                  <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <MapPin className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="font-semibold text-foreground">
-                      {item.barangay}
-                    </p>
-                    <p className="text-foreground/60">
-                      {item.type} • {item.severity} severity
-                    </p>
-                    <p className="text-xs text-foreground/50">
-                      Updated {formatRelativeTime(item.updatedAt)}
-                    </p>
+            {highlights.length ? (
+              <div className="mt-5 space-y-4 divide-y divide-border/60 text-sm">
+                {highlights.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-3 pt-4 first:pt-0"
+                  >
+                    <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <MapPin className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {item.barangay}
+                      </p>
+                      <p className="text-foreground/60">
+                        {item.type} • {item.severity} severity
+                      </p>
+                      <p className="text-xs text-foreground/50">
+                        Updated {formatRelativeTime(item.updatedAt)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-5 rounded-2xl border border-dashed border-border/60 bg-card/60 p-4 text-sm text-foreground/60">
+                No recent incidents within the selected filters.
+              </p>
+            )}
           </div>
+
+          {closedIncidents.length > 0 && (
+            <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-foreground">
+                Closed incidents log
+              </h3>
+              <p className="text-sm text-foreground/60">
+                Recently resolved or cancelled events retained for audit.
+              </p>
+              <div className="mt-5 space-y-4 text-sm">
+                {closedIncidents.slice(0, 4).map((incident) => (
+                  <div
+                    key={incident.id}
+                    className="flex items-start justify-between gap-3 rounded-2xl border border-border/50 bg-background/70 p-4"
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="mt-1 inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+                        <Archive className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <p className="font-semibold text-foreground">
+                          {incident.type}
+                        </p>
+                        <p className="text-xs text-foreground/60">
+                          {incident.barangay}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right text-xs text-foreground/50">
+                      <p className="font-semibold capitalize text-emerald-600">
+                        {(incident.status || "resolved").replace(/_/g, " ")}
+                      </p>
+                      <p>
+                        Closed {formatRelativeTime(incident.updatedAt, { short: true })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

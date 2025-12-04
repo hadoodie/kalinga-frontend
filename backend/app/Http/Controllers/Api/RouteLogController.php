@@ -9,6 +9,54 @@ use Illuminate\Http\Request;
 class RouteLogController extends Controller
 {
     /**
+     * List route logs with optional filtering.
+     * Admins can see all routes; responders see only their own.
+     */
+    public function index(Request $request)
+    {
+        $user = $request->user();
+        $limit = min((int) $request->query('limit', 20), 100);
+        $includeDeviations = $request->boolean('include_deviations', false);
+
+        $query = RouteLog::query()
+            ->with(['user:id,name,role'])
+            ->orderByDesc('started_at');
+
+        // Non-admin users can only see their own routes
+        if ($user->role !== 'admin') {
+            $query->where('user_id', $user->id);
+        }
+
+        // Optional filters
+        if ($request->filled('user_id') && $user->role === 'admin') {
+            $query->where('user_id', $request->query('user_id'));
+        }
+
+        if ($request->filled('from_date')) {
+            $query->where('started_at', '>=', $request->query('from_date'));
+        }
+
+        if ($request->filled('to_date')) {
+            $query->where('started_at', '<=', $request->query('to_date'));
+        }
+
+        $routes = $query->limit($limit)->get();
+
+        // Optionally strip deviations array to reduce payload size
+        if (!$includeDeviations) {
+            $routes->each(fn ($route) => $route->makeHidden('deviations'));
+        }
+
+        return response()->json([
+            'data' => $routes,
+            'meta' => [
+                'total' => $routes->count(),
+                'limit' => $limit,
+            ],
+        ]);
+    }
+
+    /**
      * Store a newly created route log.
      */
     public function store(Request $request)

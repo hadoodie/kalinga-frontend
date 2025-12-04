@@ -1,15 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertCircle,
-  CheckCircle,
-  Clock,
   Loader2,
-  MapPin,
   Phone,
   RefreshCw,
   Search,
-  Shield,
   User,
   UserCheck,
   Users,
@@ -17,6 +13,7 @@ import {
 } from "lucide-react";
 import { SectionHeader } from "../SectionHeader";
 import adminService from "../../../services/adminService";
+import { useRealtime } from "../../../context/RealtimeContext";
 
 // Status badge styling
 const statusBadges = {
@@ -65,6 +62,7 @@ export const ResponderOverview = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const { onlineUsers, ensureConnected, presenceStatus } = useRealtime();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -88,6 +86,102 @@ export const ResponderOverview = () => {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    ensureConnected?.();
+  }, [ensureConnected]);
+
+  const presenceReady = presenceStatus === "connected";
+
+  const onlineResponderIds = useMemo(() => {
+    if (!presenceReady || !Array.isArray(onlineUsers)) {
+      return new Set();
+    }
+
+    return new Set(
+      onlineUsers
+        .filter((user) => (user.role || "").toLowerCase() === "responder")
+        .map((user) => user.id)
+        .filter(Boolean)
+    );
+  }, [onlineUsers, presenceReady]);
+
+  const fallbackOnlineIds = useMemo(() => {
+    if (presenceReady) return onlineResponderIds;
+    return new Set(
+      responders
+        .filter((responder) => responder.is_active)
+        .map((responder) => responder.id)
+    );
+  }, [onlineResponderIds, presenceReady, responders]);
+
+  const onlineCount = fallbackOnlineIds.size;
+
+  const deriveStatus = useCallback(
+    (responder) => {
+      if ((responder.activeAssignments ?? 0) > 0) return "busy";
+      const isOnline = fallbackOnlineIds.has(responder.id);
+      return isOnline ? "available" : "offline";
+    },
+    [fallbackOnlineIds]
+  );
+
+  const respondersOnAssignment = useMemo(
+    () =>
+      responders.filter((responder) => (responder.activeAssignments ?? 0) > 0),
+    [responders]
+  );
+
+  const onlineBusyCount = useMemo(
+    () =>
+      respondersOnAssignment.filter((responder) =>
+        fallbackOnlineIds.has(responder.id)
+      ).length,
+    [fallbackOnlineIds, respondersOnAssignment]
+  );
+  const standbyOnline = Math.max(onlineCount - onlineBusyCount, 0);
+
+  const availableCount = useMemo(
+    () =>
+      responders.filter((responder) => deriveStatus(responder) === "available")
+        .length,
+    [deriveStatus, responders]
+  );
+
+  const offlineCount = useMemo(
+    () => Math.max(responders.length - onlineCount, 0),
+    [onlineCount, responders.length]
+  );
+
+  const busyCount = respondersOnAssignment.length;
+  const totalResponders = stats?.total ?? responders.length;
+  const activeResponderIdsFromIncidents = useMemo(() => {
+    const ids = new Set();
+    incidents.forEach((incident) => {
+      (incident.assignments || []).forEach((assignment) => {
+        if (["completed", "cancelled"].includes(assignment.status)) {
+          return;
+        }
+        ids.add(assignment.responder_id || assignment.responder?.id || assignment.id);
+      });
+    });
+    return ids;
+  }, [incidents]);
+
+  const totalCardValue = totalResponders || onlineCount;
+  const availableCardValue = responders.length ? availableCount : standbyOnline;
+  const busyCardValue = responders.length
+    ? busyCount
+    : activeResponderIdsFromIncidents.size;
+  const onlineBusyDisplay = responders.length
+    ? onlineBusyCount
+    : Math.min(activeResponderIdsFromIncidents.size, onlineCount);
+  const offlineCardValue = responders.length
+    ? offlineCount
+    : Math.max(totalCardValue - onlineCount, 0);
+
+  const coverageRate =
+    totalCardValue > 0 ? Math.round((onlineCount / totalCardValue) * 100) : 0;
+
   // Filter responders
   const filteredResponders = responders.filter((r) => {
     const matchesSearch =
@@ -95,21 +189,11 @@ export const ResponderOverview = () => {
       r.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       r.email?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const status =
-      r.activeAssignments > 0 ? "busy" : r.is_active ? "available" : "offline";
+    const status = deriveStatus(r);
     const matchesStatus = !statusFilter || status === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
-
-  // Group responders by status
-  const availableCount = responders.filter(
-    (r) => r.is_active && !r.activeAssignments
-  ).length;
-  const busyCount = responders.filter(
-    (r) => r.is_active && r.activeAssignments > 0
-  ).length;
-  const offlineCount = responders.filter((r) => !r.is_active).length;
 
   return (
     <div className="space-y-8">
@@ -137,10 +221,13 @@ export const ResponderOverview = () => {
             <Users className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">
-              {stats?.total ?? 0}
-            </p>
+            <p className="text-2xl font-bold text-foreground">{totalCardValue}</p>
             <p className="text-sm text-foreground/60">Total Responders</p>
+            <p className="text-xs text-foreground/50">
+              {presenceReady
+                ? `${onlineCount} online via presence`
+                : "Awaiting presence channel"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
@@ -148,10 +235,13 @@ export const ResponderOverview = () => {
             <UserCheck className="h-6 w-6 text-emerald-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">
-              {stats?.available ?? availableCount}
-            </p>
+            <p className="text-2xl font-bold text-foreground">{availableCardValue}</p>
             <p className="text-sm text-foreground/60">Available</p>
+            <p className="text-xs text-foreground/50">
+              {presenceReady
+                ? `${standbyOnline} ready & online`
+                : "Using account status fallback"}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
@@ -159,10 +249,11 @@ export const ResponderOverview = () => {
             <Activity className="h-6 w-6 text-amber-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">
-              {stats?.busy ?? busyCount}
-            </p>
+            <p className="text-2xl font-bold text-foreground">{busyCardValue}</p>
             <p className="text-sm text-foreground/60">On Assignment</p>
+            <p className="text-xs text-foreground/50">
+              {onlineBusyDisplay} online
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
@@ -170,7 +261,7 @@ export const ResponderOverview = () => {
             <XCircle className="h-6 w-6 text-gray-500" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{offlineCount}</p>
+            <p className="text-2xl font-bold text-foreground">{offlineCardValue}</p>
             <p className="text-sm text-foreground/60">Offline</p>
           </div>
         </div>
@@ -220,12 +311,7 @@ export const ResponderOverview = () => {
             ) : (
               <div className="space-y-3">
                 {filteredResponders.slice(0, 10).map((responder) => {
-                  const status =
-                    responder.activeAssignments > 0
-                      ? "busy"
-                      : responder.is_active
-                      ? "available"
-                      : "offline";
+                  const status = deriveStatus(responder);
 
                   return (
                     <div
@@ -395,9 +481,7 @@ export const ResponderOverview = () => {
               <div className="flex items-center justify-between">
                 <span className="text-foreground/70">Coverage Rate</span>
                 <span className="font-semibold text-emerald-600">
-                  {stats?.total > 0
-                    ? Math.round((stats.available / stats.total) * 100)
-                    : 0}
+                  {coverageRate}
                   %
                 </span>
               </div>
