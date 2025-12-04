@@ -14,6 +14,7 @@ use App\Models\IncidentResponderAssignment;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\HospitalCapabilityService;
+use App\Services\SmartRoutingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -21,8 +22,10 @@ use Illuminate\Support\Collection;
 
 class IncidentApiController extends Controller
 {
-    public function __construct(private HospitalCapabilityService $hospitalCapabilityService)
-    {
+    public function __construct(
+        private HospitalCapabilityService $hospitalCapabilityService,
+        private SmartRoutingService $smartRoutingService
+    ) {
     }
 
     public function index(Request $request)
@@ -215,6 +218,98 @@ class IncidentApiController extends Controller
             'data' => $recommendations,
             'meta' => [
                 'incident_has_coordinates' => $incidentLat !== null && $incidentLng !== null,
+            ],
+        ]);
+    }
+
+    /**
+     * Get AI-powered smart responder recommendations for an incident.
+     * Uses multiple factors: proximity, workload, experience, and response time history.
+     */
+    public function smartResponderRecommendations(Request $request, Incident $incident)
+    {
+        [$incidentLat, $incidentLng] = $this->extractCoordinates($incident->latlng);
+
+        // Fallback to metadata if latlng is not set
+        if ($incidentLat === null || $incidentLng === null) {
+            $metadata = is_array($incident->metadata) ? $incident->metadata : [];
+            $incidentLat = $this->resolveCoordinateFromMetadata($metadata['lat'] ?? $metadata['latitude'] ?? null);
+            $incidentLng = $this->resolveCoordinateFromMetadata($metadata['lng'] ?? $metadata['lon'] ?? $metadata['longitude'] ?? null);
+        }
+
+        $limit = max(1, (int) $request->query('limit', 5));
+
+        $recommendations = $this->smartRoutingService->getSmartRecommendations(
+            $incident,
+            $incidentLat,
+            $incidentLng,
+            $limit
+        );
+
+        return response()->json($recommendations);
+    }
+
+    /**
+     * Auto-assign the best available responder to an incident using AI routing.
+     */
+    public function smartAutoAssign(Request $request, Incident $incident)
+    {
+        $request->validate([
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Check if incident already has required responders
+        $activeAssignmentCount = $incident->assignments()
+            ->whereNotIn('status', [
+                IncidentResponderAssignment::STATUS_COMPLETED,
+                IncidentResponderAssignment::STATUS_CANCELLED,
+            ])->count();
+
+        if ($incident->responders_required > 0 && $activeAssignmentCount >= $incident->responders_required) {
+            return response()->json([
+                'message' => 'Incident already has the required number of responders.',
+            ], 409);
+        }
+
+        // Get the best responder recommendation
+        $bestResponder = $this->smartRoutingService->autoAssignBestResponder($incident);
+
+        if (!$bestResponder) {
+            return response()->json([
+                'message' => 'No available responders found.',
+                'ai_analysis' => null,
+            ], 404);
+        }
+
+        // Assign the recommended responder
+        $assignment = DB::transaction(function () use ($incident, $bestResponder, $request) {
+            $assignment = $incident->assignToResponder($bestResponder['responder_id']);
+
+            if ($incident->status === Incident::STATUS_REPORTED) {
+                $incident->statusUpdates()->create([
+                    'user_id' => $request->user()->id,
+                    'status' => Incident::STATUS_ACKNOWLEDGED,
+                    'notes' => $request->input('notes') ?? 'AI-assisted auto-assignment',
+                ]);
+            }
+
+            return $assignment;
+        });
+
+        $incident->load([
+            'assignments.responder:id,name,email,role,phone',
+            'statusUpdates.user:id,name,role',
+            'latestStatusUpdate.user:id,name,role',
+        ]);
+
+        broadcast(new IncidentUpdated($incident))->toOthers();
+
+        return response()->json([
+            'incident' => (new IncidentResource($incident))->resolve(),
+            'assignment' => new IncidentAssignmentResource($assignment),
+            'ai_recommendation' => [
+                'responder' => $bestResponder,
+                'reasoning' => $bestResponder['ai_reasoning'] ?? 'Based on proximity, workload, and experience scores.',
             ],
         ]);
     }

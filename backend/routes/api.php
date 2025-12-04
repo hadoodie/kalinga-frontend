@@ -192,6 +192,10 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::post('/incidents/{incident}/status', [IncidentApiController::class, 'updateStatus']);
         Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);
         
+        // AI Smart Routing endpoints
+        Route::get('/incidents/{incident}/smart-responder-recommendations', [IncidentApiController::class, 'smartResponderRecommendations']);
+        Route::post('/incidents/{incident}/smart-auto-assign', [IncidentApiController::class, 'smartAutoAssign']);
+        
         Route::apiResource('road-blockades', RoadBlockadeController::class)->except(['index']);
         Route::post('/road-blockades/route', [RoadBlockadeController::class, 'getRouteBlockades']);
         Route::patch('/road-blockades/{id}/remove', [RoadBlockadeController::class, 'removeBlockade']);
