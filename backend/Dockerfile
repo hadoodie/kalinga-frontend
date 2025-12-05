@@ -45,12 +45,14 @@ RUN mkdir -p /var/www/html/storage/framework/sessions \
 # 8. Copy Supervisor Config
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# 9. Expose Ports (80 for Web, 8080 for Reverb)
-EXPOSE 80 8080
+# 9. Expose Ports (Render will inject $PORT; default to 8080 for Apache, 8080 for Reverb)
+EXPOSE 8080
 
-# 10. Start Supervisor (Controls both Apache and Reverb)
-CMD php artisan package:discover --ansi && \
+# 10. Start Supervisor (Apache + Reverb) and align Apache to $PORT at runtime
+CMD sh -c "\
+    sed -i 's/80/${PORT:-8080}/g' /etc/apache2/ports.conf /etc/apache2/sites-enabled/000-default.conf && \
+    php artisan package:discover --ansi && \
     php artisan config:cache && \
     php artisan route:cache && \
     php artisan view:cache && \
-    /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf"
