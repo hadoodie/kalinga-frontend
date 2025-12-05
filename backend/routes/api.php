@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ResponderTrackingController;
 use App\Http\Controllers\Api\NLPController;
 use App\Http\Controllers\HospitalSafetyIndexController;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
 
@@ -69,6 +70,40 @@ Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+});
+
+// Public reverse geocode proxy (limits to avoid CORS on Nominatim)
+Route::middleware(['throttle:30,1'])->get('/geocode/reverse', function (Request $request) {
+    $validated = $request->validate([
+        'lat' => ['required', 'numeric'],
+        'lon' => ['required', 'numeric'],
+        'zoom' => ['nullable', 'integer', 'min:3', 'max:18'],
+    ]);
+
+    $zoom = $validated['zoom'] ?? 18;
+    $userAgent = config('services.nominatim.user_agent')
+        ?? env('NOMINATIM_USER_AGENT')
+        ?? 'kalinga-app/1.0 (+https://kalinga-frontend.onrender.com)';
+
+    $response = Http::withHeaders([
+        'User-Agent' => $userAgent,
+    ])->get('https://nominatim.openstreetmap.org/reverse', [
+        'format' => 'json',
+        'lat' => $validated['lat'],
+        'lon' => $validated['lon'],
+        'zoom' => $zoom,
+        'addressdetails' => 1,
+    ]);
+
+    if ($response->failed()) {
+        return response()->json([
+            'error' => 'Reverse geocoding failed',
+            'status' => $response->status(),
+            'body' => $response->json(),
+        ], $response->status() ?: 502);
+    }
+
+    return response()->json($response->json());
 });
 
 // Public read-only routes for testing
