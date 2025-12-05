@@ -34,7 +34,9 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # 7. Fix permissions (Apache runs as www-data)
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# FIX: Added mkdir to ensure directories exist before chown
+RUN mkdir -p /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # 8. Expose Port 80 (Standard HTTP port)
 EXPOSE 80
