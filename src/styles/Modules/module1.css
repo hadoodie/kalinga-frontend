@@ -1,0 +1,419 @@
+/* ==========================================================================
+   GLOBAL VARIABLES
+========================================================================== */
+:root {
+  --clr-primary: #0b472d;
+  --clr-primary-light: #114d32;
+  --clr-accent: #16a34a;
+
+  --clr-text: #374151;
+  --clr-text-light: #4b5563;
+  --clr-muted: #9aa3a0;
+
+  --clr-border: #e5e7eb;
+  --clr-bg-light: #f3f4f6;
+  --clr-bg-white: #ffffff;
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.08);
+  
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.3s ease;
+}
+
+/* ==========================================================================
+   MAIN LAYOUT
+========================================================================== */
+.lesson-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 28px;
+  padding: 32px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.lesson-page {
+  background: var(--clr-bg-white);
+  border-radius: var(--radius-lg);
+  padding: 32px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==========================================================================
+   BREADCRUMBS (UNTOUCHED)
+========================================================================== */
+.lesson-breadcrumbs {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: var(--clr-text-light);
+}
+
+.lesson-breadcrumbs a {
+  text-decoration: none;
+  color: var(--clr-primary-light);
+  font-weight: 500;
+}
+
+.lesson-breadcrumbs .mx {
+  margin: 0 4px;
+}
+
+/* ==========================================================================
+   HEADER SECTION
+========================================================================== */
+.lesson-header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.lesson-course-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--clr-primary);
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.lesson-activity-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--clr-primary-light);
+}
+
+/* ==========================================================================
+   PROGRESS BAR - IMPROVED
+========================================================================== */
+.progress-wrapper {
+  background: var(--clr-bg-light);
+  border-radius: var(--radius-md);
+  height: 8px;
+  width: 100%;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--clr-primary-light), var(--clr-accent));
+  border-radius: var(--radius-md);
+  transition: width var(--transition-base);
+}
+
+.progress-text {
+  font-size: 14px;
+  color: var(--clr-primary);
+  margin-bottom: 24px;
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   VIDEO SECTION - CLEAN
+========================================================================== */
+.video-wrapper {
+  background: #000;
+  border-radius: var(--radius-lg);
+  border: 1px solid #d1d5db;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+}
+
+.video-wrapper video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ==========================================================================
+   VIDEO LINK
+========================================================================== */
+.video-wrapper + div {
+  text-align: right;
+  margin-bottom: 24px;
+}
+
+.video-wrapper + div a {
+  font-size: 14px;
+  color: var(--clr-primary-light);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color var(--transition-fast);
+}
+
+.video-wrapper + div a:hover {
+  color: var(--clr-accent);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   TRANSCRIPT - MODERN
+========================================================================== */
+.transcript-section {
+  background: var(--clr-bg-light);
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 28px;
+  transition: all var(--transition-fast);
+}
+
+.transcript-section:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.transcript-section h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--clr-primary);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.transcript-section h3:hover {
+  color: var(--clr-accent);
+}
+
+.transcript-section p {
+  margin-top: 16px;
+  color: var(--clr-text);
+  line-height: 1.6;
+  white-space: pre-line;
+  font-size: 14px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   BUTTONS - MODERN
+========================================================================== */
+.btn {
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  border: 1px solid var(--clr-border);
+  transition: all var(--transition-fast);
+  font-size: 14px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-success {
+  background: var(--clr-accent);
+  color: white;
+  border: none;
+}
+
+.btn-success:hover:not(:disabled) {
+  background: var(--clr-primary-light);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.btn-disabled {
+  background: var(--clr-border);
+  color: #6b7280;
+  border: none;
+  cursor: not-allowed;
+}
+
+.btn-light {
+  background: var(--clr-bg-light);
+  color: var(--clr-primary);
+  border: 1px solid var(--clr-border);
+}
+
+.btn-light:hover:not(:disabled) {
+  background: var(--clr-bg-white);
+  border-color: var(--clr-accent);
+  color: var(--clr-accent);
+}
+
+/* ==========================================================================
+   BOTTOM CONTROLS - ORGANIZED
+========================================================================== */
+.lesson-controls {
+  margin-top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--clr-border);
+}
+
+.jump-wrapper {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.jump-select {
+  width: 100%;
+  max-width: 480px;
+  padding: 10px 14px;
+  border: 1px solid var(--clr-border);
+  border-radius: var(--radius-md);
+  background: white;
+  font-size: 14px;
+  color: var(--clr-text);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.jump-select:hover {
+  border-color: var(--clr-accent);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+.jump-select:focus {
+  outline: none;
+  border-color: var(--clr-accent);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+}
+
+/* ==========================================================================
+   SIDEBAR (UNTOUCHED)
+========================================================================== */
+.lesson-activity-list {
+  width: 300px;
+  min-width: 280px;
+  background: var(--clr-bg-white);
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--clr-border);
+  box-shadow: var(--shadow-sm);
+  position: sticky;
+  top: 100px;
+  height: fit-content;
+}
+
+.lesson-activity-list h4 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--clr-primary);
+  margin-bottom: 12px;
+}
+
+.lesson-activity-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 10px;
+}
+
+.lesson-activity-list li {
+  padding: 10px 8px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 4px;
+  transition: 0.15s ease;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.lesson-activity-list li.active {
+  background: rgba(16, 163, 76, 0.08);
+  font-weight: 600;
+  border-left: 3px solid var(--clr-accent);
+  padding-left: 12px;
+}
+
+.lesson-activity-list li.done {
+  color: var(--clr-primary);
+}
+
+.lesson-activity-list .module-status {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--clr-text-light);
+}
+
+/* ==========================================================================
+   RESPONSIVE DESIGN
+========================================================================== */
+@media (max-width: 1024px) {
+  .lesson-layout {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 24px;
+  }
+
+  .lesson-page {
+    padding: 24px;
+  }
+
+  .lesson-activity-list {
+    position: static;
+    width: 100%;
+  }
+
+  .lesson-controls {
+    flex-wrap: wrap;
+  }
+
+  .jump-wrapper {
+    width: 100%;
+    order: 3;
+  }
+}
+
+@media (max-width: 640px) {
+  .lesson-layout {
+    padding: 16px;
+  }
+
+  .lesson-page {
+    padding: 16px;
+  }
+
+  .lesson-course-title {
+    font-size: 22px;
+  }
+
+  .lesson-activity-title {
+    font-size: 16px;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .lesson-controls {
+    flex-direction: column;
+  }
+
+  .jump-wrapper {
+    width: 100%;
+  }
+
+  .jump-select {
+    max-width: 100%;
+  }
+}
