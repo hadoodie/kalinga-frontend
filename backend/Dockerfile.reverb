@@ -1,0 +1,32 @@
+# Laravel Reverb standalone service for Render
+# Keeps the main API container untouched (no Apache changes) to avoid CORS regressions
+FROM php:8.2-cli
+
+# 1) System deps (Postgres client libs since app uses pdo_pgsql elsewhere)
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    unzip \
+    && docker-php-ext-install pdo pdo_pgsql bcmath pcntl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 2) Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# 3) Workdir
+WORKDIR /var/www/html
+
+# 4) Copy app code
+COPY . .
+
+# 5) Install prod dependencies
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
+# 6) Ensure storage bootstrap perms
+RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
+    && chown -R www-data:www-data storage bootstrap/cache
+
+# 7) Expose the Render-assigned port (Reverb listens on $PORT)
+EXPOSE 8080
+
+# 8) Start Reverb on the platform port; Laravel uses REVERB_* env from service settings
+CMD ["sh", "-c", "php artisan reverb:start --host=0.0.0.0 --port=${PORT:-8080}"]
