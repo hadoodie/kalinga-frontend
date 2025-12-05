@@ -106,6 +106,52 @@ Route::middleware(['throttle:30,1'])->get('/geocode/reverse', function (Request 
     return response()->json($response->json());
 });
 
+// Public debug endpoint to check API -> Reverb connectivity without shell access
+Route::middleware(['throttle:10,1'])->get('/debug/reverb', function () {
+    $rawHost = env('REVERB_HOST');
+    $port = env('REVERB_PORT', 443);
+    $scheme = env('REVERB_SCHEME', 'https');
+
+    // Normalize host (strip scheme if accidentally included)
+    $host = preg_replace('#^https?://#', '', (string) $rawHost);
+
+    $socketResult = null;
+    try {
+        $address = sprintf('%s:%s', $host, $port);
+        $fp = @stream_socket_client($address, $errno, $errstr, 3);
+        if ($fp) {
+            $socketResult = ['ok' => true, 'address' => $address];
+            fclose($fp);
+        } else {
+            $socketResult = ['ok' => false, 'error' => $errstr ?: 'connection_failed'];
+        }
+    } catch (\Throwable $e) {
+        $socketResult = ['ok' => false, 'error' => $e->getMessage()];
+    }
+
+    $httpResult = null;
+    try {
+        $url = rtrim($scheme . '://' . $host, '/');
+        if ($port) $url .= ':' . $port;
+        // attempt a lightweight HEAD first, fallback to GET
+        $response = Http::timeout(5)->withHeaders(['Accept' => 'application/json'])->head($url);
+        $httpResult = ['ok' => true, 'status' => $response->status()];
+    } catch (\Throwable $e) {
+        // try GET if HEAD failed
+        try {
+            $response = Http::timeout(5)->withHeaders(['Accept' => 'application/json'])->get($url);
+            $httpResult = ['ok' => true, 'status' => $response->status()];
+        } catch (\Throwable $e2) {
+            $httpResult = ['ok' => false, 'error' => $e2->getMessage()];
+        }
+    }
+
+    return response()->json([
+        'reverb_env' => ['raw' => $rawHost, 'host' => $host, 'port' => $port, 'scheme' => $scheme],
+        'socket' => $socketResult,
+        'http' => $httpResult,
+    ]);
+});
 // Public read-only routes for testing
 Route::middleware(['throttle:60,1'])->group(function () {
     Route::get('/hospitals', [HospitalController::class, 'index']);
