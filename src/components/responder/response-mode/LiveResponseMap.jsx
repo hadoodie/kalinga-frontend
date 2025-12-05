@@ -981,7 +981,8 @@ export default function LiveResponseMap({
         </MapContainer>
 
         {/* Quick action floating menu (mobile-first) */}
-        <div className="absolute left-4 bottom-6 z-[1100] flex flex-col items-end">
+        {/* Mobile: bottom-right stacked FABs (keep as before) */}
+        <div className="absolute left-4 bottom-6 z-[1100] flex flex-col items-end lg:hidden">
           {/* Expandable actions */}
           <div
             className={`flex flex-col items-end space-y-2 transition-all ${actionsOpen ? "opacity-100 translate-y-0" : "opacity-90"}`}
@@ -1072,7 +1073,60 @@ export default function LiveResponseMap({
           </div>
         </div>
 
-        {/* Fullscreen overlay: when active, expand this section to cover viewport */}
+        {/* Desktop: left-side toolbar placed below leaflet controls to avoid overlap */}
+        <div className="hidden lg:flex absolute left-20 top-20 z-[1100] flex-col items-start gap-3">
+          <div className="flex flex-col gap-3 bg-white/90 p-2 rounded-lg shadow-md">
+            <button
+              onClick={() => {
+                if (responderPosition && mapRef.current) {
+                  mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
+              title="Center on responder"
+            >
+              <Target className="h-4 w-4 text-slate-700" />
+              <span className="text-sm text-slate-700">Center</span>
+            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => mapRef.current && mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19))}
+                className="p-2 rounded-md bg-white hover:bg-gray-50"
+                title="Zoom in"
+              >
+                <ZoomIn className="h-4 w-4 text-slate-700" />
+              </button>
+              <button
+                onClick={() => mapRef.current && mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1))}
+                className="p-2 rounded-md bg-white hover:bg-gray-50"
+                title="Zoom out"
+              >
+                <ZoomOut className="h-4 w-4 text-slate-700" />
+              </button>
+            </div>
+
+            <button
+              onClick={() => setShowHospitals((s) => !s)}
+              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
+              title="Toggle hospitals"
+            >
+              <Layers className="h-4 w-4 text-slate-700" />
+              <span className="text-sm text-slate-700">Hospitals</span>
+            </button>
+
+            <button
+              onClick={() => setShowBlockades((s) => !s)}
+              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
+              title="Toggle road alerts"
+            >
+              <Settings className="h-4 w-4 text-slate-700" />
+              <span className="text-sm text-slate-700">Road alerts</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Fullscreen overlay: when active, expand this section to cover viewport (mobile only) */}
         {isFullscreen && (
           <div
             onClick={() => setIsFullscreen(false)}
