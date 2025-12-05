@@ -19,7 +19,7 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
+    'allowed_origins' => ['*',
         // Production (Render) - Explicitly defined
         'https://kalinga-frontend.onrender.com',
         
