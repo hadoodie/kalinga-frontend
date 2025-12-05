@@ -428,13 +428,18 @@ class ChatController extends Controller
             'messages' => [$messagePayload],
         ];
 
-        broadcast(new MessageSent(
-            message: $messagePayload,
-            conversation: $conversationPayload,
-            senderId: $user->id,
-            receiverId: $groupId ? null : $receiverId,
-            groupId: $groupId,
-        ));
+        // Broadcast should never block DB writes; swallow transport errors
+        try {
+            broadcast(new MessageSent(
+                message: $messagePayload,
+                conversation: $conversationPayload,
+                senderId: $user->id,
+                receiverId: $groupId ? null : $receiverId,
+                groupId: $groupId,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $autoReplyPayload = $this->handleEmergencyEscalation(
             sender: $user,
@@ -560,7 +565,11 @@ class ChatController extends Controller
             'notes' => 'Emergency SOS created via responder chat.',
         ]);
 
-        broadcast(new IncidentUpdated($incident))->toOthers();
+        try {
+            broadcast(new IncidentUpdated($incident))->toOthers();
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $conversationId = $conversationPayload['conversationId'] ?? null;
 
@@ -639,14 +648,18 @@ class ChatController extends Controller
             'messages' => [$autoMessagePayload],
         ];
 
-        broadcast(new MessageSent(
-            message: $autoMessagePayload,
-            conversation: $autoConversationPayload,
-            senderId: $autoMessage->sender_id,
-            receiverId: $autoMessage->receiver_id,
-            groupId: null,
-            suppressCurrentUser: false,
-        ));
+        try {
+            broadcast(new MessageSent(
+                message: $autoMessagePayload,
+                conversation: $autoConversationPayload,
+                senderId: $autoMessage->sender_id,
+                receiverId: $autoMessage->receiver_id,
+                groupId: null,
+                suppressCurrentUser: false,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return [
             'message' => $autoMessagePayload,
