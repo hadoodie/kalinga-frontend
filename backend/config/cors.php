@@ -15,12 +15,20 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+        'sanctum/*',
+        'broadcasting/auth',
+        'broadcasting/*',
+    ],
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*',
-        // Production (Render) - Explicitly defined
+    'allowed_origins' => [
+        // Production (Render) - Backend
+        'https://kalinga-backend.onrender.com',
+        // Production (Render) - Frontend
         'https://kalinga-frontend.onrender.com',
         
         // Local Development
