@@ -18,6 +18,10 @@ RUN apt-get update && apt-get install -y \
 # 2. Enable Apache mod_rewrite (Required for Laravel)
 RUN a2enmod rewrite
 
+# 2b. Ensure .htaccess is honored for Laravel (public/) rewrites
+RUN printf '<Directory /var/www/html/public>\n    AllowOverride All\n    Require all granted\n</Directory>\n' > /etc/apache2/conf-available/laravel.conf \
+    && a2enconf laravel
+
 # 3. Point Apache to the 'public' folder
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
