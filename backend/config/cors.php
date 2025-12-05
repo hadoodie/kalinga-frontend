@@ -17,10 +17,11 @@ return [
 
     'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
 
-    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    'allowed_methods' => ['*'], // changed to '*' to ensure all methods work
 
     'allowed_origins' => [
         env('FRONTEND_URL', 'http://localhost:5173'),
+        'https://kalinga-frontend.onrender.com', // <--- THIS WAS MISSING
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:4173',
@@ -36,16 +37,7 @@ return [
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => [
-        'Content-Type',
-        'Authorization',
-        'X-Requested-With',
-        'X-CSRF-TOKEN',
-        'X-XSRF-TOKEN',
-        'X-Socket-Id',
-        'Accept',
-        'Origin',
-    ],
+    'allowed_headers' => ['*'], // changed to '*' to avoid header blocking
 
     'exposed_headers' => [],
 
