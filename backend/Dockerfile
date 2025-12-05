@@ -1,77 +1,36 @@
-### Multi-stage Dockerfile for Laravel backend (PHP-FPM)
-### - Installs PHP extensions
-### - Runs Composer install after extensions are present
-### - Produces a lean runtime image
+# USE APACHE (Web Server), NOT FPM
+FROM php:8.2-apache
 
-FROM php:8.2-fpm-alpine AS builder
-
-ENV COMPOSER_ALLOW_SUPERUSER=1 \
-    COMPOSER_HOME=/composer
-
-RUN apk add --no-cache --virtual .build-deps \
-    $PHPIZE_DEPS \
-    icu-dev \
+# 1. Install system dependencies for Postgres (libpq-dev) and image processing
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
     libzip-dev \
-    zlib-dev \
-    libpng-dev \
-    libjpeg-turbo-dev \
-    freetype-dev \
-    oniguruma-dev \
-    bash \
-    git \
-    curl \
     unzip \
-  && docker-php-ext-configure gd --with-freetype --with-jpeg \
-  && docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN || 1) \
-    pdo_mysql \
-    mbstring \
-    zip \
-    bcmath \
-    pcntl \
-    exif \
-    intl \
-    gd \
-  && apk add --no-cache libzip zlib libpng freetype jpeg \
-  # install composer (phar)
-  && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-  && composer --version
+    && docker-php-ext-install pdo pdo_pgsql zip
 
+# 2. Enable Apache mod_rewrite (REQUIRED for Laravel routes to work)
+RUN a2enmod rewrite
+
+# 3. Point Apache to the 'public' folder (Laravel standard)
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
+
+# 4. Set working directory
 WORKDIR /var/www/html
 
-# Copy composer files first to leverage Docker cache
-COPY composer.json composer.lock ./
+# 5. Install Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-RUN composer install --prefer-dist --no-interaction --no-progress --optimize-autoloader --no-dev || true
-
-# Copy application files
+# 6. Copy files and install dependencies
 COPY . .
+RUN composer install --no-dev --optimize-autoloader
 
-# Ensure permissions for storage & cache
-RUN set -eux; \
-    addgroup -g 1000 appgroup || true; \
-    adduser -D -u 1000 -G appgroup appuser || true; \
-    chown -R appuser:appgroup /var/www/html || true; \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache || true
+# 7. Fix permissions (Apache runs as www-data)
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-### Runtime image
-FROM php:8.2-fpm-alpine AS runtime
+# 8. Expose Port 80 (Standard HTTP port)
+EXPOSE 80
 
-RUN apk add --no-cache \
-    libzip zlib libpng freetype jpeg icu-libs \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(getconf _NPROCESSORS_ONLN || 1) pdo_mysql mbstring zip bcmath exif intl gd || true
-
-WORKDIR /var/www/html
-
-# Copy application + vendor from builder
-COPY --from=builder /var/www/html /var/www/html
-
-# Ensure correct ownership on runtime
-RUN set -eux; \
-    chown -R 1000:1000 /var/www/html || true; \
-    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache || true
-
-EXPOSE 9000
-
-# Default command runs php-fpm
-CMD ["php-fpm"]
+# 9. Start Apache
+CMD ["apache2-foreground"]
