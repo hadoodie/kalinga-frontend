@@ -152,6 +152,113 @@ Route::middleware(['throttle:10,1'])->get('/debug/reverb', function () {
         'http' => $httpResult,
     ]);
 });
+
+// Authenticated debug helper to evaluate broadcast channel authorization rules
+Route::middleware(['auth:sanctum', 'throttle:30,1'])->post('/debug/broadcast-auth', function (Request $request) {
+    $user = $request->user();
+    $channel = (string) $request->input('channel_name', '');
+    $socketId = (string) $request->input('socket_id', '');
+
+    if ($channel === '') {
+        return response()->json([
+            'ok' => false,
+            'reason' => 'channel_name is required',
+        ], 400);
+    }
+
+    $decision = [
+        'ok' => false,
+        'reason' => 'unsupported channel',
+    ];
+
+    // Helper to parse trailing numeric identifier
+    $parseId = function (string $value): ?int {
+        $parts = explode('.', $value);
+        $last = end($parts);
+        return ctype_digit($last) ? (int) $last : null;
+    };
+
+    // private-chat.user.{id}
+    if (str_starts_with($channel, 'private-chat.user.')) {
+        $targetId = $parseId($channel);
+        if ($targetId !== null && (int) $user->id === $targetId) {
+            $decision = ['ok' => true, 'reason' => 'user id matches channel'];
+        } else {
+            $decision = ['ok' => false, 'reason' => 'user id mismatch'];
+        }
+    }
+
+    // private-chat.group.{id}
+    if (str_starts_with($channel, 'private-chat.group.')) {
+        $targetId = $parseId($channel);
+        if ($targetId !== null && method_exists($user, 'groups')) {
+            $exists = $user->groups()->whereKey($targetId)->exists();
+            $decision = [
+                'ok' => $exists,
+                'reason' => $exists ? 'user is in group' : 'user not in group',
+            ];
+        } else {
+            $decision = ['ok' => false, 'reason' => 'group relation missing or invalid id'];
+        }
+    }
+
+    // presence-incidents
+    if ($channel === 'presence-incidents') {
+        $allowedRoles = ['admin', 'responder', 'logistics', 'patient'];
+        $isAllowed = in_array($user->role, $allowedRoles, true);
+        $decision = [
+            'ok' => $isAllowed,
+            'reason' => $isAllowed ? 'role allowed for incidents presence channel' : 'role not permitted',
+        ];
+    }
+
+    // presence-incident.{incidentId}.tracking (leaflet tracker/patient-responder)
+    if (str_starts_with($channel, 'presence-incident.') && str_ends_with($channel, '.tracking')) {
+        $parts = explode('.', $channel);
+        // expected: ['presence-incident', '{incidentId}', 'tracking']
+        $incidentId = null;
+        if (count($parts) >= 3 && ctype_digit($parts[1])) {
+            $incidentId = (int) $parts[1];
+        }
+
+        if ($incidentId) {
+            $incident = \App\Models\Incident::find($incidentId);
+            if (!$incident) {
+                $decision = ['ok' => false, 'reason' => 'incident not found'];
+            } else {
+                $isOwner = $incident->user_id === $user->id;
+                $isAssigned = $incident->assignments()->where('responder_id', $user->id)->exists();
+                $isAdmin = $user->role === 'admin';
+                $allowed = $isOwner || $isAssigned || $isAdmin;
+                $decision = [
+                    'ok' => $allowed,
+                    'reason' => $allowed ? 'authorized (owner/assigned/admin)' : 'not owner/assigned/admin',
+                    'context' => [
+                        'is_owner' => $isOwner,
+                        'is_assigned' => $isAssigned,
+                        'is_admin' => $isAdmin,
+                        'incident_id' => $incidentId,
+                    ],
+                ];
+            }
+        } else {
+            $decision = ['ok' => false, 'reason' => 'invalid incident id in channel'];
+        }
+    }
+
+    return response()->json([
+        'ok' => $decision['ok'],
+        'reason' => $decision['reason'],
+        'channel' => $channel,
+        'socket_id' => $socketId,
+        'user' => [
+            'id' => $user->id,
+            'role' => $user->role,
+            'email' => $user->email ?? null,
+        ],
+        'context' => $decision['context'] ?? null,
+    ]);
+});
 // Public read-only routes for testing
 Route::middleware(['throttle:60,1'])->group(function () {
     Route::get('/hospitals', [HospitalController::class, 'index']);
