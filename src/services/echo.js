@@ -3,7 +3,9 @@ import Pusher from "pusher-js";
 
 window.Pusher = Pusher;
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
 
 const buildAuthHeader = () => {
   const token = localStorage.getItem("token");
@@ -40,17 +42,23 @@ const applyAuthHeader = (echoInstance, headerValue) => {
 };
 
 // Configure Echo for Laravel Reverb WebSocket connections
-const reverbScheme = import.meta.env.VITE_REVERB_SCHEME || "http";
+const fallbackHost =
+  (typeof window !== "undefined" && window.location.hostname) || "localhost";
+const reverbScheme =
+  import.meta.env.VITE_REVERB_SCHEME ||
+  (typeof window !== "undefined" && window.location.protocol === "https:" ? "https" : "http");
 const useTls = reverbScheme === "https";
+const reverbPort = Number(import.meta.env.VITE_REVERB_PORT) || (useTls ? 443 : 80);
 const transportModes = useTls ? ["wss"] : ["ws"];
 
 const echo = new Echo({
   broadcaster: "reverb",
   key: import.meta.env.VITE_REVERB_APP_KEY || "ydxpycz90avrcgumitzo",
-  wsHost: import.meta.env.VITE_REVERB_HOST || "localhost",
-  wsPort: import.meta.env.VITE_REVERB_PORT || 6001,
-  wssPort: import.meta.env.VITE_REVERB_PORT || 6001,
+  wsHost: import.meta.env.VITE_REVERB_HOST || fallbackHost,
+  wsPort: reverbPort,
+  wssPort: reverbPort,
   forceTLS: useTls,
+  encrypted: useTls,
   enabledTransports: transportModes,
   disableStats: true, // Disable statistics for better performance
   authEndpoint: `${API_BASE_URL}/api/broadcasting/auth`,

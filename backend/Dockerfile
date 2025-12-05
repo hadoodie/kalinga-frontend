@@ -15,12 +15,23 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_pgsql zip bcmath gd intl exif pcntl
 
-# 2. Enable Apache mod_rewrite (Required for Laravel)
-RUN a2enmod rewrite
+# 2. Enable Apache mods (rewrite + proxy for websockets)
+RUN a2enmod rewrite proxy proxy_http proxy_wstunnel headers
 
 # 2b. Ensure .htaccess is honored for Laravel (public/) rewrites
 RUN printf '<Directory /var/www/html/public>\n    AllowOverride All\n    Require all granted\n</Directory>\n' > /etc/apache2/conf-available/laravel.conf \
     && a2enconf laravel
+
+# 2c. Proxy websocket traffic to Reverb (running on :6001 internally)
+RUN printf '<IfModule mod_proxy.c>\n\
+ProxyPreserveHost On\n\
+AllowEncodedSlashes NoDecode\n\
+ProxyPass /app/ ws://127.0.0.1:6001/app/ retry=0 timeout=120 keepalive=120\n\
+ProxyPassReverse /app/ ws://127.0.0.1:6001/app/\n\
+ProxyPass /apps/ http://127.0.0.1:6001/apps/ retry=0 timeout=120 keepalive=120\n\
+ProxyPassReverse /apps/ http://127.0.0.1:6001/apps/\n\
+</IfModule>\n' > /etc/apache2/conf-available/reverb-proxy.conf \
+    && a2enconf reverb-proxy
 
 # 3. Point Apache to the 'public' folder
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
@@ -49,8 +60,8 @@ RUN mkdir -p /var/www/html/storage/framework/sessions \
 # 8. Copy Supervisor Config
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# 9. Expose Ports (Render will inject $PORT; default to 8080 for Apache, 8080 for Reverb)
-EXPOSE 8080
+# 9. Expose Ports (Render will inject $PORT for Apache; Reverb listens on 6001 internally)
+EXPOSE 8080 6001
 
 # 10. Start Supervisor (Apache + Reverb) and align Apache to $PORT at runtime
 CMD sh -c "\
