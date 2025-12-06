@@ -177,6 +177,33 @@ const echo = new Echo({
 // Ensure the runtime instance always reflects the latest token
 applyAuthHeader(echo, echo.options?.auth?.headers?.Authorization);
 
+// Debug: bind to underlying Pusher/Reverb connection events (state, connected, error)
+try {
+  const pusher = echo.connector?.pusher;
+  if (pusher && pusher.connection) {
+    // eslint-disable-next-line no-console
+    console.debug("[echo debug] binding pusher connection events");
+    pusher.connection.bind("state_change", (states) => {
+      // eslint-disable-next-line no-console
+      console.debug("[echo debug] pusher state_change", states.previous, "->", states.current);
+    });
+    pusher.connection.bind("connected", () => {
+      // eslint-disable-next-line no-console
+      console.info("[echo debug] pusher connected, socket_id ->", pusher.connection.socket_id);
+    });
+    pusher.connection.bind("error", (err) => {
+      // eslint-disable-next-line no-console
+      console.error("[echo debug] pusher connection error", err);
+    });
+  } else {
+    // eslint-disable-next-line no-console
+    console.debug("[echo debug] pusher connector not available at init");
+  }
+} catch (e) {
+  // eslint-disable-next-line no-console
+  console.error("[echo debug] error binding pusher events", e);
+}
+
 // Reconnect when token changes
 export const reconnectEcho = () => {
   const headerValue = buildAuthHeader();
@@ -186,3 +213,18 @@ export const reconnectEcho = () => {
 export const getEchoInstance = () => echo;
 
 export default echo;
+
+// Extra debug helper for manual inspection in console
+export const debugEcho = () => {
+  try {
+    // eslint-disable-next-line no-console
+    console.info("[echo debug] echo.options ->", echo.options || {});
+    // eslint-disable-next-line no-console
+    console.info("[echo debug] echo.connector ->", echo.connector || {});
+    // eslint-disable-next-line no-console
+    console.info("[echo debug] pusher connection socket_id ->", echo.connector?.pusher?.connection?.socket_id);
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error("[echo debug] debugEcho error", e);
+  }
+};
