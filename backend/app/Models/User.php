@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\AllocationRequest; // <-- ADDED THIS IMPORT
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -110,5 +111,17 @@ class User extends Authenticatable
     public function incidentStatusUpdates(): HasMany
     {
         return $this->hasMany(IncidentStatusUpdate::class);
+    }
+
+    /**
+     * Boot the model and generate uuid for new users.
+     */
+    protected static function booted()
+    {
+        static::creating(function ($user) {
+            if (empty($user->uuid)) {
+                $user->uuid = (string) Str::uuid();
+            }
+        });
     }
 }

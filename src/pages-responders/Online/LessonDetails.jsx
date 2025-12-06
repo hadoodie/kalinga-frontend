@@ -72,7 +72,9 @@ export default function LessonDetails() {
     }
   }, [id, activitySlug, activities]);
 
-  const idx = activitySlug ? activities.findIndex((a) => a.slug === activitySlug) : 0;
+  const idx = activitySlug
+    ? activities.findIndex((a) => a.slug === activitySlug)
+    : 0;
   const activeIndex = idx === -1 ? 0 : idx;
   const current = activities[activeIndex];
 
@@ -134,14 +136,17 @@ export default function LessonDetails() {
     const isUnlockedByList = unlockedModules.includes(String(id));
 
     const saved = JSON.parse(localStorage.getItem(progressKey)) || [];
-    const allDone = activities.length > 0 && activities.every((a) => saved.includes(a.slug));
+    const allDone =
+      activities.length > 0 && activities.every((a) => saved.includes(a.slug));
 
     const unlocked = isUnlockedByList || allDone;
     setModuleUnlocked(unlocked);
 
     if (allDone && !isUnlockedByList) {
       const nextId = String(Number(id) + 1);
-      const updated = Array.from(new Set([...unlockedModules, String(id), nextId]));
+      const updated = Array.from(
+        new Set([...unlockedModules, String(id), nextId])
+      );
       localStorage.setItem(unlockKey, JSON.stringify(updated));
     }
   }, [completedLessons, id, activities.length]);
@@ -200,8 +205,11 @@ export default function LessonDetails() {
       if (updated.length === activities.length) {
         setModuleUnlocked(true);
 
-        const unlockedModules = JSON.parse(localStorage.getItem(unlockKey)) || [];
-        const updatedModules = Array.from(new Set([...unlockedModules, String(id)]));
+        const unlockedModules =
+          JSON.parse(localStorage.getItem(unlockKey)) || [];
+        const updatedModules = Array.from(
+          new Set([...unlockedModules, String(id)])
+        );
         const nextId = String(Number(id) + 1);
         if (!updatedModules.includes(nextId)) updatedModules.push(nextId);
         localStorage.setItem(unlockKey, JSON.stringify(updatedModules));
@@ -292,22 +300,35 @@ export default function LessonDetails() {
           </div>
 
           <div className="video-wrapper">
-            <video src={videoUrl} className="video-player" controls controlsList="nodownload" />
+            <video
+              src={videoUrl}
+              className="video-player"
+              controls
+              controlsList="nodownload"
+            />
           </div>
           <div className="pdf-fallback">
-            <a href={videoUrl} target="_blank" rel="noreferrer" className="btn btn-outline">
+            <a
+              href={videoUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-outline"
+            >
               Open video in new tab
             </a>
           </div>
 
           <div className="transcript-section">
-            <h3 style={{ cursor: "pointer" }} onClick={() => setShowTranscript((prev) => !prev)}>
+            <h3
+              style={{ cursor: "pointer" }}
+              onClick={() => setShowTranscript((prev) => !prev)}
+            >
               Transcript {showTranscript ? "▲" : "▼"}
             </h3>
             {showTranscript && (
               <p>
-                You know, when a typhoon is raging or the ground starts to shake,
-                there's one place we all assume will be a sanctuary...
+                You know, when a typhoon is raging or the ground starts to
+                shake, there's one place we all assume will be a sanctuary...
               </p>
             )}
           </div>
@@ -329,12 +350,20 @@ export default function LessonDetails() {
           </div>
 
           <div className="lesson-controls">
-            <button onClick={handlePrev} className="btn btn-light" disabled={activeIndex === 0}>
+            <button
+              onClick={handlePrev}
+              className="btn btn-light"
+              disabled={activeIndex === 0}
+            >
               Back
             </button>
 
             <div className="jump-wrapper">
-              <select className="jump-select" value={current.slug} onChange={handleJump}>
+              <select
+                className="jump-select"
+                value={current.slug}
+                onChange={handleJump}
+              >
                 {activities.map((a, i) => (
                   <option key={a.slug} value={a.slug}>
                     {i + 1}. {a.title}
@@ -345,7 +374,9 @@ export default function LessonDetails() {
 
             <button
               onClick={handleNext}
-              className={`btn ${isWaiting || !isAssessmentPassed ? "btn-disabled" : "btn-light"}`}
+              className={`btn ${
+                isWaiting || !isAssessmentPassed ? "btn-disabled" : "btn-light"
+              }`}
               disabled={isWaiting || !isAssessmentPassed}
             >
               {isAssessmentPassed
@@ -371,7 +402,9 @@ export default function LessonDetails() {
               >
                 <Link to={`/modules/${id}/activity/${a.slug}`}>
                   {i + 1}. {a.title}{" "}
-                  {completedLessons.includes(a.slug) && <span className="check">✓</span>}
+                  {completedLessons.includes(a.slug) && (
+                    <span className="check">✓</span>
+                  )}
                 </Link>
               </li>
             ))}
