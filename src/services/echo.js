@@ -3,6 +3,10 @@ import Pusher from "pusher-js";
 import { resolveApiBaseUrl, resolveRealtimeSettings } from "../config/runtime";
 
 window.Pusher = Pusher;
+try {
+  // Surface all Pusher internals in the console for easier prod diagnostics
+  Pusher.logToConsole = true;
+} catch (e) {}
 
 const API_BASE_URL = resolveApiBaseUrl();
 const {
@@ -84,7 +88,7 @@ const echo = new Echo({
       authorize: (socketId, callback) => {
         // Debug: announce when attempting to auth
         // eslint-disable-next-line no-console
-        console.debug("[echo debug] authorizer start", {
+        console.info("[echo debug] authorizer start", {
           channel: channel.name,
           socketId,
           api: API_BASE_URL,
@@ -118,7 +122,7 @@ const echo = new Echo({
             }
             const data = await response.json();
             // eslint-disable-next-line no-console
-            console.debug("[echo debug] Broadcast auth success", data);
+            console.info("[echo debug] Broadcast auth success", data);
             callback(false, data);
           })
           .catch((error) => {
@@ -139,10 +143,10 @@ try {
   const pusher = echo.connector?.pusher;
   if (pusher && pusher.connection) {
     // eslint-disable-next-line no-console
-    console.debug("[echo debug] binding pusher connection events");
+    console.info("[echo debug] binding pusher connection events");
     pusher.connection.bind("state_change", (states) => {
       // eslint-disable-next-line no-console
-      console.debug(
+      console.info(
         "[echo debug] pusher state_change",
         states.previous,
         "->",
