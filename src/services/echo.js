@@ -16,6 +16,7 @@ const {
 } = resolveRealtimeSettings();
 const useTls = reverbScheme === "https";
 const transportModes = useTls ? ["wss"] : ["ws"];
+const appKey = import.meta.env.VITE_REVERB_APP_KEY || "ydxpycz90avrcgumitzo";
 
 // Debug: surface computed API and reverb defaults for troubleshooting
 try {
@@ -28,7 +29,9 @@ try {
     "scheme ->",
     reverbScheme,
     "port ->",
-    reverbPort
+    reverbPort,
+    "key ->",
+    appKey
   );
 } catch (e) {}
 const buildAuthHeader = () => {
@@ -67,7 +70,7 @@ const applyAuthHeader = (echoInstance, headerValue) => {
 
 const echo = new Echo({
   broadcaster: "reverb",
-  key: import.meta.env.VITE_REVERB_APP_KEY || "ydxpycz90avrcgumitzo",
+  key: appKey,
   wsHost: resolvedReverbHost,
   wsPort: reverbPort,
   wssPort: reverbPort,
