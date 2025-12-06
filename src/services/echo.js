@@ -26,6 +26,10 @@ const inferApiBase = () => {
     if (host.includes("kalinga-frontend.onrender.com")) {
       return "https://kalinga-backend.onrender.com";
     }
+    // Custom domains default to backend host unless explicitly set
+    if (!host.includes("localhost") && !host.includes("127.0.0.1")) {
+      return "https://kalinga-backend.onrender.com";
+    }
     return window.location.origin;
   }
 
@@ -81,6 +85,9 @@ const inferReverbHost = () => {
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
     if (host.includes("kalinga-frontend.onrender.com")) {
+      return "kalinga-reverb.onrender.com";
+    }
+    if (!host.includes("localhost") && !host.includes("127.0.0.1")) {
       return "kalinga-reverb.onrender.com";
     }
     return host;
