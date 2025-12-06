@@ -71,6 +71,7 @@ const applyAuthHeader = (echoInstance, headerValue) => {
 const echo = new Echo({
   broadcaster: "reverb",
   key: appKey,
+  cluster: "mt1", // Required by pusher-js even for custom hosts
   wsHost: resolvedReverbHost,
   wsPort: reverbPort,
   wssPort: reverbPort,
