@@ -38,6 +38,13 @@ const inferApiBase = () => {
 
 const API_BASE_URL = inferApiBase();
 
+// Debug: surface computed API and reverb defaults for troubleshooting
+try {
+  // eslint-disable-next-line no-console
+  console.info("[echo debug] API_BASE_URL ->", API_BASE_URL);
+  // eslint-disable-next-line no-console
+  console.info("[echo debug] inferred reverb host ->", fallbackHost, "scheme ->", reverbScheme, "port ->", reverbPort);
+} catch (e) {}
 const buildAuthHeader = () => {
   const token = localStorage.getItem("token");
   return token ? `Bearer ${token}` : "";
@@ -128,6 +135,10 @@ const echo = new Echo({
   authorizer: (channel, options) => {
     return {
       authorize: (socketId, callback) => {
+        // Debug: announce when attempting to auth
+        // eslint-disable-next-line no-console
+        console.debug("[echo debug] authorizer start", { channel: channel.name, socketId, api: API_BASE_URL });
+
         fetch(`${API_BASE_URL}/api/broadcasting/auth`, {
           method: "POST",
           headers: {
@@ -144,14 +155,18 @@ const echo = new Echo({
           .then(async (response) => {
             if (!response.ok) {
               const text = await response.text();
-              console.error("Broadcast auth failed", response.status, text);
+              // eslint-disable-next-line no-console
+              console.error("[echo debug] Broadcast auth failed", response.status, text);
               return callback(true, { message: `Auth failed ${response.status}` });
             }
             const data = await response.json();
+            // eslint-disable-next-line no-console
+            console.debug("[echo debug] Broadcast auth success", data);
             callback(false, data);
           })
           .catch((error) => {
-            console.error("Broadcast auth request error", error);
+            // eslint-disable-next-line no-console
+            console.error("[echo debug] Broadcast auth request error", error);
             callback(true, error);
           });
       },
