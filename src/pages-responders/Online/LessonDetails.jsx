@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Layout from "../../layouts/Layout";
-import Footer from "../../components/Footer";
+import { Footer } from "../../components/Footer";
 import courseContent from "../../data/courseContent";
 import "../../styles/lessonDetails.css";
 
