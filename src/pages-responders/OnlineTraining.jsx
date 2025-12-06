@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Layout from "../layouts/Layout";
 import Footer from "../components/responder/Footer";
@@ -26,6 +27,7 @@ import {
 } from "react-icons/fa";
 
 const OnlineTraining = () => {
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState("all");
 
   // Training categories
@@ -108,10 +110,10 @@ const OnlineTraining = () => {
                 healthcare institutions.
               </p>
               <div className="hero-actions">
-                <button className="btn-primary">
+                <button className="btn-primary" onClick={() => navigate("/responder/modules")}>
                   <FaPlay /> Start Learning
                 </button>
-                <button className="btn-outline">
+                <button className="btn-outline" onClick={() => navigate("/responder/modules")}>
                   Browse Courses <FaArrowRight />
                 </button>
               </div>

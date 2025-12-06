@@ -2,6 +2,7 @@ import { lazy } from "react";
 import { Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "../components/ProtectedRoute";
 import { ROUTES, ROLES } from "../config/routes";
+import { getCourseProgress, markLessonComplete, isSectionCompleted } from "../lib/progressUtils";
 
 // Responder Pages
 const Dashboard = lazy(() => import("../pages-responders/Dashboard"));
@@ -41,6 +42,45 @@ const AssessmentPage = lazy(() =>
 );
 const Certifications = lazy(() =>
   import("../pages-responders/Online/Certifications")
+);
+const ActivityPage = lazy(() =>
+  import("../pages-responders/Online/ActivityPage")
+);
+
+const Module1 = lazy(() =>
+  import("../pages-responders/Online/Modules/Module1")
+);
+
+const Lesson1 = lazy(() =>
+  import("../pages-responders/Online/Lessons/Lesson1")
+);
+
+const Lesson2 = lazy(() =>
+  import("../pages-responders/Online/Lessons/Lesson2")
+);
+
+const Lesson3 = lazy(() =>
+  import("../pages-responders/Online/Lessons/Lesson3")
+);
+
+const Module2 = lazy(() =>
+  import("../pages-responders/Online/Modules/Module2")
+);
+
+const Lesson4 = lazy(() =>
+  import("../pages-responders/Online/Lessons/Lesson4")
+);
+
+const Lesson5 = lazy(() =>
+  import("../pages-responders/Online/Lessons/Lesson5")
+);
+
+const Lesson6 = lazy(() =>
+  import("../pages-responders/Online/Lessons/Lesson6")
+);
+
+const Lesson7 = lazy(() =>
+  import("../pages-responders/Online/Lessons/Lesson7")
 );
 
 const responderRoles = [ROLES.RESPONDER];
@@ -145,14 +185,6 @@ export const ResponderRoutes = () => (
       }
     />
     <Route
-      path={ROUTES.RESPONDER.MODULE_DETAILS}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <CourseDetails />
-        </ProtectedRoute>
-      }
-    />
-    <Route
       path={ROUTES.RESPONDER.MODULE_INFO}
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
@@ -177,10 +209,107 @@ export const ResponderRoutes = () => (
       }
     />
     <Route
+      path={ROUTES.RESPONDER.MODULE_1}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Module1 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path={ROUTES.RESPONDER.LESSON_1}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Lesson1 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path={ROUTES.RESPONDER.LESSON_2}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Lesson2 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path={ROUTES.RESPONDER.LESSON_3}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Lesson3 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path={ROUTES.RESPONDER.MODULE_2}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Module2 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path={ROUTES.RESPONDER.LESSON_4}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Lesson4 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path={ROUTES.RESPONDER.LESSON_5}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Lesson5 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path={ROUTES.RESPONDER.LESSON_6}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Lesson6 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
+      path={ROUTES.RESPONDER.LESSON_7}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <Lesson7 />
+        </ProtectedRoute>
+      }
+    />
+
+    <Route
       path={ROUTES.RESPONDER.MODULE_ASSESSMENT}
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
           <AssessmentPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.RESPONDER.MODULE_ACTIVITY}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <ActivityPage />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.RESPONDER.MODULE_DETAILS}
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <CourseDetails />
         </ProtectedRoute>
       }
     />

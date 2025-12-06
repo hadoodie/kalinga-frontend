@@ -17,7 +17,6 @@ import {
   TileLayer,
   Tooltip,
   Polyline,
-  useMap,
 } from "react-leaflet";
 import { SectionHeader } from "../SectionHeader";
 import { formatRelativeTime } from "@/lib/datetime";

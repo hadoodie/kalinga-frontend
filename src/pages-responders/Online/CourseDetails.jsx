@@ -31,16 +31,13 @@ const markLessonComplete = (section, lessonId, setProgress) => {
 };
 
 const slugify = (text) =>
-  text
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+  text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
 // ----------------------
 // 🔹 Courses Data
 // ----------------------
 const allCourses = {
-  1: {
+  "1": {
     title: "Barangay First 1000 Days Facilitator's Guide eTraining",
     sections: [
       {
@@ -69,292 +66,19 @@ const allCourses = {
           "Lesson 2: Maternal and Child Health Integration",
           "Lesson 3: Key Nutrition Interventions",
           "Quiz",
+          "Activity 1: Apply Your Knowledge",
           "Module 2: Community Mobilization Strategies",
-          "Lesson 1: Engaging Stakeholders",
-          "Lesson 2: Conducting Barangay Sessions",
-          "Lesson 3: Monitoring and Evaluation Tools",
-          "Lesson 4: Success Stories and Case Studies",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  2: {
-    title: "DOH Integrated People-Centered Health Services",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Welcome", "Program Overview", "Learning Objectives"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["IPCHS Framework", "Implementation Manual", "Case References"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Understanding IPCHS",
-          "Module 2: Service Integration in the Community",
-          "Module 3: Health Systems Strengthening",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  3: {
-    title: "Integrated Course on Primary Care",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Overview", "Course Goals", "Prerequisites"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["Primary Care Guidelines", "PHC Policy Framework"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Core Primary Health Care Concepts",
-          "Module 2: Preventive and Promotive Services",
-          "Module 3: Primary Care Practice Models",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  4: {
-    title:
-      "Introduction to Seven Major Recommendations to Prevent Tuberculosis Transmission",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Welcome", "Background", "Learning Outcomes"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["TB Prevention Toolkit", "DOH & WHO Guidelines"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Overview of TB Transmission",
-          "Module 2: Seven Core Recommendations Explained",
-          "Module 3: Implementing TB Prevention Measures",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  5: {
-    title: "Healthy Hearts Technical Package",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Introduction", "Program Goals", "Heart Health Basics"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["Healthy Hearts Toolkit", "Cardiovascular Guidelines"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Understanding Cardiovascular Risk Factors",
-          "Module 2: Implementing HEARTS Interventions",
-          "Module 3: Monitoring & Evaluation Framework",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  6: {
-    title:
-      "Basic Course in Family Planning Final Exam and Certificate of Training",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Overview", "Course Objectives", "Accreditation Details"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["FP Handbook", "Clinical Protocols", "Service Delivery Tools"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Family Planning Concepts",
-          "Module 2: Counseling and Client-Centered Approach",
-          "Module 3: FP Commodities and Logistics",
-          "Module 4: Program Management and Reporting",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  7: {
-    title: "Nutrition Care Process for Clinical Nutritionist Dietitians",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Introduction", "Purpose of the Course", "Expected Outcomes"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["NCP Reference Guide", "Sample Nutrition Plans"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Nutrition Assessment and Diagnosis",
-          "Module 2: Intervention and Monitoring",
-          "Module 3: Documentation and Evaluation",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  8: {
-    title:
-      "Basic Life Support Online Training - Didactic [NCMH - 2025 BATCH 10]",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Welcome", "Course Requirements", "Completion Criteria"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["BLS Manual", "CPR Flowchart", "AED Use Guidelines"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Basic Life Support Principles",
-          "Lesson 1: Adult & Pediatric CPR",
-          "Lesson 2: AED Operation",
-          "Lesson 3: Airway Management",
-          "Quiz",
-          "Module 2: Emergency Response",
-          "Lesson 1: Scene Safety & Assessment",
-          "Lesson 2: Post-Resuscitation Care",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  9: {
-    title:
-      "Basic Course on Continuous Quality Improvement for Health Facilities",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Overview", "Course Objectives", "QI Principles"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["CQI Toolkit", "Performance Indicators", "Case Studies"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Understanding QI Concepts",
-          "Module 2: Data-Driven Improvement",
-          "Module 3: Implementing CQI Cycles",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  10: {
-    title: "Data to Policy Competency 1 - Problem Statement",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Welcome", "Competency Overview", "Learning Objectives"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["Policy Brief Templates", "Data Analysis Tools"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Understanding the Policy Process",
-          "Module 2: Identifying and Framing Problems",
-          "Module 3: Crafting Evidence-Based Policy Statements",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  11: {
-    title:
-      "Orientation on Navigating the Continuing Professional Accreditation System (CPDAS)",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Welcome", "System Overview", "User Roles and Access"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["CPDAS User Guide", "Accreditation FAQs"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Accessing the CPDAS Portal",
-          "Module 2: Managing Accreditation Records",
-          "Module 3: Uploading Certificates and Evaluations",
-          "Final Assessment",
-        ],
-      },
-    ],
-  },
-
-  12: {
-    title: "Laboratory Quality Management System Online Training",
-    sections: [
-      {
-        heading: "General Information",
-        items: ["Welcome", "Course Introduction", "Quality System Essentials"],
-      },
-      {
-        heading: "Helpful Material",
-        items: ["LQMS Manual", "Documentation Templates", "WHO Standards"],
-      },
-      {
-        heading: "Training Material",
-        items: [
-          "Pre-Test",
-          "Module 1: Introduction to Quality Management",
-          "Module 2: Laboratory Process Control",
-          "Module 3: Internal Audits & Corrective Actions",
+          "Lesson 4: Engaging Stakeholders",
+          "Lesson 5: Conducting Barangay Sessions",
+          "Lesson 6: Monitoring and Evaluation Tools",
+          "Lesson 7: Success Stories and Case Studies",
           "Final Assessment",
         ],
       },
     ],
   },
 };
+
 // ----------------------
 // 🔹 Component
 // ----------------------
@@ -419,7 +143,7 @@ const CourseDetails = () => {
     );
 
   // -------------------------
-  // 🔹 Strict Section Unlock
+  // 🔹 Section Unlock
   // -------------------------
   const totalLessons = {
     generalInfo: course.sections[0]?.items.length || 0,
@@ -439,7 +163,7 @@ const CourseDetails = () => {
   };
 
   // -------------------------
-  // 🔹 Strict Item Unlock
+  // 🔹 Item Unlock
   // -------------------------
   const itemUnlocked = (section, itemIndex) => {
     const sectionKey = section.heading.includes("General")
@@ -449,9 +173,9 @@ const CourseDetails = () => {
       : "trainingMaterials";
 
     const completedItems = progress[sectionKey];
-    // unlock first item or if the previous one is completed
     return (
-      itemIndex === 0 || completedItems.includes(section.items[itemIndex - 1])
+      itemIndex === 0 ||
+      completedItems.includes(section.items[itemIndex - 1])
     );
   };
 
@@ -471,13 +195,52 @@ const CourseDetails = () => {
 
     const slug = slugify(item);
 
+    // Redirect logic for Training Material
     if (section.heading.includes("Training")) {
-      if (item === "Pre-Test") navigate(`/modules/${id}/assessment/pre-test`);
-      else if (item === "Quiz") navigate(`/modules/${id}/assessment/quiz`);
-      else if (item === "Final Assessment")
-        navigate(`/modules/${id}/assessment/final-assessment`);
-      else navigate(`/modules/${id}/lesson/${slug}`);
-
+      switch (item) {
+        case "Pre-Test":
+          navigate(`/modules/${id}/assessment/pre-test`);
+          break;
+        case "Quiz":
+          navigate(`/modules/${id}/assessment/quiz`);
+          break;
+        case "Final Assessment":
+          navigate(`/modules/${id}/assessment/final-assessment`);
+          break;
+        case "Activity 1: Apply Your Knowledge":
+          navigate(`/modules/${id}/activity/activity-1-apply-your-knowledge`);
+          break;
+        case "Module 1: Understanding the First 1000 Days":
+          navigate(`/modules/${id}/module-1`);
+          break;
+        case "Lesson 1: Importance of Early Nutrition":
+          navigate(`/modules/${id}/lesson-1`); 
+          break;
+        case "Lesson 2: Maternal and Child Health Integration":
+          navigate(`/modules/${id}/lesson-2`); 
+          break;
+        case "Lesson 3: Key Nutrition Interventions":
+          navigate(`/modules/${id}/lesson-3`); 
+          break;
+        case "Module 2: Community Mobilization Strategies":
+          navigate(`/modules/${id}/module-2`); 
+          break;
+        case "Lesson 4: Engaging Stakeholders":
+          navigate(`/modules/${id}/lesson-4`); 
+          break;
+        case "Lesson 5: Conducting Barangay Sessions":
+          navigate(`/modules/${id}/lesson-5`); 
+          break;
+        case "Lesson 6: Monitoring and Evaluation Tools":
+          navigate(`/modules/${id}/lesson-6`); 
+          break;
+        case "Lesson 7: Success Stories and Case Studies":
+          navigate(`/modules/${id}/lesson-7`); 
+          break;
+        default:
+          navigate(`/modules/${id}/activity/${slug}`);
+          break;
+      }
       markLessonComplete("trainingMaterials", item, setProgress);
     } else if (section.heading.includes("General")) {
       navigate(`/modules/${id}/info/${slug}`);
@@ -495,7 +258,18 @@ const CourseDetails = () => {
     <Layout>
       <div className="course-wrapper">
         <h1 className="course-title">{course.title}</h1>
-        <p className="course-breadcrumb">Home / Modules / {course.title}</p>
+
+        {/* Breadcrumbs */}
+        <div className="course-breadcrumb">
+          <Link to="/responder/online-training"> Home </Link>
+          <span>/</span>
+
+          <Link to="/responder/modules" > Modules </Link>
+          <span>/</span>
+
+          <span className="text-green-700 font-semibold"> {course.title} </span>
+        </div>
+
 
         <div className="space-y-6">
           {course.sections.map((section, idx) => {

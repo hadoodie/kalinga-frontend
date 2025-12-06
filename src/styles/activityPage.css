@@ -1,0 +1,386 @@
+/* ==========================================
+   ACTIVITY PAGE - MODERN CLEAN DESIGN
+   ========================================== */
+
+.activity-page-wrapper {
+  min-height: calc(100vh - 200px);
+  background: linear-gradient(to bottom, #f9fafb 0%, #ffffff 100%);
+  font-family: 'Inter', sans-serif;
+  color: #374151;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================
+   HERO SECTION
+   ========================================== */
+
+.activity-hero {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  padding: 48px 24px 64px;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+.activity-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.activity-hero-content {
+  max-width: 900px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+/* Breadcrumbs */
+.activity-breadcrumbs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 24px;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+
+.breadcrumb-link {
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.breadcrumb-link:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
+.breadcrumb-separator {
+  color: rgba(255,255,255,0.6);
+}
+
+.breadcrumb-current {
+  color: rgba(255,255,255,0.8);
+}
+
+/* Hero Title & Badge */
+.activity-title-section .activity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  padding: 8px 20px;
+  border-radius: 50px;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.activity-title-section h1 {
+  font-size: 36px;
+  font-weight: 800;
+  color: #fff;
+  margin: 0 0 12px;
+  line-height: 1.2;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.activity-title-section p {
+  font-size: 18px;
+  color: rgba(255,255,255,0.95);
+  margin: 0;
+  font-weight: 400;
+}
+
+/* ==========================================
+   CONTENT WRAPPER
+   ========================================== */
+
+.activity-content-wrapper {
+  max-width: 900px;
+  margin: -40px auto 60px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ==========================================
+   CARDS: INSTRUCTIONS, UPLOAD, SUCCESS
+   ========================================== */
+
+.activity-instructions-card,
+.activity-upload-card,
+.activity-success-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  margin-bottom: 24px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Instructions Card */
+.instructions-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.instructions-icon {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.instructions-text {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #374151;
+  margin: 0;
+}
+
+.instructions-specs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.spec-item {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.spec-content strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.spec-content p {
+  font-size: 14px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* ==========================================
+   FILE UPLOAD
+   ========================================== */
+
+.file-input-hidden { display: none; }
+
+.file-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  background: #fafafa;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.file-upload-label:hover {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.selected-file-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg,#f0fdf4,#dcfce7);
+  border: 2px solid #16a34a;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.remove-file-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #6b7280;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.remove-file-btn:hover {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #dc2626;
+}
+
+/* Submit Button */
+.submit-activity-btn {
+  width: 100%;
+  padding: 16px 32px;
+  background: linear-gradient(135deg,#16a34a,#15803d);
+  color: #fff;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 16px;
+  transition: all 0.3s;
+}
+
+.submit-activity-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg,#15803d,#166534);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(22,163,74,0.4);
+}
+
+.submit-activity-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ==========================================
+   SUCCESS CARD
+   ========================================== */
+
+.success-checkmark {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg,#16a34a,#15803d);
+  color: #fff;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  margin-bottom: 24px;
+  font-weight: 700;
+  box-shadow: 0 8px 16px rgba(22,163,74,0.3);
+}
+
+.submitted-file-info {
+  background: #f9fafb;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  margin-bottom: 32px;
+  word-break: break-word;
+}
+
+.download-submission-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #16a34a;
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.download-submission-btn:hover {
+  background: #15803d;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(22,163,74,0.3);
+}
+
+.success-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-continue {
+  flex: 1; min-width: 200px;
+  padding: 14px 28px;
+  background: linear-gradient(135deg,#16a34a,#15803d);
+  color: #fff;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-continue:hover {
+  background: linear-gradient(135deg,#15803d,#166534);
+  transform: translateY(-2px);
+}
+
+.btn-resubmit {
+  flex: 1; min-width: 200px;
+  padding: 14px 28px;
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  color: #374151;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-resubmit:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+  transform: translateY(-2px);
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+@media (max-width: 768px) {
+  .activity-content-wrapper { margin-top: -30px; padding: 0 16px; }
+  .activity-title-section h1 { font-size: 28px; }
+  .activity-title-section p { font-size: 16px; }
+  .activity-instructions-card,
+  .activity-upload-card,
+  .activity-success-card { padding: 24px 20px; }
+  .instructions-specs { grid-template-columns: 1fr; }
+  .success-actions { flex-direction: column; gap: 12px; }
+  .selected-file-preview { flex-direction: column; gap: 12px; }
+}
+
+@media (max-width: 480px) {
+  .activity-title-section h1 { font-size: 24px; }
+  .instructions-text, .upload-title, .success-title { font-size: 20px; }
+}
