@@ -3,9 +3,23 @@ import Pusher from "pusher-js";
 
 window.Pusher = Pusher;
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ||
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
+const inferApiBase = () => {
+  const envApi = import.meta.env.VITE_API_URL;
+  if (envApi) return envApi;
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    // Render prod inference: if we are on frontend host, point API to backend host
+    if (host.includes("kalinga-frontend.onrender.com")) {
+      return "https://kalinga-backend.onrender.com";
+    }
+    return window.location.origin;
+  }
+
+  return "http://localhost:8000";
+};
+
+const API_BASE_URL = inferApiBase();
 
 const buildAuthHeader = () => {
   const token = localStorage.getItem("token");
@@ -43,12 +57,20 @@ const applyAuthHeader = (echoInstance, headerValue) => {
 
 // Configure Echo for Laravel Reverb WebSocket connections
 const fallbackHost =
-  (typeof window !== "undefined" && window.location.hostname) || "localhost";
+  import.meta.env.VITE_REVERB_HOST ||
+  (typeof window !== "undefined"
+    ? window.location.hostname.includes("kalinga-frontend.onrender.com")
+      ? "kalinga-reverb.onrender.com"
+      : window.location.hostname
+    : "localhost");
 const reverbScheme =
   import.meta.env.VITE_REVERB_SCHEME ||
-  (typeof window !== "undefined" && window.location.protocol === "https:" ? "https" : "http");
+  (typeof window !== "undefined" && window.location.protocol === "https:"
+    ? "https"
+    : "http");
 const useTls = reverbScheme === "https";
-const reverbPort = Number(import.meta.env.VITE_REVERB_PORT) || (useTls ? 443 : 80);
+const reverbPort =
+  Number(import.meta.env.VITE_REVERB_PORT) || (useTls ? 443 : 80);
 const transportModes = useTls ? ["wss"] : ["ws"];
 
 const echo = new Echo({
