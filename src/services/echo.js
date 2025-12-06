@@ -5,7 +5,20 @@ window.Pusher = Pusher;
 
 const inferApiBase = () => {
   const envApi = import.meta.env.VITE_API_URL;
-  if (envApi) return envApi;
+
+  // If env is set but mistakenly points to the frontend host, rewrite to backend
+  if (envApi) {
+    try {
+      const url = new URL(envApi);
+      if (url.hostname.includes("kalinga-frontend.onrender.com")) {
+        url.hostname = "kalinga-backend.onrender.com";
+        return url.toString().replace(/\/$/, "");
+      }
+      return envApi.replace(/\/$/, "");
+    } catch (e) {
+      // fall through to inference
+    }
+  }
 
   if (typeof window !== "undefined") {
     const host = window.location.hostname;
@@ -56,13 +69,27 @@ const applyAuthHeader = (echoInstance, headerValue) => {
 };
 
 // Configure Echo for Laravel Reverb WebSocket connections
-const fallbackHost =
-  import.meta.env.VITE_REVERB_HOST ||
-  (typeof window !== "undefined"
-    ? window.location.hostname.includes("kalinga-frontend.onrender.com")
-      ? "kalinga-reverb.onrender.com"
-      : window.location.hostname
-    : "localhost");
+const inferReverbHost = () => {
+  if (import.meta.env.VITE_REVERB_HOST) {
+    const host = import.meta.env.VITE_REVERB_HOST;
+    if (host.includes("kalinga-frontend.onrender.com")) {
+      return "kalinga-reverb.onrender.com";
+    }
+    return host;
+  }
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host.includes("kalinga-frontend.onrender.com")) {
+      return "kalinga-reverb.onrender.com";
+    }
+    return host;
+  }
+
+  return "localhost";
+};
+
+const fallbackHost = inferReverbHost();
 const reverbScheme =
   import.meta.env.VITE_REVERB_SCHEME ||
   (typeof window !== "undefined" && window.location.protocol === "https:"
@@ -89,6 +116,39 @@ const echo = new Echo({
       Authorization: buildAuthHeader(),
       Accept: "application/json",
     },
+  },
+  // Force auth for presence/private channels in case Echo defaults are skipped
+  authorizer: (channel, options) => {
+    return {
+      authorize: (socketId, callback) => {
+        fetch(`${API_BASE_URL}/api/broadcasting/auth`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: buildAuthHeader(),
+          },
+          body: JSON.stringify({
+            socket_id: socketId,
+            channel_name: channel.name,
+          }),
+          credentials: "include",
+        })
+          .then(async (response) => {
+            if (!response.ok) {
+              const text = await response.text();
+              console.error("Broadcast auth failed", response.status, text);
+              return callback(true, { message: `Auth failed ${response.status}` });
+            }
+            const data = await response.json();
+            callback(false, data);
+          })
+          .catch((error) => {
+            console.error("Broadcast auth request error", error);
+            callback(true, error);
+          });
+      },
+    };
   },
 });
 
