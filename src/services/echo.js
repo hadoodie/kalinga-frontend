@@ -69,16 +69,16 @@ const applyAuthHeader = (echoInstance, headerValue) => {
 };
 
 const echo = new Echo({
-  broadcaster: "reverb",
+  broadcaster: "pusher",
   key: appKey,
-  cluster: "mt1", // Required by pusher-js even for custom hosts
+  cluster: "mt1",
   wsHost: resolvedReverbHost,
   wsPort: reverbPort,
   wssPort: reverbPort,
   forceTLS: useTls,
   encrypted: useTls,
-  enabledTransports: transportModes,
-  enableStats: false, // Disable statistics for better performance
+  disableStats: true,
+  enabledTransports: ["ws", "wss"],
   authEndpoint: `${API_BASE_URL}/api/broadcasting/auth`,
   auth: {
     headers: {
