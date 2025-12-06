@@ -5,8 +5,11 @@ import { resolveApiBaseUrl, resolveRealtimeSettings } from "../config/runtime";
 window.Pusher = Pusher;
 
 const API_BASE_URL = resolveApiBaseUrl();
-const { host: resolvedReverbHost, scheme: reverbScheme, port: reverbPort } =
-  resolveRealtimeSettings();
+const {
+  host: resolvedReverbHost,
+  scheme: reverbScheme,
+  port: reverbPort,
+} = resolveRealtimeSettings();
 const useTls = reverbScheme === "https";
 const transportModes = useTls ? ["wss"] : ["ws"];
 
@@ -81,7 +84,11 @@ const echo = new Echo({
       authorize: (socketId, callback) => {
         // Debug: announce when attempting to auth
         // eslint-disable-next-line no-console
-        console.debug("[echo debug] authorizer start", { channel: channel.name, socketId, api: API_BASE_URL });
+        console.debug("[echo debug] authorizer start", {
+          channel: channel.name,
+          socketId,
+          api: API_BASE_URL,
+        });
 
         fetch(`${API_BASE_URL}/api/broadcasting/auth`, {
           method: "POST",
@@ -100,8 +107,14 @@ const echo = new Echo({
             if (!response.ok) {
               const text = await response.text();
               // eslint-disable-next-line no-console
-              console.error("[echo debug] Broadcast auth failed", response.status, text);
-              return callback(true, { message: `Auth failed ${response.status}` });
+              console.error(
+                "[echo debug] Broadcast auth failed",
+                response.status,
+                text
+              );
+              return callback(true, {
+                message: `Auth failed ${response.status}`,
+              });
             }
             const data = await response.json();
             // eslint-disable-next-line no-console
@@ -129,11 +142,19 @@ try {
     console.debug("[echo debug] binding pusher connection events");
     pusher.connection.bind("state_change", (states) => {
       // eslint-disable-next-line no-console
-      console.debug("[echo debug] pusher state_change", states.previous, "->", states.current);
+      console.debug(
+        "[echo debug] pusher state_change",
+        states.previous,
+        "->",
+        states.current
+      );
     });
     pusher.connection.bind("connected", () => {
       // eslint-disable-next-line no-console
-      console.info("[echo debug] pusher connected, socket_id ->", pusher.connection.socket_id);
+      console.info(
+        "[echo debug] pusher connected, socket_id ->",
+        pusher.connection.socket_id
+      );
     });
     pusher.connection.bind("error", (err) => {
       // eslint-disable-next-line no-console
@@ -166,9 +187,18 @@ export const debugEcho = () => {
     // eslint-disable-next-line no-console
     console.info("[echo debug] echo.connector ->", echo.connector || {});
     // eslint-disable-next-line no-console
-    console.info("[echo debug] pusher connection socket_id ->", echo.connector?.pusher?.connection?.socket_id);
+    console.info(
+      "[echo debug] pusher connection socket_id ->",
+      echo.connector?.pusher?.connection?.socket_id
+    );
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error("[echo debug] debugEcho error", e);
   }
 };
+
+// Expose helpers for Ops/QA via DevTools without extra imports
+if (typeof window !== "undefined") {
+  window.$echo = echo;
+  window.debugEcho = debugEcho;
+}

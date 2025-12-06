@@ -42,7 +42,9 @@ export const resolveApiBaseUrl = () => {
   const envValue = import.meta.env.VITE_API_URL?.trim();
   const sanitizedEnv = normalizeUrl(envValue);
   const envHost = sanitizedEnv ? new URL(sanitizedEnv).hostname : null;
-  const envPointsToFrontend = envHost?.includes("kalinga-frontend.onrender.com");
+  const envPointsToFrontend = envHost?.includes(
+    "kalinga-frontend.onrender.com"
+  );
   const envIsLocal = envHost ? isLocalHost(envHost) : false;
 
   if (sanitizedEnv && !envPointsToFrontend) {
@@ -69,12 +71,16 @@ export const resolveRealtimeSettings = () => {
 
   const envHostRaw = import.meta.env.VITE_REVERB_HOST?.trim();
   const sanitizedEnvHost = stripProtocol(envHostRaw);
-  const envIsFrontend = sanitizedEnvHost?.includes("kalinga-frontend.onrender.com");
+  const envIsFrontend = sanitizedEnvHost?.includes(
+    "kalinga-frontend.onrender.com"
+  );
   const envIsLocal = sanitizedEnvHost ? isLocalHost(sanitizedEnvHost) : false;
 
   let host = sanitizedEnvHost;
   if (!host || envIsFrontend || (envIsLocal && !runningLocally)) {
-    host = runningLocally ? sanitizedEnvHost || "localhost" : RENDER_REALTIME_HOST;
+    host = runningLocally
+      ? sanitizedEnvHost || "localhost"
+      : RENDER_REALTIME_HOST;
   }
 
   let scheme = import.meta.env.VITE_REVERB_SCHEME?.trim().toLowerCase();
@@ -86,7 +92,10 @@ export const resolveRealtimeSettings = () => {
     port = 443;
   } else {
     if (!scheme) {
-      if (typeof window !== "undefined" && window.location.protocol === "https:") {
+      if (
+        typeof window !== "undefined" &&
+        window.location.protocol === "https:"
+      ) {
         scheme = "https";
       } else {
         scheme = "http";

@@ -25,8 +25,8 @@ RUN composer install --no-dev --optimize-autoloader --no-scripts
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
-# 7) Expose the Render-assigned port (Reverb listens on $PORT)
-EXPOSE 8080
+# 7) Expose the Render-assigned port (Render maps $PORT dynamically, default to 10000 locally)
+EXPOSE 10000
 
-# 8) Start Reverb on the platform port; Laravel uses REVERB_* env from service settings
-CMD ["sh", "-c", "php artisan reverb:start --host=0.0.0.0 --port=${PORT:-8080}"]
+# 8) Start Reverb on the platform port; fall back to 10000 for local/dev shells
+CMD ["sh", "-c", "php artisan reverb:start --host=0.0.0.0 --port=${PORT:-10000}"]
