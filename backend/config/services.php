@@ -41,4 +41,9 @@ return [
         'base_url' => env('GEMINI_API_BASE_URL', 'https://generativelanguage.googleapis.com/v1'),
     ],
 
+    'maps' => [
+        'default_latlng' => env('MAPS_DEFAULT_LATLNG', '14.599512,120.984222'),
+        'default_location_label' => env('MAPS_DEFAULT_LOCATION_LABEL', 'Fallback location (Manila HQ)'),
+    ],
+
 ];

@@ -511,6 +511,21 @@ class ChatController extends Controller
             ? sprintf('%.6f,%.6f', $latitude, $longitude)
             : null;
 
+        $latlngWasFallback = false;
+        if ($latlngValue === null) {
+            $latlngValue = $this->getFallbackLatLng();
+            $latlngWasFallback = true;
+            $locationLabel = $this->resolveFallbackLocationLabel($locationLabel);
+        }
+
+        $notesFromPayload = Arr::get($emergencyPayload, 'notes');
+        if ($latlngWasFallback) {
+            $notesFromPayload = trim(
+                ($notesFromPayload ? $notesFromPayload . ' ' : '') .
+                'Approximate location used (fallback coordinates).'
+            );
+        }
+
         $formattedDescription = $this->formatIncidentDescription([
             'incident_type' => $incidentType,
             'location_label' => $locationLabel,
@@ -520,7 +535,7 @@ class ChatController extends Controller
             'reported_at' => $patientMessage->created_at,
             'accuracy' => Arr::get($emergencyPayload, 'accuracy'),
             'map_url' => Arr::get($emergencyPayload, 'map_url'),
-            'notes' => Arr::get($emergencyPayload, 'notes'),
+            'notes' => $notesFromPayload,
             'location_error' => Arr::get($emergencyPayload, 'location_error'),
         ]);
 
@@ -855,6 +870,31 @@ class ChatController extends Controller
         }
 
         return $details;
+    }
+
+    private function getFallbackLatLng(): string
+    {
+        $fallback = trim((string) config('services.maps.default_latlng', '14.599512,120.984222'));
+        if ($fallback === '') {
+            return '0.000000,0.000000';
+        }
+
+        if (!Str::contains($fallback, ',')) {
+            return $fallback . ',0.000000';
+        }
+
+        return $fallback;
+    }
+
+    private function resolveFallbackLocationLabel(?string $label = null): string
+    {
+        $trimmed = trim((string) ($label ?? ''));
+        if ($trimmed !== '' && $trimmed !== 'Location not provided') {
+            return $trimmed;
+        }
+
+        $fallbackLabel = trim((string) config('services.maps.default_location_label', 'Fallback location'));
+        return $fallbackLabel === '' ? 'Fallback location' : $fallbackLabel;
     }
 
     private function mapCategory(?string $role): string
