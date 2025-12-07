@@ -11,6 +11,7 @@ use App\Models\IncidentStatusUpdate;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\IncidentIntelService;
+use App\Services\MessageNLPService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
@@ -20,8 +21,10 @@ use Illuminate\Validation\ValidationException;
 
 class ChatController extends Controller
 {
-    public function __construct(private IncidentIntelService $incidentIntelService)
-    {
+    public function __construct(
+        private IncidentIntelService $incidentIntelService,
+        private MessageNLPService $nlpService
+    ) {
     }
 
     public function getConversations(Request $request)
@@ -339,10 +342,35 @@ class ChatController extends Controller
             $message->save();
         }
 
+        // Run NLP analysis on the message for urgency detection
+        $nlpAnalysis = null;
         if ($incident && optional($message->sender)->role === 'patient') {
+            // Perform NLP analysis
+            $nlpAnalysis = $this->nlpService->quickUrgencyCheck($message->message ?? '');
+            
+            // Update incident metadata with NLP insights
             $updatedInsights = $this->incidentIntelService->updateFromMessage($incident, $message);
 
-            if ($updatedInsights) {
+            // Store NLP analysis in incident metadata
+            if ($nlpAnalysis && ($nlpAnalysis['score'] ?? 0) >= 50) {
+                $metadata = is_array($incident->metadata) ? $incident->metadata : [];
+                $metadata['nlp_analysis'] = [
+                    'urgency' => $nlpAnalysis,
+                    'analyzed_at' => now()->toIso8601String(),
+                    'message_id' => $message->id,
+                ];
+                
+                // If urgency is critical/high, flag for escalation
+                if ($nlpAnalysis['requires_immediate_attention'] ?? false) {
+                    $metadata['escalation_flag'] = true;
+                    $metadata['escalation_reason'] = 'AI detected high urgency: ' . implode(', ', $nlpAnalysis['keywords_found'] ?? []);
+                }
+                
+                $incident->metadata = $metadata;
+                $incident->save();
+            }
+
+            if ($updatedInsights || ($nlpAnalysis && ($nlpAnalysis['score'] ?? 0) >= 50)) {
                 broadcast(new IncidentUpdated($incident))->toOthers();
             }
         }
@@ -376,6 +404,12 @@ class ChatController extends Controller
             'timestamp' => $timestamp,
             'isRead' => false,
             'isSystemMessage' => false,
+            'nlp' => $nlpAnalysis ? [
+                'urgency_level' => $nlpAnalysis['level'] ?? 'low',
+                'urgency_score' => $nlpAnalysis['score'] ?? 0,
+                'requires_attention' => $nlpAnalysis['requires_immediate_attention'] ?? false,
+                'keywords' => $nlpAnalysis['keywords_found'] ?? [],
+            ] : null,
         ];
 
         $conversationPayload = [
@@ -394,13 +428,18 @@ class ChatController extends Controller
             'messages' => [$messagePayload],
         ];
 
-        broadcast(new MessageSent(
-            message: $messagePayload,
-            conversation: $conversationPayload,
-            senderId: $user->id,
-            receiverId: $groupId ? null : $receiverId,
-            groupId: $groupId,
-        ));
+        // Broadcast should never block DB writes; swallow transport errors
+        try {
+            broadcast(new MessageSent(
+                message: $messagePayload,
+                conversation: $conversationPayload,
+                senderId: $user->id,
+                receiverId: $groupId ? null : $receiverId,
+                groupId: $groupId,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $autoReplyPayload = $this->handleEmergencyEscalation(
             sender: $user,
@@ -526,7 +565,11 @@ class ChatController extends Controller
             'notes' => 'Emergency SOS created via responder chat.',
         ]);
 
-        broadcast(new IncidentUpdated($incident))->toOthers();
+        try {
+            broadcast(new IncidentUpdated($incident))->toOthers();
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $conversationId = $conversationPayload['conversationId'] ?? null;
 
@@ -605,14 +648,18 @@ class ChatController extends Controller
             'messages' => [$autoMessagePayload],
         ];
 
-        broadcast(new MessageSent(
-            message: $autoMessagePayload,
-            conversation: $autoConversationPayload,
-            senderId: $autoMessage->sender_id,
-            receiverId: $autoMessage->receiver_id,
-            groupId: null,
-            suppressCurrentUser: false,
-        ));
+        try {
+            broadcast(new MessageSent(
+                message: $autoMessagePayload,
+                conversation: $autoConversationPayload,
+                senderId: $autoMessage->sender_id,
+                receiverId: $autoMessage->receiver_id,
+                groupId: null,
+                suppressCurrentUser: false,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return [
             'message' => $autoMessagePayload,

@@ -1086,8 +1086,10 @@ export default function ResponseMap({ embedded = false, className = "" }) {
 
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+        `${KALINGA_CONFIG.API_BASE_URL}/api/geocode/reverse?lat=${lat}&lon=${lng}&zoom=18`,
+        { headers: { Accept: "application/json" } }
       );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
 
       if (data.display_name) {

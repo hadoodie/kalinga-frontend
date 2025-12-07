@@ -15,42 +15,43 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'broadcasting/auth'],
+    'paths' => [
+        'api/*',
+        'sanctum/csrf-cookie',
+        'sanctum/*',
+        'broadcasting/auth',
+        'broadcasting/*',
+    ],
 
-    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        env('FRONTEND_URL', 'http://localhost:5173'),
+        // Production (Render) - Backend
+        'https://kalinga-backend.onrender.com',
+        // Production (Render) - Frontend
+        'https://kalinga-frontend.onrender.com',
+        
+        // Local Development
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:4173',
         'http://localhost:4174',
-        'http://localhost:4000',
         'http://localhost:3000',
+        'http://localhost:4000',
         'http://127.0.0.1:5173',
         'http://127.0.0.1:5174',
-        'http://127.0.0.1:4173',
-        'http://127.0.0.1:4174',
+        'http://127.0.0.1:3000',
         'http://127.0.0.1:4000',
     ],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => [
-        'Content-Type',
-        'Authorization',
-        'X-Requested-With',
-        'X-CSRF-TOKEN',
-        'X-XSRF-TOKEN',
-        'X-Socket-Id',
-        'Accept',
-        'Origin',
-    ],
+    'allowed_headers' => ['*'],
 
     'exposed_headers' => [],
 
     'max_age' => 0,
 
-    'supports_credentials' => true, // Enable for cookie-based authentication
+    'supports_credentials' => true,
 
 ];

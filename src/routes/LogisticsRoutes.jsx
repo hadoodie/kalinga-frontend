@@ -35,9 +35,9 @@ const SettingsLogistics = lazy(() =>
   }))
 );
 
-const Notifications = lazy(() =>
-  import("../pages-patients/Notifications").then((module) => ({
-    default: module.Notifications,
+const NotificationsLogistics = lazy(() =>
+  import("../pages-logistics/Notifications").then((module) => ({
+    default: module.NotificationsLogistics,
   }))
 );
 
@@ -127,7 +127,7 @@ export const LogisticsRoutes = () => (
       path={ROUTES.LOGISTICS.NOTIFICATIONS}
       element={
         <ProtectedRoute allowedRoles={logisticsRoles}>
-          <Notifications />
+          <NotificationsLogistics />
         </ProtectedRoute>
       }
     />
