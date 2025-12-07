@@ -107,7 +107,7 @@ Route::middleware(['throttle:30,1'])->get('/geocode/reverse', function (Request 
 });
 
 // Public debug endpoint to check API -> Reverb connectivity without shell access
-Route::middleware(['throttle:10,1'])->get('/debug/reverb', function () {
+Route::middleware(['auth:sanctum', 'throttle:10,1'])->get('/debug/reverb', function () {
     $rawHost = env('REVERB_HOST');
     $port = env('REVERB_PORT', 443);
     $scheme = env('REVERB_SCHEME', 'https');

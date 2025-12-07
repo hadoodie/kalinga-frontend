@@ -78,7 +78,7 @@ const echo = new Echo({
   forceTLS: useTls,
   encrypted: useTls,
   disableStats: true,
-  enabledTransports: ["ws", "wss"],
+  enabledTransports: transportModes,
   authEndpoint: `${API_BASE_URL}/api/broadcasting/auth`,
   auth: {
     headers: {
