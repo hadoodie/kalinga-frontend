@@ -164,10 +164,7 @@ class SmartRoutingService
      */
     protected function getResponderCachedLocation(int $responderId): array
     {
-        // Check all incident caches for this responder's latest location
-        $cachePattern = "responder_location:*:{$responderId}";
-        
-        // For simplicity, we'll check a general responder location cache
+        // Check the general responder location cache
         $cached = Cache::get("responder_current_location:{$responderId}");
         
         if ($cached) {

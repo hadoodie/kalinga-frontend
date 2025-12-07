@@ -151,7 +151,7 @@ class MessageNLPService
             return $this->emptyConversationAnalysis();
         }
 
-        $combinedText = implode(' ', array_map(fn($m) => $this->normalizeText($m), $messages));
+        $combinedText = implode("\n", array_map(fn($m) => $this->normalizeText($m), $messages));
         $individualAnalyses = array_map(fn($m) => $this->analyzeMessage($m, $context), $messages);
 
         // Aggregate urgency (take highest)
