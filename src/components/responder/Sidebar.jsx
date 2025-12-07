@@ -14,8 +14,6 @@ import {
   LogOut,
   Settings,
   User,
-  MapPin,
-  Navigation,
   MessageSquare,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
@@ -29,7 +27,6 @@ export default function ResponderSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(false);
-  const [emergencySOSOpen, setEmergencySOSOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
@@ -70,16 +67,6 @@ export default function ResponderSidebar() {
     if (trainingPaths.some((path) => location.pathname === path)) {
       setTrainingOpen(true);
     }
-
-    // Check if any emergency SOS path is active
-    const emergencyPaths = [
-      "/responder/emergency-sos",
-      "/responder/response-map",
-      "/responder/hospital-map",
-    ];
-    if (emergencyPaths.some((path) => location.pathname === path)) {
-      setEmergencySOSOpen(true);
-    }
   }, [location.pathname]);
 
   const items = [
@@ -107,32 +94,6 @@ export default function ResponderSidebar() {
       label: "Messages",
       path: "/responder/messages",
       icon: <MessageSquare size={25} />,
-    },
-  ];
-
-  const emergencySOSItems = [
-    {
-      label: "Emergency SOS",
-      path: "/responder/emergency-sos",
-      icon: <AlertCircle size={25} />,
-    },
-    {
-      label: "SOS Dashboard",
-      path: "/responder/emergency-sos",
-      icon: <AlertCircle size={20} />,
-      isSubmenu: true,
-    },
-    {
-      label: "Response Map",
-      path: "/responder/response-map",
-      icon: <MapPin size={20} />,
-      isSubmenu: true,
-    },
-    {
-      label: "Hospital Map",
-      path: "/responder/hospital-map",
-      icon: <Navigation size={20} />,
-      isSubmenu: true,
     },
   ];
 
@@ -316,54 +277,6 @@ export default function ResponderSidebar() {
             );
           })}
 
-          {/* Emergency SOS Section */}
-          <li className="group relative">
-            <div
-              className={`flex items-center px-2 py-2 rounded-md transition-all duration-300 ${
-                collapsed ? "justify-center" : "gap-2"
-              } text-gray-400 opacity-80 cursor-not-allowed`}
-              onClick={() => {
-                /* Emergency SOS intentionally obsolete/disabled */
-              }}
-            >
-              {collapsed && (
-                <span className="transition-transform duration-300">
-                  <AlertCircle size={25} />
-                </span>
-              )}
-              {!collapsed && (
-                <>
-                  <span className="flex items-center gap-2">
-                    <span className="ml-0 text-gray-300">Emergency SOS</span>
-                  </span>
-                </>
-              )}
-            </div>
-
-            {/* Tooltip when collapsed */}
-            {collapsed && (
-              <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-green-950 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
-                Emergency SOS (obsolete)
-              </span>
-            )}
-
-            {/* Submenu - visible but disabled (grayed out) */}
-            {!collapsed && (
-              <ul className="ml-4 mt-1 space-y-1">
-                {emergencySOSItems.slice(1).map((subItem, idx) => (
-                  <li key={idx}>
-                    <div
-                      className={`flex items-center gap-2 px-2 py-2 rounded-md transition-all duration-300 text-gray-400 opacity-70 cursor-not-allowed`}
-                    >
-                      {subItem.icon}
-                      <span>{subItem.label}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-
           {/* Online Training Section */}
           <li className="group relative">
             <div
@@ -494,41 +407,6 @@ export default function ResponderSidebar() {
                 </div>
               );
             })}
-
-            {/* Emergency SOS Expandable */}
-            <div>
-              <div
-                className="flex items-center justify-between cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
-                onClick={() => setEmergencySOSOpen((prev) => !prev)}
-              >
-                <span>Emergency SOS</span>
-                <span
-                  className={`transition-transform duration-300 ${
-                    emergencySOSOpen ? "rotate-180" : ""
-                  }`}
-                >
-                  ▼
-                </span>
-              </div>
-              {emergencySOSOpen && (
-                <div className="ml-4 mt-1 space-y-2">
-                  {emergencySOSItems.map((subItem, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition
-                        ${
-                          isActive(subItem.path)
-                            ? "bg-white/20 font-bold"
-                            : "hover:bg-white/10"
-                        }`}
-                      onClick={() => handleNavigation(subItem)}
-                    >
-                      <span>{subItem.label}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Online Training Expandable */}
             <div>

@@ -14,6 +14,8 @@ import {
   appendRouteDeviation,
 } from "../../services/routeLogService";
 
+const LOCATION_OVERRIDE_EVENT = "responder:location-override";
+
 export default function HospitalMap({ embedded = false, className = "" }) {
   const { user } = useAuth();
   const mapRef = useRef(null);
@@ -48,11 +50,35 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isDrawingRoute, setIsDrawingRoute] = useState(false);
   const [isSimulatingLocation, setIsSimulatingLocation] = useState(false);
+  const [infoPanelCollapsed, setInfoPanelCollapsed] = useState(false);
 
   const liveUserLocationRef = useRef(null);
   const leafletLibRef = useRef(null);
   const isSimulatingLocationRef = useRef(false);
   const simulatedRecalcTimerRef = useRef(null);
+
+  const persistLocationToStorage = useCallback((location) => {
+    if (!location || typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        KALINGA_CONFIG.LOCATION_STORAGE_KEY,
+        JSON.stringify({
+          lat: location.lat,
+          lng: location.lng,
+          timestamp: Date.now(),
+        })
+      );
+    } catch (error) {
+      console.warn("Failed to save location to localStorage:", error);
+    }
+  }, []);
+
+  const broadcastLocationOverride = useCallback((payload) => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent(LOCATION_OVERRIDE_EVENT, { detail: payload })
+    );
+  }, []);
 
   useEffect(() => {
     isSimulatingLocationRef.current = isSimulatingLocation;
@@ -781,6 +807,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       setCurrentLocationDisplay(
         `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`
       );
+      persistLocationToStorage(location);
+      broadcastLocationOverride({ lat, lng, active: true });
 
       const Leaflet = leafletLibRef.current || (await ensureLeafletInstance());
       placeUserMarker(Leaflet, lat, lng, "simulated");
@@ -816,9 +844,11 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       destination,
       drawRoute,
       ensureLeafletInstance,
+      broadcastLocationOverride,
       isNavigating,
       map,
       placeUserMarker,
+      persistLocationToStorage,
       updateHospitalDistances,
     ]
   );
@@ -842,6 +872,12 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       )}, ${fallbackLocation.lng.toFixed(6)}`
     );
     updateLocationDisplay(fallbackLocation.lat, fallbackLocation.lng);
+    persistLocationToStorage(fallbackLocation);
+    broadcastLocationOverride({
+      lat: fallbackLocation.lat,
+      lng: fallbackLocation.lng,
+      active: false,
+    });
 
     const Leaflet = leafletLibRef.current || (await ensureLeafletInstance());
     placeUserMarker(
@@ -863,8 +899,10 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     }
   }, [
     ensureLeafletInstance,
+    broadcastLocationOverride,
     map,
     placeUserMarker,
+    persistLocationToStorage,
     updateHospitalDistances,
     updateLocationDisplay,
     userLocation,
@@ -2087,7 +2125,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         isActive={isSimulatingLocation}
         onLocationChange={handleSimulatedLocationChange}
         onStopSimulation={handleStopSimulatedLocation}
-        buttonLabel="Simulate patient"
+        buttonLabel="Simulate Location"
         position="bottom-right"
       />
       {/* Mobile Bottom Interface - Google Maps Style */}
@@ -2095,17 +2133,19 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         {/* User Info Dropdown */}
         {showUserInfo && (
           <div className="fixed top-4 left-4 right-4 z-50 bg-white rounded-lg shadow-xl p-4 max-h-48 overflow-y-auto">
-            <div className="flex items-center mb-3">
-              <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-3">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold">{user.name}</div>
-                <div className="text-sm text-gray-600">{user.email}</div>
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Location Snapshot
+                </p>
+                <p className="text-xs text-gray-500">
+                  Current responder position
+                </p>
               </div>
               <button
                 onClick={() => setShowUserInfo(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
+                className="rounded-full p-2 hover:bg-gray-100"
+                aria-label="Close location card"
               >
                 ✕
               </button>
@@ -2383,7 +2423,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                 <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold mb-1">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-xs">Profile</span>
+                <span className="text-xs">Location</span>
               </button>
 
               {/* Hospitals Button */}
@@ -2540,31 +2580,32 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       </div>
 
       {/* Desktop Sidebar - Hidden on Mobile */}
-      <div className="hidden md:block absolute left-0 top-0 h-full bg-white shadow-lg z-35 w-80 overflow-y-auto">
-        <div className="p-4">
+      <div className="hidden md:block absolute left-0 top-0 h-full z-35">
+        <div
+          className={`h-full w-80 overflow-y-auto bg-white shadow-lg transition-transform duration-300 ${
+            infoPanelCollapsed
+              ? "-translate-x-full opacity-0 pointer-events-none"
+              : "translate-x-0 opacity-100 pointer-events-auto"
+          }`}
+        >
+          <div className="p-4">
           <h3 className="text-lg font-semibold mb-4">Hospital Navigator</h3>
 
-          {/* User Info */}
-          <div className="mb-4 p-3 bg-green-50 rounded-lg border-l-4 border-green-500">
-            <div className="flex items-center mb-2">
-              <div className="w-8 h-8 bg-green-600 rounded-full flex items-center justify-center text-white font-bold mr-2">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div className="font-semibold text-sm">{user.name}</div>
-                <div className="text-xs text-gray-600">{user.email}</div>
-              </div>
-            </div>
-            <div className="mt-2 p-2 bg-blue-100 rounded text-xs">
-              <div className="font-semibold text-blue-800">
+          {/* Location Summary */}
+          <div className="mb-4 rounded-lg border border-green-100 bg-green-50 p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
                 📍 Current Location
-              </div>
-              <div
-                className="text-blue-700 mt-1"
-                style={{ whiteSpace: "pre-line" }}
-              >
-                {currentLocationDisplay}
-              </div>
+              </p>
+              <span className="text-[10px] font-medium text-green-600">
+                Synced feed
+              </span>
+            </div>
+            <div
+              className="mt-2 rounded-md bg-white/80 p-2 text-xs text-green-900"
+              style={{ whiteSpace: "pre-line" }}
+            >
+              {currentLocationDisplay}
             </div>
           </div>
 
@@ -2731,8 +2772,19 @@ export default function HospitalMap({ embedded = false, className = "" }) {
               </div>
             )}
           </div>
+          </div>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setInfoPanelCollapsed((prev) => !prev)}
+        className="hidden md:flex absolute top-4 z-40 items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow focus:outline-none focus:ring-2 focus:ring-green-200"
+        style={{ left: infoPanelCollapsed ? "1rem" : "20.5rem" }}
+      >
+        {infoPanelCollapsed ? "Show Panel" : "Hide Panel"}
+        <span>{infoPanelCollapsed ? "▶" : "◀"}</span>
+      </button>
       {/* Map Container */}
       <div ref={mapRef} className="absolute inset-0 w-full h-full" />
     </div>

@@ -981,12 +981,15 @@ export default function LiveResponseMap({
         </MapContainer>
 
         {/* Quick action floating menu (mobile-first) */}
-        {/* Mobile: bottom-right stacked FABs (keep as before) */}
-        <div className="absolute left-4 bottom-6 z-[1100] flex flex-col items-end lg:hidden">
+        {/* Mobile: bottom-left stacked FABs with improved UX */}
+        <div className="absolute left-4 bottom-6 z-[1100] flex flex-col items-start lg:hidden">
           {/* Expandable actions */}
           <div
-            className={`flex flex-col items-end space-y-2 transition-all ${actionsOpen ? "opacity-100 translate-y-0" : "opacity-90"}`}
-            aria-hidden={!actionsOpen}
+            className={`flex flex-col items-start space-y-2 mb-3 transition-all duration-300 ${
+              actionsOpen 
+                ? "opacity-100 translate-y-0 pointer-events-auto" 
+                : "opacity-0 translate-y-4 pointer-events-none"
+            }`}
           >
             {/* Center on responder */}
             <button
@@ -996,133 +999,243 @@ export default function LiveResponseMap({
                   mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
                 }
               }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
+              className="flex items-center gap-2 px-4 py-3 rounded-full bg-white shadow-lg border border-gray-200 active:scale-95 transition-transform"
               title="Center on responder"
             >
-              <Target className="h-5 w-5 text-slate-700" />
+              <Target className="h-5 w-5 text-blue-600" />
+              <span className="text-sm font-medium text-slate-700">Center</span>
             </button>
 
-            {/* Zoom in */}
-            <button
-              onClick={() => {
-                setActionsOpen(false);
-                if (mapRef.current) {
-                  mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19));
-                }
-              }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Zoom in"
-            >
-              <ZoomIn className="h-5 w-5 text-slate-700" />
-            </button>
+            {/* Zoom controls row */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setActionsOpen(false);
+                  if (mapRef.current) {
+                    mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19));
+                  }
+                }}
+                className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg border border-gray-200 active:scale-95 transition-transform"
+                title="Zoom in"
+              >
+                <ZoomIn className="h-5 w-5 text-slate-700" />
+              </button>
 
-            {/* Zoom out */}
-            <button
-              onClick={() => {
-                setActionsOpen(false);
-                if (mapRef.current) {
-                  mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1));
-                }
-              }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Zoom out"
-            >
-              <ZoomOut className="h-5 w-5 text-slate-700" />
-            </button>
+              <button
+                onClick={() => {
+                  setActionsOpen(false);
+                  if (mapRef.current) {
+                    mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1));
+                  }
+                }}
+                className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg border border-gray-200 active:scale-95 transition-transform"
+                title="Zoom out"
+              >
+                <ZoomOut className="h-5 w-5 text-slate-700" />
+              </button>
+            </div>
 
             {/* Toggle hospitals */}
             <button
-              onClick={() => setShowHospitals((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Toggle hospitals"
+              onClick={() => {
+                setShowHospitals((s) => !s);
+                setActionsOpen(false);
+              }}
+              className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border active:scale-95 transition-all ${
+                showHospitals
+                  ? 'bg-emerald-50 border-emerald-300'
+                  : 'bg-white border-gray-200'
+              }`}
+              title={showHospitals ? "Hide hospitals" : "Show hospitals"}
             >
-              <Layers className="h-5 w-5 text-slate-700" />
+              <Stethoscope className={`h-5 w-5 ${showHospitals ? 'text-emerald-600' : 'text-slate-600'}`} />
+              <span className={`text-sm font-medium ${showHospitals ? 'text-emerald-700' : 'text-slate-700'}`}>
+                Hospitals
+              </span>
+              {showHospitals && (
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              )}
             </button>
 
             {/* Toggle blockades */}
             <button
-              onClick={() => setShowBlockades((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Toggle road alerts"
+              onClick={() => {
+                setShowBlockades((s) => !s);
+                setActionsOpen(false);
+              }}
+              className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border active:scale-95 transition-all ${
+                showBlockades
+                  ? 'bg-orange-50 border-orange-300'
+                  : 'bg-white border-gray-200'
+              }`}
+              title={showBlockades ? "Hide road alerts" : "Show road alerts"}
             >
-              <Settings className="h-5 w-5 text-slate-700" />
+              <AlertTriangle className={`h-5 w-5 ${showBlockades ? 'text-orange-600' : 'text-slate-600'}`} />
+              <span className={`text-sm font-medium ${showBlockades ? 'text-orange-700' : 'text-slate-700'}`}>
+                Road alerts
+              </span>
+              {showBlockades && (
+                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+              )}
             </button>
           </div>
 
           {/* Main FAB: toggle actions or fullscreen */}
-          <div className="mt-2 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setActionsOpen((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg text-primary"
+              className={`flex items-center justify-center h-14 w-14 rounded-full shadow-xl border-2 active:scale-95 transition-all ${
+                actionsOpen 
+                  ? 'bg-blue-600 border-blue-700 rotate-45' 
+                  : 'bg-white border-gray-200'
+              }`}
               title="Quick actions"
             >
-              <Settings className="h-5 w-5 text-slate-700" />
+              <Settings className={`h-6 w-6 transition-colors ${
+                actionsOpen ? 'text-white' : 'text-slate-700'
+              }`} />
             </button>
 
             <button
               onClick={() => setIsFullscreen((f) => !f)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg text-primary"
+              className="flex items-center justify-center h-14 w-14 rounded-full bg-white shadow-xl border-2 border-gray-200 active:scale-95 transition-transform"
               title={isFullscreen ? "Exit fullscreen" : "Fullscreen map"}
             >
               {isFullscreen ? (
-                <Minimize className="h-5 w-5 text-slate-700" />
+                <Minimize className="h-6 w-6 text-slate-700" />
               ) : (
-                <Maximize className="h-5 w-5 text-slate-700" />
+                <Maximize className="h-6 w-6 text-slate-700" />
               )}
             </button>
           </div>
+
+          {/* Active layer counter (mobile only) */}
+          {(showHospitals || showBlockades) && (
+            <div className="mt-3 px-4 py-2 bg-white/95 backdrop-blur-sm rounded-full shadow-md border border-gray-200">
+              <div className="flex items-center gap-2 text-xs">
+                {showHospitals && (
+                  <span className="flex items-center gap-1">
+                    <Stethoscope className="h-3 w-3 text-emerald-600" />
+                    <span className="font-semibold text-emerald-700">{hospitals?.length || 0}</span>
+                  </span>
+                )}
+                {showHospitals && showBlockades && (
+                  <span className="text-gray-400">•</span>
+                )}
+                {showBlockades && (
+                  <span className="flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 text-orange-600" />
+                    <span className="font-semibold text-orange-700">{normalizedBlockades.length}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Desktop: left-side toolbar placed below leaflet controls to avoid overlap */}
-        <div className="hidden lg:flex absolute left-20 top-20 z-[1100] flex-col items-start gap-3">
-          <div className="flex flex-col gap-3 bg-white/90 p-2 rounded-lg shadow-md">
+        <div className="hidden lg:flex absolute left-4 top-20 z-[1100] flex-col items-start gap-2">
+          <div className="flex flex-col gap-1.5 bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-lg border border-gray-200">
+            {/* Center Control */}
             <button
               onClick={() => {
                 if (responderPosition && mapRef.current) {
                   mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
                 }
               }}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white hover:bg-blue-50 transition-all group border border-transparent hover:border-blue-200"
               title="Center on responder"
             >
-              <Target className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Center</span>
+              <Target className="h-4 w-4 text-slate-600 group-hover:text-blue-600 transition-colors" />
+              <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700 transition-colors">Center</span>
             </button>
 
-            <div className="flex items-center gap-2">
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1.5 px-2">
               <button
                 onClick={() => mapRef.current && mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19))}
-                className="p-2 rounded-md bg-white hover:bg-gray-50"
+                className="flex-1 flex items-center justify-center p-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all"
                 title="Zoom in"
               >
-                <ZoomIn className="h-4 w-4 text-slate-700" />
+                <ZoomIn className="h-4 w-4 text-slate-600" />
               </button>
               <button
                 onClick={() => mapRef.current && mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1))}
-                className="p-2 rounded-md bg-white hover:bg-gray-50"
+                className="flex-1 flex items-center justify-center p-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all"
                 title="Zoom out"
               >
-                <ZoomOut className="h-4 w-4 text-slate-700" />
+                <ZoomOut className="h-4 w-4 text-slate-600" />
               </button>
             </div>
 
+            {/* Separator */}
+            <div className="h-px bg-gray-200 my-1"></div>
+
+            {/* Hospitals Toggle */}
             <button
               onClick={() => setShowHospitals((s) => !s)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
-              title="Toggle hospitals"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all group border ${
+                showHospitals
+                  ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200'
+              }`}
+              title={showHospitals ? "Hide hospitals" : "Show hospitals"}
             >
-              <Layers className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Hospitals</span>
+              <Stethoscope className={`h-4 w-4 transition-colors ${
+                showHospitals ? 'text-emerald-600' : 'text-slate-600 group-hover:text-slate-700'
+              }`} />
+              <span className={`text-sm font-medium transition-colors ${
+                showHospitals ? 'text-emerald-700' : 'text-slate-700 group-hover:text-slate-800'
+              }`}>
+                Hospitals
+              </span>
+              <div className={`ml-auto w-2 h-2 rounded-full transition-all ${
+                showHospitals ? 'bg-emerald-500 shadow-sm' : 'bg-gray-300'
+              }`}></div>
             </button>
 
+            {/* Road Alerts Toggle */}
             <button
               onClick={() => setShowBlockades((s) => !s)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
-              title="Toggle road alerts"
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all group border ${
+                showBlockades
+                  ? 'bg-orange-50 border-orange-200 hover:bg-orange-100'
+                  : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200'
+              }`}
+              title={showBlockades ? "Hide road alerts" : "Show road alerts"}
             >
-              <Settings className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Road alerts</span>
+              <AlertTriangle className={`h-4 w-4 transition-colors ${
+                showBlockades ? 'text-orange-600' : 'text-slate-600 group-hover:text-slate-700'
+              }`} />
+              <span className={`text-sm font-medium transition-colors ${
+                showBlockades ? 'text-orange-700' : 'text-slate-700 group-hover:text-slate-800'
+              }`}>
+                Road alerts
+              </span>
+              <div className={`ml-auto w-2 h-2 rounded-full transition-all ${
+                showBlockades ? 'bg-orange-500 shadow-sm' : 'bg-gray-300'
+              }`}></div>
             </button>
+
+            {/* Counter Badge */}
+            {(showHospitals || showBlockades) && (
+              <div className="px-3 py-1.5 text-xs text-slate-600 bg-gray-50 rounded-lg border border-gray-100">
+                {showHospitals && showBlockades ? (
+                  <>
+                    <span className="font-semibold text-emerald-600">{hospitals?.length || 0}</span> hospitals • 
+                    <span className="font-semibold text-orange-600 ml-1">{normalizedBlockades.length}</span> alerts
+                  </>
+                ) : showHospitals ? (
+                  <>
+                    <span className="font-semibold text-emerald-600">{hospitals?.length || 0}</span> hospitals visible
+                  </>
+                ) : (
+                  <>
+                    <span className="font-semibold text-orange-600">{normalizedBlockades.length}</span> alerts visible
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
