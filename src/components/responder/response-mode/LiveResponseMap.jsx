@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   MapContainer,
   Marker,
@@ -13,13 +13,6 @@ import {
   Loader2,
   Navigation2,
   Stethoscope,
-  Maximize,
-  Minimize,
-  Settings,
-  Layers,
-  Target,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -354,30 +347,7 @@ const iconFactory = (color) =>
     shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   });
 
-const buildResponderHeadingIcon = (heading) => {
-  const normalized = Number.isFinite(heading)
-    ? ((heading % 360) + 360) % 360
-    : 0;
-
-  // SVG-based arrow so we can rotate to match road orientation (drive-mode feel).
-  return L.divIcon({
-    className: "responder-heading-icon",
-    html: `
-      <div style="display:flex;align-items:center;justify-content:center;width:46px;height:46px;">
-        <svg width="46" height="46" viewBox="0 0 46 46" style="transform: rotate(${normalized}deg); filter: drop-shadow(0 4px 8px rgba(0,0,0,0.25));">
-          <g fill="#2563eb" stroke="#ffffff" stroke-width="2">
-            <path d="M23 4 L33 34 L23 27 L13 34 Z" />
-          </g>
-        </svg>
-      </div>
-    `,
-    iconSize: [46, 46],
-    iconAnchor: [23, 32], // tip of arrow sits on the coordinate
-    tooltipAnchor: [0, -30],
-  });
-};
-
-const responderIcon = buildResponderHeadingIcon(0);
+const responderIcon = iconFactory("blue");
 const incidentIcon = iconFactory("red");
 const hospitalIcon = iconFactory("green");
 
@@ -455,10 +425,6 @@ export default function LiveResponseMap({
   const [responderHeading, setResponderHeading] = useState(null);
   const trackingWatchId = useRef(null);
   const mapRef = useRef(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [actionsOpen, setActionsOpen] = useState(false);
-  const [showBlockades, setShowBlockades] = useState(true);
-  const [showHospitals, setShowHospitals] = useState(true);
 
   // Broadcast responder location to patient via WebSocket.
   // Enable while incident is active (responder en route or on scene) so patient can track.
@@ -503,11 +469,6 @@ export default function LiveResponseMap({
   const normalizedBlockades = useMemo(
     () => blockades.map(normalizeBlockade).filter(Boolean),
     [blockades]
-  );
-
-  const responderMarkerIcon = useMemo(
-    () => buildResponderHeadingIcon(responderHeading),
-    [responderHeading]
   );
 
   const incidentPosition = useMemo(
@@ -590,21 +551,6 @@ export default function LiveResponseMap({
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // When fullscreen toggles, invalidate map size so Leaflet renders correctly
-  useLayoutEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    // slight delay to allow DOM to settle when entering fullscreen
-    const t = setTimeout(() => {
-      try {
-        map.invalidateSize();
-      } catch (e) {
-        // ignore
-      }
-    }, 120);
-    return () => clearTimeout(t);
-  }, [isFullscreen]);
 
   const activeStart = useMemo(() => {
     if (mode === "hospital") {
@@ -831,13 +777,7 @@ export default function LiveResponseMap({
   };
 
   return (
-    <section
-      className={`flex h-full ${
-        isFullscreen
-          ? "fixed inset-0 z-[1200] rounded-none border-none bg-white"
-          : "min-h-[520px] rounded-2xl border border-gray-200 bg-white"
-      } flex-col overflow-hidden shadow-sm`}
-    >
+    <section className="flex h-full min-h-[520px] flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
       <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
         <div className="flex items-center gap-3">
           <div
@@ -878,7 +818,7 @@ export default function LiveResponseMap({
         </div>
       </header>
 
-      <div className={`relative flex-1 ${isFullscreen ? "" : ""}`}>
+      <div className="relative flex-1">
         <LocationSimulator
           currentLocation={
             responderPosition
@@ -893,13 +833,12 @@ export default function LiveResponseMap({
           buttonLabel="Simulate responder"
           position="bottom-right"
         />
-        {/* Map (normal or fullscreen) */}
         <MapContainer
           center={currentCenter}
           zoom={13}
           minZoom={5}
           maxZoom={18}
-          className={`h-full w-full ${isFullscreen ? "!h-[100vh] !w-screen" : ""}`}
+          className="h-full w-full"
           whenCreated={(mapInstance) => {
             mapRef.current = mapInstance;
           }}
@@ -920,7 +859,7 @@ export default function LiveResponseMap({
           {currentCenter && <MapFlyTo target={currentCenter} />}
 
           {responderPosition && (
-            <Marker position={responderPosition} icon={responderMarkerIcon}>
+            <Marker position={responderPosition} icon={responderIcon}>
               <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                 Responder location
               </Tooltip>
@@ -935,7 +874,7 @@ export default function LiveResponseMap({
             </Marker>
           )}
 
-          {showHospitals && hospitalPosition && (
+          {hospitalPosition && (
             <Marker position={hospitalPosition} icon={hospitalIcon}>
               <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                 {selectedHospital?.name || "Destination hospital"}
@@ -944,7 +883,6 @@ export default function LiveResponseMap({
           )}
 
           {normalizedBlockades.map((blockade) => (
-            showBlockades && (
             <Marker
               key={blockade.id}
               position={[blockade.lat, blockade.lng]}
@@ -959,7 +897,6 @@ export default function LiveResponseMap({
                 </div>
               </Tooltip>
             </Marker>
-            )
           ))}
 
           {routePoints && routePoints.length > 1 && (
@@ -979,161 +916,6 @@ export default function LiveResponseMap({
             />
           )}
         </MapContainer>
-
-        {/* Quick action floating menu (mobile-first) */}
-        {/* Mobile: bottom-right stacked FABs (keep as before) */}
-        <div className="absolute left-4 bottom-6 z-[1100] flex flex-col items-end lg:hidden">
-          {/* Expandable actions */}
-          <div
-            className={`flex flex-col items-end space-y-2 transition-all ${actionsOpen ? "opacity-100 translate-y-0" : "opacity-90"}`}
-            aria-hidden={!actionsOpen}
-          >
-            {/* Center on responder */}
-            <button
-              onClick={() => {
-                setActionsOpen(false);
-                if (responderPosition && mapRef.current) {
-                  mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
-                }
-              }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Center on responder"
-            >
-              <Target className="h-5 w-5 text-slate-700" />
-            </button>
-
-            {/* Zoom in */}
-            <button
-              onClick={() => {
-                setActionsOpen(false);
-                if (mapRef.current) {
-                  mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19));
-                }
-              }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Zoom in"
-            >
-              <ZoomIn className="h-5 w-5 text-slate-700" />
-            </button>
-
-            {/* Zoom out */}
-            <button
-              onClick={() => {
-                setActionsOpen(false);
-                if (mapRef.current) {
-                  mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1));
-                }
-              }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Zoom out"
-            >
-              <ZoomOut className="h-5 w-5 text-slate-700" />
-            </button>
-
-            {/* Toggle hospitals */}
-            <button
-              onClick={() => setShowHospitals((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Toggle hospitals"
-            >
-              <Layers className="h-5 w-5 text-slate-700" />
-            </button>
-
-            {/* Toggle blockades */}
-            <button
-              onClick={() => setShowBlockades((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Toggle road alerts"
-            >
-              <Settings className="h-5 w-5 text-slate-700" />
-            </button>
-          </div>
-
-          {/* Main FAB: toggle actions or fullscreen */}
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              onClick={() => setActionsOpen((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg text-primary"
-              title="Quick actions"
-            >
-              <Settings className="h-5 w-5 text-slate-700" />
-            </button>
-
-            <button
-              onClick={() => setIsFullscreen((f) => !f)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg text-primary"
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen map"}
-            >
-              {isFullscreen ? (
-                <Minimize className="h-5 w-5 text-slate-700" />
-              ) : (
-                <Maximize className="h-5 w-5 text-slate-700" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Desktop: left-side toolbar placed below leaflet controls to avoid overlap */}
-        <div className="hidden lg:flex absolute left-20 top-20 z-[1100] flex-col items-start gap-3">
-          <div className="flex flex-col gap-3 bg-white/90 p-2 rounded-lg shadow-md">
-            <button
-              onClick={() => {
-                if (responderPosition && mapRef.current) {
-                  mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
-                }
-              }}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
-              title="Center on responder"
-            >
-              <Target className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Center</span>
-            </button>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => mapRef.current && mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19))}
-                className="p-2 rounded-md bg-white hover:bg-gray-50"
-                title="Zoom in"
-              >
-                <ZoomIn className="h-4 w-4 text-slate-700" />
-              </button>
-              <button
-                onClick={() => mapRef.current && mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1))}
-                className="p-2 rounded-md bg-white hover:bg-gray-50"
-                title="Zoom out"
-              >
-                <ZoomOut className="h-4 w-4 text-slate-700" />
-              </button>
-            </div>
-
-            <button
-              onClick={() => setShowHospitals((s) => !s)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
-              title="Toggle hospitals"
-            >
-              <Layers className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Hospitals</span>
-            </button>
-
-            <button
-              onClick={() => setShowBlockades((s) => !s)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
-              title="Toggle road alerts"
-            >
-              <Settings className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Road alerts</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Fullscreen overlay: when active, expand this section to cover viewport (mobile only) */}
-        {isFullscreen && (
-          <div
-            onClick={() => setIsFullscreen(false)}
-            className="fixed inset-0 z-[1050] bg-black/30 lg:hidden"
-            aria-hidden
-          />
-        )}
 
         {routeLoading && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/40">

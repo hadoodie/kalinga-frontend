@@ -146,68 +146,6 @@ const chatService = {
     // Also invalidate conversations to update lastMessage
     invalidateCache(CACHE_KEYS.CONVERSATIONS);
   },
-
-  // =====================
-  // NLP Analysis Methods
-  // =====================
-
-  /**
-   * Analyze a single message for urgency, symptoms, and sentiment
-   * @param {string} message - The message text to analyze
-   * @param {Object} context - Additional context (incident_type, incident_id)
-   * @returns {Promise<Object>} Analysis results
-   */
-  async analyzeMessage(message, context = {}) {
-    const response = await api.post("/nlp/analyze-message", {
-      message,
-      ...context,
-    });
-    return response.data?.data;
-  },
-
-  /**
-   * Quick urgency check for real-time filtering
-   * @param {string} message - The message text to check
-   * @returns {Promise<Object>} Urgency level and score
-   */
-  async checkUrgency(message) {
-    const response = await api.post("/nlp/urgency-check", { message });
-    return response.data?.data;
-  },
-
-  /**
-   * Analyze multiple messages for conversation-level insights
-   * @param {Array<string>} messages - Array of message texts
-   * @param {Object} context - Additional context
-   * @returns {Promise<Object>} Conversation analysis
-   */
-  async analyzeConversation(messages, context = {}) {
-    const response = await api.post("/nlp/analyze-conversation", {
-      messages,
-      ...context,
-    });
-    return response.data?.data;
-  },
-
-  /**
-   * Get NLP analysis for an incident's messages
-   * @param {number} incidentId - The incident ID
-   * @returns {Promise<Object>} Incident message analysis
-   */
-  async getIncidentNLPAnalysis(incidentId) {
-    const response = await api.get(`/nlp/incident/${incidentId}/analysis`);
-    return response.data?.data;
-  },
-
-  /**
-   * Bulk urgency analysis for message prioritization
-   * @param {Array<{id: any, text: string}>} messages - Messages to analyze
-   * @returns {Promise<Array>} Sorted array with urgency scores
-   */
-  async bulkUrgencyAnalysis(messages) {
-    const response = await api.post("/nlp/bulk-urgency", { messages });
-    return response.data?.data;
-  },
 };
 
 export default chatService;

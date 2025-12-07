@@ -91,21 +91,9 @@ export const RealtimeProvider = ({ children }) => {
     setPresenceError(null);
 
     connectingPromiseRef.current = new Promise((resolve) => {
-      const timeoutId = setTimeout(() => {
-        if (connectingPromiseRef.current) {
-          presenceActiveRef.current = false;
-          connectingPromiseRef.current = null;
-          setPresenceStatus("error");
-          setPresenceError("Presence auth timed out. Check token/CORS.");
-          console.warn("Realtime presence timeout: likely auth/cors issue");
-          resolve({ ok: false, reason: "timeout" });
-        }
-      }, 8000);
-
       const channel = echoInstance
         .join("online")
         .here((users) => {
-          clearTimeout(timeoutId);
           presenceActiveRef.current = true;
           connectingPromiseRef.current = null;
           setOnlineUsers(Array.isArray(users) ? [...users] : []);
@@ -132,19 +120,16 @@ export const RealtimeProvider = ({ children }) => {
           );
         })
         .error((error) => {
-          clearTimeout(timeoutId);
           presenceActiveRef.current = false;
           connectingPromiseRef.current = null;
           setOnlineUsers([]);
           setPresenceStatus("error");
           setPresenceError(buildErrorMessage(error));
-          console.error("Realtime presence error", error);
           resolve({ ok: false, reason: "error", error });
         });
 
       // In case join throws synchronously
       if (!channel) {
-        clearTimeout(timeoutId);
         presenceActiveRef.current = false;
         connectingPromiseRef.current = null;
         setOnlineUsers([]);
