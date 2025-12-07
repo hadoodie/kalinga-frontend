@@ -640,7 +640,11 @@ const deriveRouteAlert = (selection) => {
   return null;
 };
 
-export default function ResponseMap({ embedded = false, className = "" }) {
+export default function ResponseMap({
+  embedded = false,
+  className = "",
+  simulatedLocation,
+}) {
   const { user } = useAuth();
   const mapRef = useRef(null);
   const [map, setMap] = useState(null);
@@ -667,7 +671,45 @@ export default function ResponseMap({ embedded = false, className = "" }) {
   const [, setLocationError] = useState(null);
   const [locationWatchId, setLocationWatchId] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isDrawingRoute, setIsDrawingRoute] = useState(false);
+  const simulatedLocationRef = useRef(simulatedLocation);
+
+  useEffect(() => {
+    simulatedLocationRef.current = simulatedLocation;
+
+    if (simulatedLocation && map) {
+      const { lat, lng } = simulatedLocation;
+      setUserLocation(simulatedLocation);
+
+      // Update display
+      setCurrentLocationDisplay(
+        `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`
+      );
+
+      import("leaflet").then((L) => {
+        // Remove previous user marker
+        if (userMarker) {
+          map.removeLayer(userMarker);
+        }
+
+        // Add/update user marker
+        const newUserMarker = L.marker([lat, lng], {
+          icon: L.divIcon({
+            html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse"></div>`,
+            className: "user-location-marker",
+            iconSize: [16, 16],
+            iconAnchor: [8, 8],
+          }),
+        }).addTo(map);
+
+        setUserMarker(newUserMarker);
+
+        // Center map
+        map.flyTo([lat, lng], map.getZoom());
+      });
+    }
+  }, [simulatedLocation, map]);
 
   // Mobile bottom interface states
   const [showIncidentsList, setShowIncidentsList] = useState(false);
@@ -882,10 +924,11 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       return null;
     };
 
-    if (navigator.geolocation) {
+    if (navigator.geolocation && !simulatedLocation) {
       // Use watchPosition for continuous tracking
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
+          if (simulatedLocationRef.current) return;
           const { latitude, longitude } = position.coords;
           const location = { lat: latitude, lng: longitude };
           setUserLocation(location);
@@ -2562,23 +2605,37 @@ export default function ResponseMap({ embedded = false, className = "" }) {
         </button>
       </div>
 
+      {/* Sidebar Toggle Button */}
+      {!isSidebarOpen && (
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="hidden md:flex absolute left-4 top-4 z-35 bg-white p-2 rounded-lg shadow-lg hover:bg-gray-50 items-center gap-2"
+        >
+          <span className="text-lg">🗺️</span>
+          <span className="text-sm font-medium">Show Menu</span>
+        </button>
+      )}
+
       {/* Desktop Sidebar - Hidden on Mobile */}
-      <div className="hidden md:block absolute left-0 top-0 h-full bg-white shadow-lg z-35 w-80 overflow-y-auto">
-        <div className="p-4">
-          <h3 className="text-lg font-semibold mb-4">Response Map</h3>
+      <div
+        className={`hidden md:block absolute left-0 top-0 h-full bg-white shadow-lg z-35 transition-all duration-300 ${
+          isSidebarOpen ? "w-80" : "w-0"
+        } overflow-hidden`}
+      >
+        <div className="p-4 w-80">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Response Map</h3>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="p-1 hover:bg-gray-100 rounded"
+            >
+              ✕
+            </button>
+          </div>
 
           {/* User Info */}
           <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-            <div className="flex items-center mb-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-2">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div className="font-semibold text-sm">{user.name}</div>
-                <div className="text-xs text-gray-600">{user.email}</div>
-              </div>
-            </div>
-            <div className="mt-2 p-2 bg-blue-100 rounded text-xs">
+            <div className="p-2 bg-blue-100 rounded text-xs">
               <div className="font-semibold text-blue-800">
                 📍 Current Location
               </div>

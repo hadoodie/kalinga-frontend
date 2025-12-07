@@ -16,6 +16,7 @@ const DashboardV2 = () => {
   const [refreshKey, setRefreshKey] = useState(0);
   const [responseMapExpanded, setResponseMapExpanded] = useState(true);
   const [hospitalMapExpanded, setHospitalMapExpanded] = useState(true);
+  const [simulatedLocation, setSimulatedLocation] = useState(null);
 
   const assignedIncidents = useMemo(() => {
     if (!user?.id) return [];
@@ -220,7 +221,11 @@ const DashboardV2 = () => {
                   }`}
                 >
                   <div className="h-[450px] relative">
-                    <ResponseMap embedded className="rounded-b-xl" />
+                    <ResponseMap
+                      embedded
+                      className="rounded-b-xl"
+                      simulatedLocation={simulatedLocation}
+                    />
                   </div>
                 </div>
               </div>
@@ -244,9 +249,13 @@ const DashboardV2 = () => {
                   />
                 </button>
                 <div
-                  className={`transition-all duration-300 ease-in-out overflow-hidden ${
-                    hospitalMapExpanded ? "h-[450px]" : "h-0"
-                  }`}
+                  <div className="h-[450px] relative">
+                    <HospitalMap
+                      embedded
+                      className="rounded-b-xl"
+                      onSimulatedLocationChange={setSimulatedLocation}
+                    />
+                  </div>
                 >
                   <div className="h-[450px] relative">
                     <HospitalMap embedded className="rounded-b-xl" />
