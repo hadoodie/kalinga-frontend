@@ -277,6 +277,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/route-logs', [RouteLogController::class, 'store']);
     Route::post('/route-logs/{routeLog}/deviations', [RouteLogController::class, 'storeDeviation']);
     Route::get('/route-logs', [RouteLogController::class, 'index']);
+    Route::post('/book-appointment', [AppointmentController::class, 'store']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
@@ -393,6 +394,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware(['role:admin,patient'])->group(function () {
         Route::get('/lab-results', [LabResultController::class, 'index']);
         Route::get('/appointments', [AppointmentController::class, 'index']);
+        Route::delete('/appointments/{id}', [AppointmentController::class, 'destroy']);
         
         // Patient rescue tracking - view responder location
         Route::get('/rescue/active', [ResponderTrackingController::class, 'getMyActiveRescue']);
