@@ -1474,20 +1474,14 @@ export default function LiveResponseMap({
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
               {mode === "hospital"
-                ? "Hospital transfer planning"
-                : "Responder navigation"}
+                ? "Driving to Hospital"
+                : "Driving to Incident"}
             </p>
             <h3 className="text-lg font-black text-gray-900">
               {mode === "hospital"
                 ? selectedHospital?.name || "Awaiting hospital assignment"
-                : incident?.type || "Active routing"}
+                : incident?.location || "Incident Site"}
             </h3>
-            <p className="text-xs text-gray-500">
-              {mode === "hospital"
-                ? selectedHospital?.address ||
-                  "Nearest capable facility auto-selected"
-                : incident?.location || "Tracking live responder position"}
-            </p>
           </div>
         </div>
         <div className="text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -1637,7 +1631,11 @@ export default function LiveResponseMap({
         </MapContainer>
 
         {/* Quick action floating menu (mobile-first) */}
-        <div className="absolute right-4 top-6 z-[1100] flex flex-col items-end gap-3 lg:hidden">
+        <div
+          className={`absolute right-4 top-6 z-[1100] flex flex-col items-end gap-3 lg:hidden ${
+            navigationEnabled ? "hidden" : ""
+          }`}
+        >
           <div
             className={`flex flex-col items-start space-y-2 transition-all duration-300 ${
               actionsOpen
@@ -1778,7 +1776,11 @@ export default function LiveResponseMap({
         </div>
 
         {/* Desktop retractable action menu (top-right, semicircle attached to map edge) */}
-        <div className="hidden lg:block absolute top-4 right-4 z-[1200]">
+        <div
+          className={`hidden lg:block absolute top-4 right-4 z-[1200] ${
+            navigationEnabled ? "hidden" : ""
+          }`}
+        >
           <div className="relative">
             {desktopFabOpen && (
               <div className="absolute right-0 top-full z-[1210] mt-2 w-56 space-y-2 rounded-2xl bg-white p-3 text-sm font-medium text-slate-700 shadow-[0_25px_45px_rgba(15,23,42,0.25)] ring-1 ring-black/5">
