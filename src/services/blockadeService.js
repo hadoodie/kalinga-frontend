@@ -124,8 +124,8 @@ const blockadeService = {
   /**
    * Delete/remove blockade - invalidates cache
    */
-  async remove(id) {
-    const res = await api.patch(`/road-blockades/${id}/remove`);
+  async remove(id, data = {}) {
+    const res = await api.patch(`/road-blockades/${id}/remove`, data);
     invalidateCache("blockades:*");
     return res.data;
   },

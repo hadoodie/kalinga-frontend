@@ -41,7 +41,7 @@ export const useBlockades = ({
       setError(null);
 
       try {
-        const response = await api.get("/blockades");
+        const response = await api.get("/road-blockades");
         const data = Array.isArray(response.data?.data)
           ? response.data.data
           : Array.isArray(response.data)
