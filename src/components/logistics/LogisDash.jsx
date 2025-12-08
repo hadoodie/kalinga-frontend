@@ -113,7 +113,7 @@ const formatETA = (utcDateString) => {
 };
 
 const FacilityPieChart = ({ data }) => {
-  const COLORS = [  '#394e2c', '#FBBF24', '#f0d003', '#fae526','#34D399', '#1c2414',];
+  const COLORS = ['#394e2c', '#FBBF24', '#f0d003', '#fae526','#34D399', '#1c2414'];
   if (!data || data.length === 0) return <div className="flex items-center justify-center h-full text-gray-400">No facility data</div>;
   
   const facilityResourceData = data.map(item => ({ name: item.name, value: item.resources }));
@@ -152,19 +152,31 @@ const OverallStatusCard = ({ inventory, facilities }) => {
 
   return (
     <Link to="/logistics/resource-management" className="block h-full">
-      <div className="p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col h-full text-gray-900 border border-gray-200">
-        <h3 className="text-xl font-bold mb-4 border-b border-gray-100 pb-3 flex justify-center items-center">Resource Overview</h3>
-        <div className="flex flex-col md:flex-row gap-1 flex-1">
-          <div className="w-full md:w-1/2 flex flex-col justify-start items-start">
-            <p className="text-5xl font-extrabold mb-4">{totalRemaining}</p>
-            <div className="space-y-1 text-15px">
-              <p className="font-medium text-gray-600 flex items-center"><Home className="h-4 w-4 mr-1 text-gray-500" /> {facilityCount} Facilities</p>
-              <p className="font-medium text-gray-600 flex items-center"><Briefcase className="h-4 w-4 mr-1 text-gray-500" /> {itemCategories} Categories</p>
-              <p className="font-medium text-red-600 flex items-center"><AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {criticalCount} Critical</p>
+      <div className="p-4 md:p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col h-full text-gray-900 border border-gray-200">
+        <h3 className="text-base md:text-xl font-bold mb-3 md:mb-4 border-b border-gray-100 pb-2 md:pb-3 text-center">
+          Resource Overview
+        </h3>
+        <div className="flex flex-col sm:flex-row gap-3 md:gap-1 flex-1">
+          <div className="w-full sm:w-1/2 flex flex-col justify-start items-center sm:items-start">
+            <p className="text-3xl md:text-5xl font-extrabold mb-2 md:mb-4">{totalRemaining}</p>
+            <div className="space-y-1 text-sm md:text-base">
+              <p className="font-medium text-gray-600 flex items-center">
+                <Home className="h-4 w-4 mr-1 text-gray-500" /> {facilityCount} Facilities
+              </p>
+              <p className="font-medium text-gray-600 flex items-center">
+                <Briefcase className="h-4 w-4 mr-1 text-gray-500" /> {itemCategories} Categories
+              </p>
+              <p className="font-medium text-red-600 flex items-center">
+                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {criticalCount} Critical
+              </p>
             </div>
           </div>
-          <div className="w-full md:w-1/2 flex flex-col justify-center items-center">
-            {facilities && facilities.length > 0 ? <FacilityPieChart data={facilities} /> : <p className="text-gray-400">No facility data</p>}
+          <div className="w-full sm:w-1/2 h-32 md:h-auto flex flex-col justify-center items-center">
+            {facilities && facilities.length > 0 ? (
+              <FacilityPieChart data={facilities} />
+            ) : (
+              <p className="text-gray-400 text-sm">No facility data</p>
+            )}
           </div>
         </div>
       </div>
@@ -180,13 +192,26 @@ const AssetStatusCard = ({ assets }) => {
 
   return (
     <Link to="/logistics/asset-registry" className="block h-full">
-      <div className="p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200">
-        <h3 className="text-xl font-bold border-b border-gray-100 pb-3 flex justify-center items-center"> Asset Registry Status</h3>
-        <div className="flex-1 flex flex-col justify-center space-y-1">
-          <div className="text-5xl font-extrabold flex items-baseline">{totalAssets} <span className="text-lg font-medium ml-2 text-gray-600">Total Registered Assets</span></div>
-          <p className="text-15px font-semibold mt-1 text-green-600 flex items-center"><ChartColumnStacked className="h-4 w-4 mr-1 text-green-600" /> {inUse} Active Assets</p>
-          <p className="text-15px font-semibold text-gray-700 flex items-center"><ShieldQuestionMark className="h-4 w-4 mr-1 text-gray-500" /> {idle} Assets Unassigned</p>
-          <p className="text-15px font-semibold text-gray-700 flex items-center"><Wrench className="h-4 w-4 mr-1 text-gray-500" /> {repair} Vehicles Under Repair</p>
+      <div className="p-4 md:p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200">
+        <h3 className="text-base md:text-xl font-bold border-b border-gray-100 pb-2 md:pb-3 text-center mb-3">
+          Asset Registry Status
+        </h3>
+        <div className="flex-1 flex flex-col justify-center space-y-2">
+          <div className="text-3xl md:text-5xl font-extrabold flex flex-col sm:flex-row items-center sm:items-baseline justify-center sm:justify-start">
+            {totalAssets}
+            <span className="text-sm md:text-base font-medium mt-1 sm:mt-0 sm:ml-2 text-gray-600">
+              Total Assets
+            </span>
+          </div>
+          <p className="text-sm md:text-base font-semibold text-green-600 flex items-center justify-center sm:justify-start">
+            <ChartColumnStacked className="h-4 w-4 mr-1" /> {inUse} Active
+          </p>
+          <p className="text-sm md:text-base font-semibold text-gray-700 flex items-center justify-center sm:justify-start">
+            <ShieldQuestionMark className="h-4 w-4 mr-1" /> {idle} Unassigned
+          </p>
+          <p className="text-sm md:text-base font-semibold text-gray-700 flex items-center justify-center sm:justify-start">
+            <Wrench className="h-4 w-4 mr-1" /> {repair} Under Repair
+          </p>
         </div>
       </div>
     </Link>
@@ -194,19 +219,28 @@ const AssetStatusCard = ({ assets }) => {
 };
 
 const DeliveryPerformanceCard = ({ requests, shipments }) => {
-  // --- REAL DATA LOGIC ---
   const delayed = shipments?.filter((s) => s.status === "Delayed").length || 0;
   const avgDispatchTime = "45";
   const avgDispatchUnit = "m";
 
   return (
     <Link to="/logistics/supply-tracking" className="block h-full">
-      <div className="p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200 cursor-pointer">
-        <h3 className="text-xl font-bold mb-0 border-b border-gray-100 pb-3 flex justify-center items-center"> Delivery Performance</h3>
-        <div className="flex-1 flex flex-col justify-center space-y-4">
-          <div className="text-5xl font-extrabold flex flex-row items-baseline">{avgDispatchTime} <span className="text-2xl font-extrabold mr-1">{avgDispatchUnit}</span><span className="text-sm font-light ml-2 text-gray-600">Avg Dispatch Time</span></div>
-          <p className="text-15px font-semibold text-red-600 flex items-center"><AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {delayed} Delayed Shipments</p>
-          <div className="text-15px font-medium flex items-center text-gray-600"><CheckCircle className="mr-1 h-4 w-4" /> 80% On-Time Success</div>
+      <div className="p-4 md:p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200">
+        <h3 className="text-base md:text-xl font-bold mb-3 border-b border-gray-100 pb-2 md:pb-3 text-center">
+          Delivery Performance
+        </h3>
+        <div className="flex-1 flex flex-col justify-center space-y-3 md:space-y-4">
+          <div className="text-3xl md:text-5xl font-extrabold flex flex-row items-baseline justify-center sm:justify-start">
+            {avgDispatchTime}
+            <span className="text-xl md:text-2xl font-extrabold mr-1">{avgDispatchUnit}</span>
+            <span className="text-xs md:text-sm font-light ml-2 text-gray-600">Avg Dispatch</span>
+          </div>
+          <p className="text-sm md:text-base font-semibold text-red-600 flex items-center justify-center sm:justify-start">
+            <AlertTriangle className="h-4 w-4 mr-1" /> {delayed} Delayed
+          </p>
+          <div className="text-sm md:text-base font-medium flex items-center text-gray-600 justify-center sm:justify-start">
+            <CheckCircle className="mr-1 h-4 w-4" /> 80% On-Time Success
+          </div>
         </div>
       </div>
     </Link>
@@ -220,12 +254,23 @@ const PendingRequestsCard = ({ requests }) => {
 
   return (
     <Link to="/logistics/requested-allocation" className="block h-full">
-      <div className="p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200">
-        <h3 className="text-xl font-bold border-b border-gray-100 pb-3 flex justify-center items-center">Requested Allocation</h3>
-        <div className="flex-1 flex flex-col justify-center space-y-1">
-          <div className="text-5xl font-extrabold flex items-baseline">{totalPending} <span className="text-base font-medium ml-2 text-gray-600">Total Pending Requests</span></div>
-          <p className="text-15px font-semibold mt-1 text-red-600 flex items-center"><AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {criticalRequests} Critical</p>
-          <p className="text-15px font-semibold text-yellow-600 flex items-center"><Clock className="h-4 w-4 mr-1 text-yellow-600" /> {highRequests} High Priority</p>
+      <div className="p-4 md:p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200">
+        <h3 className="text-base md:text-xl font-bold border-b border-gray-100 pb-2 md:pb-3 text-center mb-3">
+          Requested Allocation
+        </h3>
+        <div className="flex-1 flex flex-col justify-center space-y-2">
+          <div className="text-3xl md:text-5xl font-extrabold flex flex-col sm:flex-row items-center sm:items-baseline justify-center sm:justify-start">
+            {totalPending}
+            <span className="text-sm md:text-base font-medium mt-1 sm:mt-0 sm:ml-2 text-gray-600">
+              Pending
+            </span>
+          </div>
+          <p className="text-sm md:text-base font-semibold text-red-600 flex items-center justify-center sm:justify-start">
+            <AlertTriangle className="h-4 w-4 mr-1" /> {criticalRequests} Critical
+          </p>
+          <p className="text-sm md:text-base font-semibold text-yellow-600 flex items-center justify-center sm:justify-start">
+            <Clock className="h-4 w-4 mr-1" /> {highRequests} High Priority
+          </p>
         </div>
       </div>
     </Link>
@@ -237,7 +282,7 @@ const LiveMap = ({ shipments, selectedShipment, onShipmentSelect, navigate }) =>
     <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-0 flex flex-col h-full overflow-hidden relative group">
       {/* Header */}
       <div className="p-4 border-b flex justify-between items-center bg-white z-10 relative">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center">
+        <h2 className="text-lg md:text-xl font-bold text-gray-800 flex items-center">
           <MapPin className="h-5 w-5 mr-2 text-green-800" /> Real-time Asset Tracking
         </h2>
         <span className="text-xs text-green-600 font-semibold animate-pulse flex items-center">
@@ -271,7 +316,7 @@ const NotificationsList = () => {
   return (
     <div className="bg-white rounded-2xl shadow-xl p-5 border border-gray-100 h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-800 flex items-center">Notifications</h2>
+        <h2 className="text-lg md:text-xl font-bold text-gray-800 flex items-center">Notifications</h2>
       </div>
       <div className="overflow-y-auto pr-2 flex-1">
         <NotificationWidget />
@@ -280,12 +325,42 @@ const NotificationsList = () => {
   );
 };
 
-// --- UPDATED: ActiveDeliveriesList (Uses Real Data) ---
+// --- UPDATED: ActiveDeliveriesList (Mobile Responsive) ---
 const ActiveDeliveriesList = ({ shipments }) => {
   return (
-    <div className="bg-white rounded-2xl shadow-md border p-5">
-      <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center"><Truck className="h-5 w-5 mr-2 text-green-800" /> Active Deliveries</h2>
-      <div className="overflow-x-auto">
+    <div className="bg-white rounded-2xl shadow-md border p-4 md:p-5">
+      <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-3 flex items-center">
+        <Truck className="h-5 w-5 mr-2 text-green-800" /> Active Deliveries
+      </h2>
+      
+      {/* Mobile View - Cards */}
+      <div className="block md:hidden space-y-3">
+        {shipments && shipments.length > 0 ? (
+          shipments.map((s) => (
+            <div key={s.id} className="border border-gray-200 rounded-lg p-3 hover:bg-green-50">
+              <div className="flex justify-between items-start mb-2">
+                <span className="font-bold text-sm">#{s.id}</span>
+                <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(s.status)}`}>
+                  {s.status}
+                </span>
+              </div>
+              <div className="space-y-1 text-sm">
+                <p className="flex items-center text-gray-700">
+                  <CornerDownRight className="h-3 w-3 mr-1 text-gray-400" />
+                  {s.route}
+                </p>
+                <p className="text-gray-600">{s.contents}</p>
+                <p className="font-bold text-gray-900">ETA: {formatETA(s.eta)}</p>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-center py-8 text-gray-500">No active shipments</p>
+        )}
+      </div>
+
+      {/* Desktop View - Table */}
+      <div className="hidden md:block overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr>
@@ -301,29 +376,73 @@ const ActiveDeliveriesList = ({ shipments }) => {
               shipments.map((s) => (
                 <tr key={s.id} className="hover:bg-green-50">
                   <td className="px-3 py-2 text-center font-semibold">{s.id}</td>
-                  <td className="px-3 py-2 text-center"><span className="flex items-center justify-center"><CornerDownRight className="h-4 w-4 mr-1 text-gray-400" />{s.route}</span></td>
+                  <td className="px-3 py-2 text-center">
+                    <span className="flex items-center justify-center">
+                      <CornerDownRight className="h-4 w-4 mr-1 text-gray-400" />
+                      {s.route}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-center text-gray-600">{s.contents}</td>
-                  <td className="px-3 py-2 text-center"><span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(s.status)}`}>{s.status}</span></td>
+                  <td className="px-3 py-2 text-center">
+                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(s.status)}`}>
+                      {s.status}
+                    </span>
+                  </td>
                   <td className="px-3 py-2 text-center font-bold text-gray-600">{formatETA(s.eta)}</td>
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="5" className="text-center py-8 text-gray-500">No active shipments to display.</td></tr>
+              <tr>
+                <td colSpan="5" className="text-center py-8 text-gray-500">No active shipments</td>
+              </tr>
             )}
           </tbody>
         </table>
       </div>
+      
       <div className="mt-3 text-right">
-        <Link to="/logistics/supply-tracking" className="text-sm text-green-600 font-semibold hover:text-green-700 flex items-center justify-end">View All Shipments <ArrowRight className="ml-1 h-4 w-4" /></Link>
+        <Link to="/logistics/supply-tracking" className="text-sm text-green-600 font-semibold hover:text-green-700 flex items-center justify-end">
+          View All Shipments <ArrowRight className="ml-1 h-4 w-4" />
+        </Link>
       </div>
     </div>
   );
 };
 
+// --- UPDATED: ResourceRequestsList (Mobile Responsive) ---
 const ResourceRequestsList = ({ requests }) => (
-  <div className="col-span-12 bg-white rounded-2xl shadow-md border p-5">
-    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center"><List className="h-5 w-5 mr-2 text-green-800" /> Pending Resource Requests</h2>
-    <div className="overflow-x-auto">
+  <div className="col-span-12 bg-white rounded-2xl shadow-md border p-4 md:p-5">
+    <h2 className="text-lg md:text-xl font-bold text-gray-800 mb-3 flex items-center">
+      <List className="h-5 w-5 mr-2 text-green-800" /> Pending Resource Requests
+    </h2>
+    
+    {/* Mobile View - Cards */}
+    <div className="block md:hidden space-y-3">
+      {requests && requests.length > 0 ? (
+        requests.slice(0, 5).map((r) => (
+          <div key={r.id} className="border border-gray-200 rounded-lg p-3 hover:bg-green-50">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <span className="font-bold text-sm">Request #{r.id}</span>
+                <p className="text-xs text-gray-500 mt-1">{r.time}</p>
+              </div>
+              <span className={`px-2 py-1 rounded-full border text-xs ${getUrgencyColor(r.urgency)}`}>
+                {r.urgency}
+              </span>
+            </div>
+            <div className="space-y-1 text-sm">
+              <p className="text-gray-700">{r.location}</p>
+              <p className="font-bold text-green-600">{r.items}</p>
+            </div>
+          </div>
+        ))
+      ) : (
+        <p className="text-center py-8 text-gray-500">No pending requests</p>
+      )}
+    </div>
+
+    {/* Desktop View - Table */}
+    <div className="hidden md:block overflow-x-auto">
       <table className="min-w-full text-sm">
         <thead className="bg-gray-50">
           <tr>
@@ -341,18 +460,27 @@ const ResourceRequestsList = ({ requests }) => (
                 <td className="px-3 py-2 text-center">{r.id}</td>
                 <td className="px-3 py-2 text-center">{r.location}</td>
                 <td className="px-3 py-2 text-center font-bold text-green-600">{r.items}</td>
-                <td className="px-3 py-2 text-center"><span className={`px-2 py-1 rounded-full border ${getUrgencyColor(r.urgency)}`}>{r.urgency}</span></td>
+                <td className="px-3 py-2 text-center">
+                  <span className={`px-2 py-1 rounded-full border ${getUrgencyColor(r.urgency)}`}>
+                    {r.urgency}
+                  </span>
+                </td>
                 <td className="px-3 py-2 text-center text-gray-500">{r.time}</td>
               </tr>
             ))
           ) : (
-            <tr><td colSpan="5" className="text-center py-8 text-gray-500">No pending requests</td></tr>
+            <tr>
+              <td colSpan="5" className="text-center py-8 text-gray-500">No pending requests</td>
+            </tr>
           )}
         </tbody>
       </table>
     </div>
+    
     <div className="mt-3 text-right">
-      <Link to="/logistics/requested-allocation" className="text-sm text-green-600 font-semibold hover:text-green-700 flex items-center justify-end">View Full Allocation <ArrowRight className="ml-1 h-4 w-4" /></Link>
+      <Link to="/logistics/requested-allocation" className="text-sm text-green-600 font-semibold hover:text-green-700 flex items-center justify-end">
+        View Full Allocation <ArrowRight className="ml-1 h-4 w-4" />
+      </Link>
     </div>
   </div>
 );
@@ -362,13 +490,12 @@ const LogisDash = () => {
   const [requests, setRequests] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [facilities, setFacilities] = useState([]);
-  const [shipments, setShipments] = useState([]); // Initialized empty for Real Data
+  const [shipments, setShipments] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [assets] = useState(MOCK_ASSETS);
   
-  // NEW STATE FOR MAP
   const [selectedShipment, setSelectedShipment] = useState(null);
   const navigate = useNavigate();
 
@@ -402,7 +529,7 @@ const LogisDash = () => {
         }));
         setRequests(formattedRequests);
 
-        // 3. Fetch Supply Tracking (Shipments) - THIS CONNECTS THE DELAYS
+        // 3. Fetch Supply Tracking (Shipments)
         const supplyResponse = await api.get('/supply-tracking');
         setShipments(supplyResponse.data);
 
@@ -421,7 +548,7 @@ const LogisDash = () => {
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         setError(error.message);
-        setInventory(MOCK_SHIPMENTS); // Fallback
+        setInventory(MOCK_SHIPMENTS);
         setFacilities(MOCK_FACILITIES);
       } finally {
         setLoading(false);
@@ -457,7 +584,7 @@ const LogisDash = () => {
   return (
     <div className="min-h-screen bg-gray-100 font-sans p-4 md:p-8">
       <header className="mb-6 p-4 bg-white rounded-xl shadow-md text-center md:text-left">
-        <h1 className="text-3xl md:text-4xl font-extrabold">Logistics Dashboard</h1>
+        <h1 className="text-2xl md:text-4xl font-extrabold">Logistics Dashboard</h1>
         <p className="text-gray-500 text-sm md:text-base mt-1">Real-time resource allocation & tracking</p>
       </header>
 
@@ -471,8 +598,8 @@ const LogisDash = () => {
 
       {/* ROW 2: Map + Notifications */}
       <section className="grid grid-cols-12 gap-6 mb-6">
-        {/* Left Side: Live Map (8 columns) */}
-        <div className="col-span-12 lg:col-span-8 h-[600px]">
+        {/* Left Side: Live Map */}
+        <div className="col-span-12 lg:col-span-8 h-[400px] md:h-[600px]">
           <LiveMap 
             shipments={shipments}
             selectedShipment={selectedShipment}
@@ -481,12 +608,13 @@ const LogisDash = () => {
           />
         </div>
 
-        <div className="col-span-12 lg:col-span-4 h-[600px]">
-          <NotificationsList  />
+        {/* Right Side: Notifications */}
+        <div className="col-span-12 lg:col-span-4 h-[400px] md:h-[600px]">
+          <NotificationsList />
         </div>
       </section>
           
-       {/* ROW 3: Active Deliveries */}
+      {/* ROW 3: Active Deliveries */}
       <section className="mb-6">
         <ActiveDeliveriesList shipments={shipments} />
       </section>
