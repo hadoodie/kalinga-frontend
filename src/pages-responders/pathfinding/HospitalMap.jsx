@@ -2589,189 +2589,191 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           }`}
         >
           <div className="p-4">
-          <h3 className="text-lg font-semibold mb-4">Hospital Navigator</h3>
+            <h3 className="text-lg font-semibold mb-4">Hospital Navigator</h3>
 
-          {/* Location Summary */}
-          <div className="mb-4 rounded-lg border border-green-100 bg-green-50 p-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
-                📍 Current Location
-              </p>
-              <span className="text-[10px] font-medium text-green-600">
-                Synced feed
-              </span>
-            </div>
-            <div
-              className="mt-2 rounded-md bg-white/80 p-2 text-xs text-green-900"
-              style={{ whiteSpace: "pre-line" }}
-            >
-              {currentLocationDisplay}
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mb-4 space-y-2">
-            <button
-              onClick={findNearestHospital}
-              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
-            >
-              🏥 Find Nearest Hospital
-            </button>
-            <button
-              onClick={toggleBlockadeReporting}
-              className={`w-full px-4 py-3 rounded-lg text-sm ${
-                blockadeReportingMode
-                  ? "bg-gray-600 hover:bg-gray-700 text-white"
-                  : "bg-red-600 hover:bg-red-700 text-white"
-              }`}
-            >
-              {blockadeReportingMode ? "❌ Cancel" : "🚧 Report Road Issue"}
-            </button>
-          </div>
-
-          {/* Desktop Blockade Form */}
-          {blockadeReportingMode && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2">Report Road Issue</h4>
-              <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-xs">
-                <strong>📍 Click anywhere on the map</strong>
-                <br />
-                The system will automatically snap to the nearest road.
+            {/* Location Summary */}
+            <div className="mb-4 rounded-lg border border-green-100 bg-green-50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-green-800">
+                  📍 Current Location
+                </p>
+                <span className="text-[10px] font-medium text-green-600">
+                  Synced feed
+                </span>
               </div>
-              <input
-                type="text"
-                placeholder="Brief description"
-                value={blockadeForm.title}
-                onChange={(e) =>
-                  setBlockadeForm((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                  }))
-                }
-                className="w-full mb-2 p-2 border rounded text-sm"
-              />
-              <textarea
-                placeholder="Detailed description"
-                value={blockadeForm.description}
-                onChange={(e) =>
-                  setBlockadeForm((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                className="w-full mb-2 p-2 border rounded text-sm h-16 resize-none"
-              />
-              <select
-                value={blockadeForm.severity}
-                onChange={(e) =>
-                  setBlockadeForm((prev) => ({
-                    ...prev,
-                    severity: e.target.value,
-                  }))
-                }
-                className="w-full mb-3 p-2 border rounded text-sm"
+              <div
+                className="mt-2 rounded-md bg-white/80 p-2 text-xs text-green-900"
+                style={{ whiteSpace: "pre-line" }}
               >
-                <option value="low">Low Severity</option>
-                <option value="medium">Medium Severity</option>
-                <option value="high">High Severity</option>
-                <option value="critical">Critical</option>
-              </select>
-              <div className="flex gap-2">
-                <button
-                  onClick={submitBlockadeReport}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
-                >
-                  Submit
-                </button>
-                <button
-                  onClick={cancelBlockadeReport}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm"
-                >
-                  Cancel
-                </button>
+                {currentLocationDisplay}
               </div>
             </div>
-          )}
 
-          {/* Tab Buttons */}
-          <div className="flex mb-4 border-b">
-            <button
-              onClick={() => setSelectedTab("hospitals")}
-              className={`flex-1 py-2 px-4 text-sm ${
-                selectedTab === "hospitals"
-                  ? "border-b-2 border-green-500 text-green-600 bg-green-50"
-                  : "text-gray-600 hover:text-gray-800"
-              }`}
-            >
-              🏥 Hospitals
-            </button>
-            <button
-              onClick={() => setSelectedTab("blockades")}
-              className={`flex-1 py-2 px-4 text-sm ${
-                selectedTab === "blockades"
-                  ? "border-b-2 border-red-500 text-red-600 bg-red-50"
-                  : "text-gray-600 hover:text-gray-800"
-              }`}
-            >
-              🚧 Road Issues
-            </button>
-          </div>
+            {/* Action Buttons */}
+            <div className="mb-4 space-y-2">
+              <button
+                onClick={findNearestHospital}
+                className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2"
+              >
+                🏥 Find Nearest Hospital
+              </button>
+              <button
+                onClick={toggleBlockadeReporting}
+                className={`w-full px-4 py-3 rounded-lg text-sm ${
+                  blockadeReportingMode
+                    ? "bg-gray-600 hover:bg-gray-700 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
+              >
+                {blockadeReportingMode ? "❌ Cancel" : "🚧 Report Road Issue"}
+              </button>
+            </div>
 
-          {/* Items List */}
-          <div className="space-y-2">
-            {selectedTab === "hospitals" ? (
-              hospitalsWithDistance.length > 0 ? (
-                hospitalsWithDistance.map((hospital, index) => (
+            {/* Desktop Blockade Form */}
+            {blockadeReportingMode && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <h4 className="font-semibold text-sm mb-2">
+                  Report Road Issue
+                </h4>
+                <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-xs">
+                  <strong>📍 Click anywhere on the map</strong>
+                  <br />
+                  The system will automatically snap to the nearest road.
+                </div>
+                <input
+                  type="text"
+                  placeholder="Brief description"
+                  value={blockadeForm.title}
+                  onChange={(e) =>
+                    setBlockadeForm((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
+                  }
+                  className="w-full mb-2 p-2 border rounded text-sm"
+                />
+                <textarea
+                  placeholder="Detailed description"
+                  value={blockadeForm.description}
+                  onChange={(e) =>
+                    setBlockadeForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  className="w-full mb-2 p-2 border rounded text-sm h-16 resize-none"
+                />
+                <select
+                  value={blockadeForm.severity}
+                  onChange={(e) =>
+                    setBlockadeForm((prev) => ({
+                      ...prev,
+                      severity: e.target.value,
+                    }))
+                  }
+                  className="w-full mb-3 p-2 border rounded text-sm"
+                >
+                  <option value="low">Low Severity</option>
+                  <option value="medium">Medium Severity</option>
+                  <option value="high">High Severity</option>
+                  <option value="critical">Critical</option>
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={submitBlockadeReport}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
+                  >
+                    Submit
+                  </button>
+                  <button
+                    onClick={cancelBlockadeReport}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Buttons */}
+            <div className="flex mb-4 border-b">
+              <button
+                onClick={() => setSelectedTab("hospitals")}
+                className={`flex-1 py-2 px-4 text-sm ${
+                  selectedTab === "hospitals"
+                    ? "border-b-2 border-green-500 text-green-600 bg-green-50"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                🏥 Hospitals
+              </button>
+              <button
+                onClick={() => setSelectedTab("blockades")}
+                className={`flex-1 py-2 px-4 text-sm ${
+                  selectedTab === "blockades"
+                    ? "border-b-2 border-red-500 text-red-600 bg-red-50"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                🚧 Road Issues
+              </button>
+            </div>
+
+            {/* Items List */}
+            <div className="space-y-2">
+              {selectedTab === "hospitals" ? (
+                hospitalsWithDistance.length > 0 ? (
+                  hospitalsWithDistance.map((hospital, index) => (
+                    <div
+                      key={index}
+                      className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      onClick={() => drawRoute(hospital.lat, hospital.lng)}
+                    >
+                      <div className="font-semibold text-green-600 text-sm">
+                        {hospital.name}
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        {hospital.address}
+                      </div>
+                      <div className="text-xs text-blue-600 mt-1">
+                        📍 {hospital.distance} • {hospital.phone}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 text-gray-500 text-sm">
+                    No hospitals loaded
+                  </div>
+                )
+              ) : blockades.length > 0 ? (
+                blockades.map((blockade, index) => (
                   <div
                     key={index}
                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                    onClick={() => drawRoute(hospital.lat, hospital.lng)}
+                    onClick={() =>
+                      drawRoute(blockade.latitude, blockade.longitude)
+                    }
                   >
-                    <div className="font-semibold text-green-600 text-sm">
-                      {hospital.name}
+                    <div className="font-semibold text-red-600 text-sm">
+                      {blockade.title}
                     </div>
                     <div className="text-xs text-gray-600">
-                      {hospital.address}
+                      {blockade.road_name} • {blockade.severity.toUpperCase()}
                     </div>
-                    <div className="text-xs text-blue-600 mt-1">
-                      📍 {hospital.distance} • {hospital.phone}
+                    <div className="text-xs text-gray-500 mt-1">
+                      {blockade.description}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      By: {blockade.reported_by} • {blockade.reported_at_human}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="p-3 text-gray-500 text-sm">
-                  No hospitals loaded
+                  No road blockades in this area
                 </div>
-              )
-            ) : blockades.length > 0 ? (
-              blockades.map((blockade, index) => (
-                <div
-                  key={index}
-                  className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                  onClick={() =>
-                    drawRoute(blockade.latitude, blockade.longitude)
-                  }
-                >
-                  <div className="font-semibold text-red-600 text-sm">
-                    {blockade.title}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {blockade.road_name} • {blockade.severity.toUpperCase()}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {blockade.description}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    By: {blockade.reported_by} • {blockade.reported_at_human}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-3 text-gray-500 text-sm">
-                No road blockades in this area
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useLayoutEffect,
+  useCallback,
+} from "react";
 import {
   MapContainer,
   Marker,
@@ -16,10 +23,7 @@ import {
   Maximize,
   Minimize,
   Settings,
-  Layers,
   Target,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -459,6 +463,8 @@ export default function LiveResponseMap({
   const [actionsOpen, setActionsOpen] = useState(false);
   const [showBlockades, setShowBlockades] = useState(true);
   const [showHospitals, setShowHospitals] = useState(true);
+  const [desktopFabOpen, setDesktopFabOpen] = useState(false);
+  const transportNavTriggeredRef = useRef(false);
 
   // Broadcast responder location to patient via WebSocket.
   // Enable while incident is active (responder en route or on scene) so patient can track.
@@ -471,7 +477,9 @@ export default function LiveResponseMap({
     incidentId: incident?.id,
     enabled:
       !!incident &&
-      ["acknowledged", "en_route", "on_scene"].includes(incident?.status),
+      ["acknowledged", "en_route", "on_scene", "transporting"].includes(
+        incident?.status
+      ),
     broadcastInterval: 5000,
   });
 
@@ -515,20 +523,48 @@ export default function LiveResponseMap({
     [incident]
   );
 
+  const nearestHospital = hospitals?.[0] ?? null;
+
   const hospitalPosition = useMemo(
-    () => getHospitalPosition(selectedHospital),
-    [selectedHospital]
+    () => getHospitalPosition(selectedHospital ?? nearestHospital),
+    [selectedHospital, nearestHospital]
   );
 
-  const nearestHospital = hospitals?.[0] ?? null;
+  const hospitalMarkers = useMemo(() => {
+    if (!Array.isArray(hospitals)) {
+      return [];
+    }
+    return hospitals
+      .map((hospital) => {
+        const lat = normalizeCoordinate(hospital.latitude);
+        const lng = normalizeCoordinate(hospital.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
+        }
+        return {
+          id: hospital.id ?? `${lat}_${lng}`,
+          hospital,
+          position: [lat, lng],
+          isSelected:
+            selectedHospital &&
+            String(selectedHospital.id) === String(hospital.id),
+        };
+      })
+      .filter(Boolean);
+  }, [hospitals, selectedHospital]);
+
+  const visibleHospitalCount = hospitalMarkers.length;
 
   const mode = determineMode(incident?.status);
   const isOnScene = incident?.status === "on_scene";
 
   useEffect(() => {
+    const shouldLockHospital = ["on_scene", "transporting"].includes(
+      incident?.status
+    );
     if (
       autoAssignmentEnabled &&
-      incident?.status === "on_scene" &&
+      shouldLockHospital &&
       !selectedHospital &&
       nearestHospital &&
       onAutoAssignHospital
@@ -538,6 +574,33 @@ export default function LiveResponseMap({
   }, [
     autoAssignmentEnabled,
     incident?.status,
+    nearestHospital,
+    onAutoAssignHospital,
+    selectedHospital,
+  ]);
+
+  useEffect(() => {
+    const isTransporting = incident?.status === "transporting";
+    if (isTransporting && !transportNavTriggeredRef.current) {
+      transportNavTriggeredRef.current = true;
+      if (
+        autoAssignmentEnabled &&
+        !selectedHospital &&
+        nearestHospital &&
+        onAutoAssignHospital
+      ) {
+        onAutoAssignHospital(nearestHospital);
+      }
+      if (!navigationEnabled) {
+        setNavigationEnabled(true);
+      }
+    } else if (!isTransporting) {
+      transportNavTriggeredRef.current = false;
+    }
+  }, [
+    autoAssignmentEnabled,
+    incident?.status,
+    navigationEnabled,
     nearestHospital,
     onAutoAssignHospital,
     selectedHospital,
@@ -756,6 +819,21 @@ export default function LiveResponseMap({
     return incidentPosition;
   }, [incidentPosition, isOnScene, mode, responderPosition]);
 
+  const handleCenterOnResponder = useCallback(() => {
+    if (!mapRef.current) {
+      return;
+    }
+    const target =
+      currentCenter ||
+      responderPosition ||
+      incidentPosition ||
+      DEFAULT_POSITION;
+    const currentZoom = mapRef.current.getZoom?.() ?? 13;
+    mapRef.current.flyTo(target, Math.max(currentZoom, 14), {
+      duration: 0.6,
+    });
+  }, [currentCenter, incidentPosition, responderPosition]);
+
   const handleSimulatedLocationChange = (coords, options = {}) => {
     if (!coords) return;
     const lat = Number(coords.lat);
@@ -899,7 +977,9 @@ export default function LiveResponseMap({
           zoom={13}
           minZoom={5}
           maxZoom={18}
-          className={`h-full w-full ${isFullscreen ? "!h-[100vh] !w-screen" : ""}`}
+          className={`h-full w-full ${
+            isFullscreen ? "!h-[100vh] !w-screen" : ""
+          }`}
           whenCreated={(mapInstance) => {
             mapRef.current = mapInstance;
           }}
@@ -935,32 +1015,35 @@ export default function LiveResponseMap({
             </Marker>
           )}
 
-          {showHospitals && hospitalPosition && (
-            <Marker position={hospitalPosition} icon={hospitalIcon}>
-              <Tooltip direction="top" offset={[0, -10]} opacity={1}>
-                {selectedHospital?.name || "Destination hospital"}
-              </Tooltip>
-            </Marker>
-          )}
+          {showHospitals &&
+            hospitalMarkers.map(({ id, position, hospital, isSelected }) => (
+              <Marker key={id} position={position} icon={hospitalIcon}>
+                <Tooltip direction="top" offset={[0, -10]} opacity={1}>
+                  {hospital?.name || "Hospital"}
+                  {isSelected ? " • Locked" : ""}
+                </Tooltip>
+              </Marker>
+            ))}
 
-          {normalizedBlockades.map((blockade) => (
-            showBlockades && (
-            <Marker
-              key={blockade.id}
-              position={[blockade.lat, blockade.lng]}
-              icon={getBlockadeIcon(blockade.severity)}
-            >
-              <Tooltip direction="top" offset={[0, -8]} opacity={1}>
-                <div className="text-xs font-semibold text-slate-800">
-                  {blockade.descriptor}
-                </div>
-                <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                  {blockade.severity} road issue
-                </div>
-              </Tooltip>
-            </Marker>
-            )
-          ))}
+          {normalizedBlockades.map(
+            (blockade) =>
+              showBlockades && (
+                <Marker
+                  key={blockade.id}
+                  position={[blockade.lat, blockade.lng]}
+                  icon={getBlockadeIcon(blockade.severity)}
+                >
+                  <Tooltip direction="top" offset={[0, -8]} opacity={1}>
+                    <div className="text-xs font-semibold text-slate-800">
+                      {blockade.descriptor}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                      {blockade.severity} road issue
+                    </div>
+                  </Tooltip>
+                </Marker>
+              )
+          )}
 
           {routePoints && routePoints.length > 1 && (
             <Polyline
@@ -981,23 +1064,18 @@ export default function LiveResponseMap({
         </MapContainer>
 
         {/* Quick action floating menu (mobile-first) */}
-        {/* Mobile: bottom-left stacked FABs with improved UX */}
-        <div className="absolute left-4 bottom-6 z-[1100] flex flex-col items-start lg:hidden">
-          {/* Expandable actions */}
+        <div className="absolute right-4 top-6 z-[1100] flex flex-col items-end gap-3 lg:hidden">
           <div
-            className={`flex flex-col items-start space-y-2 mb-3 transition-all duration-300 ${
-              actionsOpen 
-                ? "opacity-100 translate-y-0 pointer-events-auto" 
+            className={`flex flex-col items-start space-y-2 transition-all duration-300 ${
+              actionsOpen
+                ? "opacity-100 translate-y-0 pointer-events-auto"
                 : "opacity-0 translate-y-4 pointer-events-none"
             }`}
           >
-            {/* Center on responder */}
             <button
               onClick={() => {
+                handleCenterOnResponder();
                 setActionsOpen(false);
-                if (responderPosition && mapRef.current) {
-                  mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
-                }
               }}
               className="flex items-center gap-2 px-4 py-3 rounded-full bg-white shadow-lg border border-gray-200 active:scale-95 transition-transform"
               title="Center on responder"
@@ -1005,73 +1083,50 @@ export default function LiveResponseMap({
               <Target className="h-5 w-5 text-blue-600" />
               <span className="text-sm font-medium text-slate-700">Center</span>
             </button>
-
-            {/* Zoom controls row */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setActionsOpen(false);
-                  if (mapRef.current) {
-                    mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19));
-                  }
-                }}
-                className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg border border-gray-200 active:scale-95 transition-transform"
-                title="Zoom in"
-              >
-                <ZoomIn className="h-5 w-5 text-slate-700" />
-              </button>
-
-              <button
-                onClick={() => {
-                  setActionsOpen(false);
-                  if (mapRef.current) {
-                    mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1));
-                  }
-                }}
-                className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg border border-gray-200 active:scale-95 transition-transform"
-                title="Zoom out"
-              >
-                <ZoomOut className="h-5 w-5 text-slate-700" />
-              </button>
-            </div>
-
-            {/* Toggle hospitals */}
             <button
-              onClick={() => {
-                setShowHospitals((s) => !s);
-                setActionsOpen(false);
-              }}
+              onClick={() => setShowHospitals((s) => !s)}
               className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border active:scale-95 transition-all ${
                 showHospitals
-                  ? 'bg-emerald-50 border-emerald-300'
-                  : 'bg-white border-gray-200'
+                  ? "bg-emerald-50 border-emerald-300"
+                  : "bg-white border-gray-200"
               }`}
               title={showHospitals ? "Hide hospitals" : "Show hospitals"}
             >
-              <Stethoscope className={`h-5 w-5 ${showHospitals ? 'text-emerald-600' : 'text-slate-600'}`} />
-              <span className={`text-sm font-medium ${showHospitals ? 'text-emerald-700' : 'text-slate-700'}`}>
+              <Stethoscope
+                className={`h-5 w-5 ${
+                  showHospitals ? "text-emerald-600" : "text-slate-600"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  showHospitals ? "text-emerald-700" : "text-slate-700"
+                }`}
+              >
                 Hospitals
               </span>
               {showHospitals && (
                 <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
               )}
             </button>
-
-            {/* Toggle blockades */}
             <button
-              onClick={() => {
-                setShowBlockades((s) => !s);
-                setActionsOpen(false);
-              }}
+              onClick={() => setShowBlockades((s) => !s)}
               className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border active:scale-95 transition-all ${
                 showBlockades
-                  ? 'bg-orange-50 border-orange-300'
-                  : 'bg-white border-gray-200'
+                  ? "bg-orange-50 border-orange-300"
+                  : "bg-white border-gray-200"
               }`}
               title={showBlockades ? "Hide road alerts" : "Show road alerts"}
             >
-              <AlertTriangle className={`h-5 w-5 ${showBlockades ? 'text-orange-600' : 'text-slate-600'}`} />
-              <span className={`text-sm font-medium ${showBlockades ? 'text-orange-700' : 'text-slate-700'}`}>
+              <AlertTriangle
+                className={`h-5 w-5 ${
+                  showBlockades ? "text-orange-600" : "text-slate-600"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  showBlockades ? "text-orange-700" : "text-slate-700"
+                }`}
+              >
                 Road alerts
               </span>
               {showBlockades && (
@@ -1080,22 +1135,22 @@ export default function LiveResponseMap({
             </button>
           </div>
 
-          {/* Main FAB: toggle actions or fullscreen */}
           <div className="flex items-center gap-2">
             <button
               onClick={() => setActionsOpen((s) => !s)}
               className={`flex items-center justify-center h-14 w-14 rounded-full shadow-xl border-2 active:scale-95 transition-all ${
-                actionsOpen 
-                  ? 'bg-blue-600 border-blue-700 rotate-45' 
-                  : 'bg-white border-gray-200'
+                actionsOpen
+                  ? "bg-blue-600 border-blue-700 rotate-45"
+                  : "bg-white border-gray-200"
               }`}
               title="Quick actions"
             >
-              <Settings className={`h-6 w-6 transition-colors ${
-                actionsOpen ? 'text-white' : 'text-slate-700'
-              }`} />
+              <Settings
+                className={`h-6 w-6 transition-colors ${
+                  actionsOpen ? "text-white" : "text-slate-700"
+                }`}
+              />
             </button>
-
             <button
               onClick={() => setIsFullscreen((f) => !f)}
               className="flex items-center justify-center h-14 w-14 rounded-full bg-white shadow-xl border-2 border-gray-200 active:scale-95 transition-transform"
@@ -1109,14 +1164,15 @@ export default function LiveResponseMap({
             </button>
           </div>
 
-          {/* Active layer counter (mobile only) */}
           {(showHospitals || showBlockades) && (
-            <div className="mt-3 px-4 py-2 bg-white/95 backdrop-blur-sm rounded-full shadow-md border border-gray-200">
-              <div className="flex items-center gap-2 text-xs">
+            <div className="px-4 py-2 bg-white/95 backdrop-blur-sm rounded-full shadow-md border border-gray-200 text-xs">
+              <div className="flex items-center gap-2">
                 {showHospitals && (
                   <span className="flex items-center gap-1">
                     <Stethoscope className="h-3 w-3 text-emerald-600" />
-                    <span className="font-semibold text-emerald-700">{hospitals?.length || 0}</span>
+                    <span className="font-semibold text-emerald-700">
+                      {visibleHospitalCount}
+                    </span>
                   </span>
                 )}
                 {showHospitals && showBlockades && (
@@ -1125,7 +1181,9 @@ export default function LiveResponseMap({
                 {showBlockades && (
                   <span className="flex items-center gap-1">
                     <AlertTriangle className="h-3 w-3 text-orange-600" />
-                    <span className="font-semibold text-orange-700">{normalizedBlockades.length}</span>
+                    <span className="font-semibold text-orange-700">
+                      {normalizedBlockades.length}
+                    </span>
                   </span>
                 )}
               </div>
@@ -1133,110 +1191,94 @@ export default function LiveResponseMap({
           )}
         </div>
 
-        {/* Desktop: left-side toolbar placed below leaflet controls to avoid overlap */}
-        <div className="hidden lg:flex absolute left-4 top-20 z-[1100] flex-col items-start gap-2">
-          <div className="flex flex-col gap-1.5 bg-white/95 backdrop-blur-sm p-2 rounded-xl shadow-lg border border-gray-200">
-            {/* Center Control */}
-            <button
-              onClick={() => {
-                if (responderPosition && mapRef.current) {
-                  mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
-                }
-              }}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-white hover:bg-blue-50 transition-all group border border-transparent hover:border-blue-200"
-              title="Center on responder"
-            >
-              <Target className="h-4 w-4 text-slate-600 group-hover:text-blue-600 transition-colors" />
-              <span className="text-sm font-medium text-slate-700 group-hover:text-blue-700 transition-colors">Center</span>
-            </button>
-
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1.5 px-2">
+        {/* Desktop retractable action menu (top-right, semicircle attached to map edge) */}
+        <div className="hidden lg:flex absolute right-6 top-24 z-[1100] flex-col items-center gap-3">
+          {desktopFabOpen && (
+            <div className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 text-sm shadow-xl">
               <button
-                onClick={() => mapRef.current && mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19))}
-                className="flex-1 flex items-center justify-center p-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all"
-                title="Zoom in"
+                onClick={() => {
+                  handleCenterOnResponder();
+                  setDesktopFabOpen(false);
+                }}
+                className="flex items-center gap-3 rounded-full bg-blue-50 px-3 py-2 text-blue-700 transition hover:bg-blue-100"
+                title="Center on responder"
               >
-                <ZoomIn className="h-4 w-4 text-slate-600" />
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow">
+                  <Target className="h-4 w-4" />
+                </span>
+                <span className="font-semibold">Center</span>
               </button>
               <button
-                onClick={() => mapRef.current && mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1))}
-                className="flex-1 flex items-center justify-center p-2 rounded-lg bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 transition-all"
-                title="Zoom out"
+                onClick={() => setShowHospitals((s) => !s)}
+                className={`flex items-center gap-3 rounded-full px-3 py-2 transition ${
+                  showHospitals
+                    ? "bg-emerald-50 text-emerald-700"
+                    : "bg-white text-slate-700 hover:bg-gray-50"
+                }`}
+                title={showHospitals ? "Hide hospitals" : "Show hospitals"}
               >
-                <ZoomOut className="h-4 w-4 text-slate-600" />
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border ${
+                    showHospitals
+                      ? "border-emerald-200 bg-white"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <Stethoscope
+                    className={
+                      showHospitals ? "text-emerald-600" : "text-slate-600"
+                    }
+                  />
+                </span>
+                <span className="font-semibold">Hospitals</span>
+                <span className="ml-auto text-xs text-gray-500">
+                  {visibleHospitalCount}
+                </span>
+              </button>
+              <button
+                onClick={() => setShowBlockades((s) => !s)}
+                className={`flex items-center gap-3 rounded-full px-3 py-2 transition ${
+                  showBlockades
+                    ? "bg-orange-50 text-orange-700"
+                    : "bg-white text-slate-700 hover:bg-gray-50"
+                }`}
+                title={showBlockades ? "Hide road alerts" : "Show road alerts"}
+              >
+                <span
+                  className={`flex h-10 w-10 items-center justify-center rounded-full border ${
+                    showBlockades
+                      ? "border-orange-200 bg-white"
+                      : "border-gray-200"
+                  }`}
+                >
+                  <AlertTriangle
+                    className={
+                      showBlockades ? "text-orange-600" : "text-slate-600"
+                    }
+                  />
+                </span>
+                <span className="font-semibold">Road alerts</span>
+                <span className="ml-auto text-xs text-gray-500">
+                  {normalizedBlockades.length}
+                </span>
               </button>
             </div>
-
-            {/* Separator */}
-            <div className="h-px bg-gray-200 my-1"></div>
-
-            {/* Hospitals Toggle */}
-            <button
-              onClick={() => setShowHospitals((s) => !s)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all group border ${
-                showHospitals
-                  ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
-                  : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200'
+          )}
+          <button
+            onClick={() => setDesktopFabOpen((open) => !open)}
+            className={`flex h-14 w-14 items-center justify-center rounded-full border-2 bg-white text-slate-700 shadow-xl transition hover:shadow-2xl ${
+              desktopFabOpen
+                ? "border-blue-600 text-blue-600"
+                : "border-gray-200"
+            }`}
+            title="Map controls"
+          >
+            <Settings
+              className={`h-6 w-6 transition-transform ${
+                desktopFabOpen ? "rotate-45" : ""
               }`}
-              title={showHospitals ? "Hide hospitals" : "Show hospitals"}
-            >
-              <Stethoscope className={`h-4 w-4 transition-colors ${
-                showHospitals ? 'text-emerald-600' : 'text-slate-600 group-hover:text-slate-700'
-              }`} />
-              <span className={`text-sm font-medium transition-colors ${
-                showHospitals ? 'text-emerald-700' : 'text-slate-700 group-hover:text-slate-800'
-              }`}>
-                Hospitals
-              </span>
-              <div className={`ml-auto w-2 h-2 rounded-full transition-all ${
-                showHospitals ? 'bg-emerald-500 shadow-sm' : 'bg-gray-300'
-              }`}></div>
-            </button>
-
-            {/* Road Alerts Toggle */}
-            <button
-              onClick={() => setShowBlockades((s) => !s)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all group border ${
-                showBlockades
-                  ? 'bg-orange-50 border-orange-200 hover:bg-orange-100'
-                  : 'bg-white border-transparent hover:bg-gray-50 hover:border-gray-200'
-              }`}
-              title={showBlockades ? "Hide road alerts" : "Show road alerts"}
-            >
-              <AlertTriangle className={`h-4 w-4 transition-colors ${
-                showBlockades ? 'text-orange-600' : 'text-slate-600 group-hover:text-slate-700'
-              }`} />
-              <span className={`text-sm font-medium transition-colors ${
-                showBlockades ? 'text-orange-700' : 'text-slate-700 group-hover:text-slate-800'
-              }`}>
-                Road alerts
-              </span>
-              <div className={`ml-auto w-2 h-2 rounded-full transition-all ${
-                showBlockades ? 'bg-orange-500 shadow-sm' : 'bg-gray-300'
-              }`}></div>
-            </button>
-
-            {/* Counter Badge */}
-            {(showHospitals || showBlockades) && (
-              <div className="px-3 py-1.5 text-xs text-slate-600 bg-gray-50 rounded-lg border border-gray-100">
-                {showHospitals && showBlockades ? (
-                  <>
-                    <span className="font-semibold text-emerald-600">{hospitals?.length || 0}</span> hospitals • 
-                    <span className="font-semibold text-orange-600 ml-1">{normalizedBlockades.length}</span> alerts
-                  </>
-                ) : showHospitals ? (
-                  <>
-                    <span className="font-semibold text-emerald-600">{hospitals?.length || 0}</span> hospitals visible
-                  </>
-                ) : (
-                  <>
-                    <span className="font-semibold text-orange-600">{normalizedBlockades.length}</span> alerts visible
-                  </>
-                )}
-              </div>
-            )}
-          </div>
+            />
+          </button>
         </div>
 
         {/* Fullscreen overlay: when active, expand this section to cover viewport (mobile only) */}

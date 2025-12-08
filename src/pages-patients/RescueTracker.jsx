@@ -157,7 +157,8 @@ const formatDistance = (km) => {
 
 const STATUS_LABELS = {
   acknowledged: "Dispatch Confirmed",
-  en_route: "Responder En Route",
+  en_route: "Responder En Route to Incident",
+  transporting: "Responder En Route to Hospital",
   on_scene: "Responder Arrived",
   needs_support: "Additional Support",
   resolved: "Rescue Complete",
@@ -167,6 +168,7 @@ const STATUS_LABELS = {
 const STATUS_COLORS = {
   acknowledged: "bg-yellow-500",
   en_route: "bg-blue-500",
+  transporting: "bg-cyan-500",
   on_scene: "bg-green-500",
   needs_support: "bg-orange-500",
   resolved: "bg-gray-500",
