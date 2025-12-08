@@ -1,10 +1,18 @@
-import { useEffect, useMemo, useRef, useState, useLayoutEffect } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useLayoutEffect,
+  useCallback,
+} from "react";
 import {
   MapContainer,
   Marker,
   Polyline,
   TileLayer,
   Tooltip,
+  Popup,
   useMap,
 } from "react-leaflet";
 import {
@@ -16,10 +24,8 @@ import {
   Maximize,
   Minimize,
   Settings,
-  Layers,
   Target,
-  ZoomIn,
-  ZoomOut,
+  X,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -29,6 +35,8 @@ import { useBlockades } from "../../../hooks/useBlockades";
 import TurnByTurnNavigation from "./TurnByTurnNavigation";
 import { useResponderLocationBroadcast } from "../../../hooks/useResponderLocationBroadcast";
 import api from "../../../services/api";
+import { useAuth } from "../../../context/AuthContext";
+import blockadeService from "../../../services/blockadeService";
 
 const DEFAULT_POSITION = [
   KALINGA_CONFIG.DEFAULT_LOCATION.lat,
@@ -36,7 +44,13 @@ const DEFAULT_POSITION = [
 ];
 
 const ROUTE_PROXIMITY_THRESHOLD_METERS = 45;
-const MAX_ROUTE_SAMPLE_POINTS = 220;
+const MAX_ROUTE_SAMPLE_POINTS = 300;
+const DETOUR_OFFSETS_METERS = [50, 100, 200, 300, 500];
+const DETOUR_MAX_DISTANCE_MULTIPLIER = 1.3;
+const DETOUR_MAX_CANDIDATES = 100;
+const DETOUR_SNAP_DISTANCE_METERS = 600;
+const DEGREE_IN_RADIANS = Math.PI / 180;
+const EARTH_RADIUS_METERS = 6378137;
 
 const BLOCKADE_SEVERITY_COLORS = {
   low: "#22c55e",
@@ -290,6 +304,317 @@ const selectBestRouteVariant = (routes, normalizedBlockades) => {
   };
 };
 
+const normalizeBearing = (bearing) => {
+  const normalized = bearing % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
+};
+
+const bearingBetweenPoints = (start, end) => {
+  if (!start || !end) {
+    return 0;
+  }
+
+  if (
+    Math.abs(start.lat - end.lat) < 1e-6 &&
+    Math.abs(start.lng - end.lng) < 1e-6
+  ) {
+    return 0;
+  }
+
+  const φ1 = start.lat * DEGREE_IN_RADIANS;
+  const φ2 = end.lat * DEGREE_IN_RADIANS;
+  const Δλ = (end.lng - start.lng) * DEGREE_IN_RADIANS;
+
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x =
+    Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+
+  const θ = Math.atan2(y, x);
+  return normalizeBearing(θ / DEGREE_IN_RADIANS);
+};
+
+const offsetPointByBearing = (origin, distanceMeters, bearingDegrees) => {
+  const φ1 = origin.lat * DEGREE_IN_RADIANS;
+  const λ1 = origin.lng * DEGREE_IN_RADIANS;
+  const θ = bearingDegrees * DEGREE_IN_RADIANS;
+  const δ = distanceMeters / EARTH_RADIUS_METERS;
+
+  const sinφ1 = Math.sin(φ1);
+  const cosφ1 = Math.cos(φ1);
+  const sinδ = Math.sin(δ);
+  const cosδ = Math.cos(δ);
+
+  const sinφ2 = sinφ1 * cosδ + cosφ1 * sinδ * Math.cos(θ);
+  const φ2 = Math.asin(sinφ2);
+
+  const λ2Raw =
+    λ1 + Math.atan2(Math.sin(θ) * sinδ * cosφ1, cosδ - sinφ1 * sinφ2);
+
+  const λ2 = ((λ2Raw + Math.PI) % (2 * Math.PI)) - Math.PI;
+
+  return {
+    lat: φ2 / DEGREE_IN_RADIANS,
+    lng: λ2 / DEGREE_IN_RADIANS,
+  };
+};
+
+const generateDetourWaypoints = (start, end, blockade) => {
+  if (!start || !end || !blockade) {
+    return [];
+  }
+
+  const baseBearing = bearingBetweenPoints(start, end);
+  const perpendicularBearings = [
+    normalizeBearing(baseBearing + 90),
+    normalizeBearing(baseBearing - 90),
+    normalizeBearing(baseBearing + 135),
+    normalizeBearing(baseBearing - 135),
+  ];
+
+  const candidatePoints = [];
+
+  perpendicularBearings.forEach((bearing) => {
+    DETOUR_OFFSETS_METERS.forEach((offset) => {
+      const offsetPoint = offsetPointByBearing(blockade, offset, bearing);
+      candidatePoints.push({
+        lat: offsetPoint.lat,
+        lng: offsetPoint.lng,
+        bearing,
+        offset,
+      });
+    });
+  });
+
+  // Add forward/backward offsets to encourage bypassing by overshooting blockade
+  DETOUR_OFFSETS_METERS.forEach((offset) => {
+    const forward = offsetPointByBearing(blockade, offset, baseBearing);
+    const backward = offsetPointByBearing(
+      blockade,
+      offset,
+      normalizeBearing(baseBearing + 180)
+    );
+    candidatePoints.push({
+      lat: forward.lat,
+      lng: forward.lng,
+      bearing: baseBearing,
+      offset,
+    });
+    candidatePoints.push({
+      lat: backward.lat,
+      lng: backward.lng,
+      bearing: normalizeBearing(baseBearing + 180),
+      offset,
+    });
+  });
+
+  const seen = new Set();
+  const unique = [];
+
+  candidatePoints.forEach((candidate) => {
+    const key = `${candidate.lat.toFixed(5)}_${candidate.lng.toFixed(5)}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(candidate);
+    }
+  });
+
+  return unique.slice(0, DETOUR_MAX_CANDIDATES);
+};
+
+const snapWaypointToRoad = async (osrmServer, waypoint) => {
+  try {
+    const response = await fetch(
+      `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`
+    );
+    if (!response.ok) {
+      return null;
+    }
+    const data = await response.json();
+    if (!data?.waypoints?.length) {
+      return null;
+    }
+
+    const nearest = data.waypoints[0];
+    return {
+      lat: nearest.location[1],
+      lng: nearest.location[0],
+      distance: nearest.distance ?? 0,
+      meta: waypoint,
+    };
+  } catch (error) {
+    console.warn("Failed snapping waypoint to road", error);
+    return null;
+  }
+};
+
+const requestOsrmRoute = async (osrmServer, coordinates, paramsString) => {
+  if (!Array.isArray(coordinates) || coordinates.length < 2) {
+    return null;
+  }
+
+  const coordinatePath = coordinates
+    .map((coord) => `${coord.lng},${coord.lat}`)
+    .join(";");
+
+  const url = `${osrmServer}/route/v1/driving/${coordinatePath}?${paramsString}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return null;
+    }
+    const data = await response.json();
+    if (!data?.routes?.length) {
+      return null;
+    }
+    return data.routes;
+  } catch (error) {
+    console.warn("OSRM route request failed", error);
+    return null;
+  }
+};
+
+const tryResolveRouteWithDynamicDetours = async ({
+  osrmServer,
+  baseParamOptions,
+  start,
+  end,
+  normalizedBlockades,
+  currentSelection,
+}) => {
+  if (!currentSelection?.selected?.conflicts?.length || !start || !end) {
+    return null;
+  }
+
+  const primaryConflict = currentSelection.selected.conflicts[0];
+  // Use normalizeBlockade instead of normalizeBlockadePosition as it is named in this file
+  const normalizedConflict = normalizeBlockade(primaryConflict?.blockade);
+
+  if (!normalizedConflict) {
+    return null;
+  }
+
+  const candidates = generateDetourWaypoints(start, end, normalizedConflict);
+
+  if (!candidates.length) {
+    return null;
+  }
+
+  const originalDistance =
+    currentSelection.selected?.route?.distance ??
+    currentSelection.original?.route?.distance ??
+    null;
+
+  let bestImproved = null;
+  let bestValidDetour = null;
+
+  for (const candidate of candidates) {
+    const snapped = await snapWaypointToRoad(osrmServer, candidate);
+    if (!snapped) {
+      continue;
+    }
+
+    if (snapped.distance > DETOUR_SNAP_DISTANCE_METERS) {
+      continue;
+    }
+
+    const detourParams = {
+      ...baseParamOptions,
+      alternatives: "1",
+    };
+
+    const paramString = new URLSearchParams(detourParams).toString();
+    const routes = await requestOsrmRoute(
+      osrmServer,
+      [start, snapped, end],
+      paramString
+    );
+
+    if (!routes || !routes.length) {
+      continue;
+    }
+
+    const evaluationEntry = evaluateRoutesAgainstBlockades(
+      [routes[0]],
+      normalizedBlockades
+    )[0];
+
+    if (!evaluationEntry) {
+      continue;
+    }
+
+    if (
+      originalDistance &&
+      evaluationEntry.route?.distance &&
+      evaluationEntry.route.distance >
+        originalDistance * DETOUR_MAX_DISTANCE_MULTIPLIER
+    ) {
+      continue;
+    }
+
+    if (evaluationEntry.conflicts.length === 0) {
+      if (
+        !bestValidDetour ||
+        evaluationEntry.route.distance <
+          bestValidDetour.evaluation.route.distance
+      ) {
+        bestValidDetour = {
+          evaluation: evaluationEntry,
+          snapped,
+          label: normalizedConflict.descriptor,
+        };
+      }
+      continue;
+    }
+
+    if (
+      !bestImproved ||
+      evaluationEntry.closestDistance > bestImproved.evaluation.closestDistance
+    ) {
+      bestImproved = {
+        evaluation: evaluationEntry,
+        snapped,
+      };
+    }
+  }
+
+  if (bestValidDetour) {
+    return {
+      selected: bestValidDetour.evaluation,
+      original: currentSelection.original,
+      rerouted: true,
+      blockadesPresent: true,
+      alternativesAvailable: currentSelection.alternativesAvailable,
+      detourMeta: {
+        label: bestValidDetour.label,
+        waypoint: bestValidDetour.snapped,
+        strategy: "dynamic",
+      },
+    };
+  }
+
+  if (
+    bestImproved &&
+    bestImproved.evaluation.closestDistance >
+      (currentSelection.selected?.closestDistance ?? 0) + 10
+  ) {
+    return {
+      selected: bestImproved.evaluation,
+      original: currentSelection.original,
+      rerouted: true,
+      blockadesPresent: true,
+      alternativesAvailable: currentSelection.alternativesAvailable,
+      detourMeta: {
+        label: normalizedConflict.descriptor,
+        waypoint: bestImproved.snapped,
+        strategy: "dynamic-improved",
+      },
+    };
+  }
+
+  return null;
+};
+
 const deriveRouteAlert = (selection) => {
   if (!selection || !selection.blockadesPresent) {
     return null;
@@ -298,10 +623,22 @@ const deriveRouteAlert = (selection) => {
   const { selected, original, rerouted, alternativesAvailable } = selection;
   const selectedConflicts = selected?.conflicts ?? [];
   const originalConflicts = original?.conflicts ?? [];
+
+  const detourDescriptor = selection.detourMeta?.label;
+  const conflictSource =
+    (rerouted && originalConflicts.length > 0 ? originalConflicts[0] : null) ||
+    (selectedConflicts.length > 0 ? selectedConflicts[0] : null);
+
   const descriptor =
-    selectedConflicts[0]?.label ||
-    originalConflicts[0]?.label ||
-    "the reported blockade";
+    conflictSource?.label || detourDescriptor || "the reported blockade";
+
+  if (selection.detourMeta && selectedConflicts.length === 0) {
+    return {
+      type: "info",
+      icon: "✅",
+      message: `Detour plotted to keep you clear of ${descriptor}.`,
+    };
+  }
 
   if (selectedConflicts.length === 0 && rerouted) {
     return {
@@ -459,6 +796,24 @@ export default function LiveResponseMap({
   const [actionsOpen, setActionsOpen] = useState(false);
   const [showBlockades, setShowBlockades] = useState(true);
   const [showHospitals, setShowHospitals] = useState(true);
+  const [desktopFabOpen, setDesktopFabOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState(null);
+  const [reportForm, setReportForm] = useState({
+    title: "",
+    description: "",
+    severity: "medium",
+  });
+  const [reportCoords, setReportCoords] = useState(null);
+  const [removingBlockadeId, setRemovingBlockadeId] = useState(null);
+  const transportNavTriggeredRef = useRef(false);
+  const { user } = useAuth();
+
+  const canManageBlockades = useMemo(() => {
+    const role = user?.role?.toLowerCase?.();
+    return role === "admin" || role === "responder" || user?.is_admin;
+  }, [user]);
 
   // Broadcast responder location to patient via WebSocket.
   // Enable while incident is active (responder en route or on scene) so patient can track.
@@ -471,7 +826,9 @@ export default function LiveResponseMap({
     incidentId: incident?.id,
     enabled:
       !!incident &&
-      ["acknowledged", "en_route", "on_scene"].includes(incident?.status),
+      ["acknowledged", "en_route", "on_scene", "transporting"].includes(
+        incident?.status
+      ),
     broadcastInterval: 5000,
   });
 
@@ -494,6 +851,9 @@ export default function LiveResponseMap({
     blockades,
     loading: blockadesLoading,
     error: blockadesError,
+    refetch: refetchBlockades,
+    updateBlockade: updateBlockadeLocal,
+    removeBlockade: removeBlockadeLocal,
   } = useBlockades({ pollingInterval: 120000 });
 
   useEffect(() => {
@@ -515,20 +875,48 @@ export default function LiveResponseMap({
     [incident]
   );
 
+  const nearestHospital = hospitals?.[0] ?? null;
+
   const hospitalPosition = useMemo(
-    () => getHospitalPosition(selectedHospital),
-    [selectedHospital]
+    () => getHospitalPosition(selectedHospital ?? nearestHospital),
+    [selectedHospital, nearestHospital]
   );
 
-  const nearestHospital = hospitals?.[0] ?? null;
+  const hospitalMarkers = useMemo(() => {
+    if (!Array.isArray(hospitals)) {
+      return [];
+    }
+    return hospitals
+      .map((hospital) => {
+        const lat = normalizeCoordinate(hospital.latitude);
+        const lng = normalizeCoordinate(hospital.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
+        }
+        return {
+          id: hospital.id ?? `${lat}_${lng}`,
+          hospital,
+          position: [lat, lng],
+          isSelected:
+            selectedHospital &&
+            String(selectedHospital.id) === String(hospital.id),
+        };
+      })
+      .filter(Boolean);
+  }, [hospitals, selectedHospital]);
+
+  const visibleHospitalCount = hospitalMarkers.length;
 
   const mode = determineMode(incident?.status);
   const isOnScene = incident?.status === "on_scene";
 
   useEffect(() => {
+    const shouldLockHospital = ["on_scene", "transporting"].includes(
+      incident?.status
+    );
     if (
       autoAssignmentEnabled &&
-      incident?.status === "on_scene" &&
+      shouldLockHospital &&
       !selectedHospital &&
       nearestHospital &&
       onAutoAssignHospital
@@ -538,6 +926,33 @@ export default function LiveResponseMap({
   }, [
     autoAssignmentEnabled,
     incident?.status,
+    nearestHospital,
+    onAutoAssignHospital,
+    selectedHospital,
+  ]);
+
+  useEffect(() => {
+    const isTransporting = incident?.status === "transporting";
+    if (isTransporting && !transportNavTriggeredRef.current) {
+      transportNavTriggeredRef.current = true;
+      if (
+        autoAssignmentEnabled &&
+        !selectedHospital &&
+        nearestHospital &&
+        onAutoAssignHospital
+      ) {
+        onAutoAssignHospital(nearestHospital);
+      }
+      if (!navigationEnabled) {
+        setNavigationEnabled(true);
+      }
+    } else if (!isTransporting) {
+      transportNavTriggeredRef.current = false;
+    }
+  }, [
+    autoAssignmentEnabled,
+    incident?.status,
+    navigationEnabled,
     nearestHospital,
     onAutoAssignHospital,
     selectedHospital,
@@ -672,10 +1087,30 @@ export default function LiveResponseMap({
         }
 
         const data = await response.json();
-        const selection = selectBestRouteVariant(
+        let selection = selectBestRouteVariant(
           data?.routes ?? [],
           normalizedBlockades
         );
+
+        // Try dynamic detour if conflicts exist
+        if (selection?.selected?.conflicts?.length > 0) {
+          const detour = await tryResolveRouteWithDynamicDetours({
+            osrmServer: KALINGA_CONFIG.OSRM_SERVER,
+            baseParamOptions: {
+              overview: "full",
+              geometries: "geojson",
+              continue_straight: "true",
+            },
+            start: { lat: startLat, lng: startLng },
+            end: { lat: endLat, lng: endLng },
+            normalizedBlockades,
+            currentSelection: selection,
+          });
+
+          if (detour) {
+            selection = detour;
+          }
+        }
 
         if (!cancelled) {
           if (selection?.selected?.coords?.length) {
@@ -756,6 +1191,181 @@ export default function LiveResponseMap({
     return incidentPosition;
   }, [incidentPosition, isOnScene, mode, responderPosition]);
 
+  const handleCenterOnResponder = useCallback(() => {
+    if (!mapRef.current) {
+      return;
+    }
+    const target =
+      currentCenter ||
+      responderPosition ||
+      incidentPosition ||
+      DEFAULT_POSITION;
+    const currentZoom = mapRef.current.getZoom?.() ?? 13;
+    mapRef.current.flyTo(target, Math.max(currentZoom, 14), {
+      duration: 0.6,
+    });
+  }, [currentCenter, incidentPosition, responderPosition]);
+
+  const openReportModal = useCallback(() => {
+    const coords =
+      responderPosition ||
+      incidentPosition ||
+      currentCenter ||
+      DEFAULT_POSITION;
+
+    setReportCoords(coords);
+    setReportError(null);
+    setReportForm((prev) => ({
+      ...prev,
+      title: prev.title || "Road blockade",
+    }));
+    setReportModalOpen(true);
+    setDesktopFabOpen(false);
+  }, [currentCenter, incidentPosition, responderPosition]);
+
+  // Auto-populate title with nearest road when modal opens
+  useEffect(() => {
+    const fetchRoadName = async () => {
+      const coords =
+        reportCoords ||
+        responderPosition ||
+        incidentPosition ||
+        currentCenter ||
+        DEFAULT_POSITION;
+
+      try {
+        const [lat, lng] = coords;
+        const response = await fetch(
+          `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`
+        );
+        const data = await response.json();
+        const name = data?.waypoints?.[0]?.name;
+
+        if (typeof name === "string" && name.trim()) {
+          setReportForm((prev) => {
+            const existing = prev.title?.trim();
+            if (existing && existing !== "Road blockade") {
+              return prev; // respect user input
+            }
+            return { ...prev, title: `Blockade on ${name.trim()}` };
+          });
+        }
+      } catch (err) {
+        // Silent failure; keep manual title
+      }
+    };
+
+    if (reportModalOpen) {
+      fetchRoadName();
+    }
+  }, [
+    currentCenter,
+    incidentPosition,
+    reportCoords,
+    reportModalOpen,
+    responderPosition,
+  ]);
+
+  const handleSubmitBlockade = useCallback(async () => {
+    if (!user?.id) {
+      setReportError("Login required to report a blockade.");
+      return;
+    }
+
+    const coords =
+      reportCoords ||
+      responderPosition ||
+      incidentPosition ||
+      currentCenter ||
+      DEFAULT_POSITION;
+
+    const payload = {
+      title: reportForm.title.trim() || "Road blockade",
+      description: reportForm.description.trim() || null,
+      severity: reportForm.severity || "medium",
+      start_lat: coords[0],
+      start_lng: coords[1],
+      reported_by: user.id,
+    };
+
+    setReportSubmitting(true);
+    setReportError(null);
+    try {
+      const createdResponse = await blockadeService.create(payload);
+      setReportModalOpen(false);
+      setReportForm({ title: "", description: "", severity: "medium" });
+      const createdBlockade =
+        createdResponse?.data?.data ??
+        createdResponse?.data ??
+        createdResponse?.blockade ??
+        createdResponse;
+      if (createdBlockade?.id) {
+        updateBlockadeLocal?.(createdBlockade);
+      }
+      refetchBlockades?.();
+    } catch (err) {
+      setReportError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Unable to report blockade."
+      );
+    } finally {
+      setReportSubmitting(false);
+    }
+  }, [
+    currentCenter,
+    incidentPosition,
+    refetchBlockades,
+    updateBlockadeLocal,
+    reportCoords,
+    reportForm.description,
+    reportForm.severity,
+    reportForm.title,
+    responderPosition,
+    user?.id,
+  ]);
+
+  const handleRemoveBlockade = useCallback(
+    async (blockade) => {
+      const id = blockade?.raw?.id ?? blockade?.id;
+      if (!id) return;
+      if (!canManageBlockades) {
+        alert("You do not have permission to remove blockades.");
+        return;
+      }
+
+      const descriptor = blockade?.descriptor || blockade?.raw?.title;
+      const confirmed = window.confirm(
+        `Remove ${
+          descriptor || "this blockade"
+        }? This helps clear the map for other responders.`
+      );
+      if (!confirmed) return;
+
+      setRemovingBlockadeId(id);
+      try {
+        await blockadeService.remove(id, { removed_by: user?.id });
+        removeBlockadeLocal?.(id);
+        refetchBlockades?.();
+        setRouteAlert({
+          type: "info",
+          icon: "✅",
+          message: "Blockade removed. Recomputing route.",
+        });
+      } catch (err) {
+        console.error("Failed to remove blockade", err);
+        alert(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Unable to remove blockade."
+        );
+      } finally {
+        setRemovingBlockadeId(null);
+      }
+    },
+    [canManageBlockades, refetchBlockades, removeBlockadeLocal, user?.id]
+  );
+
   const handleSimulatedLocationChange = (coords, options = {}) => {
     if (!coords) return;
     const lat = Number(coords.lat);
@@ -830,6 +1440,16 @@ export default function LiveResponseMap({
     }
   };
 
+  const effectiveReportCoords = useMemo(
+    () =>
+      reportCoords ||
+      responderPosition ||
+      incidentPosition ||
+      currentCenter ||
+      DEFAULT_POSITION,
+    [currentCenter, incidentPosition, reportCoords, responderPosition]
+  );
+
   return (
     <section
       className={`flex h-full ${
@@ -854,20 +1474,14 @@ export default function LiveResponseMap({
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
               {mode === "hospital"
-                ? "Hospital transfer planning"
-                : "Responder navigation"}
+                ? "Driving to Hospital"
+                : "Driving to Incident"}
             </p>
             <h3 className="text-lg font-black text-gray-900">
               {mode === "hospital"
                 ? selectedHospital?.name || "Awaiting hospital assignment"
-                : incident?.type || "Active routing"}
+                : incident?.location || "Incident Site"}
             </h3>
-            <p className="text-xs text-gray-500">
-              {mode === "hospital"
-                ? selectedHospital?.address ||
-                  "Nearest capable facility auto-selected"
-                : incident?.location || "Tracking live responder position"}
-            </p>
           </div>
         </div>
         <div className="text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -899,7 +1513,9 @@ export default function LiveResponseMap({
           zoom={13}
           minZoom={5}
           maxZoom={18}
-          className={`h-full w-full ${isFullscreen ? "!h-[100vh] !w-screen" : ""}`}
+          className={`h-full w-full ${
+            isFullscreen ? "!h-[100vh] !w-screen" : ""
+          }`}
           whenCreated={(mapInstance) => {
             mapRef.current = mapInstance;
           }}
@@ -935,32 +1551,66 @@ export default function LiveResponseMap({
             </Marker>
           )}
 
-          {showHospitals && hospitalPosition && (
-            <Marker position={hospitalPosition} icon={hospitalIcon}>
-              <Tooltip direction="top" offset={[0, -10]} opacity={1}>
-                {selectedHospital?.name || "Destination hospital"}
-              </Tooltip>
-            </Marker>
-          )}
+          {showHospitals &&
+            hospitalMarkers.map(({ id, position, hospital, isSelected }) => (
+              <Marker key={id} position={position} icon={hospitalIcon}>
+                <Tooltip direction="top" offset={[0, -10]} opacity={1}>
+                  {hospital?.name || "Hospital"}
+                  {isSelected ? " • Locked" : ""}
+                </Tooltip>
+              </Marker>
+            ))}
 
-          {normalizedBlockades.map((blockade) => (
-            showBlockades && (
-            <Marker
-              key={blockade.id}
-              position={[blockade.lat, blockade.lng]}
-              icon={getBlockadeIcon(blockade.severity)}
-            >
-              <Tooltip direction="top" offset={[0, -8]} opacity={1}>
-                <div className="text-xs font-semibold text-slate-800">
-                  {blockade.descriptor}
-                </div>
-                <div className="text-[10px] uppercase tracking-wide text-slate-500">
-                  {blockade.severity} road issue
-                </div>
-              </Tooltip>
-            </Marker>
-            )
-          ))}
+          {normalizedBlockades.map(
+            (blockade) =>
+              showBlockades && (
+                <Marker
+                  key={blockade.id}
+                  position={[blockade.lat, blockade.lng]}
+                  icon={getBlockadeIcon(blockade.severity)}
+                >
+                  <Tooltip direction="top" offset={[0, -8]} opacity={1}>
+                    <div className="text-xs font-semibold text-slate-800">
+                      {blockade.descriptor}
+                    </div>
+                    <div className="text-[10px] uppercase tracking-wide text-slate-500">
+                      {blockade.severity} road issue
+                    </div>
+                  </Tooltip>
+                  <Popup minWidth={240} autoPan={true}>
+                    <div className="space-y-2 text-sm text-slate-800">
+                      <div className="font-semibold leading-tight">
+                        {blockade.descriptor}
+                      </div>
+                      <div className="text-xs text-slate-500 uppercase tracking-wide">
+                        Severity: {blockade.severity}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Lat {blockade.lat.toFixed(5)} · Lng{" "}
+                        {blockade.lng.toFixed(5)}
+                      </div>
+                      {canManageBlockades && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBlockade(blockade)}
+                          disabled={
+                            removingBlockadeId ===
+                            (blockade.raw?.id ?? blockade.id)
+                          }
+                          className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-400"
+                        >
+                          {removingBlockadeId ===
+                            (blockade.raw?.id ?? blockade.id) && (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          )}
+                          Remove blockade
+                        </button>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+              )
+          )}
 
           {routePoints && routePoints.length > 1 && (
             <Polyline
@@ -981,147 +1631,228 @@ export default function LiveResponseMap({
         </MapContainer>
 
         {/* Quick action floating menu (mobile-first) */}
-        {/* Mobile: bottom-right stacked FABs (keep as before) */}
-        <div className="absolute left-4 bottom-6 z-[1100] flex flex-col items-end lg:hidden">
-          {/* Expandable actions */}
+        <div
+          className={`absolute right-4 top-6 z-[1100] flex flex-col items-end gap-3 lg:hidden ${
+            navigationEnabled ? "hidden" : ""
+          }`}
+        >
           <div
-            className={`flex flex-col items-end space-y-2 transition-all ${actionsOpen ? "opacity-100 translate-y-0" : "opacity-90"}`}
-            aria-hidden={!actionsOpen}
+            className={`flex flex-col items-start space-y-2 transition-all duration-300 ${
+              actionsOpen
+                ? "opacity-100 translate-y-0 pointer-events-auto"
+                : "opacity-0 translate-y-4 pointer-events-none"
+            }`}
           >
-            {/* Center on responder */}
             <button
               onClick={() => {
+                handleCenterOnResponder();
                 setActionsOpen(false);
-                if (responderPosition && mapRef.current) {
-                  mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
-                }
               }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
+              className="flex items-center gap-2 px-4 py-3 rounded-full bg-white shadow-lg border border-gray-200 active:scale-95 transition-transform"
               title="Center on responder"
             >
-              <Target className="h-5 w-5 text-slate-700" />
+              <Target className="h-5 w-5 text-blue-600" />
+              <span className="text-sm font-medium text-slate-700">Center</span>
             </button>
-
-            {/* Zoom in */}
-            <button
-              onClick={() => {
-                setActionsOpen(false);
-                if (mapRef.current) {
-                  mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19));
-                }
-              }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Zoom in"
-            >
-              <ZoomIn className="h-5 w-5 text-slate-700" />
-            </button>
-
-            {/* Zoom out */}
-            <button
-              onClick={() => {
-                setActionsOpen(false);
-                if (mapRef.current) {
-                  mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1));
-                }
-              }}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Zoom out"
-            >
-              <ZoomOut className="h-5 w-5 text-slate-700" />
-            </button>
-
-            {/* Toggle hospitals */}
             <button
               onClick={() => setShowHospitals((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Toggle hospitals"
+              className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border active:scale-95 transition-all ${
+                showHospitals
+                  ? "bg-emerald-50 border-emerald-300"
+                  : "bg-white border-gray-200"
+              }`}
+              title={showHospitals ? "Hide hospitals" : "Show hospitals"}
             >
-              <Layers className="h-5 w-5 text-slate-700" />
+              <Stethoscope
+                className={`h-5 w-5 ${
+                  showHospitals ? "text-emerald-600" : "text-slate-600"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  showHospitals ? "text-emerald-700" : "text-slate-700"
+                }`}
+              >
+                Hospitals
+              </span>
+              {showHospitals && (
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+              )}
             </button>
-
-            {/* Toggle blockades */}
             <button
               onClick={() => setShowBlockades((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-md text-primary"
-              title="Toggle road alerts"
+              className={`flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border active:scale-95 transition-all ${
+                showBlockades
+                  ? "bg-orange-50 border-orange-300"
+                  : "bg-white border-gray-200"
+              }`}
+              title={showBlockades ? "Hide road alerts" : "Show road alerts"}
             >
-              <Settings className="h-5 w-5 text-slate-700" />
+              <AlertTriangle
+                className={`h-5 w-5 ${
+                  showBlockades ? "text-orange-600" : "text-slate-600"
+                }`}
+              />
+              <span
+                className={`text-sm font-medium ${
+                  showBlockades ? "text-orange-700" : "text-slate-700"
+                }`}
+              >
+                Road alerts
+              </span>
+              {showBlockades && (
+                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                openReportModal();
+                setActionsOpen(false);
+              }}
+              className="flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border bg-white border-gray-200 active:scale-95 transition-all"
+              title="Report a road blockade"
+            >
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span className="text-sm font-medium text-red-700">
+                Report blockade
+              </span>
             </button>
           </div>
 
-          {/* Main FAB: toggle actions or fullscreen */}
-          <div className="mt-2 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setActionsOpen((s) => !s)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg text-primary"
+              className={`flex items-center justify-center h-14 w-14 rounded-full shadow-xl border-2 active:scale-95 transition-all ${
+                actionsOpen
+                  ? "bg-blue-600 border-blue-700 rotate-45"
+                  : "bg-white border-gray-200"
+              }`}
               title="Quick actions"
             >
-              <Settings className="h-5 w-5 text-slate-700" />
+              <Settings
+                className={`h-6 w-6 transition-colors ${
+                  actionsOpen ? "text-white" : "text-slate-700"
+                }`}
+              />
             </button>
-
             <button
               onClick={() => setIsFullscreen((f) => !f)}
-              className="flex items-center justify-center h-12 w-12 rounded-full bg-white shadow-lg text-primary"
+              className="flex items-center justify-center h-14 w-14 rounded-full bg-white shadow-xl border-2 border-gray-200 active:scale-95 transition-transform"
               title={isFullscreen ? "Exit fullscreen" : "Fullscreen map"}
             >
               {isFullscreen ? (
-                <Minimize className="h-5 w-5 text-slate-700" />
+                <Minimize className="h-6 w-6 text-slate-700" />
               ) : (
-                <Maximize className="h-5 w-5 text-slate-700" />
+                <Maximize className="h-6 w-6 text-slate-700" />
               )}
             </button>
           </div>
+
+          {(showHospitals || showBlockades) && (
+            <div className="px-4 py-2 bg-white/95 backdrop-blur-sm rounded-full shadow-md border border-gray-200 text-xs">
+              <div className="flex items-center gap-2">
+                {showHospitals && (
+                  <span className="flex items-center gap-1">
+                    <Stethoscope className="h-3 w-3 text-emerald-600" />
+                    <span className="font-semibold text-emerald-700">
+                      {visibleHospitalCount}
+                    </span>
+                  </span>
+                )}
+                {showHospitals && showBlockades && (
+                  <span className="text-gray-400">•</span>
+                )}
+                {showBlockades && (
+                  <span className="flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 text-orange-600" />
+                    <span className="font-semibold text-orange-700">
+                      {normalizedBlockades.length}
+                    </span>
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Desktop: left-side toolbar placed below leaflet controls to avoid overlap */}
-        <div className="hidden lg:flex absolute left-20 top-20 z-[1100] flex-col items-start gap-3">
-          <div className="flex flex-col gap-3 bg-white/90 p-2 rounded-lg shadow-md">
+        {/* Desktop retractable action menu (top-right, semicircle attached to map edge) */}
+        <div
+          className={`hidden lg:block absolute top-4 right-4 z-[1200] ${
+            navigationEnabled ? "hidden" : ""
+          }`}
+        >
+          <div className="relative">
+            {desktopFabOpen && (
+              <div className="absolute right-0 top-full z-[1210] mt-2 w-56 space-y-2 rounded-2xl bg-white p-3 text-sm font-medium text-slate-700 shadow-[0_25px_45px_rgba(15,23,42,0.25)] ring-1 ring-black/5">
+                <button
+                  onClick={() => setShowHospitals((s) => !s)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition hover:bg-slate-50"
+                  title={showHospitals ? "Hide hospitals" : "Show hospitals"}
+                >
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-full border ${
+                      showHospitals
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-gray-200 text-slate-500"
+                    }`}
+                  >
+                    <Stethoscope className="h-4 w-4" />
+                  </span>
+                  Hospitals
+                  <span className="ml-auto text-xs text-gray-400">
+                    {visibleHospitalCount}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setShowBlockades((s) => !s)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition hover:bg-slate-50"
+                  title={
+                    showBlockades ? "Hide road alerts" : "Show road alerts"
+                  }
+                >
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-full border ${
+                      showBlockades
+                        ? "border-orange-200 bg-orange-50 text-orange-600"
+                        : "border-gray-200 text-slate-500"
+                    }`}
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                  </span>
+                  Road alerts
+                  <span className="ml-auto text-xs text-gray-400">
+                    {normalizedBlockades.length}
+                  </span>
+                </button>
+                <button
+                  onClick={openReportModal}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition hover:bg-slate-50"
+                  title="Report a blockade at your current map position"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600">
+                    🚧
+                  </span>
+                  Report blockade
+                  <span className="ml-auto text-[11px] uppercase tracking-wide text-red-500">
+                    new
+                  </span>
+                </button>
+              </div>
+            )}
             <button
-              onClick={() => {
-                if (responderPosition && mapRef.current) {
-                  mapRef.current.flyTo(responderPosition, Math.max(14, mapRef.current.getZoom()), { duration: 0.6 });
-                }
-              }}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
-              title="Center on responder"
+              onClick={() => setDesktopFabOpen((open) => !open)}
+              className={`flex h-14 w-14 items-center justify-center rounded-full border-2 bg-white text-slate-700 shadow-xl transition hover:shadow-2xl ${
+                desktopFabOpen
+                  ? "border-blue-600 text-blue-600"
+                  : "border-gray-200"
+              }`}
+              title="Map controls"
             >
-              <Target className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Center</span>
-            </button>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => mapRef.current && mapRef.current.setZoom(Math.min(mapRef.current.getZoom() + 1, 19))}
-                className="p-2 rounded-md bg-white hover:bg-gray-50"
-                title="Zoom in"
-              >
-                <ZoomIn className="h-4 w-4 text-slate-700" />
-              </button>
-              <button
-                onClick={() => mapRef.current && mapRef.current.setZoom(Math.max(mapRef.current.getZoom() - 1, 1))}
-                className="p-2 rounded-md bg-white hover:bg-gray-50"
-                title="Zoom out"
-              >
-                <ZoomOut className="h-4 w-4 text-slate-700" />
-              </button>
-            </div>
-
-            <button
-              onClick={() => setShowHospitals((s) => !s)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
-              title="Toggle hospitals"
-            >
-              <Layers className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Hospitals</span>
-            </button>
-
-            <button
-              onClick={() => setShowBlockades((s) => !s)}
-              className="flex items-center gap-2 px-3 py-2 rounded-md bg-white hover:bg-gray-50"
-              title="Toggle road alerts"
-            >
-              <Settings className="h-4 w-4 text-slate-700" />
-              <span className="text-sm text-slate-700">Road alerts</span>
+              <Settings
+                className={`h-6 w-6 transition-transform ${
+                  desktopFabOpen ? "rotate-45" : ""
+                }`}
+              />
             </button>
           </div>
         </div>
@@ -1157,6 +1888,150 @@ export default function LiveResponseMap({
               <span className="text-left text-sm">
                 {routeAlert?.message || routeError}
               </span>
+            </div>
+          </div>
+        )}
+
+        {reportModalOpen && (
+          <div className="fixed inset-0 z-[1250] flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/10">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    Road issue
+                  </p>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Report a blockade
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Pinned to your current map position. These reports help
+                    reroute other responders.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setReportModalOpen(false);
+                    setReportError(null);
+                  }}
+                  className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                  disabled={reportSubmitting}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700">
+                    Title
+                  </label>
+                  <input
+                    value={reportForm.title}
+                    onChange={(e) =>
+                      setReportForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g., Fallen tree blocking main road"
+                    disabled={reportSubmitting}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700">
+                    Description (optional)
+                  </label>
+                  <textarea
+                    value={reportForm.description}
+                    onChange={(e) =>
+                      setReportForm((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    placeholder="Add notes like lane closures, debris, or detour tips"
+                    disabled={reportSubmitting}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Severity
+                    </label>
+                    <select
+                      value={reportForm.severity}
+                      onChange={(e) =>
+                        setReportForm((prev) => ({
+                          ...prev,
+                          severity: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      disabled={reportSubmitting}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Location
+                    </label>
+                    <div className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600">
+                      <div>
+                        Lat:{" "}
+                        <span className="font-semibold text-gray-800">
+                          {Number(effectiveReportCoords?.[0]).toFixed(5)}
+                        </span>
+                      </div>
+                      <div>
+                        Lng:{" "}
+                        <span className="font-semibold text-gray-800">
+                          {Number(effectiveReportCoords?.[1]).toFixed(5)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        Uses your location or the current map center.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {reportError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {reportError}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setReportModalOpen(false);
+                      setReportError(null);
+                    }}
+                    className="rounded-lg px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100"
+                    disabled={reportSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitBlockade}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+                    disabled={reportSubmitting}
+                  >
+                    {reportSubmitting && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                    Submit report
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

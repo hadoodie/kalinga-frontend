@@ -809,7 +809,8 @@ class IncidentApiController extends Controller
     {
         return match ($status) {
             Incident::STATUS_EN_ROUTE => IncidentResponderAssignment::STATUS_EN_ROUTE,
-            Incident::STATUS_ON_SCENE, Incident::STATUS_NEEDS_SUPPORT => IncidentResponderAssignment::STATUS_ON_SCENE,
+            Incident::STATUS_TRANSPORTING => IncidentResponderAssignment::STATUS_EN_ROUTE,
+            Incident::STATUS_HOSPITAL_TRANSFER, Incident::STATUS_ON_SCENE, Incident::STATUS_NEEDS_SUPPORT => IncidentResponderAssignment::STATUS_ON_SCENE,
             Incident::STATUS_RESOLVED => IncidentResponderAssignment::STATUS_COMPLETED,
             Incident::STATUS_CANCELLED => IncidentResponderAssignment::STATUS_CANCELLED,
             default => IncidentResponderAssignment::STATUS_ASSIGNED,

@@ -12,7 +12,7 @@ const DEMO_SEQUENCE = [
   },
   {
     key: "en_route",
-    title: "Navigation Locked",
+    title: "En Route to Incident",
     description:
       "Responder heads to the origin point with live turn-by-turn guidance.",
     action: "Provide ETA updates via chat",
@@ -27,10 +27,10 @@ const DEMO_SEQUENCE = [
     mapFocus: "Incident perimeter & hazard overlays",
   },
   {
-    key: "hospital_transfer",
-    title: "Transport",
+    key: "transporting",
+    title: "En Route to Hospital",
     description:
-      "The destination hospital is locked, and guidance switches to the receiving facility.",
+      "The destination hospital is locked and navigation directs the responder to the receiving facility.",
     action: "Monitor vitals + share drive progress",
     mapFocus: "Incident ➜ Hospital route",
   },

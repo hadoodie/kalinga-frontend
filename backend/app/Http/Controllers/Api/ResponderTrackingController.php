@@ -160,6 +160,8 @@ class ResponderTrackingController extends Controller
             Incident::STATUS_EN_ROUTE,
             Incident::STATUS_ON_SCENE,
             Incident::STATUS_NEEDS_SUPPORT,
+            Incident::STATUS_TRANSPORTING,
+            Incident::STATUS_HOSPITAL_TRANSFER,
         ];
 
         $activeIncident = Incident::where('user_id', $user->id)

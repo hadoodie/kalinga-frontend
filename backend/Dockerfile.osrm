@@ -1,0 +1,41 @@
+# Use the official OSRM backend image as the base
+FROM osrm/osrm-backend:latest
+
+# --- New Step: Install curl for downloading data ---
+# We use apt-get to update package lists and install curl.
+# We also clean up the lists afterward to keep the image size small.
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
+# --- New Steps for S3 Download Strategy ---
+
+# Create the /data directory where the tarball will be extracted
+# This ensures it exists even if no volume is mounted
+RUN mkdir -p /data
+
+# Copy the custom entrypoint script into the image
+# Assumes the script is located at backend/entrypoint-osrm.sh relative to the Dockerfile
+COPY entrypoint-osrm.sh /usr/local/bin/
+
+# Make the script executable
+RUN chmod +x /usr/local/bin/entrypoint-osrm.sh
+
+# --- Standard OSRM Configuration ---
+
+# Set working directory to /data (optional, but good practice)
+WORKDIR /data
+
+# Expose the OSRM routing port
+EXPOSE 5000
+
+# Set the command to run the entrypoint script.
+# The entrypoint script will:
+# 1. Download the data using the OSRM_DATA_URL environment variable.
+# 2. Extract the data to /data.
+# 3. Finally, execute the 'osrm-routed' command.
+CMD ["entrypoint-osrm.sh"]
+
+# Optional: Add build arguments for OSRM parameters if needed later
+# ENV OSRM_ALGORITHM mld
+# ENV OSRM_PORT 5000

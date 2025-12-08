@@ -9,6 +9,7 @@ const INCIDENT_STATUS_STYLES = {
   reported: { color: "#dc2626", fillColor: "#fee2e2" },
   acknowledged: { color: "#f97316", fillColor: "#ffedd5" },
   en_route: { color: "#2563eb", fillColor: "#dbeafe" },
+  transporting: { color: "#0f766e", fillColor: "#ccfbf1" },
   on_scene: { color: "#7c3aed", fillColor: "#ede9fe" },
   needs_support: { color: "#ca8a04", fillColor: "#fef08a" },
   resolved: { color: "#16a34a", fillColor: "#dcfce7" },
@@ -31,6 +32,15 @@ const ROUTE_ALERT_STYLES = {
   warning: "bg-yellow-500 text-gray-900",
   danger: "bg-red-600 text-white",
 };
+
+const USER_MARKER_VARIANTS = {
+  live: "bg-blue-500 animate-pulse",
+  simulated: "bg-amber-500 animate-pulse ring-2 ring-amber-200",
+  lastKnown: "bg-yellow-500",
+  default: "bg-gray-500",
+};
+
+const LOCATION_OVERRIDE_EVENT = "responder:location-override";
 
 const formatBlockadeDescriptor = (blockade) => {
   if (!blockade) {
@@ -643,6 +653,9 @@ const deriveRouteAlert = (selection) => {
 export default function ResponseMap({ embedded = false, className = "" }) {
   const { user } = useAuth();
   const mapRef = useRef(null);
+  const leafletRef = useRef(null);
+  const liveUserLocationRef = useRef(null);
+  const locationOverrideRef = useRef(null);
   const [map, setMap] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [userMarker, setUserMarker] = useState(null);
@@ -668,6 +681,70 @@ export default function ResponseMap({ embedded = false, className = "" }) {
   const [locationWatchId, setLocationWatchId] = useState(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isDrawingRoute, setIsDrawingRoute] = useState(false);
+  const [infoPanelCollapsed, setInfoPanelCollapsed] = useState(false);
+
+  const saveLocationToStorage = useCallback((location) => {
+    if (!location || typeof window === "undefined") return;
+    try {
+      localStorage.setItem(
+        KALINGA_CONFIG.LOCATION_STORAGE_KEY,
+        JSON.stringify({
+          lat: location.lat,
+          lng: location.lng,
+          timestamp: Date.now(),
+        })
+      );
+    } catch (error) {
+      console.warn("Failed to save location to localStorage:", error);
+    }
+  }, []);
+
+  const getLastKnownLocation = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const saved = localStorage.getItem(KALINGA_CONFIG.LOCATION_STORAGE_KEY);
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (
+          Date.now() - data.timestamp <
+          KALINGA_CONFIG.LOCATION_EXPIRY_HOURS * 60 * 60 * 1000
+        ) {
+          return { lat: data.lat, lng: data.lng };
+        }
+      }
+    } catch (error) {
+      console.warn("Failed to retrieve saved location:", error);
+    }
+    return null;
+  }, []);
+
+  const updateUserMarkerIcon = useCallback(
+    (lat, lng, variant = "live") => {
+      const Leaflet = leafletRef.current;
+      if (!map || !Leaflet || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+
+      if (userMarker) {
+        map.removeLayer(userMarker);
+      }
+
+      const variantClass =
+        USER_MARKER_VARIANTS[variant] || USER_MARKER_VARIANTS.live;
+
+      const marker = Leaflet.marker([lat, lng], {
+        icon: Leaflet.divIcon({
+          html: `<div class="w-4 h-4 rounded-full border-2 border-white shadow-lg ${variantClass}"></div>`,
+          className: "user-location-marker",
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        }),
+      }).addTo(map);
+
+      setUserMarker(marker);
+    },
+    [map, userMarker]
+  );
 
   // Mobile bottom interface states
   const [showIncidentsList, setShowIncidentsList] = useState(false);
@@ -695,14 +772,18 @@ export default function ResponseMap({ embedded = false, className = "" }) {
     if (map) return;
 
     // Dynamically import Leaflet to avoid SSR issues
-    import("leaflet").then((L) => {
+    import("leaflet").then((leafletModule) => {
+      const Leaflet = leafletModule.default ?? leafletModule;
+      if (!leafletRef.current) {
+        leafletRef.current = Leaflet;
+      }
       // Check again if map container is already initialized
       if (mapRef.current && mapRef.current._leaflet_id) {
         return;
       }
 
       // Initialize Leaflet map
-      const leafletMap = L.map(mapRef.current, {
+      const leafletMap = Leaflet.map(mapRef.current, {
         center: [
           KALINGA_CONFIG.DEFAULT_LOCATION.lat,
           KALINGA_CONFIG.DEFAULT_LOCATION.lng,
@@ -714,7 +795,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       });
 
       // Use CartoDB tiles for better road visibility
-      L.tileLayer(
+      Leaflet.tileLayer(
         "https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png",
         {
           attribution:
@@ -726,7 +807,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       ).addTo(leafletMap);
 
       // Add road labels overlay
-      L.tileLayer(
+      Leaflet.tileLayer(
         "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
         {
           attribution: "",
@@ -739,11 +820,11 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       setMap(leafletMap);
 
       // Get user location
-      getUserLocation(leafletMap, L);
+      getUserLocation(leafletMap, Leaflet);
 
       // Load initial data
-      fetchIncidents(leafletMap, L);
-      fetchRoadBlockades(leafletMap, L);
+      fetchIncidents(leafletMap, Leaflet);
+      fetchRoadBlockades(leafletMap, Leaflet);
     });
 
     return () => {
@@ -846,75 +927,29 @@ export default function ResponseMap({ embedded = false, className = "" }) {
   }, [isNavigating, map, userLocation]);
 
   const getUserLocation = (leafletMap, L) => {
-    // Helper function to save location to localStorage
-    const saveLocationToStorage = (location) => {
-      try {
-        localStorage.setItem(
-          KALINGA_CONFIG.LOCATION_STORAGE_KEY,
-          JSON.stringify({
-            lat: location.lat,
-            lng: location.lng,
-            timestamp: Date.now(),
-          })
-        );
-      } catch (error) {
-        console.warn("Failed to save location to localStorage:", error);
-      }
-    };
-
-    // Helper function to get last known location from localStorage
-    const getLastKnownLocation = () => {
-      try {
-        const saved = localStorage.getItem(KALINGA_CONFIG.LOCATION_STORAGE_KEY);
-        if (saved) {
-          const data = JSON.parse(saved);
-          // Return saved location if it's less than 24 hours old
-          if (
-            Date.now() - data.timestamp <
-            KALINGA_CONFIG.LOCATION_EXPIRY_HOURS * 60 * 60 * 1000
-          ) {
-            return { lat: data.lat, lng: data.lng };
-          }
-        }
-      } catch (error) {
-        console.warn("Failed to retrieve saved location:", error);
-      }
-      return null;
-    };
+    const resolvedLeaflet = L?.default ?? L;
+    if (resolvedLeaflet && !leafletRef.current) {
+      leafletRef.current = resolvedLeaflet;
+    }
 
     if (navigator.geolocation) {
-      // Use watchPosition for continuous tracking
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           const location = { lat: latitude, lng: longitude };
-          setUserLocation(location);
-
-          // Save current location to localStorage
+          liveUserLocationRef.current = location;
           saveLocationToStorage(location);
 
+          if (locationOverrideRef.current?.active) {
+            return;
+          }
+
+          setUserLocation(location);
+
           if (leafletMap) {
-            // Update location display
             updateLocationDisplay(latitude, longitude);
+            updateUserMarkerIcon(latitude, longitude, "live");
 
-            // Remove previous user marker
-            if (userMarker) {
-              leafletMap.removeLayer(userMarker);
-            }
-
-            // Add/update user marker with pulsing animation
-            const newUserMarker = L.marker([latitude, longitude], {
-              icon: L.divIcon({
-                html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg animate-pulse"></div>`,
-                className: "user-location-marker",
-                iconSize: [16, 16],
-                iconAnchor: [8, 8],
-              }),
-            }).addTo(leafletMap);
-
-            setUserMarker(newUserMarker);
-
-            // Only center map on first location fix
             if (!userLocation) {
               leafletMap.setView(
                 [latitude, longitude],
@@ -924,13 +959,14 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           }
         },
         (error) => {
-          // Only log critical errors (permission denied)
-          // Timeouts are expected on desktop/laptop without GPS
           if (error.code === 1) {
-            // PERMISSION_DENIED
             console.warn(
               "Location permission denied - emergency features limited"
             );
+          }
+
+          if (locationOverrideRef.current?.active) {
+            return;
           }
 
           let errorMessage = "Unable to retrieve your location";
@@ -944,11 +980,9 @@ export default function ResponseMap({ embedded = false, className = "" }) {
               break;
             case error.TIMEOUT:
               errorMessage = "GPS timeout (testing mode active)";
-              // Don't set location error for timeout - just use default
               break;
           }
 
-          // Try to use last known location first
           const lastKnown = getLastKnownLocation();
           if (lastKnown) {
             setUserLocation(lastKnown);
@@ -957,25 +991,14 @@ export default function ResponseMap({ embedded = false, className = "" }) {
                 6
               )}, ${lastKnown.lng.toFixed(6)}`
             );
-            if (leafletMap && L) {
-              // Create marker for last known location (yellow)
-              const lastKnownMarker = L.marker([lastKnown.lat, lastKnown.lng], {
-                icon: L.divIcon({
-                  html: `<div class="w-4 h-4 bg-yellow-500 rounded-full border-2 border-white shadow-lg"></div>`,
-                  className: "last-known-location-marker",
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                }),
-              }).addTo(leafletMap);
-
-              setUserMarker(lastKnownMarker);
+            updateUserMarkerIcon(lastKnown.lat, lastKnown.lng, "lastKnown");
+            if (leafletMap) {
               leafletMap.setView(
                 [lastKnown.lat, lastKnown.lng],
                 KALINGA_CONFIG.USER_LOCATION_ZOOM
               );
             }
           } else {
-            // Use default TUP Manila location for testing/desktop
             const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
             setUserLocation(fallback);
             setCurrentLocationDisplay(
@@ -983,40 +1006,27 @@ export default function ResponseMap({ embedded = false, className = "" }) {
                 6
               )}, ${fallback.lng.toFixed(6)}`
             );
-            if (leafletMap && L) {
-              // Create marker for default location (gray)
-              const defaultMarker = L.marker([fallback.lat, fallback.lng], {
-                icon: L.divIcon({
-                  html: `<div class="w-4 h-4 bg-gray-500 rounded-full border-2 border-white shadow-lg"></div>`,
-                  className: "default-location-marker",
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                }),
-              }).addTo(leafletMap);
-
-              setUserMarker(defaultMarker);
+            updateUserMarkerIcon(fallback.lat, fallback.lng, "default");
+            if (leafletMap) {
               leafletMap.setView(
                 [fallback.lat, fallback.lng],
                 KALINGA_CONFIG.DEFAULT_LOCATION.zoom
               );
             }
-            // Only set error for permission denied, not timeout
             if (error.code === 1) {
               setLocationError(errorMessage);
             }
           }
         },
         {
-          enableHighAccuracy: true, // Use GPS if available
-          maximumAge: 10000, // Use cached position if less than 10 seconds old
-          timeout: 15000, // Wait up to 15 seconds for a position
+          enableHighAccuracy: true,
+          maximumAge: 10000,
+          timeout: 15000,
         }
       );
 
-      // Store watch ID for cleanup
       setLocationWatchId(watchId);
     } else {
-      // Try to use last known location first
       const lastKnown = getLastKnownLocation();
       if (lastKnown) {
         setUserLocation(lastKnown);
@@ -1025,52 +1035,21 @@ export default function ResponseMap({ embedded = false, className = "" }) {
             6
           )}, ${lastKnown.lng.toFixed(6)}`
         );
+        updateUserMarkerIcon(lastKnown.lat, lastKnown.lng, "lastKnown");
         if (leafletMap) {
-          // Import Leaflet to create marker for last known location
-          import("leaflet").then((L) => {
-            const lastKnownMarker = L.default
-              .marker([lastKnown.lat, lastKnown.lng], {
-                icon: L.default.divIcon({
-                  html: `<div class="w-4 h-4 bg-yellow-500 rounded-full border-2 border-white shadow-lg"></div>`,
-                  className: "last-known-location-marker",
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                }),
-              })
-              .addTo(leafletMap);
-
-            setUserMarker(lastKnownMarker);
-          });
-
           leafletMap.setView(
             [lastKnown.lat, lastKnown.lng],
             KALINGA_CONFIG.USER_LOCATION_ZOOM
           );
         }
       } else {
-        // Use default TUP Manila location (Geolocation not supported)
         const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
         setUserLocation(fallback);
         setCurrentLocationDisplay(
           "TUP Manila (Default - Geolocation not supported)"
         );
+        updateUserMarkerIcon(fallback.lat, fallback.lng, "default");
         if (leafletMap) {
-          // Import Leaflet to create marker for default location
-          import("leaflet").then((L) => {
-            const defaultMarker = L.default
-              .marker([fallback.lat, fallback.lng], {
-                icon: L.default.divIcon({
-                  html: `<div class="w-4 h-4 bg-gray-500 rounded-full border-2 border-white shadow-lg"></div>`,
-                  className: "default-location-marker",
-                  iconSize: [16, 16],
-                  iconAnchor: [8, 8],
-                }),
-              })
-              .addTo(leafletMap);
-
-            setUserMarker(defaultMarker);
-          });
-
           leafletMap.setView(
             [fallback.lat, fallback.lng],
             KALINGA_CONFIG.DEFAULT_LOCATION.zoom
@@ -1121,6 +1100,61 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       setCurrentLocationDisplay(`Address lookup failed\n${coordsText}`);
     }
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const handleOverride = (event) => {
+      const detail = event?.detail || {};
+      const lat = Number(detail.lat);
+      const lng = Number(detail.lng);
+      const isActive = detail.active !== false;
+
+      if (!isActive) {
+        locationOverrideRef.current = null;
+        const fallbackCoords =
+          Number.isFinite(lat) && Number.isFinite(lng)
+            ? { lat, lng }
+            : liveUserLocationRef.current;
+        if (fallbackCoords) {
+          setUserLocation(fallbackCoords);
+          updateLocationDisplay(fallbackCoords.lat, fallbackCoords.lng);
+          updateUserMarkerIcon(fallbackCoords.lat, fallbackCoords.lng, "live");
+          saveLocationToStorage(fallbackCoords);
+        }
+        return;
+      }
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return;
+      }
+
+      locationOverrideRef.current = { lat, lng, active: true };
+      setUserLocation({ lat, lng });
+      setCurrentLocationDisplay(
+        `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`
+      );
+      updateLocationDisplay(lat, lng);
+      saveLocationToStorage({ lat, lng });
+      updateUserMarkerIcon(lat, lng, "simulated");
+
+      if (map) {
+        const targetZoom = Math.max(
+          map.getZoom() || KALINGA_CONFIG.USER_LOCATION_ZOOM,
+          KALINGA_CONFIG.USER_LOCATION_ZOOM
+        );
+        map.flyTo([lat, lng], targetZoom, {
+          animate: true,
+          duration: 0.9,
+        });
+      }
+    };
+
+    window.addEventListener(LOCATION_OVERRIDE_EVENT, handleOverride);
+    return () => {
+      window.removeEventListener(LOCATION_OVERRIDE_EVENT, handleOverride);
+    };
+  }, [map, saveLocationToStorage, updateUserMarkerIcon]);
 
   const fetchIncidents = async (leafletMap, L) => {
     try {
@@ -1208,8 +1242,9 @@ export default function ResponseMap({ embedded = false, className = "" }) {
     const statusLabelMap = {
       reported: "Waiting Dispatch",
       acknowledged: "Acknowledged",
-      en_route: "En Route",
+      en_route: "En Route to Incident",
       on_scene: "On Scene",
+      transporting: "En Route to Hospital",
       needs_support: "Needs Support",
       resolved: "Resolved",
       cancelled: "Cancelled",
@@ -2041,10 +2076,14 @@ export default function ResponseMap({ embedded = false, className = "" }) {
     if (!map) return;
 
     const L = await import("leaflet");
+    const Leaflet = L.default ?? L;
+    if (!leafletRef.current) {
+      leafletRef.current = Leaflet;
+    }
 
     // Refresh all data regardless of selected tab
-    fetchIncidents(map, L.default);
-    fetchRoadBlockades(map, L.default);
+    fetchIncidents(map, Leaflet);
+    fetchRoadBlockades(map, Leaflet);
   };
 
   const centerMapOnLocation = (lat, lng) => {
@@ -2132,17 +2171,17 @@ export default function ResponseMap({ embedded = false, className = "" }) {
         {/* User Info Dropdown */}
         {showUserInfo && (
           <div className="fixed top-4 left-4 right-4 z-50 bg-white rounded-lg shadow-xl p-4 max-h-48 overflow-y-auto">
-            <div className="flex items-center mb-3">
-              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-3">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold">{user.name}</div>
-                <div className="text-sm text-gray-600">{user.email}</div>
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Location Snapshot
+                </p>
+                <p className="text-xs text-gray-500">Live GPS or simulation</p>
               </div>
               <button
                 onClick={() => setShowUserInfo(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
+                className="rounded-full p-2 hover:bg-gray-100"
+                aria-label="Close location card"
               >
                 ✕
               </button>
@@ -2404,7 +2443,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
                 <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-bold mb-1">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
-                <span className="text-xs">Profile</span>
+                <span className="text-xs">Location</span>
               </button>
 
               {/* Incidents Button */}
@@ -2565,201 +2604,215 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       </div>
 
       {/* Desktop Sidebar - Hidden on Mobile */}
-      <div className="hidden md:block absolute left-0 top-0 h-full bg-white shadow-lg z-35 w-80 overflow-y-auto">
-        <div className="p-4">
-          <h3 className="text-lg font-semibold mb-4">Response Map</h3>
+      <div className="hidden md:block absolute left-0 top-0 h-full z-35">
+        <div
+          className={`h-full w-80 overflow-y-auto bg-white shadow-lg transition-transform duration-300 ${
+            infoPanelCollapsed
+              ? "-translate-x-full opacity-0 pointer-events-none"
+              : "translate-x-0 opacity-100 pointer-events-auto"
+          }`}
+        >
+          <div className="p-4">
+            <h3 className="text-lg font-semibold mb-4">Response Map</h3>
 
-          {/* User Info */}
-          <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-            <div className="flex items-center mb-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold mr-2">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <div className="font-semibold text-sm">{user.name}</div>
-                <div className="text-xs text-gray-600">{user.email}</div>
-              </div>
-            </div>
-            <div className="mt-2 p-2 bg-blue-100 rounded text-xs">
-              <div className="font-semibold text-blue-800">
-                📍 Current Location
+            {/* Location Summary */}
+            <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 p-3">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-blue-800">
+                  📍 Current Location
+                </p>
+                <span className="text-[10px] font-medium text-blue-600">
+                  Synced feed
+                </span>
               </div>
               <div
-                className="text-blue-700 mt-1"
+                className="mt-2 rounded-md bg-white/80 p-2 text-xs text-blue-900"
                 style={{ whiteSpace: "pre-line" }}
               >
                 {currentLocationDisplay}
               </div>
             </div>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="mb-4 space-y-2">
-            <button
-              onClick={assignNearestIncident}
-              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm"
-            >
-              🚨 Auto-Assign Nearest
-            </button>
-            <button
-              onClick={toggleBlockadeReporting}
-              className={`w-full px-4 py-3 rounded-lg text-sm ${
-                blockadeReportingMode
-                  ? "bg-gray-600 hover:bg-gray-700 text-white"
-                  : "bg-red-600 hover:bg-red-700 text-white"
-              }`}
-            >
-              {blockadeReportingMode ? "❌ Cancel" : "🚧 Report Issue"}
-            </button>
-          </div>
-
-          {/* Desktop Blockade Form */}
-          {blockadeReportingMode && (
-            <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold text-sm mb-2">Report Road Issue</h4>
-              <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-xs">
-                <strong>📍 Click anywhere on the map</strong>
-                <br />
-                The system will automatically snap to the nearest road.
-              </div>
-              <input
-                type="text"
-                placeholder="Brief description"
-                value={blockadeForm.title}
-                onChange={(e) =>
-                  setBlockadeForm((prev) => ({
-                    ...prev,
-                    title: e.target.value,
-                  }))
-                }
-                className="w-full mb-2 p-2 border rounded text-sm"
-              />
-              <textarea
-                placeholder="Detailed description"
-                value={blockadeForm.description}
-                onChange={(e) =>
-                  setBlockadeForm((prev) => ({
-                    ...prev,
-                    description: e.target.value,
-                  }))
-                }
-                className="w-full mb-2 p-2 border rounded text-sm h-16 resize-none"
-              />
-              <select
-                value={blockadeForm.severity}
-                onChange={(e) =>
-                  setBlockadeForm((prev) => ({
-                    ...prev,
-                    severity: e.target.value,
-                  }))
-                }
-                className="w-full mb-3 p-2 border rounded text-sm"
+            {/* Action Buttons */}
+            <div className="mb-4 space-y-2">
+              <button
+                onClick={assignNearestIncident}
+                className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg text-sm"
               >
-                <option value="low">Low Severity</option>
-                <option value="medium">Medium Severity</option>
-                <option value="high">High Severity</option>
-                <option value="critical">Critical</option>
-              </select>
-              <div className="flex gap-2">
-                <button
-                  onClick={submitBlockadeReport}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
-                >
-                  Submit
-                </button>
-                <button
-                  onClick={cancelBlockadeReport}
-                  className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm"
-                >
-                  Cancel
-                </button>
-              </div>
+                🚨 Auto-Assign Nearest
+              </button>
+              <button
+                onClick={toggleBlockadeReporting}
+                className={`w-full px-4 py-3 rounded-lg text-sm ${
+                  blockadeReportingMode
+                    ? "bg-gray-600 hover:bg-gray-700 text-white"
+                    : "bg-red-600 hover:bg-red-700 text-white"
+                }`}
+              >
+                {blockadeReportingMode ? "❌ Cancel" : "🚧 Report Issue"}
+              </button>
             </div>
-          )}
 
-          {/* Tab Buttons */}
-          <div className="flex mb-4 border-b">
-            <button
-              onClick={() => setSelectedTab("incidents")}
-              className={`flex-1 py-2 px-4 text-sm ${
-                selectedTab === "incidents"
-                  ? "border-b-2 border-blue-500 text-blue-600 bg-blue-50"
-                  : "text-gray-600 hover:text-gray-800"
-              }`}
-            >
-              🚨 Incidents
-            </button>
-            <button
-              onClick={() => setSelectedTab("blockades")}
-              className={`flex-1 py-2 px-4 text-sm ${
-                selectedTab === "blockades"
-                  ? "border-b-2 border-red-500 text-red-600 bg-red-50"
-                  : "text-gray-600 hover:text-gray-800"
-              }`}
-            >
-              🚧 Road Issues
-            </button>
-          </div>
+            {/* Desktop Blockade Form */}
+            {blockadeReportingMode && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <h4 className="font-semibold text-sm mb-2">
+                  Report Road Issue
+                </h4>
+                <div className="mb-3 p-2 bg-blue-100 border-l-4 border-blue-500 text-xs">
+                  <strong>📍 Click anywhere on the map</strong>
+                  <br />
+                  The system will automatically snap to the nearest road.
+                </div>
+                <input
+                  type="text"
+                  placeholder="Brief description"
+                  value={blockadeForm.title}
+                  onChange={(e) =>
+                    setBlockadeForm((prev) => ({
+                      ...prev,
+                      title: e.target.value,
+                    }))
+                  }
+                  className="w-full mb-2 p-2 border rounded text-sm"
+                />
+                <textarea
+                  placeholder="Detailed description"
+                  value={blockadeForm.description}
+                  onChange={(e) =>
+                    setBlockadeForm((prev) => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  className="w-full mb-2 p-2 border rounded text-sm h-16 resize-none"
+                />
+                <select
+                  value={blockadeForm.severity}
+                  onChange={(e) =>
+                    setBlockadeForm((prev) => ({
+                      ...prev,
+                      severity: e.target.value,
+                    }))
+                  }
+                  className="w-full mb-3 p-2 border rounded text-sm"
+                >
+                  <option value="low">Low Severity</option>
+                  <option value="medium">Medium Severity</option>
+                  <option value="high">High Severity</option>
+                  <option value="critical">Critical</option>
+                </select>
+                <div className="flex gap-2">
+                  <button
+                    onClick={submitBlockadeReport}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded text-sm"
+                  >
+                    Submit
+                  </button>
+                  <button
+                    onClick={cancelBlockadeReport}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
 
-          {/* Items List */}
-          <div className="space-y-2">
-            {selectedTab === "incidents" ? (
-              incidents.length > 0 ? (
-                incidents.map((incident, index) => (
+            {/* Tab Buttons */}
+            <div className="flex mb-4 border-b">
+              <button
+                onClick={() => setSelectedTab("incidents")}
+                className={`flex-1 py-2 px-4 text-sm ${
+                  selectedTab === "incidents"
+                    ? "border-b-2 border-blue-500 text-blue-600 bg-blue-50"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                🚨 Incidents
+              </button>
+              <button
+                onClick={() => setSelectedTab("blockades")}
+                className={`flex-1 py-2 px-4 text-sm ${
+                  selectedTab === "blockades"
+                    ? "border-b-2 border-red-500 text-red-600 bg-red-50"
+                    : "text-gray-600 hover:text-gray-800"
+                }`}
+              >
+                🚧 Road Issues
+              </button>
+            </div>
+
+            {/* Items List */}
+            <div className="space-y-2">
+              {selectedTab === "incidents" ? (
+                incidents.length > 0 ? (
+                  incidents.map((incident, index) => (
+                    <div
+                      key={index}
+                      className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
+                      onClick={() => {
+                        if (incident.lat && incident.lng) {
+                          drawRoute(incident.lat, incident.lng, true);
+                        }
+                      }}
+                    >
+                      <div className="font-semibold text-red-600 text-sm">
+                        {incident.type}
+                      </div>
+                      <div className="text-sm">{incident.location}</div>
+                      <div className="text-xs text-gray-600 mt-1 whitespace-pre-line">
+                        {incident.description}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 text-gray-500 text-sm">
+                    No incidents available
+                  </div>
+                )
+              ) : blockades.length > 0 ? (
+                blockades.map((blockade, index) => (
                   <div
                     key={index}
                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                    onClick={() => {
-                      if (incident.lat && incident.lng) {
-                        drawRoute(incident.lat, incident.lng, true);
-                      }
-                    }}
+                    onClick={() =>
+                      drawRoute(blockade.latitude, blockade.longitude)
+                    }
                   >
                     <div className="font-semibold text-red-600 text-sm">
-                      {incident.type}
+                      {blockade.title}
                     </div>
-                    <div className="text-sm">{incident.location}</div>
-                    <div className="text-xs text-gray-600 mt-1 whitespace-pre-line">
-                      {incident.description}
+                    <div className="text-xs text-gray-600">
+                      {blockade.road_name} • {blockade.severity.toUpperCase()}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {blockade.description}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      By: {blockade.reported_by} • {blockade.reported_at_human}
                     </div>
                   </div>
                 ))
               ) : (
                 <div className="p-3 text-gray-500 text-sm">
-                  No incidents available
+                  No road blockades in this area
                 </div>
-              )
-            ) : blockades.length > 0 ? (
-              blockades.map((blockade, index) => (
-                <div
-                  key={index}
-                  className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
-                  onClick={() =>
-                    drawRoute(blockade.latitude, blockade.longitude)
-                  }
-                >
-                  <div className="font-semibold text-red-600 text-sm">
-                    {blockade.title}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {blockade.road_name} • {blockade.severity.toUpperCase()}
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {blockade.description}
-                  </div>
-                  <div className="text-xs text-gray-400 mt-1">
-                    By: {blockade.reported_by} • {blockade.reported_at_human}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-3 text-gray-500 text-sm">
-                No road blockades in this area
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setInfoPanelCollapsed((prev) => !prev)}
+        className="hidden md:flex absolute top-4 z-40 items-center gap-2 rounded-full bg-white/95 px-3 py-1.5 text-sm font-semibold text-gray-700 shadow focus:outline-none focus:ring-2 focus:ring-blue-200"
+        style={{ left: infoPanelCollapsed ? "1rem" : "20.5rem" }}
+      >
+        {infoPanelCollapsed ? "Show Panel" : "Hide Panel"}
+        <span>{infoPanelCollapsed ? "▶" : "◀"}</span>
+      </button>
       {/* Map Container */}
       <div ref={mapRef} className="absolute inset-0 w-full h-full" />
     </div>

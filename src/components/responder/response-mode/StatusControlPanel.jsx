@@ -24,13 +24,18 @@ const STATUS_FLOW = [
   },
   {
     value: "en_route",
-    label: "En Route",
+    label: "En Route to Incident",
     description: "Heading to the scene",
   },
   {
     value: "on_scene",
     label: "On Scene",
     description: "Arrival confirmed, begin triage",
+  },
+  {
+    value: "transporting",
+    label: "En Route to Hospital",
+    description: "Depart scene and navigate to receiving facility",
   },
   {
     value: "needs_support",
@@ -115,6 +120,15 @@ export default function StatusControlPanel({
       if (!confirmed) {
         return;
       }
+    }
+
+    if (
+      value === "transporting" &&
+      !selectedHospitalId &&
+      nearestHospital &&
+      onHospitalChange
+    ) {
+      onHospitalChange(nearestHospital.id);
     }
 
     const trimmedNote = noteDraft.trim();

@@ -460,148 +460,137 @@ export default function TurnByTurnNavigation({
   if (!isActive) return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 pointer-events-none">
-      {/* Main Navigation Card */}
-      <div className="pointer-events-auto mx-4 mb-4 bg-white rounded-2xl shadow-2xl overflow-hidden border border-gray-200">
-        {/* Header with current instruction */}
-        <div
-          className={`px-4 py-3 ${
-            isRerouting
-              ? "bg-orange-500"
-              : currentStep?.maneuverType === "arrive"
-              ? "bg-green-600"
-              : "bg-blue-600"
-          } text-white`}
-        >
-          {isRerouting ? (
-            <div className="flex items-center gap-3">
-              <RotateCcw className="h-8 w-8 animate-spin" />
-              <div>
-                <p className="text-lg font-bold">Rerouting...</p>
-                <p className="text-sm opacity-90">Finding new route</p>
+    <>
+      {/* Top Instruction Card */}
+      <div className="fixed top-[72px] inset-x-4 z-[1000] pointer-events-auto">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+          <div
+            className={`px-4 py-4 ${
+              isRerouting
+                ? "bg-orange-500"
+                : currentStep?.maneuverType === "arrive"
+                ? "bg-green-600"
+                : "bg-blue-600"
+            } text-white`}
+          >
+            {isRerouting ? (
+              <div className="flex items-center gap-3">
+                <RotateCcw className="h-8 w-8 animate-spin" />
+                <div>
+                  <p className="text-lg font-bold">Rerouting...</p>
+                  <p className="text-sm opacity-90">Finding new route</p>
+                </div>
               </div>
-            </div>
-          ) : loading ? (
-            <div className="flex items-center gap-3">
-              <Navigation2 className="h-8 w-8 animate-pulse" />
-              <div>
-                <p className="text-lg font-bold">Calculating route...</p>
-                <p className="text-sm opacity-90">Please wait</p>
+            ) : loading ? (
+              <div className="flex items-center gap-3">
+                <Navigation2 className="h-8 w-8 animate-pulse" />
+                <div>
+                  <p className="text-lg font-bold">Calculating route...</p>
+                  <p className="text-sm opacity-90">Please wait</p>
+                </div>
               </div>
-            </div>
-          ) : error ? (
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-8 w-8" />
-              <div>
-                <p className="text-lg font-bold">Route Error</p>
-                <p className="text-sm opacity-90">{error}</p>
+            ) : error ? (
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="h-8 w-8" />
+                <div>
+                  <p className="text-lg font-bold">Route Error</p>
+                  <p className="text-sm opacity-90">{error}</p>
+                </div>
               </div>
-            </div>
-          ) : currentStep ? (
-            <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
-                <CurrentIcon className="h-10 w-10" />
+            ) : currentStep ? (
+              <div className="flex items-center gap-4">
+                <div className="flex-shrink-0 w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                  <CurrentIcon className="h-8 w-8" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-3xl font-black tracking-tight leading-none mb-1">
+                    {distanceToNextManeuver !== null
+                      ? formatDistance(distanceToNextManeuver)
+                      : "--"}
+                  </p>
+                  <p className="text-lg font-medium opacity-95 truncate leading-tight">
+                    {currentStep.instruction}
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-2xl font-black tracking-tight">
-                  {distanceToNextManeuver !== null
-                    ? formatDistance(distanceToNextManeuver)
-                    : "--"}
-                </p>
-                <p className="text-sm font-medium opacity-95 truncate">
-                  {currentStep.instruction}
-                </p>
-              </div>
-            </div>
-          ) : null}
-        </div>
-
-        {/* Next step preview */}
-        {nextStep && !isRerouting && !loading && (
-          <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2 text-gray-600">
-            <span className="text-xs font-semibold uppercase tracking-wide">
-              Then
-            </span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="text-sm truncate">{nextStep.instruction}</span>
+            ) : null}
           </div>
-        )}
+        </div>
+      </div>
 
-        {/* Footer stats */}
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">
-                Distance
+      {/* Bottom Stats Card */}
+      <div className="fixed bottom-4 inset-x-4 z-[1000] pointer-events-auto">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+          {/* Footer stats */}
+          <div className="px-5 py-4 flex items-center justify-between">
+            <div className="flex flex-col">
+              <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-0.5">
+                Remaining
               </p>
-              <p className="text-lg font-bold text-gray-900">
-                {totalDistanceRemaining !== null
-                  ? formatDistance(totalDistanceRemaining)
-                  : "--"}
-              </p>
-            </div>
-            <div className="w-px h-8 bg-gray-200" />
-            <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">
-                ETA
-              </p>
-              <p className="text-lg font-bold text-gray-900">
-                {totalDuration !== null ? formatETA(totalDuration) : "--"}
-              </p>
-            </div>
-            <div className="w-px h-8 bg-gray-200" />
-            <div className="text-center">
-              <p className="text-xs text-gray-500 uppercase tracking-wide">
-                Time
-              </p>
-              <p className="text-lg font-bold text-gray-900">
+              <p className="text-4xl font-black text-gray-900 tracking-tight">
                 {totalDuration !== null ? formatDuration(totalDuration) : "--"}
               </p>
             </div>
+
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">
+                    Distance
+                  </p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {totalDistanceRemaining !== null
+                      ? formatDistance(totalDistanceRemaining)
+                      : "--"}
+                  </p>
+                </div>
+                <div className="w-px h-8 bg-gray-200" />
+                <div className="text-right">
+                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">
+                    Arrival
+                  </p>
+                  <p className="text-lg font-bold text-gray-900">
+                    {totalDuration !== null ? formatETA(totalDuration) : "--"}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setVoiceEnabled((v) => !v)}
-              className={`p-2 rounded-lg transition-colors ${
-                voiceEnabled
-                  ? "bg-blue-100 text-blue-600"
-                  : "bg-gray-100 text-gray-500"
-              }`}
-              title={voiceEnabled ? "Mute voice" : "Enable voice"}
-            >
-              {voiceEnabled ? (
-                <Volume2 className="h-5 w-5" />
-              ) : (
-                <VolumeX className="h-5 w-5" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAllSteps((s) => !s)}
-              className="p-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors"
-              title="Show all steps"
-            >
-              <Clock className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-              title="End navigation"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+          {/* Controls & Destination */}
+          <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-4">
+              <MapPin className="h-4 w-4 text-red-500 flex-shrink-0" />
+              <span className="text-sm text-gray-700 truncate font-medium">
+                {destinationName}
+              </span>
+            </div>
 
-        {/* Destination info */}
-        <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-red-500 flex-shrink-0" />
-          <span className="text-sm text-gray-700 truncate font-medium">
-            {destinationName}
-          </span>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setVoiceEnabled((v) => !v)}
+                className={`p-2 rounded-lg transition-colors ${
+                  voiceEnabled
+                    ? "bg-blue-100 text-blue-600"
+                    : "bg-gray-200 text-gray-500"
+                }`}
+              >
+                {voiceEnabled ? (
+                  <Volume2 className="h-5 w-5" />
+                ) : (
+                  <VolumeX className="h-5 w-5" />
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -675,6 +664,6 @@ export default function TurnByTurnNavigation({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

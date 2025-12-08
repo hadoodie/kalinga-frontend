@@ -1,0 +1,20 @@
+version: "3.8"
+services:
+  osrm:
+    image: osrm/osrm-backend:latest
+    container_name: kalinga-osrm
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount your local OSRM data folder to /data inside the container
+      - C:\Users\Jared\OSRM-Data:/data
+    command:
+      [
+        "osrm-routed",
+        "--algorithm",
+        "mld",
+        "--port",
+        "5000",
+        "/data/philippines-251128.osrm",
+      ]

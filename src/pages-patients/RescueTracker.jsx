@@ -11,6 +11,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   AlertTriangle,
+  CheckCircle,
   Clock,
   Loader2,
   MapPin,
@@ -18,6 +19,7 @@ import {
   Navigation2,
   Phone,
   RefreshCw,
+  Truck,
   User,
   X,
 } from "lucide-react";
@@ -111,6 +113,31 @@ const patientIcon = L.divIcon({
   iconAnchor: [20, 20],
 });
 
+const hospitalIcon = L.divIcon({
+  className: "hospital-marker",
+  html: `
+    <div style="
+      width: 48px;
+      height: 48px;
+      background: white;
+      border-radius: 50%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid #10b981;
+    ">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 21h18"></path>
+        <path d="M5 21V7l8-4 8 4v14"></path>
+        <path d="M13 21v-8h-2v8"></path>
+      </svg>
+    </div>
+  `,
+  iconSize: [48, 48],
+  iconAnchor: [24, 24],
+});
+
 // Map auto-center component
 const MapController = ({
   responderPosition,
@@ -118,21 +145,15 @@ const MapController = ({
   shouldCenter,
 }) => {
   const map = useMap();
-  const hasCenteredRef = useRef(false);
 
   useEffect(() => {
-    if (!shouldCenter || hasCenteredRef.current) return;
+    if (!shouldCenter) return;
 
-    if (responderPosition && patientPosition) {
-      const bounds = L.latLngBounds([responderPosition, patientPosition]);
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
-      hasCenteredRef.current = true;
-    } else if (responderPosition) {
-      map.flyTo(responderPosition, 15, { duration: 1 });
-      hasCenteredRef.current = true;
+    // Always prioritize centering on responder if available
+    if (responderPosition) {
+      map.setView(responderPosition, 16, { animate: true });
     } else if (patientPosition) {
-      map.flyTo(patientPosition, 15, { duration: 1 });
-      hasCenteredRef.current = true;
+      map.setView(patientPosition, 16, { animate: true });
     }
   }, [map, responderPosition, patientPosition, shouldCenter]);
 
@@ -157,7 +178,9 @@ const formatDistance = (km) => {
 
 const STATUS_LABELS = {
   acknowledged: "Dispatch Confirmed",
-  en_route: "Responder En Route",
+  en_route: "Responder En Route to Incident",
+  transporting: "Responder En Route to Hospital",
+  hospital_transfer: "Transferring to Hospital",
   on_scene: "Responder Arrived",
   needs_support: "Additional Support",
   resolved: "Rescue Complete",
@@ -167,10 +190,181 @@ const STATUS_LABELS = {
 const STATUS_COLORS = {
   acknowledged: "bg-yellow-500",
   en_route: "bg-blue-500",
+  transporting: "bg-cyan-500",
+  hospital_transfer: "bg-cyan-500",
   on_scene: "bg-green-500",
   needs_support: "bg-orange-500",
   resolved: "bg-gray-500",
   cancelled: "bg-gray-400",
+};
+
+const RescueProgressTracker = ({ status, hospitalName }) => {
+  const steps = [
+    {
+      id: 1,
+      label: "En Route",
+      active: ["acknowledged", "en_route"].includes(status),
+      completed: [
+        "on_scene",
+        "transporting",
+        "hospital_transfer",
+        "resolved",
+      ].includes(status),
+    },
+    {
+      id: 2,
+      label: "At Location",
+      active: status === "on_scene",
+      completed: ["transporting", "hospital_transfer", "resolved"].includes(
+        status
+      ),
+    },
+    {
+      id: 3,
+      label: "To Hospital",
+      active: ["transporting", "hospital_transfer", "resolved"].includes(
+        status
+      ),
+      completed: status === "resolved",
+    },
+  ];
+
+  // Calculate progress percentage
+  const progress =
+    (steps.filter((s) => s.completed).length / (steps.length - 1)) * 100;
+
+  return (
+    <div className="w-full mb-6 px-4">
+      <div className="relative flex items-center justify-between">
+        {/* Background Line */}
+        <div className="absolute left-0 top-4 w-full h-1 bg-gray-200 -z-10 rounded-full" />
+
+        {/* Active Progress Line */}
+        <div
+          className="absolute left-0 top-4 h-1 bg-green-500 -z-10 transition-all duration-500 rounded-full"
+          style={{ width: `${progress}%` }}
+        />
+
+        {steps.map((step) => (
+          <div key={step.id} className="flex flex-col items-center relative">
+            <div
+              className={`w-8 h-8 rounded-full flex items-center justify-center border-[3px] transition-colors duration-300 z-10 bg-white ${
+                step.completed
+                  ? "border-green-500 bg-green-500 text-white"
+                  : step.active
+                  ? "border-blue-600 bg-blue-600 text-white"
+                  : "border-gray-300 text-gray-300"
+              }`}
+            >
+              {step.completed ? (
+                <CheckCircle size={16} strokeWidth={3} />
+              ) : (
+                <span className="text-xs font-black">{step.id}</span>
+              )}
+            </div>
+            <div className="mt-2 text-center absolute top-8 left-1/2 transform -translate-x-1/2 w-32">
+              <p
+                className={`text-[10px] font-bold uppercase tracking-wide ${
+                  step.active
+                    ? "text-blue-600"
+                    : step.completed
+                    ? "text-green-600"
+                    : "text-gray-400"
+                }`}
+              >
+                {step.label}
+              </p>
+              {step.id === 3 && step.active && hospitalName && (
+                <p className="text-xs font-bold text-gray-900 mt-0.5 leading-tight">
+                  {hospitalName}
+                </p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const RescueStatusCard = ({
+  eta,
+  distance,
+  responder,
+  vehicle,
+  status,
+  hospitalName,
+}) => {
+  const isToHospital = [
+    "transporting",
+    "hospital_transfer",
+    "resolved",
+  ].includes(status);
+
+  return (
+    <div className="relative md:absolute md:bottom-6 md:left-6 md:w-[400px] bg-white rounded-t-3xl md:rounded-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)] md:shadow-2xl z-[1000] overflow-hidden transition-all duration-300">
+      {/* Drag Handle for Mobile */}
+      <div className="w-full flex justify-center pt-3 pb-1 md:hidden">
+        <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+      </div>
+
+      <div className="p-5 pt-2 md:pt-5">
+        {/* Progress Tracker */}
+        <div className="mb-8">
+          <RescueProgressTracker status={status} hospitalName={hospitalName} />
+        </div>
+
+        {/* High-Contrast Data Block */}
+        <div className="bg-gray-100 rounded-xl p-4 mb-5 flex items-center justify-between border border-gray-200">
+          <div>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">
+              {isToHospital ? "TIME TO HOSPITAL" : "EST. ARRIVAL"}
+            </p>
+            <h2 className="text-3xl font-black text-gray-900 leading-none">
+              {eta}
+            </h2>
+          </div>
+          <div className="h-10 w-px bg-gray-300 mx-4" />
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">
+              {isToHospital ? "DISTANCE" : "DISTANCE"}
+            </p>
+            <p className="text-3xl font-black text-gray-900 leading-none">
+              {distance}
+            </p>
+          </div>
+        </div>
+
+        {/* Actionable Details Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 border-2 border-blue-200">
+              <Truck size={24} strokeWidth={2.5} />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                Responding Team
+              </p>
+              <h3 className="text-lg font-bold text-gray-900 leading-tight">
+                {responder?.name || "Ambulance Team"}
+              </h3>
+              <p className="text-sm font-medium text-gray-600">
+                {vehicle?.plate_number || "Plate No: ---"}
+              </p>
+            </div>
+          </div>
+
+          <button
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-red-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+            onClick={() => (window.location.href = "tel:911")}
+          >
+            <Phone size={20} strokeWidth={2.5} />
+            <span>CALL DISPATCH</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export const RescueTracker = () => {
@@ -229,14 +423,30 @@ export const RescueTracker = () => {
     }
   }, []);
 
-  // Fetch route between responder and patient
+  // Fetch route between responder and destination (patient or hospital)
   const fetchRoute = useCallback(async () => {
-    if (!responderLocation || !rescueData?.incident?.coordinates) return;
+    if (!responderLocation || !rescueData?.incident) return;
 
     try {
       const { lat: respLat, lng: respLng } = responderLocation;
-      const { latitude: patLat, longitude: patLng } =
-        rescueData.incident.coordinates;
+      let destLat, destLng;
+
+      // Determine destination based on status
+      // If transporting, destination is Hospital. Otherwise, it's the Patient.
+      if (
+        ["transporting", "hospital_transfer", "resolved"].includes(
+          rescueData.incident.status
+        ) &&
+        rescueData.hospital?.coordinates
+      ) {
+        destLat = rescueData.hospital.coordinates.latitude;
+        destLng = rescueData.hospital.coordinates.longitude;
+      } else if (rescueData.incident.coordinates) {
+        destLat = rescueData.incident.coordinates.latitude;
+        destLng = rescueData.incident.coordinates.longitude;
+      } else {
+        return;
+      }
 
       const params = new URLSearchParams({
         overview: "full",
@@ -244,7 +454,7 @@ export const RescueTracker = () => {
       });
 
       const response = await fetch(
-        `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${respLng},${respLat};${patLng},${patLat}?${params}`
+        `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${respLng},${respLat};${destLng},${destLat}?${params}`
       );
 
       if (!response.ok) return;
@@ -260,7 +470,12 @@ export const RescueTracker = () => {
     } catch (err) {
       console.error("Failed to fetch route:", err);
     }
-  }, [responderLocation, rescueData?.incident?.coordinates]);
+  }, [
+    responderLocation,
+    rescueData?.incident?.coordinates,
+    rescueData?.incident?.status,
+    rescueData?.hospital?.coordinates,
+  ]);
 
   // Subscribe to WebSocket for real-time location updates
   useEffect(() => {
@@ -377,11 +592,7 @@ export const RescueTracker = () => {
     return (
       <div className="h-screen flex bg-background text-foreground overflow-hidden">
         <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-        <div
-          className={`flex flex-col flex-1 transition-all duration-300 ${
-            collapsed ? "wl-16" : "wl-64"
-          }`}
-        >
+        <div className="flex flex-col flex-1 transition-all duration-300">
           <div className="sticky z-10 bg-background">
             <NavbarB />
           </div>
@@ -413,19 +624,15 @@ export const RescueTracker = () => {
   }
 
   return (
-    <div className="h-screen flex bg-background text-foreground overflow-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row bg-background text-foreground">
       <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      <div
-        className={`flex flex-col flex-1 transition-all duration-300 ${
-          collapsed ? "wl-16" : "wl-64"
-        }`}
-      >
+      <div className="flex flex-col flex-1 transition-all duration-300">
         <div className="sticky z-10 bg-background">
           <NavbarB />
         </div>
 
-        <main className="flex-1 flex flex-col overflow-hidden relative">
+        <main className="flex-1 flex flex-col relative min-h-[calc(100vh-64px)]">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -446,41 +653,15 @@ export const RescueTracker = () => {
             </div>
           ) : (
             <>
-              {/* Status Header */}
-              <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-3 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className={`w-3 h-3 rounded-full ${statusColor} animate-pulse`}
-                    />
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">
-                        {statusLabel}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {rescueData?.incident?.type || "Emergency Response"}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => fetchRescueStatus()}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                    title="Refresh"
-                  >
-                    <RefreshCw className="h-5 w-5 text-gray-600" />
-                  </button>
-                </div>
-              </div>
-
               {/* Map */}
-              <div className="flex-1 relative">
+              <div className="flex-1 relative h-[60vh] md:h-auto">
                 <MapContainer
                   center={
-                    patientPosition || responderPosition || DEFAULT_POSITION
+                    responderPosition || patientPosition || DEFAULT_POSITION
                   }
-                  zoom={14}
-                  className="h-full w-full"
+                  zoom={16}
+                  className="h-full w-full absolute inset-0"
+                  zoomControl={false}
                 >
                   <TileLayer
                     url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
@@ -503,14 +684,17 @@ export const RescueTracker = () => {
                     />
                   )}
 
-                  {/* Patient marker */}
-                  {patientPosition && (
-                    <Marker position={patientPosition} icon={patientIcon}>
-                      <Tooltip direction="top" offset={[0, -20]} permanent>
-                        <span className="font-semibold">Your Location</span>
-                      </Tooltip>
-                    </Marker>
-                  )}
+                  {/* Patient marker - Hide when transporting to hospital */}
+                  {patientPosition &&
+                    !["transporting", "hospital_transfer", "resolved"].includes(
+                      rescueData?.incident?.status
+                    ) && (
+                      <Marker position={patientPosition} icon={patientIcon}>
+                        <Tooltip direction="top" offset={[0, -20]} permanent>
+                          <span className="font-semibold">Your Location</span>
+                        </Tooltip>
+                      </Marker>
+                    )}
 
                   {/* Responder marker */}
                   {responderPosition && (
@@ -522,107 +706,35 @@ export const RescueTracker = () => {
                       </Tooltip>
                     </Marker>
                   )}
+
+                  {/* Hospital marker */}
+                  {rescueData?.hospital?.coordinates && (
+                    <Marker
+                      position={[
+                        rescueData.hospital.coordinates.latitude,
+                        rescueData.hospital.coordinates.longitude,
+                      ]}
+                      icon={hospitalIcon}
+                    >
+                      <Tooltip direction="top" offset={[0, -20]} permanent>
+                        <span className="font-semibold">
+                          {rescueData.hospital.name}
+                        </span>
+                      </Tooltip>
+                    </Marker>
+                  )}
                 </MapContainer>
 
-                {/* ETA Card Overlay */}
-                <div className="absolute top-4 left-4 right-4 pointer-events-none">
-                  <div className="pointer-events-auto bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden max-w-sm">
-                    {/* Responder Info */}
-                    <div className="p-4 border-b border-gray-100">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          {rescueData?.responder?.profile_image ? (
-                            <img
-                              src={rescueData.responder.profile_image}
-                              alt={rescueData.responder.name}
-                              className="w-12 h-12 rounded-full object-cover"
-                            />
-                          ) : (
-                            <User className="h-6 w-6 text-blue-600" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 truncate">
-                            {rescueData?.responder?.name || "Responder"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            Emergency Responder
-                          </p>
-                        </div>
-                        {rescueData?.responder?.phone && (
-                          <a
-                            href={`tel:${rescueData.responder.phone}`}
-                            className="p-2 bg-green-100 rounded-full text-green-600 hover:bg-green-200 transition-colors"
-                          >
-                            <Phone className="h-5 w-5" />
-                          </a>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* ETA & Distance */}
-                    <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100">
-                      <div className="flex items-center justify-between">
-                        <div className="text-center flex-1">
-                          <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">
-                            Arriving In
-                          </p>
-                          <p className="text-2xl font-black text-blue-900">
-                            {formatETA(responderLocation?.eta)}
-                          </p>
-                        </div>
-                        <div className="w-px h-10 bg-blue-200" />
-                        <div className="text-center flex-1">
-                          <p className="text-xs text-blue-600 font-semibold uppercase tracking-wide">
-                            Distance
-                          </p>
-                          <p className="text-2xl font-black text-blue-900">
-                            {formatDistance(responderLocation?.distance)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Last Update */}
-                    {lastUpdate && (
-                      <div className="px-4 py-2 bg-gray-50 text-center">
-                        <p className="text-xs text-gray-500">
-                          Last update:{" "}
-                          {lastUpdate.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            second: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Bottom Action Bar */}
-                <div className="absolute bottom-4 left-4 right-4 pointer-events-none">
-                  <div className="pointer-events-auto flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => navigate("/patient/messages")}
-                      className="flex-1 bg-white rounded-xl shadow-lg border border-gray-200 px-4 py-3 flex items-center justify-center gap-2 hover:bg-gray-50 transition-colors"
-                    >
-                      <MessageSquare className="h-5 w-5 text-blue-600" />
-                      <span className="font-semibold text-gray-900">
-                        Message Responder
-                      </span>
-                    </button>
-                    {rescueData?.responder?.phone && (
-                      <a
-                        href={`tel:${rescueData.responder.phone}`}
-                        className="bg-green-600 rounded-xl shadow-lg px-4 py-3 flex items-center justify-center gap-2 hover:bg-green-700 transition-colors"
-                      >
-                        <Phone className="h-5 w-5 text-white" />
-                        <span className="font-semibold text-white">Call</span>
-                      </a>
-                    )}
-                  </div>
-                </div>
+                {/* Status Card Overlay */}
+                <RescueStatusCard
+                  key={rescueData?.incident?.status}
+                  eta={formatETA(responderLocation?.eta)}
+                  distance={formatDistance(responderLocation?.distance)}
+                  responder={rescueData?.responder}
+                  vehicle={rescueData?.vehicle}
+                  status={rescueData?.incident?.status}
+                  hospitalName={rescueData?.hospital?.name}
+                />
               </div>
             </>
           )}
