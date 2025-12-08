@@ -12,6 +12,7 @@ import {
   Polyline,
   TileLayer,
   Tooltip,
+  Popup,
   useMap,
 } from "react-leaflet";
 import {
@@ -24,6 +25,7 @@ import {
   Minimize,
   Settings,
   Target,
+  X,
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -33,6 +35,8 @@ import { useBlockades } from "../../../hooks/useBlockades";
 import TurnByTurnNavigation from "./TurnByTurnNavigation";
 import { useResponderLocationBroadcast } from "../../../hooks/useResponderLocationBroadcast";
 import api from "../../../services/api";
+import { useAuth } from "../../../context/AuthContext";
+import blockadeService from "../../../services/blockadeService";
 
 const DEFAULT_POSITION = [
   KALINGA_CONFIG.DEFAULT_LOCATION.lat,
@@ -464,7 +468,23 @@ export default function LiveResponseMap({
   const [showBlockades, setShowBlockades] = useState(true);
   const [showHospitals, setShowHospitals] = useState(true);
   const [desktopFabOpen, setDesktopFabOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportError, setReportError] = useState(null);
+  const [reportForm, setReportForm] = useState({
+    title: "",
+    description: "",
+    severity: "medium",
+  });
+  const [reportCoords, setReportCoords] = useState(null);
+  const [removingBlockadeId, setRemovingBlockadeId] = useState(null);
   const transportNavTriggeredRef = useRef(false);
+  const { user } = useAuth();
+
+  const canManageBlockades = useMemo(() => {
+    const role = user?.role?.toLowerCase?.();
+    return role === "admin" || role === "responder" || user?.is_admin;
+  }, [user]);
 
   // Broadcast responder location to patient via WebSocket.
   // Enable while incident is active (responder en route or on scene) so patient can track.
@@ -502,6 +522,9 @@ export default function LiveResponseMap({
     blockades,
     loading: blockadesLoading,
     error: blockadesError,
+    refetch: refetchBlockades,
+    updateBlockade: updateBlockadeLocal,
+    removeBlockade: removeBlockadeLocal,
   } = useBlockades({ pollingInterval: 120000 });
 
   useEffect(() => {
@@ -834,6 +857,166 @@ export default function LiveResponseMap({
     });
   }, [currentCenter, incidentPosition, responderPosition]);
 
+  const openReportModal = useCallback(() => {
+    const coords =
+      responderPosition ||
+      incidentPosition ||
+      currentCenter ||
+      DEFAULT_POSITION;
+
+    setReportCoords(coords);
+    setReportError(null);
+    setReportForm((prev) => ({
+      ...prev,
+      title: prev.title || "Road blockade",
+    }));
+    setReportModalOpen(true);
+    setDesktopFabOpen(false);
+  }, [currentCenter, incidentPosition, responderPosition]);
+
+  // Auto-populate title with nearest road when modal opens
+  useEffect(() => {
+    const fetchRoadName = async () => {
+      const coords =
+        reportCoords ||
+        responderPosition ||
+        incidentPosition ||
+        currentCenter ||
+        DEFAULT_POSITION;
+
+      try {
+        const [lat, lng] = coords;
+        const response = await fetch(
+          `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`
+        );
+        const data = await response.json();
+        const name = data?.waypoints?.[0]?.name;
+
+        if (typeof name === "string" && name.trim()) {
+          setReportForm((prev) => {
+            const existing = prev.title?.trim();
+            if (existing && existing !== "Road blockade") {
+              return prev; // respect user input
+            }
+            return { ...prev, title: `Blockade on ${name.trim()}` };
+          });
+        }
+      } catch (err) {
+        // Silent failure; keep manual title
+      }
+    };
+
+    if (reportModalOpen) {
+      fetchRoadName();
+    }
+  }, [
+    currentCenter,
+    incidentPosition,
+    reportCoords,
+    reportModalOpen,
+    responderPosition,
+  ]);
+
+  const handleSubmitBlockade = useCallback(async () => {
+    if (!user?.id) {
+      setReportError("Login required to report a blockade.");
+      return;
+    }
+
+    const coords =
+      reportCoords ||
+      responderPosition ||
+      incidentPosition ||
+      currentCenter ||
+      DEFAULT_POSITION;
+
+    const payload = {
+      title: reportForm.title.trim() || "Road blockade",
+      description: reportForm.description.trim() || null,
+      severity: reportForm.severity || "medium",
+      start_lat: coords[0],
+      start_lng: coords[1],
+      reported_by: user.id,
+    };
+
+    setReportSubmitting(true);
+    setReportError(null);
+    try {
+      const createdResponse = await blockadeService.create(payload);
+      setReportModalOpen(false);
+      setReportForm({ title: "", description: "", severity: "medium" });
+      const createdBlockade =
+        createdResponse?.data?.data ??
+        createdResponse?.data ??
+        createdResponse?.blockade ??
+        createdResponse;
+      if (createdBlockade?.id) {
+        updateBlockadeLocal?.(createdBlockade);
+      }
+      refetchBlockades?.();
+    } catch (err) {
+      setReportError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Unable to report blockade."
+      );
+    } finally {
+      setReportSubmitting(false);
+    }
+  }, [
+    currentCenter,
+    incidentPosition,
+    refetchBlockades,
+    updateBlockadeLocal,
+    reportCoords,
+    reportForm.description,
+    reportForm.severity,
+    reportForm.title,
+    responderPosition,
+    user?.id,
+  ]);
+
+  const handleRemoveBlockade = useCallback(
+    async (blockade) => {
+      const id = blockade?.raw?.id ?? blockade?.id;
+      if (!id) return;
+      if (!canManageBlockades) {
+        alert("You do not have permission to remove blockades.");
+        return;
+      }
+
+      const descriptor = blockade?.descriptor || blockade?.raw?.title;
+      const confirmed = window.confirm(
+        `Remove ${
+          descriptor || "this blockade"
+        }? This helps clear the map for other responders.`
+      );
+      if (!confirmed) return;
+
+      setRemovingBlockadeId(id);
+      try {
+        await blockadeService.remove(id, { removed_by: user?.id });
+        removeBlockadeLocal?.(id);
+        refetchBlockades?.();
+        setRouteAlert({
+          type: "info",
+          icon: "✅",
+          message: "Blockade removed. Recomputing route.",
+        });
+      } catch (err) {
+        console.error("Failed to remove blockade", err);
+        alert(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Unable to remove blockade."
+        );
+      } finally {
+        setRemovingBlockadeId(null);
+      }
+    },
+    [canManageBlockades, refetchBlockades, removeBlockadeLocal, user?.id]
+  );
+
   const handleSimulatedLocationChange = (coords, options = {}) => {
     if (!coords) return;
     const lat = Number(coords.lat);
@@ -907,6 +1090,16 @@ export default function LiveResponseMap({
       }
     }
   };
+
+  const effectiveReportCoords = useMemo(
+    () =>
+      reportCoords ||
+      responderPosition ||
+      incidentPosition ||
+      currentCenter ||
+      DEFAULT_POSITION,
+    [currentCenter, incidentPosition, reportCoords, responderPosition]
+  );
 
   return (
     <section
@@ -1041,6 +1234,37 @@ export default function LiveResponseMap({
                       {blockade.severity} road issue
                     </div>
                   </Tooltip>
+                  <Popup minWidth={240} autoPan={true}>
+                    <div className="space-y-2 text-sm text-slate-800">
+                      <div className="font-semibold leading-tight">
+                        {blockade.descriptor}
+                      </div>
+                      <div className="text-xs text-slate-500 uppercase tracking-wide">
+                        Severity: {blockade.severity}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Lat {blockade.lat.toFixed(5)} · Lng{" "}
+                        {blockade.lng.toFixed(5)}
+                      </div>
+                      {canManageBlockades && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBlockade(blockade)}
+                          disabled={
+                            removingBlockadeId ===
+                            (blockade.raw?.id ?? blockade.id)
+                          }
+                          className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-400"
+                        >
+                          {removingBlockadeId ===
+                            (blockade.raw?.id ?? blockade.id) && (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          )}
+                          Remove blockade
+                        </button>
+                      )}
+                    </div>
+                  </Popup>
                 </Marker>
               )
           )}
@@ -1133,6 +1357,19 @@ export default function LiveResponseMap({
                 <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
               )}
             </button>
+            <button
+              onClick={() => {
+                openReportModal();
+                setActionsOpen(false);
+              }}
+              className="flex items-center gap-2 px-4 py-3 rounded-full shadow-lg border bg-white border-gray-200 active:scale-95 transition-all"
+              title="Report a road blockade"
+            >
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span className="text-sm font-medium text-red-700">
+                Report blockade
+              </span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1192,93 +1429,81 @@ export default function LiveResponseMap({
         </div>
 
         {/* Desktop retractable action menu (top-right, semicircle attached to map edge) */}
-        <div className="hidden lg:flex absolute right-6 top-24 z-[1100] flex-col items-center gap-3">
-          {desktopFabOpen && (
-            <div className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 text-sm shadow-xl">
-              <button
-                onClick={() => {
-                  handleCenterOnResponder();
-                  setDesktopFabOpen(false);
-                }}
-                className="flex items-center gap-3 rounded-full bg-blue-50 px-3 py-2 text-blue-700 transition hover:bg-blue-100"
-                title="Center on responder"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white shadow">
-                  <Target className="h-4 w-4" />
-                </span>
-                <span className="font-semibold">Center</span>
-              </button>
-              <button
-                onClick={() => setShowHospitals((s) => !s)}
-                className={`flex items-center gap-3 rounded-full px-3 py-2 transition ${
-                  showHospitals
-                    ? "bg-emerald-50 text-emerald-700"
-                    : "bg-white text-slate-700 hover:bg-gray-50"
-                }`}
-                title={showHospitals ? "Hide hospitals" : "Show hospitals"}
-              >
-                <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border ${
-                    showHospitals
-                      ? "border-emerald-200 bg-white"
-                      : "border-gray-200"
-                  }`}
+        <div className="hidden lg:block absolute top-4 right-4 z-[1200]">
+          <div className="relative">
+            {desktopFabOpen && (
+              <div className="absolute right-0 top-full z-[1210] mt-2 w-56 space-y-2 rounded-2xl bg-white p-3 text-sm font-medium text-slate-700 shadow-[0_25px_45px_rgba(15,23,42,0.25)] ring-1 ring-black/5">
+                <button
+                  onClick={() => setShowHospitals((s) => !s)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition hover:bg-slate-50"
+                  title={showHospitals ? "Hide hospitals" : "Show hospitals"}
                 >
-                  <Stethoscope
-                    className={
-                      showHospitals ? "text-emerald-600" : "text-slate-600"
-                    }
-                  />
-                </span>
-                <span className="font-semibold">Hospitals</span>
-                <span className="ml-auto text-xs text-gray-500">
-                  {visibleHospitalCount}
-                </span>
-              </button>
-              <button
-                onClick={() => setShowBlockades((s) => !s)}
-                className={`flex items-center gap-3 rounded-full px-3 py-2 transition ${
-                  showBlockades
-                    ? "bg-orange-50 text-orange-700"
-                    : "bg-white text-slate-700 hover:bg-gray-50"
-                }`}
-                title={showBlockades ? "Hide road alerts" : "Show road alerts"}
-              >
-                <span
-                  className={`flex h-10 w-10 items-center justify-center rounded-full border ${
-                    showBlockades
-                      ? "border-orange-200 bg-white"
-                      : "border-gray-200"
-                  }`}
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-full border ${
+                      showHospitals
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                        : "border-gray-200 text-slate-500"
+                    }`}
+                  >
+                    <Stethoscope className="h-4 w-4" />
+                  </span>
+                  Hospitals
+                  <span className="ml-auto text-xs text-gray-400">
+                    {visibleHospitalCount}
+                  </span>
+                </button>
+                <button
+                  onClick={() => setShowBlockades((s) => !s)}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition hover:bg-slate-50"
+                  title={
+                    showBlockades ? "Hide road alerts" : "Show road alerts"
+                  }
                 >
-                  <AlertTriangle
-                    className={
-                      showBlockades ? "text-orange-600" : "text-slate-600"
-                    }
-                  />
-                </span>
-                <span className="font-semibold">Road alerts</span>
-                <span className="ml-auto text-xs text-gray-500">
-                  {normalizedBlockades.length}
-                </span>
-              </button>
-            </div>
-          )}
-          <button
-            onClick={() => setDesktopFabOpen((open) => !open)}
-            className={`flex h-14 w-14 items-center justify-center rounded-full border-2 bg-white text-slate-700 shadow-xl transition hover:shadow-2xl ${
-              desktopFabOpen
-                ? "border-blue-600 text-blue-600"
-                : "border-gray-200"
-            }`}
-            title="Map controls"
-          >
-            <Settings
-              className={`h-6 w-6 transition-transform ${
-                desktopFabOpen ? "rotate-45" : ""
+                  <span
+                    className={`flex h-9 w-9 items-center justify-center rounded-full border ${
+                      showBlockades
+                        ? "border-orange-200 bg-orange-50 text-orange-600"
+                        : "border-gray-200 text-slate-500"
+                    }`}
+                  >
+                    <AlertTriangle className="h-4 w-4" />
+                  </span>
+                  Road alerts
+                  <span className="ml-auto text-xs text-gray-400">
+                    {normalizedBlockades.length}
+                  </span>
+                </button>
+                <button
+                  onClick={openReportModal}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition hover:bg-slate-50"
+                  title="Report a blockade at your current map position"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-red-50 text-red-600">
+                    🚧
+                  </span>
+                  Report blockade
+                  <span className="ml-auto text-[11px] uppercase tracking-wide text-red-500">
+                    new
+                  </span>
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => setDesktopFabOpen((open) => !open)}
+              className={`flex h-14 w-14 items-center justify-center rounded-full border-2 bg-white text-slate-700 shadow-xl transition hover:shadow-2xl ${
+                desktopFabOpen
+                  ? "border-blue-600 text-blue-600"
+                  : "border-gray-200"
               }`}
-            />
-          </button>
+              title="Map controls"
+            >
+              <Settings
+                className={`h-6 w-6 transition-transform ${
+                  desktopFabOpen ? "rotate-45" : ""
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Fullscreen overlay: when active, expand this section to cover viewport (mobile only) */}
@@ -1312,6 +1537,150 @@ export default function LiveResponseMap({
               <span className="text-left text-sm">
                 {routeAlert?.message || routeError}
               </span>
+            </div>
+          </div>
+        )}
+
+        {reportModalOpen && (
+          <div className="fixed inset-0 z-[1250] flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-black/10">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    Road issue
+                  </p>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Report a blockade
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Pinned to your current map position. These reports help
+                    reroute other responders.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setReportModalOpen(false);
+                    setReportError(null);
+                  }}
+                  className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                  disabled={reportSubmitting}
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-gray-700">
+                    Title
+                  </label>
+                  <input
+                    value={reportForm.title}
+                    onChange={(e) =>
+                      setReportForm((prev) => ({
+                        ...prev,
+                        title: e.target.value,
+                      }))
+                    }
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    placeholder="e.g., Fallen tree blocking main road"
+                    disabled={reportSubmitting}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-700">
+                    Description (optional)
+                  </label>
+                  <textarea
+                    value={reportForm.description}
+                    onChange={(e) =>
+                      setReportForm((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    rows={3}
+                    className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                    placeholder="Add notes like lane closures, debris, or detour tips"
+                    disabled={reportSubmitting}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Severity
+                    </label>
+                    <select
+                      value={reportForm.severity}
+                      onChange={(e) =>
+                        setReportForm((prev) => ({
+                          ...prev,
+                          severity: e.target.value,
+                        }))
+                      }
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      disabled={reportSubmitting}
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-gray-700">
+                      Location
+                    </label>
+                    <div className="rounded-lg border border-gray-200 px-3 py-2 text-xs text-gray-600">
+                      <div>
+                        Lat:{" "}
+                        <span className="font-semibold text-gray-800">
+                          {Number(effectiveReportCoords?.[0]).toFixed(5)}
+                        </span>
+                      </div>
+                      <div>
+                        Lng:{" "}
+                        <span className="font-semibold text-gray-800">
+                          {Number(effectiveReportCoords?.[1]).toFixed(5)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        Uses your location or the current map center.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {reportError && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                    {reportError}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      setReportModalOpen(false);
+                      setReportError(null);
+                    }}
+                    className="rounded-lg px-3 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100"
+                    disabled={reportSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSubmitBlockade}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-400"
+                    disabled={reportSubmitting}
+                  >
+                    {reportSubmitting && (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    )}
+                    Submit report
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
