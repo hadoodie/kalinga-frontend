@@ -9,6 +9,7 @@ import StatusControlPanel from "../components/responder/response-mode/StatusCont
 import ResponseModeDemoPanel from "../components/responder/response-mode/ResponseModeDemoPanel";
 import ResponseTimelinePanel from "../components/responder/response-mode/ResponseTimelinePanel";
 import responseModeService from "../services/responseMode";
+import chatService from "../services/chatService";
 import { ROUTES } from "../config/routes";
 import { useAuth } from "../context/AuthContext";
 import useConversationInsights from "../hooks/useConversationInsights";
@@ -60,6 +61,33 @@ const PANEL_TABS = [
   },
 ];
 
+const getConversationReceiverId = (conversation, userId) => {
+  if (!conversation) return null;
+  const participantId = conversation.participant?.id;
+  if (participantId && participantId !== userId) return participantId;
+
+  if (Array.isArray(conversation.participants)) {
+    const other = conversation.participants.find(
+      (person) => person?.id && person.id !== userId
+    );
+    if (other?.id) return other.id;
+  }
+
+  if (conversation.receiver_id && conversation.receiver_id !== userId) {
+    return conversation.receiver_id;
+  }
+
+  if (conversation.user_id && conversation.user_id !== userId) {
+    return conversation.user_id;
+  }
+
+  if (conversation.patient_id && conversation.patient_id !== userId) {
+    return conversation.patient_id;
+  }
+
+  return null;
+};
+
 export default function ResponseMode() {
   const { incidentId } = useParams();
   const navigate = useNavigate();
@@ -94,6 +122,8 @@ export default function ResponseMode() {
   const [statusError, setStatusError] = useState(null);
   const [selectedHospitalId, setSelectedHospitalId] = useState(null);
   const [activeTab, setActiveTab] = useState("control");
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [sendError, setSendError] = useState(null);
 
   useEffect(() => {
     setSelectedHospitalId(null);
@@ -154,6 +184,79 @@ export default function ResponseMode() {
   useEffect(() => {
     setStatusError(null);
   }, [incident?.status]);
+
+  const handleSendMessage = useCallback(
+    async (text) => {
+      const trimmed = (text || "").trim();
+      if (!trimmed || !conversation) {
+        return;
+      }
+
+      const receiverId = getConversationReceiverId(conversation, user?.id);
+      if (!receiverId) {
+        setSendError("No recipient available for this conversation.");
+        return;
+      }
+
+      const tempId = `temp-${Date.now()}`;
+      const timestamp = new Date().toISOString();
+      const optimistic = {
+        id: tempId,
+        text: trimmed,
+        body: trimmed,
+        senderId: user?.id,
+        sender: user?.name || "You",
+        createdAt: timestamp,
+        timestamp,
+        isOwn: true,
+      };
+
+      setSendError(null);
+      setMessages((prev) => insertMessageChronologically(prev, optimistic));
+      setSendingMessage(true);
+
+      try {
+        const payload = await chatService.sendMessage({
+          receiver_id: receiverId,
+          message: trimmed,
+          incident_id: incident?.id ?? undefined,
+          conversation_id:
+            conversation?.conversationId ??
+            conversation?.conversation_id ??
+            conversation?.id,
+        });
+
+        const normalized = normalizeMessage(
+          payload,
+          conversation?.participant?.name || "Patient",
+          user?.id ?? null
+        );
+        const prepared = {
+          ...normalized,
+          body: normalized.text ?? normalized.body ?? "",
+          createdAt: normalized.timestamp,
+        };
+
+        setMessages((prev) =>
+          insertMessageChronologically(
+            prev.filter((message) => message.id !== tempId),
+            prepared
+          )
+        );
+      } catch (err) {
+        console.error("Failed to send message", err);
+        setMessages((prev) => prev.filter((message) => message.id !== tempId));
+        setSendError(
+          err?.response?.data?.message ||
+            err?.message ||
+            "Unable to send message"
+        );
+      } finally {
+        setSendingMessage(false);
+      }
+    },
+    [conversation, incident?.id, setMessages, user?.id, user?.name]
+  );
 
   const handleHospitalChange = useCallback((hospitalId) => {
     setSelectedHospitalId(hospitalId);
@@ -608,6 +711,9 @@ export default function ResponseMode() {
                   loading={loading}
                   onBack={handleExit}
                   currentUserId={user?.id}
+                  onSend={handleSendMessage}
+                  sending={sendingMessage}
+                  error={sendError}
                 />
               )}
 
