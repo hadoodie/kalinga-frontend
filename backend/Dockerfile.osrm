@@ -1,13 +1,34 @@
+# Use the official OSRM backend image as the base
 FROM osrm/osrm-backend:latest
 
-# We do NOT copy data into the image to keep it small.
-# Instead, we mount the host folder C:\Users\Jared\OSRM-Data to /data at runtime.
+# --- New Steps for S3 Download Strategy ---
 
-# Set working directory
+# Create the /data directory where the tarball will be extracted
+# This ensures it exists even if no volume is mounted
+RUN mkdir -p /data
+
+# Copy the custom entrypoint script into the image
+# Assumes the script is located at backend/entrypoint-osrm.sh relative to the Dockerfile
+COPY backend/entrypoint-osrm.sh /usr/local/bin/
+
+# Make the script executable
+RUN chmod +x /usr/local/bin/entrypoint-osrm.sh
+
+# --- Standard OSRM Configuration ---
+
+# Set working directory to /data (optional, but good practice)
 WORKDIR /data
 
-# Default command (can be overridden in docker-compose or run command)
-# Ensure the filename matches your actual .osrm file
-CMD ["osrm-routed", "--algorithm", "mld", "--port", "5000", "/data/philippines-251128.osrm"]
-
+# Expose the OSRM routing port
 EXPOSE 5000
+
+# Set the command to run the entrypoint script.
+# The entrypoint script will:
+# 1. Download the data using the OSRM_DATA_URL environment variable.
+# 2. Extract the data to /data.
+# 3. Finally, execute the 'osrm-routed' command.
+CMD ["entrypoint-osrm.sh"]
+
+# Optional: Add build arguments for OSRM parameters if needed later
+# ENV OSRM_ALGORITHM mld
+# ENV OSRM_PORT 5000
