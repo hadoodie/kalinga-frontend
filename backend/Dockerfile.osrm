@@ -1,0 +1,13 @@
+FROM osrm/osrm-backend:latest
+
+# We do NOT copy data into the image to keep it small.
+# Instead, we mount the host folder C:\Users\Jared\OSRM-Data to /data at runtime.
+
+# Set working directory
+WORKDIR /data
+
+# Default command (can be overridden in docker-compose or run command)
+# Ensure the filename matches your actual .osrm file
+CMD ["osrm-routed", "--algorithm", "mld", "--port", "5000", "/data/philippines-251128.osrm"]
+
+EXPOSE 5000
