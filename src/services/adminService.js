@@ -138,6 +138,8 @@ const adminService = {
             .length,
           en_route: incidents.filter((i) => i.status === "en_route").length,
           on_scene: incidents.filter((i) => i.status === "on_scene").length,
+          transporting: incidents.filter((i) => i.status === "transporting")
+            .length,
           resolved: incidents.filter((i) => i.status === "resolved").length,
           cancelled: incidents.filter((i) => i.status === "cancelled").length,
         },
@@ -240,7 +242,10 @@ const adminService = {
       // The backend endpoint is still stabilizing, so degrade gracefully on server failures
       if (status === 404 || status === 500) {
         if (!adminService._expiringEndpointFailed) {
-          console.warn("Expiring resources endpoint unavailable (will suppress further warnings):", error?.message || error);
+          console.warn(
+            "Expiring resources endpoint unavailable (will suppress further warnings):",
+            error?.message || error
+          );
           adminService._expiringEndpointFailed = true;
         }
         const fallback = [];
@@ -262,7 +267,10 @@ const adminService = {
         adminService.getLowStockResources(),
         adminService.getCriticalResources(),
         adminService.getExpiringResources(30).catch((error) => {
-          console.warn("Expiring resources unavailable, continuing without them", error);
+          console.warn(
+            "Expiring resources unavailable, continuing without them",
+            error
+          );
           return [];
         }),
       ]);
@@ -636,7 +644,10 @@ const adminService = {
    */
   getSmartResponderRecommendations: async (incidentId, params = {}) => {
     try {
-      const response = await api.get(`/incidents/${incidentId}/smart-responder-recommendations`, { params });
+      const response = await api.get(
+        `/incidents/${incidentId}/smart-responder-recommendations`,
+        { params }
+      );
       return response.data;
     } catch (error) {
       console.error("Error fetching smart responder recommendations:", error);
@@ -651,7 +662,10 @@ const adminService = {
    */
   smartAutoAssign: async (incidentId, data = {}) => {
     try {
-      const response = await api.post(`/incidents/${incidentId}/smart-auto-assign`, data);
+      const response = await api.post(
+        `/incidents/${incidentId}/smart-auto-assign`,
+        data
+      );
       return response.data;
     } catch (error) {
       console.error("Error with smart auto-assign:", error);
