@@ -1,6 +1,13 @@
 # Use the official OSRM backend image as the base
 FROM osrm/osrm-backend:latest
 
+# --- New Step: Install curl for downloading data ---
+# We use apt-get to update package lists and install curl.
+# We also clean up the lists afterward to keep the image size small.
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
+
 # --- New Steps for S3 Download Strategy ---
 
 # Create the /data directory where the tarball will be extracted
