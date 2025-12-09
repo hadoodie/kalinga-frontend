@@ -692,8 +692,14 @@ export const HospitalSafetyIndexSection = () => {
     let ignore = false;
     const bootstrap = async () => {
       setLoading(true);
-      await Promise.all([fetchDashboardData(), fetchHospitals()]);
-      if (!ignore) setLoading(false);
+      try {
+        await Promise.all([fetchDashboardData(), fetchHospitals()]);
+      } catch (err) {
+        console.error("HSI bootstrap failed", err);
+        setError((prev) => prev ?? "Unable to load hospital safety data.");
+      } finally {
+        if (!ignore) setLoading(false);
+      }
     };
     bootstrap();
     return () => {
