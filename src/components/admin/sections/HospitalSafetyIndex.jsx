@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   AlertOctagon,
@@ -81,7 +76,8 @@ const HSI_CHECKLIST = [
       {
         id: "structural-system",
         label: "Primary structural system rated for the current seismic zone",
-        helper: "As-built drawings stamped by a licensed engineer and hazard maps on file",
+        helper:
+          "As-built drawings stamped by a licensed engineer and hazard maps on file",
       },
       {
         id: "soil-investigation",
@@ -96,7 +92,8 @@ const HSI_CHECKLIST = [
       {
         id: "retrofit-log",
         label: "Structural retrofits documented and closed out",
-        helper: "Action plans exist for every deficiency found by DOH/WHO tools",
+        helper:
+          "Action plans exist for every deficiency found by DOH/WHO tools",
       },
       {
         id: "roof-anchorage",
@@ -176,7 +173,8 @@ const HSI_CHECKLIST = [
       },
       {
         id: "hazard-specific-playbooks",
-        label: "Hazard-specific playbooks (earthquake, flood, fire) are current",
+        label:
+          "Hazard-specific playbooks (earthquake, flood, fire) are current",
         helper: "Reviewed with LGU/DRRMO counterparts",
       },
       {
@@ -302,9 +300,7 @@ const ModuleCard = ({ module }) => (
       </div>
       <div className="text-right">
         {typeof module.score === "number" && (
-          <p className="text-3xl font-bold text-slate-900">
-            {module.score}%
-          </p>
+          <p className="text-3xl font-bold text-slate-900">{module.score}%</p>
         )}
         {module.status && (
           <Badge variant={getStatusVariant(module.status)}>
@@ -359,12 +355,7 @@ const computePercent = (value, required) => {
   return Math.round(Math.min((value / required) * 100, 160));
 };
 
-const ResourceStatusCard = ({
-  title,
-  icon: Icon,
-  current,
-  required,
-}) => {
+const ResourceStatusCard = ({ title, icon: Icon, current, required }) => {
   const percent = required > 0 ? Math.min((current / required) * 100, 160) : 0;
   const isCompliant = current >= required;
   const accent = isCompliant ? "success" : "destructive";
@@ -661,32 +652,29 @@ export const HospitalSafetyIndexSection = () => {
     }
   }, []);
 
-  const fetchHospitalCompliance = useCallback(
-    async (hospitalId) => {
-      if (!hospitalId) {
-        setHospitalCompliance(null);
-        return;
-      }
-      try {
-        const response = await getHospitalCompliance(hospitalId);
-        const payload = response?.data?.data || response?.data || null;
-        setHospitalCompliance(payload);
-        setComplianceError(null);
-        if (payload?.assessment_details?.general_info?.surge_multiplier) {
-          setSurgeMultiplier(
-            payload.assessment_details.general_info.surge_multiplier
-          );
-        }
-      } catch (err) {
-        console.error("Failed to fetch hospital compliance", err);
-        setHospitalCompliance(null);
-        setComplianceError(
-          "Compliance data unavailable for the selected hospital."
+  const fetchHospitalCompliance = useCallback(async (hospitalId) => {
+    if (!hospitalId) {
+      setHospitalCompliance(null);
+      return;
+    }
+    try {
+      const response = await getHospitalCompliance(hospitalId);
+      const payload = response?.data?.data || response?.data || null;
+      setHospitalCompliance(payload);
+      setComplianceError(null);
+      if (payload?.assessment_details?.general_info?.surge_multiplier) {
+        setSurgeMultiplier(
+          payload.assessment_details.general_info.surge_multiplier
         );
       }
-    },
-    []
-  );
+    } catch (err) {
+      console.error("Failed to fetch hospital compliance", err);
+      setHospitalCompliance(null);
+      setComplianceError(
+        "Compliance data unavailable for the selected hospital."
+      );
+    }
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -764,9 +752,7 @@ export const HospitalSafetyIndexSection = () => {
 
   const getVendorForResource = (resourceKey) =>
     assessmentDetails?.vendor_playbooks?.find((vendor) =>
-      vendor.resource
-        ? vendor.resource.toLowerCase() === resourceKey
-        : false
+      vendor.resource ? vendor.resource.toLowerCase() === resourceKey : false
     );
 
   const handleAutoTrigger = async (resourceKey) => {
@@ -931,15 +917,12 @@ export const HospitalSafetyIndexSection = () => {
           {["A", "B", "C"].map((category) => (
             <div
               key={category}
-              className={`rounded-2xl border bg-white/90 p-5 shadow-sm ${
-                severityColors[category]
-              }`}
+              className={`rounded-2xl border bg-white/90 p-5 shadow-sm ${severityColors[category]}`}
             >
               <div className="flex items-center justify-between text-sm">
                 <span>
-                  Category {category} ({
-                    getSafetyCategoryInfo(category)?.label || ""
-                  })
+                  Category {category} (
+                  {getSafetyCategoryInfo(category)?.label || ""})
                 </span>
                 {category === "A" && <CheckCircle className="h-4 w-4" />}
                 {category === "B" && <AlertTriangle className="h-4 w-4" />}
@@ -986,7 +969,9 @@ export const HospitalSafetyIndexSection = () => {
                           : ""}
                       </p>
                     </div>
-                    <Badge variant="destructive">{data?.count ?? 0} flagged</Badge>
+                    <Badge variant="destructive">
+                      {data?.count ?? 0} flagged
+                    </Badge>
                   </div>
                 </div>
               )
@@ -1008,7 +993,9 @@ export const HospitalSafetyIndexSection = () => {
                           : ""}
                       </p>
                     </div>
-                    <Badge variant="destructive">{data?.count ?? 0} flagged</Badge>
+                    <Badge variant="destructive">
+                      {data?.count ?? 0} flagged
+                    </Badge>
                   </div>
                 </div>
               )
@@ -1097,7 +1084,7 @@ export const HospitalSafetyIndexSection = () => {
                           )}
                         </div>
                         <p className="mt-1 text-xs text-slate-500">
-                          Updated {" "}
+                          Updated{" "}
                           {hospitalCompliance.assessment?.date
                             ? new Date(
                                 hospitalCompliance.assessment.date
@@ -1109,12 +1096,14 @@ export const HospitalSafetyIndexSection = () => {
                       <div className="rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-sm">
                         <p className="text-sm text-slate-500">Bed capacity</p>
                         <p className="mt-2 text-3xl font-bold text-slate-900">
-                          {hospitalCompliance.capacity?.routine_beds || 0} / {" "}
+                          {hospitalCompliance.capacity?.routine_beds || 0} /{" "}
                           {hospitalCompliance.capacity?.maximum_beds || 0}
                         </p>
                         <div className="mt-2">
                           {hospitalCompliance.capacity?.disaster_mode_active ? (
-                            <Badge variant="warning">Disaster mode active</Badge>
+                            <Badge variant="warning">
+                              Disaster mode active
+                            </Badge>
                           ) : (
                             <Badge variant="success">Normal operations</Badge>
                           )}
@@ -1129,8 +1118,8 @@ export const HospitalSafetyIndexSection = () => {
                           {hospitalCompliance.vendor_agreements?.active || 0}
                         </p>
                         <p className="text-xs text-slate-500">
-                          {hospitalCompliance.vendor_agreements?.auto_trigger_enabled ||
-                            0} {" "}
+                          {hospitalCompliance.vendor_agreements
+                            ?.auto_trigger_enabled || 0}{" "}
                           with auto-trigger
                         </p>
                       </div>
@@ -1189,7 +1178,9 @@ export const HospitalSafetyIndexSection = () => {
                           <p className="text-3xl font-bold text-slate-900">
                             {resourcePercents.water}%
                           </p>
-                          <p className="text-xs text-slate-500">vs 72h standard</p>
+                          <p className="text-xs text-slate-500">
+                            vs 72h standard
+                          </p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center shadow-sm">
                           <p className="text-sm text-slate-500">
@@ -1198,7 +1189,9 @@ export const HospitalSafetyIndexSection = () => {
                           <p className="text-3xl font-bold text-slate-900">
                             {resourcePercents.fuel}%
                           </p>
-                          <p className="text-xs text-slate-500">vs 72h standard</p>
+                          <p className="text-xs text-slate-500">
+                            vs 72h standard
+                          </p>
                         </div>
                         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center shadow-sm">
                           <p className="text-sm text-slate-500">
@@ -1235,7 +1228,9 @@ export const HospitalSafetyIndexSection = () => {
                         <ResourceStatusCard
                           title="Oxygen reserve"
                           icon={Wind}
-                          current={hospitalCompliance.oxygen.survival_hours || 0}
+                          current={
+                            hospitalCompliance.oxygen.survival_hours || 0
+                          }
                           required={HSI_CONSTANTS.OXYGEN_MINIMUM_HOURS}
                         />
                       )}
@@ -1250,18 +1245,27 @@ export const HospitalSafetyIndexSection = () => {
                         <div className="mt-4 space-y-2 text-sm text-slate-600">
                           <div className="flex justify-between">
                             <span>Count</span>
-                            <span>{hospitalCompliance.water?.tank_count || 0}</span>
+                            <span>
+                              {hospitalCompliance.water?.tank_count || 0}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Total volume</span>
                             <span>
-                              {(hospitalCompliance.water?.total_liters || 0).toLocaleString()} L
+                              {(
+                                hospitalCompliance.water?.total_liters || 0
+                              ).toLocaleString()}{" "}
+                              L
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Required for 72h</span>
                             <span>
-                              {(hospitalCompliance.water?.required_72h_liters || 0).toLocaleString()} L
+                              {(
+                                hospitalCompliance.water?.required_72h_liters ||
+                                0
+                              ).toLocaleString()}{" "}
+                              L
                             </span>
                           </div>
                         </div>
@@ -1275,18 +1279,26 @@ export const HospitalSafetyIndexSection = () => {
                         <div className="mt-4 space-y-2 text-sm text-slate-600">
                           <div className="flex justify-between">
                             <span>Count</span>
-                            <span>{hospitalCompliance.fuel?.tank_count || 0}</span>
+                            <span>
+                              {hospitalCompliance.fuel?.tank_count || 0}
+                            </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Total volume</span>
                             <span>
-                              {(hospitalCompliance.fuel?.total_liters || 0).toLocaleString()} L
+                              {(
+                                hospitalCompliance.fuel?.total_liters || 0
+                              ).toLocaleString()}{" "}
+                              L
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span>Daily usage</span>
                             <span>
-                              {(hospitalCompliance.fuel?.daily_usage_liters || 0).toLocaleString()} L/day
+                              {(
+                                hospitalCompliance.fuel?.daily_usage_liters || 0
+                              ).toLocaleString()}{" "}
+                              L/day
                             </span>
                           </div>
                         </div>
@@ -1301,7 +1313,9 @@ export const HospitalSafetyIndexSection = () => {
                         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                           <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
                             <p className="text-2xl font-bold text-slate-900">
-                              {hospitalCompliance.generator.starts_within_10s ? "✓" : "✗"}
+                              {hospitalCompliance.generator.starts_within_10s
+                                ? "✓"
+                                : "✗"}
                             </p>
                             <p className="text-xs text-slate-500">
                               Starts within 10s
@@ -1311,7 +1325,9 @@ export const HospitalSafetyIndexSection = () => {
                             <p className="text-2xl font-bold text-slate-900">
                               {hospitalCompliance.generator.coverage_percent}%
                             </p>
-                            <p className="text-xs text-slate-500">Load coverage</p>
+                            <p className="text-xs text-slate-500">
+                              Load coverage
+                            </p>
                           </div>
                           <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
                             <p className="text-2xl font-bold text-slate-900">
@@ -1319,7 +1335,9 @@ export const HospitalSafetyIndexSection = () => {
                                 hospitalCompliance.generator.fuel_reserve_hours
                               )}
                             </p>
-                            <p className="text-xs text-slate-500">Fuel reserve</p>
+                            <p className="text-xs text-slate-500">
+                              Fuel reserve
+                            </p>
                           </div>
                         </div>
                       </div>
@@ -1332,7 +1350,8 @@ export const HospitalSafetyIndexSection = () => {
                             Resilience-based inventory
                           </p>
                           <p className="text-xs text-slate-500">
-                            Survival hours computed per DOH HSI (72-hour fuel/water, 15-day oxygen).
+                            Survival hours computed per DOH HSI (72-hour
+                            fuel/water, 15-day oxygen).
                           </p>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-slate-600">
@@ -1343,7 +1362,9 @@ export const HospitalSafetyIndexSection = () => {
                             max="2"
                             step="0.1"
                             value={surgeMultiplier}
-                            onChange={(e) => setSurgeMultiplier(Number(e.target.value))}
+                            onChange={(e) =>
+                              setSurgeMultiplier(Number(e.target.value))
+                            }
                             className="accent-emerald-600"
                           />
                           <span className="font-semibold text-slate-800">
@@ -1365,7 +1386,9 @@ export const HospitalSafetyIndexSection = () => {
                                 <span className="font-semibold text-slate-800">
                                   {resourceLabels[resourceKey]}
                                 </span>
-                                <Badge variant={status.variant}>{status.label}</Badge>
+                                <Badge variant={status.variant}>
+                                  {status.label}
+                                </Badge>
                               </div>
                               <p className="mt-2 text-3xl font-bold text-slate-900">
                                 {status.hours}h
@@ -1401,7 +1424,7 @@ export const HospitalSafetyIndexSection = () => {
                       {hospitalCompliance.assessment ? (
                         <div className="space-y-4">
                           <p className="text-sm text-slate-500">
-                            Conducted on {" "}
+                            Conducted on{" "}
                             {new Date(
                               hospitalCompliance.assessment.date
                             ).toLocaleDateString()}
@@ -1411,16 +1434,21 @@ export const HospitalSafetyIndexSection = () => {
                               Overall safety index
                             </p>
                             <p className="mt-2 text-4xl font-bold text-slate-900">
-                              {hospitalCompliance.assessment.overall_index?.toFixed(1)}
+                              {hospitalCompliance.assessment.overall_index?.toFixed(
+                                1
+                              )}
                             </p>
                             <div className="mt-2">
                               <Badge variant="secondary">
-                                Category {hospitalCompliance.assessment.category}
+                                Category{" "}
+                                {hospitalCompliance.assessment.category}
                               </Badge>
                             </div>
                           </div>
                           <button
-                            onClick={() => setShowAssessmentDetails((prev) => !prev)}
+                            onClick={() =>
+                              setShowAssessmentDetails((prev) => !prev)
+                            }
                             className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                           >
                             <TrendingUp className="h-4 w-4" />
@@ -1446,7 +1474,8 @@ export const HospitalSafetyIndexSection = () => {
                             WHO / DOH-aligned checklist
                           </p>
                           <p className="text-sm text-slate-600">
-                            Score each module to compute a fresh Hospital Safety Index category.
+                            Score each module to compute a fresh Hospital Safety
+                            Index category.
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
@@ -1457,7 +1486,9 @@ export const HospitalSafetyIndexSection = () => {
                             }}
                             className="inline-flex items-center gap-2 rounded-full border border-emerald-400/60 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
                           >
-                            {showAssessmentForm ? "Hide checklist" : "Launch checklist"}
+                            {showAssessmentForm
+                              ? "Hide checklist"
+                              : "Launch checklist"}
                           </button>
                         </div>
                       </div>
@@ -1502,7 +1533,9 @@ export const HospitalSafetyIndexSection = () => {
                               ))}
                             </div>
                             <p className="mt-2 text-xs text-slate-500">
-                              Compliant = fully meets WHO/DOH requirement · Partial = controls exist but need follow-up · Non-compliant = absent, outdated, or unverified.
+                              Compliant = fully meets WHO/DOH requirement ·
+                              Partial = controls exist but need follow-up ·
+                              Non-compliant = absent, outdated, or unverified.
                             </p>
                           </div>
 
@@ -1530,7 +1563,9 @@ export const HospitalSafetyIndexSection = () => {
                                 <div className="mt-4 space-y-4">
                                   {module.questions.map((question) => {
                                     const selected =
-                                      assessmentAnswers?.[module.id]?.[question.id];
+                                      assessmentAnswers?.[module.id]?.[
+                                        question.id
+                                      ];
                                     return (
                                       <div
                                         key={question.id}
@@ -1546,14 +1581,14 @@ export const HospitalSafetyIndexSection = () => {
                                         )}
                                         <div className="mt-3 flex flex-wrap gap-2">
                                           {CHECKLIST_RESPONSES.map((option) => {
-                                            const isActive = selected === option.value;
+                                            const isActive =
+                                              selected === option.value;
                                             const palette = {
                                               emerald:
                                                 "border-emerald-400 bg-emerald-100 text-emerald-700",
                                               amber:
                                                 "border-amber-400 bg-amber-100 text-amber-700",
-                                              rose:
-                                                "border-rose-400 bg-rose-100 text-rose-700",
+                                              rose: "border-rose-400 bg-rose-100 text-rose-700",
                                             }[option.color];
                                             return (
                                               <button
@@ -1591,7 +1626,9 @@ export const HospitalSafetyIndexSection = () => {
                             </label>
                             <textarea
                               value={assessmentNotes}
-                              onChange={(e) => setAssessmentNotes(e.target.value)}
+                              onChange={(e) =>
+                                setAssessmentNotes(e.target.value)
+                              }
                               className="mt-2 w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-200"
                               rows={3}
                               placeholder="Document observations, pending retrofits, or coordination notes"
@@ -1614,10 +1651,18 @@ export const HospitalSafetyIndexSection = () => {
                             </div>
                             <div className="mt-4 grid gap-3 sm:grid-cols-3">
                               {HSI_CHECKLIST.map((module) => (
-                                <div key={`${module.id}-summary`} className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center">
-                                  <p className="text-xs text-slate-500">{module.label}</p>
+                                <div
+                                  key={`${module.id}-summary`}
+                                  className="rounded-xl border border-slate-100 bg-slate-50 p-3 text-center"
+                                >
+                                  <p className="text-xs text-slate-500">
+                                    {module.label}
+                                  </p>
                                   <p className="text-2xl font-bold text-slate-900">
-                                    {checklistScores.moduleScores?.[module.id] ?? 0}%
+                                    {checklistScores.moduleScores?.[
+                                      module.id
+                                    ] ?? 0}
+                                    %
                                   </p>
                                 </div>
                               ))}
@@ -1642,14 +1687,18 @@ export const HospitalSafetyIndexSection = () => {
                               <button
                                 type="button"
                                 onClick={handleAssessmentSubmit}
-                                disabled={assessmentSubmitting || !checklistComplete}
+                                disabled={
+                                  assessmentSubmitting || !checklistComplete
+                                }
                                 className={`rounded-full px-5 py-2 font-semibold text-white transition ${
                                   assessmentSubmitting || !checklistComplete
                                     ? "bg-emerald-300"
                                     : "bg-emerald-600 hover:bg-emerald-700"
                                 }`}
                               >
-                                {assessmentSubmitting ? "Saving…" : "Save assessment"}
+                                {assessmentSubmitting
+                                  ? "Saving…"
+                                  : "Save assessment"}
                               </button>
                             </div>
                           </div>

@@ -28,7 +28,8 @@ export const PatientHospitalNavigator = () => {
                   Hospital Navigator
                 </h1>
                 <p className="text-sm text-slate-600">
-                  Find the best nearby hospital and start turn-by-turn navigation.
+                  Find the best nearby hospital and start turn-by-turn
+                  navigation.
                 </p>
               </div>
             </div>
