@@ -9,19 +9,21 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+    public function up()
     {
         Schema::table('appointments', function (Blueprint $table) {
-            // Adding the missing column. 
-            // nullable() is safer for existing rows so they don't crash.
-            $table->string('hospital')->after('user_id')->nullable(); 
+            if (!Schema::hasColumn('appointments', 'hospital')) {
+                $table->string('hospital')->after('user_id')->nullable(); 
+            }
         });
     }
 
     public function down()
     {
-     Schema::table('appointments', function (Blueprint $table) {
-            $table->dropColumn('hospital');
+        Schema::table('appointments', function (Blueprint $table) {
+            if (Schema::hasColumn('appointments', 'hospital')) {
+                $table->dropColumn('hospital');
+            }
         });
     }
 };

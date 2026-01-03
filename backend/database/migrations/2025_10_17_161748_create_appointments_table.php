@@ -11,12 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
-            $table->renameColumn('provider_name', 'hospital');
-            $table->renameColumn('provider_specialty', 'service');
-            $table->renameColumn('reason', 'complaint');
-
-            $table->string('patient_name')->nullable()->after('user_id'); 
+        Schema::create('appointments', function (Blueprint $table) {
+            $table->id();
+            
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            
+            $table->string('patient_name')->nullable();
+            $table->string('hospital')->nullable();  
+            $table->string('service')->nullable();   
+            $table->text('complaint')->nullable();  
+            
+            $table->dateTime('appointment_date')->nullable();
+            $table->string('status')->default('pending');
+            
+            $table->timestamps();
         });
     }
 
@@ -25,11 +33,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
-            $table->dropColumn('patient_name');
-            $table->renameColumn('hospital', 'provider_name');
-            $table->renameColumn('service', 'provider_specialty');
-            $table->renameColumn('complaint', 'reason');
-        });
+        Schema::dropIfExists('appointments');
     }
 };

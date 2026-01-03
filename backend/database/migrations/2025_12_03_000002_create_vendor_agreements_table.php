@@ -8,18 +8,18 @@ return new class extends Migration
 {
     /**
      * Vendor Agreements (MOUs) Table
-     * Supports automatic vendor mobilization during emergencies
-     * Referenced from HSI Module 4, Item 134
      */
     public function up(): void
     {
         Schema::create('vendor_agreements', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('hospital_id')->constrained()->onDelete('cascade');
+            
+            // Explicitly linking to 'hospitals' table to be safe
+            $table->foreignId('hospital_id')->constrained('hospitals')->onDelete('cascade');
             
             // Vendor Information
             $table->string('vendor_name');
-            $table->string('vendor_code')->nullable(); // Internal reference
+            $table->string('vendor_code')->nullable();
             $table->string('contact_person');
             $table->string('contact_email');
             $table->string('contact_phone');
@@ -32,23 +32,14 @@ return new class extends Migration
             $table->date('agreement_end_date')->nullable();
             $table->boolean('is_active')->default(true);
             
-            // Resource Categories Covered
-            $table->enum('resource_category', [
-                'fuel',
-                'water', 
-                'medical_gases',
-                'medicines',
-                'food',
-                'medical_supplies',
-                'blood_products',
-                'ppe',
-                'other'
-            ]);
+            // Resource Details
+            $table->string('resource_category');
+            
             $table->string('resource_subcategory')->nullable();
             
             // Priority & Response Terms
-            $table->integer('priority_level')->default(1); // 1 = highest priority
-            $table->integer('guaranteed_response_hours')->nullable(); // SLA hours
+            $table->integer('priority_level')->default(1);
+            $table->integer('guaranteed_response_hours')->nullable();
             $table->decimal('minimum_order_quantity', 12, 2)->nullable();
             $table->string('minimum_order_unit')->nullable();
             $table->decimal('maximum_supply_capacity', 12, 2)->nullable();
@@ -62,7 +53,7 @@ return new class extends Migration
             
             // Auto-Trigger Settings
             $table->boolean('auto_trigger_enabled')->default(false);
-            $table->decimal('auto_trigger_threshold_hours', 8, 2)->nullable(); // Trigger when survival hours drop below this
+            $table->decimal('auto_trigger_threshold_hours', 8, 2)->nullable();
             $table->integer('auto_order_quantity')->nullable();
             $table->string('auto_order_unit')->nullable();
             
@@ -78,9 +69,9 @@ return new class extends Migration
             
             $table->timestamps();
             
+            // Indexes
             $table->index(['hospital_id', 'resource_category']);
             $table->index(['is_active', 'auto_trigger_enabled']);
-            $table->index('resource_category');
         });
     }
 
