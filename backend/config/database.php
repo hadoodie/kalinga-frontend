@@ -16,12 +16,12 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'pgsql_cloud'),
+    'default' => env('DB_CONNECTION', 'pgsql_local'),
 
     /*
     |--------------------------------------------------------------------------
     | Database Connections
-    |--------------------------------------------------------------------------
+    |-----------------------------------------------------------------------
     |
     | Below are all of the database connections defined for your application.
     | An example configuration is provided for each database system which
@@ -87,9 +87,9 @@ return [
             'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'kalinga2526'),
+            'database' => env('DB_DATABASE', 'kalinga_db'),
             'username' => env('DB_USERNAME', 'postgres'),
-            'password' => env('DB_PASSWORD', 'dreaognita'), 
+            'password' => env('DB_PASSWORD', 'kalingadatabase'), 
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
@@ -117,9 +117,9 @@ return [
             'driver' => 'pgsql',
             'host' => env('LOCAL_DB_HOST', '127.0.0.1'),
             'port' => env('LOCAL_DB_PORT', '5432'),
-            'database' => env('LOCAL_DB_DATABASE', 'kalinga2526'),
+            'database' => env('LOCAL_DB_DATABASE', 'pangdemo4_db'),
             'username' => env('LOCAL_DB_USERNAME', 'postgres'),
-            'password' => env('LOCAL_DB_PASSWORD', 'dreaognita'),
+            'password' => env('LOCAL_DB_PASSWORD', 'kalingatatagdb'),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
