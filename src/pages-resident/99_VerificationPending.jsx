@@ -1,12 +1,15 @@
-import { useAuth } from "../context/AuthContext";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 import { NavbarB } from "../components/Navbar_2";
 import { Footer } from "../components/Footer";
+import api from "../services/api";
 
 export default function VerificationPending() {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const getStatusInfo = () => {
     switch (user?.verification_status) {
@@ -17,7 +20,7 @@ export default function VerificationPending() {
           message:
             "Your account has been verified. You can now access all features.",
           action: "Go to Dashboard",
-          actionRoute: "/dashboard",
+          actionRoute: "/patient/dashboard", // Updated to specific patient dashboard
           bgColor: "bg-green-50",
           borderColor: "border-green-200",
         };
@@ -60,12 +63,32 @@ export default function VerificationPending() {
 
   const statusInfo = getStatusInfo();
 
-  const handleAction = () => {
+  const handleAction = async () => {
     if (statusInfo.actionRoute) {
       navigate(statusInfo.actionRoute);
     } else {
-      // Refresh user data
-      window.location.reload();
+      // SMOOTH UPDATE LOGIC:
+      setLoading(true);
+      try {
+        // 1. Call the backend to get fresh user data
+        const response = await api.get("/me");
+
+        // 2. Update the global Auth Context
+        setUser(response.data);
+
+        // 3. Show feedback based on the new status
+        if (response.data.verification_status === 'verified') {
+          // The UI will automatically re-render to the Green "Verified" state
+        } else if (response.data.verification_status === 'rejected') {
+           // UI updates to Red
+        } else {
+           alert("Status is still pending. We will notify you once approved.");
+        }
+      } catch (error) {
+        console.error("Failed to refresh status", error);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -105,7 +128,7 @@ export default function VerificationPending() {
                 </div>
                 <div className="space-y-1 text-sm">
                   <p>
-                    <span className="font-medium">Name:</span> {user?.name}
+                    <span className="font-medium">Name:</span> {user?.first_name} {user?.last_name}
                   </p>
                   <p>
                     <span className="font-medium">Email:</span> {user?.email}
@@ -131,9 +154,11 @@ export default function VerificationPending() {
               <div className="w-full space-y-3">
                 <button
                   onClick={handleAction}
-                  className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition"
+                  disabled={loading}
+                  className="w-full py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition flex justify-center items-center gap-2"
                 >
-                  {statusInfo.action}
+                  {loading && <RefreshCw className="w-4 h-4 animate-spin" />}
+                  {loading ? "Checking..." : statusInfo.action}
                 </button>
 
                 <button

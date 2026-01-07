@@ -14,17 +14,20 @@ export default function FillInfo() {
   const { user, setUser } = useAuth();
 
   // Get the selected ID type and file from previous page
-  const { selectedID, file } = location.state || {};
+  const { selectedID, file, scannedData } = location.state || {};
 
   const [formData, setFormData] = useState({
-    idNumber: "",
-    firstName: "",
+    idNumber: scannedData?.idNumber || "",
+    firstName: scannedData?.firstName || "",
     middleName: "",
-    lastName: "",
+    lastName: scannedData?.lastName || "",
     contactNumber: "",
-    birthMonth: "",
-    birthDay: "",
-    birthYear: "",
+    
+    // Auto-select dates if found
+    birthMonth: scannedData?.birthMonth || "",
+    birthDay: scannedData?.birthDay || "",
+    birthYear: scannedData?.birthYear || "",
+    
     province: "",
     city: "",
     barangay: "",
@@ -122,6 +125,7 @@ export default function FillInfo() {
       submitData.append("first_name", formData.firstName);
       submitData.append("last_name", formData.lastName);
       submitData.append("middle_name", formData.middleName || "");
+      submitData.append("id_number", formData.idNumber);
 
       // Format birthday as YYYY-MM-DD
       const birthday = `${formData.birthYear}-${String(
@@ -140,7 +144,7 @@ export default function FillInfo() {
       submitData.append("id_image", file);
 
       // Submit to backend
-      const response = await api.post("/submit-verification", submitData, {
+      const response = await api.post("/verify-identity", submitData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\RouteLogController;
 use App\Http\Controllers\Api\ResponderTrackingController;
 use App\Http\Controllers\Api\NLPController;
 use App\Http\Controllers\HospitalSafetyIndexController;
+use App\Http\Controllers\VerificationController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -278,6 +279,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/route-logs/{routeLog}/deviations', [RouteLogController::class, 'storeDeviation']);
     Route::get('/route-logs', [RouteLogController::class, 'index']);
     Route::post('/book-appointment', [AppointmentController::class, 'store']);
+
+    // Identity Verification
+    Route::post('/verify-identity', [VerificationController::class, 'store']);
     
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
