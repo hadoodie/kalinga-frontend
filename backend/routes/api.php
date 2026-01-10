@@ -288,6 +288,9 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/admin/users', [AuthController::class, 'getAllUsers']);
         Route::put('/admin/users/{id}/activate', [AuthController::class, 'activateUser']);
         Route::put('/admin/users/{id}/deactivate', [AuthController::class, 'deactivateUser']);
+        Route::get('/admin/verifications', [VerificationController::class, 'index']);
+        Route::post('/admin/verifications/{id}/approve', [VerificationController::class, 'approve']);
+        Route::post('/admin/verifications/{id}/reject', [VerificationController::class, 'reject']);
         Route::post('/notifications', [NotificationController::class, 'store']);
     });
 

@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\UserVerification;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 class VerificationController extends Controller
 {
+    /**
+     * Store a new verification request (User Side)
+     */
     public function store(Request $request)
     {
         // Validate the incoming data 
@@ -58,5 +62,65 @@ class VerificationController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => 'Upload failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Get all pending requests (Admin Side)
+     */
+    public function index()
+    {
+        $requests = UserVerification::with('user') // Load user details
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        return response()->json($requests);
+    }
+
+    /**
+     * Approve a verification request (Admin Side)
+     */
+    public function approve($id)
+    {
+        $verification = UserVerification::findOrFail($id);
+        
+        // A. Update the Verification Record
+        $verification->status = 'verified';
+        $verification->save();
+
+        // B. Update the User Account (so they can login as a patient)
+        $user = User::find($verification->user_id);
+        if ($user) {
+            $user->verification_status = 'verified';
+            $user->save();
+        }
+
+        return response()->json(['message' => 'User verified successfully']);
+    }
+
+    /**
+     * Reject a verification request (Admin Side)
+     */
+    public function reject(Request $request, $id)
+    {
+        $request->validate([
+            'reason' => 'required|string'
+        ]);
+
+        $verification = UserVerification::findOrFail($id);
+        
+        // A. Update Verification Record
+        $verification->status = 'rejected';
+        $verification->rejection_reason = $request->reason;
+        $verification->save();
+
+        // B. Update User Account
+        $user = User::find($verification->user_id);
+        if ($user) {
+            $user->verification_status = 'rejected';
+            $user->save();
+        }
+
+        return response()->json(['message' => 'User verification rejected']);
     }
 }
