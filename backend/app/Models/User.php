@@ -10,7 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Appointment;
 use App\Models\Notification;
-use App\Models\AllocationRequest; // <-- ADDED THIS IMPORT
+use App\Models\AllocationRequest;
 use Illuminate\Support\Str;
 
 class User extends Authenticatable
@@ -48,6 +48,7 @@ class User extends Authenticatable
         'admitted',  
         'emergencyContactName',  
         'emergencyContactPhone',  
+        'uuid', // Added from booted() method context
     ];
 
     /**
@@ -74,9 +75,20 @@ class User extends Authenticatable
         ];
     }
 
+    // Relationships
     public function groups()
     {
         return $this->belongsToMany(Group::class, 'group_users');
+    }
+
+    public function hospitals()
+    {
+        return $this->belongsToMany(Hospital::class, 'hospital_user');
+    }
+
+    public function responder()
+    {
+        return $this->hasOne(Responder::class, 'user_id');
     }
 
     /**

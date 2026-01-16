@@ -8,78 +8,48 @@ use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log; 
 
-
 class ResourceController extends Controller
 {
     public function index(Request $request)
-    {
-        $query = Resource::with('hospital');
+{
+    $query = Resource::with('hospital')
+        ->when($request->hospital_id, fn($q) => $q->where('hospital_id', $request->hospital_id))
+        ->when($request->category, fn($q) => $q->where('category', $request->category))
+        ->when($request->search, fn($q, $term) => $q->where('name', 'like', "%{$term}%"))
+        ->when($request->low_stock, fn($q) => $q->lowStock())
+        ->when($request->critical, fn($q) => $q->where('is_critical', true))
+        ->when($request->expiring_soon, fn($q) => $q->expiringSoon(30));
 
-        // Filter by location/facility
-        if ($request->has('location')) {
-            $query->where('location', $request->location);
-        }
+    $resources = $query->get();
 
-        // Filter by facility (alternative parameter name)
-        if ($request->has('facility')) {
-            $query->where('location', $request->facility);
-        }
+    $transformed = $resources->map(function ($resource) {
+        return [
+            'id'              => $resource->id,
+            'name'            => $resource->name,
+            'category'        => $resource->category ?? 'Uncategorized',
+            'quantity'        => (float) $resource->quantity,
+            'received'        => (float) $resource->received,
+            'distributed'     => (float) $resource->distributed,
+            'remaining'       => (float) $resource->quantity,
+            'minimum_stock'   => (float) $resource->minimum_stock,
+            'unit'            => $resource->unit,
+            'status'          => $resource->status,
+            'location'        => $resource->location 
+                ?? $resource->hospital?->name 
+                ?? 'Unknown Facility',
+            'expiry_date'     => $resource->expiry_date?->format('M d, Y'),
+            'is_critical'     => (bool) $resource->is_critical,
+            'requires_cold_chain' => (bool) $resource->requires_cold_chain,
+            'is_narcotic'     => (bool) $resource->is_narcotic,
+            'is_high_value'   => (bool) $resource->is_high_value,
+        ];
+    });
 
-        // Filter by hospital_id
-        if ($request->has('hospital_id')) {
-            $query->where('hospital_id', $request->hospital_id);
-        }
-
-        // Filter by category
-        if ($request->has('category') && $request->category !== 'All') {
-            $query->byCategory($request->category);
-        }
-
-        // Filter by status
-        if ($request->has('status')) {
-            if ($request->status === 'Critical') {
-                $query->where('status', 'Critical');
-            } else {
-                $query->where('status', $request->status);
-            }
-        }
-
-        // Filter low stock
-        if ($request->boolean('low_stock')) {
-            $query->lowStock();
-        }
-
-        // Filter critical items
-        if ($request->boolean('critical')) {
-            $query->critical();
-        }
-
-        // Search
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'ILIKE', "%{$search}%")
-                  ->orWhere('sku', 'ILIKE', "%{$search}%")
-                  ->orWhere('barcode', 'ILIKE', "%{$search}%");
-            });
-        }
-
-        // Sort
-        $sortBy = $request->get('sort_by', 'name');
-        $sortOrder = $request->get('sort_order', 'asc');
-        $query->orderBy($sortBy, $sortOrder);
-
-        // Check if pagination is disabled
-        if ($request->boolean('all')) {
-            $resources = $query->get();
-            return response()->json($resources);
-        }
-
-        $resources = $query->paginate($request->get('per_page', 15));
-
-        return response()->json($resources);
-    }
-
+    return response()->json([
+        'resources' => $transformed,
+        'total'     => $transformed->count(),
+    ]);
+}
     // Calendar & History Endpoints
 public function calendarEvents(Request $request)
 {
@@ -156,7 +126,6 @@ public function stockMovements(Request $request)
 {
     $query = StockMovement::with(['resource', 'performedBy']);
     
-    // Add filters
     if ($request->has('resource_id')) {
         $query->where('resource_id', $request->resource_id);
     }
@@ -187,6 +156,7 @@ private function formatCalendarEvent(StockMovement $movement)
     $typeConfig = $eventTypes[$movement->movement_type] ?? $eventTypes['adjustment'];
     
     return [
+        'id' => $movement->id, 
         'type' => $typeConfig['type'],
         'resource' => $movement->resource->name,
         'quantity' => $movement->quantity,
@@ -195,18 +165,62 @@ private function formatCalendarEvent(StockMovement $movement)
         'facility' => $movement->resource->location,
         'reason' => $movement->reason,
         'performed_by' => $movement->performedBy ? $movement->performedBy->name : 'System',
+        'performed_by_id' => $movement->performed_by, 
         'color' => $typeConfig['color'],
         'icon' => $typeConfig['icon'],
         'timestamp' => $movement->created_at->toISOString()
     ];
 }
 
+public function updateStockMovement(Request $request, $id)
+{
+    try {
+        \Log::info('Updating stock movement', [
+            'id' => $id,
+            'request_data' => $request->all(),
+            'auth_user' => auth()->user()
+        ]);
 
+        $validated = $request->validate([
+            'quantity' => 'required|numeric',
+            'reason' => 'required|string|max:255',
+            'performed_by' => 'sometimes|string', 
+            'performed_by_id' => 'required|exists:users,id',
+        ]);
 
+        $stockMovement = StockMovement::findOrFail($id);
+        
+        \Log::info('Found stock movement to update', [
+            'current_movement' => $stockMovement->toArray()
+        ]);
 
-    /**
-     * Store a newly created resource
-     */
+        $stockMovement->update([
+            'quantity' => $validated['quantity'],
+            'reason' => $validated['reason'],
+            'performed_by' => $validated['performed_by_id'],
+        ]);
+
+        \Log::info('Stock movement updated successfully', [
+            'updated_movement' => $stockMovement->fresh()->toArray()
+        ]);
+
+        return response()->json([
+            'message' => 'Stock movement updated successfully',
+            'stock_movement' => $stockMovement->fresh()->load(['resource', 'performedBy'])
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error updating stock movement: ' . $e->getMessage());
+        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        
+        return response()->json([
+            'message' => 'Failed to update stock movement',
+            'error' => $e->getMessage(),
+            'trace' => config('app.debug') ? $e->getTraceAsString() : null
+        ], 500);
+    }
+}
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -227,7 +241,6 @@ private function formatCalendarEvent(StockMovement $movement)
             'requires_refrigeration' => 'boolean',
         ]);
 
-        // Auto-calculate quantity if received and distributed are provided
         if (isset($validated['received']) && isset($validated['distributed'])) {
             $validated['quantity'] = $validated['received'] - $validated['distributed'];
         }
@@ -241,9 +254,6 @@ private function formatCalendarEvent(StockMovement $movement)
         ], 201);
     }
 
-    /**
-     * Display the specified resource
-     */
     public function show(Resource $resource)
     {
         return response()->json([
@@ -251,9 +261,6 @@ private function formatCalendarEvent(StockMovement $movement)
         ]);
     }
 
-    /**
-     * Update the specified resource
-     */
     public function update(Request $request, Resource $resource)
     {
         $validated = $request->validate([
@@ -274,7 +281,6 @@ private function formatCalendarEvent(StockMovement $movement)
             'requires_refrigeration' => 'boolean',
         ]);
 
-        // Auto-calculate quantity if received and distributed are provided
         if (isset($validated['received']) && isset($validated['distributed'])) {
             $validated['quantity'] = $validated['received'] - $validated['distributed'];
         }
@@ -288,9 +294,6 @@ private function formatCalendarEvent(StockMovement $movement)
         ]);
     }
 
-    /**
-     * Remove the specified resource
-     */
     public function destroy(Resource $resource)
     {
         $resource->delete();
@@ -300,9 +303,6 @@ private function formatCalendarEvent(StockMovement $movement)
         ]);
     }
 
-    /**
-     * Get low stock resources
-     */
     public function lowStock()
     {
         $resources = Resource::with('hospital')
@@ -312,9 +312,6 @@ private function formatCalendarEvent(StockMovement $movement)
         return response()->json($resources);
     }
 
-    /**
-     * Get critical resources
-     */
     public function critical()
     {
         $resources = Resource::with('hospital')
@@ -325,9 +322,6 @@ private function formatCalendarEvent(StockMovement $movement)
         return response()->json($resources);
     }
 
-    /**
-     * Get expiring resources
-     */
     public function expiring(Request $request)
     {
         $days = $request->get('days', 30);
@@ -339,9 +333,6 @@ private function formatCalendarEvent(StockMovement $movement)
         return response()->json($resources);
     }
 
-    /**
-     * Adjust stock (add or remove)
-     */
     public function adjustStock(Request $request, $id)
     {
         $validated = $request->validate([

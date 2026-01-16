@@ -23,7 +23,7 @@ class UserSeeder extends Seeder
             ]
         );
 
-        // Logistics User
+              // Logistics User
         User::updateOrCreate(
             ['email' => 'logistics_unverified@kalinga.com'],
             [
@@ -36,17 +36,36 @@ class UserSeeder extends Seeder
             ]
         );
 
-        User::updateOrCreate(
-            ['email' => 'logistics_verified@kalinga.com'],
-            [
-                'name' => 'Logistics Verified',
-                'password' => Hash::make('password123'),
-                'role' => 'logistics',
-                'phone' => '09171234568',
-                'is_active' => true,
-                'verification_status' => 'verified',
-            ]
-        );
+            // Logistics Verified
+            $logisticsVerified = User::updateOrCreate(
+                ['email' => 'logistics_verified@kalinga.com'],
+                [
+                    'name' => 'Logistics Verified',
+                    'password' => Hash::make('password123'),
+                    'role' => 'logistics',
+                    'phone' => '09171234568',
+                    'is_active' => true,
+                    'verification_status' => 'verified',
+                ]
+            );
+
+            // Attach hospital ID 1
+            $logisticsVerified->hospitals()->syncWithoutDetaching([1]);
+
+            $hospAdmin = User::updateOrCreate(
+                ['email' => 'admin@centralhospital.gov.ph'],
+                [
+                    'name' => 'Central Hospital Admin',
+                    'password' => Hash::make('password123'),
+                    'role' => 'hospital_admin',           // ← pure hospital_admin
+                    'phone' => '09171234567',
+                    'is_active' => true,
+                    'verification_status' => 'verified',
+                ]
+            );
+
+            // Attach to Hospital 1 (and optionally others)
+            $hospAdmin->hospitals()->sync([1]);
 
         // Responder User
         User::updateOrCreate(
