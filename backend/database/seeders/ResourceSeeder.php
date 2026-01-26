@@ -190,6 +190,7 @@ class ResourceSeeder extends Seeder
                 'significant_quantity_date' => now()->subDays(2),
                 'expiry_alert_date' => now()->addMonths(12)->subDays(30),
             ],
+            
 
             // Add more resources as needed from your original seeder...
         ];

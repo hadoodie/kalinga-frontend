@@ -64,6 +64,7 @@ const resourceService = {
     }
   },
 
+
   // Add stock adjustment method - critical for Resource Management
   adjustStock: async (id, adjustmentData) => {
     try {
