@@ -16,15 +16,16 @@ class Appointment extends Model
      */
     protected $fillable = [
         'user_id',
-        'provider_name',
-        'provider_specialty',
+        'hospital',
+        'service',
         'appointment_at',
-        'reason',
+        'complaint',
         'location',
         'contact_phone',
         'contact_email',
         'instructions',
         'status',
+        'patient_name',
     ];
 
     /**

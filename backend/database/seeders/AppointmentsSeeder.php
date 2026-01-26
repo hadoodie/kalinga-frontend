@@ -23,8 +23,6 @@ class AppointmentsSeeder extends Seeder
         Appointment::create([
             'user_id'            => $patient->id,
             'hospital'           => 'Philippine Heart Center', 
-            'provider_name'      => 'Pharmacist On-Duty',
-            'provider_specialty' => 'Clinical Pharmacy', 
             'service'            => 'Pharmacy 4F (Pay)', 
             'appointment_at'     => Carbon::parse('2025-12-17 15:00:00'), 
             'complaint'          => 'Routine Medication Refill',
@@ -41,8 +39,6 @@ class AppointmentsSeeder extends Seeder
         Appointment::create([
             'user_id'            => $patient->id,
             'hospital'           => 'San Lazaro Hospital', 
-            'provider_name'      => 'Dr. Emily Reed',
-            'provider_specialty' => 'Internal Medicine', 
             'service'            => 'OPD - Internal Medicine', 
             'appointment_at'     => Carbon::parse('2025-10-16 10:30:00'), 
             'complaint'          => 'Routine Annual Checkup', 
@@ -57,8 +53,6 @@ class AppointmentsSeeder extends Seeder
         Appointment::create([
             'user_id'            => $patient->id,
             'hospital'           => 'Jose R. Reyes Memorial Medical Center', 
-            'provider_name'      => 'Dr. Carlos Mendoza',
-            'provider_specialty' => 'Cardiology', 
             'service'            => 'OPD - Cardiology', 
             'appointment_at'     => Carbon::parse('2025-08-05 14:00:00'),
             'complaint'          => 'Chest pain and palpitations', 
