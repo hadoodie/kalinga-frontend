@@ -51,7 +51,7 @@ class ResourceController extends Controller
 
         // Filter critical items
         if ($request->boolean('critical')) {
-            $query->critical();
+            $query->whereRaw('is_critical = true');
         }
 
         // Search
@@ -318,7 +318,7 @@ private function formatCalendarEvent(StockMovement $movement)
     public function critical()
     {
         $resources = Resource::with('hospital')
-            ->critical()
+            ->whereRaw('is_critical = true')
             ->lowStock()
             ->get();
 
@@ -330,7 +330,7 @@ private function formatCalendarEvent(StockMovement $movement)
      */
     public function expiring(Request $request)
     {
-        $days = $request->get('days', 30);
+        $days = (int) $request->get('days', 30);
 
         $resources = Resource::with('hospital')
             ->expiringSoon($days)

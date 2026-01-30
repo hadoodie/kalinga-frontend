@@ -6,6 +6,10 @@ use Illuminate\Http\Request;
 use App\Models\UserVerification;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\UserVerified;
+use App\Mail\UserRejected;
+use Illuminate\Support\Facades\Log;
 
 class VerificationController extends Controller
 {
@@ -82,17 +86,36 @@ class VerificationController extends Controller
      */
     public function approve($id)
     {
+        Log::info("Attempting to approve verification ID: " . $id); // Log 1
+
         $verification = UserVerification::findOrFail($id);
         
-        // A. Update the Verification Record
+        // Update Verification Record
         $verification->status = 'verified';
         $verification->save();
 
-        // B. Update the User Account (so they can login as a patient)
+        Log::info("Verification record updated for ID: " . $id); // Log 2
+
+        // Update User & Send Email
         $user = User::find($verification->user_id);
+        
         if ($user) {
             $user->verification_status = 'verified';
             $user->save();
+            Log::info("User status updated for User ID: " . $user->id); // Log 3
+
+            try {
+                Log::info("Attempting to send email to: " . $user->email); // Log 4
+                
+                // SEND EMAIL
+                Mail::to($user->email)->send(new UserVerified());
+                
+                Log::info("Email sent successfully!"); // Log 5
+            } catch (\Exception $e) {
+                Log::error("Email failed to send: " . $e->getMessage()); // Error Log
+            }
+        } else {
+            Log::error("User not found for verification ID: " . $id);
         }
 
         return response()->json(['message' => 'User verified successfully']);
@@ -109,16 +132,23 @@ class VerificationController extends Controller
 
         $verification = UserVerification::findOrFail($id);
         
-        // A. Update Verification Record
+        // Update Verification Record
         $verification->status = 'rejected';
         $verification->rejection_reason = $request->reason;
         $verification->save();
 
-        // B. Update User Account
+        // Update User & Send Email
         $user = User::find($verification->user_id);
         if ($user) {
             $user->verification_status = 'rejected';
             $user->save();
+            
+            // Send Rejection Email (Wrapped in try-catch to be safe)
+            try {
+                Mail::to($user->email)->send(new UserRejected($request->reason));
+            } catch (\Exception $e) {
+                Log::error("Rejection email failed to send: " . $e->getMessage());
+            }
         }
 
         return response()->json(['message' => 'User verification rejected']);
