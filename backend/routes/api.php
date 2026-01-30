@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\ResponderTrackingController;
 use App\Http\Controllers\Api\NLPController;
 use App\Http\Controllers\HospitalSafetyIndexController;
 use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\OCRController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -71,6 +72,7 @@ Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/parse-id', [OCRController::class, 'processImage']);
 });
 
 // Public reverse geocode proxy (limits to avoid CORS on Nominatim)

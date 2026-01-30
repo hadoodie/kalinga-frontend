@@ -1,14 +1,13 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X, ScanLine, Loader2, Camera } from "lucide-react";
-import Tesseract from 'tesseract.js';
 
 export default function UploadID() {
   const location = useLocation();
   const navigate = useNavigate();
-  const canvasRef = useRef(null);
 
   const { selectedID } = location.state || {};
+  
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -29,40 +28,8 @@ export default function UploadID() {
   const handleRemoveFile = () => {
     setFile(null);
     setPreview(null);
-    document.getElementById("file-upload").value = "";
-  };
-
-  // --- IMAGE PRE-PROCESSING ---
-  const preprocessImage = (imageFile) => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = URL.createObjectURL(imageFile);
-      img.onload = () => {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
-        canvas.width = img.width;
-        canvas.height = img.height;
-        
-        // Draw original image
-        ctx.drawImage(img, 0, 0);
-        
-        // Get raw pixel data
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-
-        // Apply Grayscale & High Contrast
-        for (let i = 0; i < data.length; i += 4) {
-          const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-          const color = avg > 120 ? 255 : 0; 
-          data[i] = color;     
-          data[i + 1] = color; 
-          data[i + 2] = color; 
-        }
-        
-        ctx.putImageData(imageData, 0, 0);
-        resolve(canvas.toDataURL('image/png'));
-      };
-    });
+    if(document.getElementById("file-upload")) document.getElementById("file-upload").value = "";
+    if(document.getElementById("file-scan")) document.getElementById("file-scan").value = "";
   };
 
   const handleScanAndNext = async (e) => {
@@ -70,29 +37,31 @@ export default function UploadID() {
     if (!file) return;
 
     setIsScanning(true);
-    setScanStatus("Cleaning image...");
+    setScanStatus("Uploading and analyzing...");
 
     try {
-      const cleanImageURL = await preprocessImage(file);
-      
-      setScanStatus("Reading text...");
-      
-      const result = await Tesseract.recognize(
-        cleanImageURL,
-        'eng',
-        { logger: m => {
-            if(m.status === 'recognizing text') {
-              setScanStatus(`Scanning... ${Math.round(m.progress * 100)}%`);
-            }
-          } 
-        }
-      );
+      const formData = new FormData();
+      formData.append('image', file);
 
-      const text = result.data.text;
-      console.log("Extracted Text:", text);
+      const response = await fetch('http://127.0.0.1:8000/api/parse-id', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json', 
+        },
+        body: formData,
+      });
 
-      setScanStatus("Analyzing data...");
-      const extractedData = parseIDText(text);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.details || "Server failed to process image");
+      }
+
+      const extractedData = await response.json();
+      console.log("Python Data:", extractedData);
+
+      if (extractedData.error) {
+          throw new Error(extractedData.error);
+      }
 
       navigate("/fill-info", { 
         state: { 
@@ -104,67 +73,16 @@ export default function UploadID() {
 
     } catch (error) {
       console.error("OCR Error:", error);
-      alert("Auto-scan failed. Please enter details manually.");
+      alert("Auto-scan failed. Please enter details manually.\n\nError: " + error.message);
       navigate("/fill-info", { state: { selectedID, file } });
     } finally {
       setIsScanning(false);
     }
   };
 
-  const parseIDText = (text) => {
-    const data = {
-      idNumber: "",
-      firstName: "",
-      lastName: "",
-      birthYear: "",
-      birthMonth: "",
-      birthDay: ""
-    };
-
-    const dateRegex = /(\d{4}[-/]\d{2}[-/]\d{2})|(\d{2}[-/]\d{2}[-/]\d{4})|(\d{1,2}\s+[A-Z]{3,}\s+\d{4})|([A-Z]{3,}\s+\d{1,2}\s+\d{4})/i;
-    const dateMatch = text.match(dateRegex);
-
-    if (dateMatch) {
-      const dateStr = dateMatch[0].replace(/\//g, '-');
-      const dateObj = new Date(dateStr);
-      
-      if (!isNaN(dateObj)) {
-        data.birthYear = dateObj.getFullYear().toString();
-        data.birthMonth = dateObj.toLocaleString('default', { month: 'long' });
-        data.birthDay = dateObj.getDate().toString();
-      }
-    }
-
-    const idMatches = text.match(/(?<!09)\b([A-Z0-9]{1,4}[- ]?){3,}\b/g);
-    
-    if (idMatches) {
-        const likelyID = idMatches.find(m => {
-            const numbers = m.replace(/[^0-9]/g, '');
-            return numbers.length >= 7 && numbers.length <= 16;
-        });
-        if (likelyID) data.idNumber = likelyID.replace(/\s/g, ''); 
-    }
-
-    const lines = text.split('\n').filter(l => l.trim().length > 0);
-    const upperCaseLines = lines.filter(l => /^[A-Z\s.-]+$/.test(l) && l.length > 5 && !/\d/.test(l));
-    
-    if (upperCaseLines.length > 0) {
-        const parts = upperCaseLines[0].split(' ');
-        if (parts.length > 1) {
-            data.lastName = parts[0]; 
-            data.firstName = parts.slice(1).join(' ');
-        }
-    }
-
-    return data;
-  };
-
   return (
     <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex flex-col items-center pt-35 px-4 pb-10">
       
-      {/* HIDDEN CANVAS FOR PROCESSING */}
-      <canvas ref={canvasRef} className="hidden"></canvas>
-
       <div className="w-full max-w-md bg-card shadow-lg rounded-2xl p-6 sm:p-8 flex flex-col">
         {/* Header */}
         <h2 className="text-2xl font-bold mb-2 text-center">Verify your account</h2>
@@ -178,7 +96,7 @@ export default function UploadID() {
         <h2 className="text-2xl font-bold mb-2 text-center">{selectedID}</h2>
         
         <p className="text-muted-foreground text-sm mb-4 text-center">
-          Upload a clear photo. We will try to scan it for you.
+          Upload a clear photo. We will scan it using our secure server.
         </p>
 
         {/* File Preview */}
@@ -195,7 +113,7 @@ export default function UploadID() {
           </div>
         )}
 
-        {/* Buttons */}
+        {/* Upload Buttons */}
         {!file && (
           <div className="w-full flex flex-col space-y-4">
             <button
@@ -211,6 +129,7 @@ export default function UploadID() {
               <Camera size={20} /> Take Photo
             </button>
 
+            {/* Hidden Inputs */}
             <input
               id="file-upload"
               type="file"
@@ -229,6 +148,7 @@ export default function UploadID() {
           </div>
         )}
 
+        {/* Action Buttons */}
         <div className="flex gap-3 mt-4">
           <button
             type="button"
