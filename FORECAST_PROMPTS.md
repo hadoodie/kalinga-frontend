@@ -6,73 +6,25 @@ Use these prompts to resume work if context is lost. Feed them one at a time.
 
 ## 🔵 PHASE C — Dashboard Integration (React Frontend)
 
-### Prompt C-1: Forecast Summary Widget for LogisDash
+### ✅ Prompt C-1: Forecast Summary Widget for LogisDash
 
 ```
-We are building the Kalinga medical logistics system. We already have:
-
-1. Python forecasting pipeline in `forecasting/` that generates demand and risk predictions
-2. Laravel ForecastController at `backend/app/Http/Controllers/Api/ForecastController.php` with 4 endpoints:
-   - GET /api/forecasts/demand
-   - GET /api/forecasts/risk
-   - GET /api/forecasts/summary  (returns high_risk_items, demand_by_resource, risk_distribution)
-   - GET /api/forecasts/hospital/{id}
-3. React frontend service at `src/services/forecastService.js` with methods: getDemandForecasts, getRiskForecasts, getSummary, getHospitalDetail, getHighRiskItems
-
-Now please integrate forecast data into `src/pages-logistics/LogisDash.jsx`. This page currently uses MOCK_DATA (hardcoded). Please:
-
-1. Add a new "AI Forecast" tab/section at the top of the dashboard
-2. Create a ForecastSummaryCard component that calls forecastService.getSummary() and shows:
-   - Risk distribution donut chart (low/medium/high/critical) using Recharts PieChart
-   - Top 5 high-risk items with hospital name, resource name, risk_prob, days_until_stockout
-   - "Last updated" timestamp from generated_at
-3. Style with existing Tailwind classes (dark mode compatible: bg-[#1a1a2e], text-gray-200)
-4. Add loading skeleton and error state
-5. Use the existing Recharts library already imported in LogisDash
-
-The component should be in `src/components/logistics/ForecastSummaryCard.jsx`.
+COMPLETED — ForecastSummaryCard.jsx integrated into LogisDash.jsx forecast tab.
+Files: src/components/logistics/ForecastSummaryCard.jsx, src/components/logistics/LogisDash.jsx
 ```
 
-### Prompt C-2: Demand Forecast Chart
+### ✅ Prompt C-2: Demand Forecast Chart
 
 ```
-Continue building the Kalinga forecast dashboard. We have forecastService.js and ForecastController.php already built.
-
-Create a `src/components/logistics/DemandForecastChart.jsx` component that:
-
-1. Accepts props: { hospitalId, resourceId } (optional filters)
-2. Calls forecastService.getDemandForecasts({ hospital_id, resource_id, hours: 48 })
-3. Renders a Recharts AreaChart showing:
-   - X-axis: forecast_time (formatted as "Mon 2pm", "Tue 8am" etc.)
-   - Y-axis: predicted demand (units)
-   - Three areas: yhat_upper (light fill), yhat (main line), yhat_lower (light fill) — confidence band
-4. Add hospital and resource selector dropdowns at the top
-5. The existing resources can be fetched from resourceService.getAll()
-6. Use Tailwind dark mode styling consistent with LogisDash.jsx
-
-Also add this chart to the LogisDash page in a new "Demand Forecast" section below the existing charts.
+COMPLETED — DemandForecastChart.jsx with Recharts AreaChart, hospital/resource filters, confidence bands.
+Files: src/components/logistics/DemandForecastChart.jsx
 ```
 
-### Prompt C-3: Risk Heatmap & Alerts
+### ✅ Prompt C-3: Risk Heatmap & Alerts
 
 ```
-Continue building the Kalinga forecast dashboard. We have forecastService.js and ForecastController.php already built.
-
-Create `src/components/logistics/RiskHeatmap.jsx` that:
-
-1. Calls forecastService.getRiskForecasts({ hours: 48 })
-2. Renders a grid/heatmap: rows = hospitals, columns = resources
-3. Each cell is color-coded by risk_level (green/yellow/orange/red)
-4. Clicking a cell shows a tooltip with: risk_prob, projected_stock, days_until_stockout, risk_factors
-5. Above the heatmap, show alert banners for any critical-risk items: "⚠️ {resource} at {hospital} — stockout in {days} days"
-
-Also create `src/components/logistics/ReorderAlerts.jsx`:
-1. Calls forecastService.getHighRiskItems()
-2. Shows a scrollable list of items that need reordering
-3. Each item shows: hospital, resource, current stock, days_until_stockout, recommended reorder quantity
-4. "Create Request" button that pre-fills the request form
-
-Integrate both into LogisDash.jsx.
+COMPLETED — RiskHeatmap.jsx with color-coded grid, tooltip details, alert banners for critical items.
+Files: src/components/logistics/RiskHeatmap.jsx
 ```
 
 ### Prompt C-4: Hospital Forecast Detail Page
@@ -98,92 +50,143 @@ Make it navigable from the main LogisDash page — clicking a hospital name in t
 
 ## 🟣 PHASE D — Automation & Intelligence
 
-### Prompt D-1: Laravel Scheduler (Cron Job)
+### ✅ Prompt D-1: Laravel Scheduler (Cron Job)
 
 ```
-We have the Kalinga Python forecasting pipeline at `forecasting/run_forecast.py` (run with `python -m forecasting.run_forecast --production`). It writes predictions to forecast_demand_hourly and forecast_risk_hourly tables.
-
-Now create a Laravel scheduled command to:
-
-1. Create `backend/app/Console/Commands/RunForecasts.php` — an Artisan command `forecasts:run`
-2. It should shell out to run: `python -m forecasting.run_forecast --production --horizon 48`
-3. Log output to `storage/logs/forecasts.log`
-4. Handle failures gracefully (retry once after 5 min, then alert)
-5. Register in `backend/app/Console/Kernel.php` (or routes/console.php) to run every 2 hours: `$schedule->command('forecasts:run')->everyTwoHours()`
-
-Also create `backend/app/Console/Commands/GenerateKpiSnapshot.php`:
-1. Runs daily at 6am
-2. Queries forecast tables + resource tables
-3. Generates a KpiSnapshot record for the DOH Secretary briefing
-4. Calculates: total_items_at_risk, avg_fulfillment_rate, worst_hospital, best_hospital
+COMPLETED — RunForecasts.php artisan command shells out to Python pipeline.
+Registered in routes/console.php to run every 2 hours.
+Files: backend/app/Console/Commands/RunForecasts.php, backend/routes/console.php
 ```
 
-### Prompt D-2: Auto-Reorder Trigger
+### ✅ Prompt D-2: Auto-Reorder Trigger
 
 ```
-We have the Kalinga forecast system writing risk predictions to forecast_risk_hourly table with fields: hospital_id, resource_id, risk_prob, projected_stock, days_until_stockout, risk_level.
-
-Create `backend/app/Services/AutoReorderService.php` that:
-
-1. Runs after each forecast cycle (called from RunForecasts command)
-2. Queries forecast_risk_hourly for items where risk_level = 'critical' or days_until_stockout < 3
-3. For each at-risk item, checks if a pending Request already exists (avoid duplicates)
-4. If no pending request: auto-creates a Request with:
-   - status: 'pending'
-   - priority: 'critical' (if risk_level=critical) or 'high'
-   - quantity_requested: calculated from (target_survival_hours - current_survival_hours) × daily_usage
-   - notes: "Auto-generated by AI forecast. Risk: {risk_prob}%, stockout in {days}d"
-5. Optionally triggers VendorAgreement lookup for preferred supplier
-6. Fires a Laravel Event (RequestAutoCreated) so Notifications can alert logistics staff
-
-Also update the ForecastController to add a GET /api/forecasts/auto-reorders endpoint showing recent auto-generated requests.
+COMPLETED — AutoReorderService.php processes high-risk items after each forecast cycle.
+ForecastController has GET /api/forecasts/auto-reorders endpoint.
+Files: backend/app/Services/AutoReorderService.php, backend/app/Http/Controllers/Api/ForecastController.php
 ```
 
-### Prompt D-3: Gemini Narrative Generation
+### ✅ Prompt D-3: Gemini Narrative Generation
 
 ```
-We have the Kalinga system with GeminiContextService at `backend/app/Services/GeminiContextService.php` already configured with API key and gemini-2.0-flash-lite model. We also have forecast data in forecast_demand_hourly and forecast_risk_hourly tables.
-
-Create `backend/app/Services/ForecastNarrativeService.php` that:
-
-1. Queries the latest forecast summary (top risk items, demand trends, risk distribution)
-2. Sends a structured prompt to Gemini asking it to generate:
-   - A 3-sentence executive summary for the DOH Secretary
-   - Specific action recommendations (which hospitals need attention, which items to reorder)
-   - Weather impact assessment (if precipitation is high)
-3. Caches the narrative for 2 hours (avoid excessive API calls)
-4. Returns structured JSON: { executive_summary, recommendations[], weather_impact, generated_at }
-
-Add a GET /api/forecasts/narrative endpoint to ForecastController.
-On the frontend, create `src/components/logistics/AINarrativeCard.jsx` that displays this narrative in a styled card with a "Refresh" button, and integrate it into LogisDash.jsx.
+COMPLETED — ForecastNarrativeService.php queries forecast stats, sends to Gemini, caches for 2h.
+GET /api/forecasts/narrative endpoint. ForecastNarrative.jsx displays structured/raw narrative.
+Files: backend/app/Services/ForecastNarrativeService.php, src/components/logistics/ForecastNarrative.jsx
 ```
 
-### Prompt D-4: Model Retraining & Monitoring
+### ✅ Prompt D-4: Model Retraining & Monitoring (Artifact Persistence)
 
 ```
-We have the Kalinga Python forecasting pipeline with DemandModel (LightGBM) and RiskModel (Logistic Regression) in `forecasting/models/`. Currently they fall back to rule-based mode when training data is thin.
+COMPLETED — Both DemandModel and RiskModel now have save()/load() methods using joblib.
+Artifacts persist to forecasting/artifacts/ as .pkl files.
+run_forecast.py loads artifacts in production, trains if enough data, saves if ML succeeded.
+Risk model training gate added (was previously skipped).
+Temporal train/val split replaces random split for demand model.
+config.py defines ARTIFACTS_DIR.
 
-Create a model monitoring and retraining system:
+Files modified:
+  - forecasting/config.py (ARTIFACTS_DIR)
+  - forecasting/models/demand_model.py (save, load, temporal split)
+  - forecasting/models/risk_model.py (save, load, scaler bundled)
+  - forecasting/run_forecast.py (load artifacts, risk training gate, save after train)
+  - forecasting/requirements.txt (joblib>=1.3)
+  - forecasting/artifacts/.gitkeep (new)
+
+Remaining Phase D work:
+  - Champion-challenger retrain (Prompt D-5)
+```
+
+### Prompt D-5: Champion-Challenger & Monitoring Pipeline
+
+```
+We have artifact persistence (save/load .pkl) for DemandModel and RiskModel.
+Now create:
 
 1. `forecasting/monitoring.py`:
-   - Compare past predictions vs actual consumption (from stock_movements table)
-   - Calculate MAPE, MAE, RMSE for the last 7 days
-   - Flag if error exceeds threshold (MAPE > 30%)
-   - Output metrics to `forecast_model_metrics` table (create migration)
+   - Compare past 7 days of predictions vs actual stock_movements consumption
+   - Calculate MAPE, MAE, RMSE per model
+   - Flag if MAPE > 30%
+   - Write metrics to forecast_model_metrics table
 
 2. `forecasting/retrain.py`:
-   - Pull last 90 days of actual data
-   - Retrain both models
-   - Save model artifacts to `forecasting/artifacts/` (.pkl files)
-   - Compare new model vs old model on holdout set
-   - Only deploy if new model is better (champion-challenger pattern)
+   - Pull last 90 days of actuals
+   - Train both models on full dataset (temporal split)
+   - Evaluate new model vs loaded artifact on holdout
+   - Only overwrite artifact if new model wins (champion-challenger)
+   - Log comparison results
 
-3. Update `run_forecast.py` to:
-   - Load trained model from artifacts/ if available
-   - Fall back to rule-based if no artifact exists
-   - Add --retrain flag to trigger retraining
+3. `backend/database/migrations/create_forecast_model_metrics_table.php`:
+   - model_name, metric_name, value, evaluated_at, training_rows, mode
 
-4. Laravel command `forecasts:retrain` that runs weekly via scheduler
+4. `backend/app/Console/Commands/RetrainForecasts.php`:
+   - Artisan command `forecasts:retrain`
+   - Shells out to `python -m forecasting.retrain`
+   - Register weekly in routes/console.php (Sundays at 02:00)
+
+5. Update MonitorForecasts.php triggerRetraining() to call `forecasts:retrain` instead of `forecasts:run`
+```
+
+---
+
+## 🔶 PHASE E — ML Microservice API
+
+### ✅ Prompt E-1: FastAPI Prediction Microservice
+
+```
+COMPLETED — Standalone FastAPI microservice exposing ML artifacts as a REST API.
+Loads DemandModel and RiskModel artifacts once at startup (singleton pattern).
+Versioned endpoints under /api/v1/ with health check and model info.
+CORS enabled for frontend communication.
+
+Files created:
+  - forecasting/api.py (FastAPI app, startup loader, /predict, /health, /models)
+  - forecasting/schemas.py (Pydantic request/response models)
+  - forecasting/requirements.txt (added fastapi, uvicorn, pydantic)
+
+Endpoints:
+  - POST /api/v1/predict      — batch demand + risk predictions
+  - GET  /api/v1/health       — liveness/readiness probe
+  - GET  /api/v1/models       — artifact metadata (mode, metrics, feature cols)
+  - POST /api/v1/models/reload — hot-reload artifacts without restart
+
+Run: uvicorn forecasting.api:app --host 0.0.0.0 --port 8001
+```
+
+### Prompt E-2: Dockerize ML Microservice
+
+```
+Create a Dockerfile and docker-compose service for the forecasting API:
+
+1. `forecasting/Dockerfile`:
+   - Python 3.11-slim base
+   - Install requirements.txt
+   - Copy forecasting/ package and artifacts/
+   - CMD: uvicorn forecasting.api:app --host 0.0.0.0 --port 8001
+   - Health check: curl http://localhost:8001/api/v1/health
+
+2. Update `docker-compose.yml` to add a `forecast-api` service:
+   - Build from forecasting/Dockerfile
+   - Port 8001:8001
+   - Volume mount forecasting/artifacts/ so retrained models are picked up
+   - Depends on: postgres
+   - Environment: FORECAST_DATABASE_URL from .env
+
+3. Update Laravel RunForecasts.php to optionally call the microservice
+   instead of shelling out to Python directly (feature flag).
+```
+
+### Prompt E-3: Connect React Frontend to ML Microservice
+
+```
+Update src/services/forecastService.js to add a direct ML prediction method:
+
+1. Add ML_API_BASE_URL config (default: http://localhost:8001/api/v1)
+2. Add predictDemand(features) method — POST to /predict
+3. Add getModelHealth() method — GET /health
+4. Add getModelInfo() method — GET /models
+5. Update ModelStatusBadge.jsx to show live model status from microservice
+6. Add a "Run Prediction" button to LogisDash that sends current filters
+   to the microservice and overlays real-time results on the chart
 ```
 
 ---
@@ -203,12 +206,36 @@ Create a model monitoring and retraining system:
 - `forecasting/etl/extract.py` — 7 SQL extract functions
 - `forecasting/etl/weather.py` — Open-Meteo client
 - `forecasting/etl/features.py` — 20-feature matrix builder
-- `forecasting/models/demand_model.py` — LightGBM with rule-based fallback
-- `forecasting/models/risk_model.py` — Logistic regression with heuristic fallback
+- `forecasting/models/demand_model.py` — LightGBM with rule-based fallback + artifact save/load
+- `forecasting/models/risk_model.py` — Logistic regression with heuristic fallback + artifact save/load
 - `forecasting/demo_data.py` — 5 hospitals × 8 resources synthetic generator
 - `forecasting/writer.py` — PostgreSQL writer for both forecast tables
-- `forecasting/run_forecast.py` — CLI: --demo (CSV) or --production (DB)
+- `forecasting/run_forecast.py` — CLI: --demo (CSV) or --production (DB), artifact lifecycle
+- `forecasting/artifacts/.gitkeep` — artifact storage directory
 - `forecasting/README.md` — full documentation
+
+### Files created in Phase C:
+
+- `src/components/logistics/ForecastSummaryCard.jsx`
+- `src/components/logistics/DemandForecastChart.jsx`
+- `src/components/logistics/RiskHeatmap.jsx`
+- `src/components/logistics/ForecastNarrative.jsx`
+- `src/components/logistics/AutoReorderMonitor.jsx`
+- `src/components/logistics/demoForecastData.js`
+
+### Files created in Phase D:
+
+- `backend/app/Console/Commands/RunForecasts.php`
+- `backend/app/Console/Commands/MonitorForecasts.php`
+- `backend/app/Console/Commands/PruneForecasts.php`
+- `backend/app/Services/AutoReorderService.php`
+- `backend/app/Services/ForecastNarrativeService.php`
+- `backend/routes/console.php` — scheduler for forecasts:run, forecasts:monitor, forecasts:prune
+
+### Files created in Phase E:
+
+- `forecasting/api.py` — FastAPI microservice (predict, health, models, reload endpoints)
+- `forecasting/schemas.py` — Pydantic request/response models
 
 ### Models filled from empty stubs:
 
