@@ -1,0 +1,20 @@
+{
+  "generated_at": "2026-02-06T16:30:21.151618",
+  "model_version": "v0.1",
+  "mode": "demo",
+  "horizon_hours": 48,
+  "total_predictions": 11520,
+  "hospitals_covered": 12,
+  "resources_covered": 20,
+  "demand_stats": {
+    "mean": 2.9449,
+    "max": 13.0007,
+    "min": 1.0563
+  },
+  "risk_distribution": {
+    "low": 8064,
+    "medium": 816,
+    "high": 912,
+    "critical": 1728
+  }
+}
