@@ -47,10 +47,24 @@ class ForecastRisk extends Model
 
     // ── Scopes ─────────────────────────────────────────────────
 
+    /**
+     * Latest generation only (discard stale runs).
+     * Uses a subquery to avoid a separate MAX() call (was N+1).
+     */
     public function scopeLatestRun($query)
     {
-        $latest = static::max('generated_at');
-        return $query->where('generated_at', $latest);
+        return $query->where('generated_at', function ($sub) {
+            $sub->selectRaw('MAX(generated_at)')->from($this->getTable());
+        });
+    }
+
+    /**
+     * Filter to a specific generation run timestamp.
+     * Use this when you've already resolved the latest run to avoid redundant subqueries.
+     */
+    public function scopeForRun($query, $generatedAt)
+    {
+        return $query->where('generated_at', $generatedAt);
     }
 
     public function scopeForHospital($query, int $hospitalId)

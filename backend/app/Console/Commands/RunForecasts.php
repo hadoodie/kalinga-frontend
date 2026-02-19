@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Events\ForecastGenerated;
 use App\Models\ForecastDemand;
 use App\Models\ForecastRisk;
 use App\Services\AutoReorderService;
@@ -142,7 +143,15 @@ class RunForecasts extends Command
         $elapsed = round(microtime(true) - $startTime, 1);
         $this->newLine();
         $this->info("✅ Pipeline complete in {$elapsed}s");
-
+        // Fire event so WebSocket clients (dashboard) get real-time updates
+        if (!$dryRun) {
+            ForecastGenerated::dispatch(
+                $demandCount,
+                $riskCount,
+                $highRiskCount,
+                ForecastDemand::max('model_version'),
+            );
+        }
         Log::info('Forecast pipeline completed', [
             'mode' => $mode,
             'horizon' => $horizon,
@@ -157,6 +166,7 @@ class RunForecasts extends Command
 
     /**
      * Build the Python command to run the forecast pipeline.
+     * Passes FORECAST_DATABASE_URL so Python writes to the same DB Laravel reads.
      */
     private function buildPythonCommand(string $mode, int $horizon): string
     {
@@ -170,7 +180,39 @@ class RunForecasts extends Command
             '--horizon', (string) $horizon,
         ];
 
-        return 'cd ' . escapeshellarg($projectRoot) . ' && ' . implode(' ', array_map('escapeshellarg', $args));
+        // Build env prefix to guarantee Python targets the same DB as Laravel
+        $envPrefix = $this->buildDatabaseEnvPrefix();
+
+        return 'cd ' . escapeshellarg($projectRoot) . ' && ' . $envPrefix . implode(' ', array_map('escapeshellarg', $args));
+    }
+
+    /**
+     * Build an env-var prefix so the Python subprocess targets the active DB.
+     */
+    private function buildDatabaseEnvPrefix(): string
+    {
+        try {
+            $cfg = config('database.connections.' . config('database.default'));
+            $host = $cfg['host'] ?? '127.0.0.1';
+            $port = $cfg['port'] ?? 5432;
+            $db   = $cfg['database'] ?? 'db_kalinga';
+            $user = $cfg['username'] ?? 'postgres';
+            $pass = $cfg['password'] ?? '';
+            $ssl  = $cfg['sslmode'] ?? 'prefer';
+
+            $url = "postgresql://{$user}:{$pass}@{$host}:{$port}/{$db}?sslmode={$ssl}";
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                return 'set "FORECAST_DATABASE_URL=' . $url . '" && ';
+            }
+
+            return 'FORECAST_DATABASE_URL=' . escapeshellarg($url) . ' ';
+        } catch (\Exception $e) {
+            Log::warning('Could not build FORECAST_DATABASE_URL, Python will use its own .env', [
+                'error' => $e->getMessage(),
+            ]);
+            return '';
+        }
     }
 
     /**

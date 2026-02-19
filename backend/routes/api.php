@@ -298,13 +298,17 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware(['role:admin,logistics'])->group(function () {
 
         // ── AI Forecasting Routes ────────────────────────────
-        Route::prefix('forecasts')->group(function () {
+        Route::prefix('forecasts')->middleware('throttle:60,1')->group(function () {
             Route::get('/demand',             [ForecastController::class, 'demand']);
             Route::get('/risk',               [ForecastController::class, 'risk']);
             Route::get('/summary',            [ForecastController::class, 'summary']);
             Route::get('/hospital/{hospital}', [ForecastController::class, 'hospitalDetail']);
             Route::get('/narrative',          [ForecastController::class, 'narrative']);
             Route::get('/auto-reorders',      [ForecastController::class, 'autoReorders']);
+            Route::get('/health',             [ForecastController::class, 'health']);
+            Route::get('/history',            [ForecastController::class, 'history']);
+            Route::get('/accuracy',           [ForecastController::class, 'accuracy']);
+            Route::post('/trigger',           [ForecastController::class, 'trigger']);
         });
 
             Route::get('/requests', [RequestController::class, 'index']);
