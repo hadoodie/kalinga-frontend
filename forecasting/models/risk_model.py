@@ -19,8 +19,14 @@ try:
 except ImportError:
     HAS_SKLEARN = False
 
+try:
+    import joblib
+    HAS_JOBLIB = True
+except ImportError:
+    HAS_JOBLIB = False
+
 from forecasting.etl.features import RISK_FEATURE_COLS
-from forecasting.config import RISK_THRESHOLD_HIGH, RISK_THRESHOLD_CRITICAL
+from forecasting.config import RISK_THRESHOLD_HIGH, RISK_THRESHOLD_CRITICAL, ARTIFACTS_DIR
 
 
 class RiskModel:
@@ -31,6 +37,7 @@ class RiskModel:
     """
 
     MIN_TRAINING_ROWS = 80
+    ARTIFACT_NAME = "risk_model.pkl"
 
     def __init__(self):
         self.model = None
@@ -137,6 +144,64 @@ class RiskModel:
         self.metrics = {"accuracy": round(score, 4), "rows_trained": len(X)}
         print(f"[risk] Logistic regression trained — accuracy={self.metrics['accuracy']}")
         return self
+
+    # ── Artifact persistence ─────────────────────────────────
+
+    def save(self, path=None):
+        """Persist trained model + scaler to disk as .pkl artifact."""
+        if not HAS_JOBLIB:
+            print("[risk] joblib not available — skipping artifact save")
+            return None
+
+        path = path or (ARTIFACTS_DIR / self.ARTIFACT_NAME)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        artifact = {
+            "model": self.model,
+            "scaler": self.scaler,
+            "mode": self.mode,
+            "metrics": self.metrics,
+            "feature_cols": list(RISK_FEATURE_COLS),
+        }
+        joblib.dump(artifact, path)
+        print(f"[risk] Saved artifact → {path} (mode={self.mode})")
+        return path
+
+    @classmethod
+    def load(cls, path=None):
+        """
+        Load a previously trained model + scaler from disk.
+        Falls back to a fresh rule-based instance if the artifact is missing.
+        """
+        instance = cls()
+        path = path or (ARTIFACTS_DIR / cls.ARTIFACT_NAME)
+
+        if not HAS_JOBLIB:
+            print("[risk] joblib not available — starting with rule-based mode")
+            return instance
+
+        if not path.exists():
+            print(f"[risk] No artifact at {path} — starting with rule-based mode")
+            return instance
+
+        try:
+            artifact = joblib.load(path)
+            instance.model = artifact["model"]
+            instance.scaler = artifact.get("scaler")
+            instance.mode = artifact.get("mode", "rule_based")
+            instance.metrics = artifact.get("metrics", {})
+
+            # Validate that scaler is present when mode requires it
+            if instance.mode == "logistic" and instance.scaler is None:
+                print("[risk] Artifact missing scaler — resetting to rule-based")
+                instance.mode = "rule_based"
+                instance.model = None
+            else:
+                print(f"[risk] Loaded artifact from {path} (mode={instance.mode}, metrics={instance.metrics})")
+        except Exception as e:
+            print(f"[risk] Failed to load artifact: {e} — falling back to rule-based")
+
+        return instance
 
     # ── Prediction ───────────────────────────────────────────
 

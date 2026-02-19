@@ -100,10 +100,11 @@ def main(demo, production, horizon, seed, output):
 
     # ── Step 4: Run demand model ─────────────────────────────
     click.echo("\n[4/5] Running demand model...")
-    demand_model = DemandModel()
 
-    # In demo mode with synthetic data, we use rule-based since no training labels
-    # In production, we'd try to train on historical actual consumption
+    # Load existing artifact in production (falls back to rule-based if none)
+    demand_model = DemandModel.load() if production else DemandModel()
+
+    # In production, attempt to train on historical actual consumption
     if production and "actual_consumption" in features.columns:
         train_mask = features["actual_consumption"].notna()
         n_train = train_mask.sum()
@@ -113,10 +114,13 @@ def main(demo, production, horizon, seed, output):
                 features.loc[train_mask],
                 features.loc[train_mask, "actual_consumption"],
             )
+            # Persist artifact if ML training succeeded
+            if demand_model.mode != "rule_based":
+                demand_model.save()
         else:
-            click.echo(f"  Only {n_train} labelled rows — need ≥50 for LightGBM, using rule-based")
+            click.echo(f"  Only {n_train} labelled rows — need ≥50 for LightGBM, using {demand_model.mode}")
     else:
-        click.echo("  Using rule-based demand model (no training data yet)")
+        click.echo(f"  Using {demand_model.mode} demand model (no training data yet)")
 
     demand_results = demand_model.predict(features)
     click.echo(f"  Demand predictions: {len(demand_results)} rows")
@@ -125,7 +129,26 @@ def main(demo, production, horizon, seed, output):
 
     # ── Step 5: Run risk model ───────────────────────────────
     click.echo("\n[5/5] Running risk model...")
-    risk_model = RiskModel()
+
+    # Load existing artifact in production (falls back to rule-based if none)
+    risk_model = RiskModel.load() if production else RiskModel()
+
+    # In production, attempt to train on historical stockout labels
+    if production and "stockout_occurred" in features.columns:
+        risk_labels = features["stockout_occurred"]
+        labelled = risk_labels.notna()
+        n_labelled = int(labelled.sum())
+        if n_labelled >= risk_model.MIN_TRAINING_ROWS:
+            click.echo(f"  Training Logistic Regression on {n_labelled} labelled rows...")
+            risk_model.train(features.loc[labelled], risk_labels.loc[labelled])
+            # Persist artifact if ML training succeeded
+            if risk_model.mode != "rule_based":
+                risk_model.save()
+        else:
+            click.echo(f"  Only {n_labelled} labelled rows — need ≥{risk_model.MIN_TRAINING_ROWS}, using {risk_model.mode}")
+    else:
+        click.echo(f"  Using {risk_model.mode} risk model (no stockout labels)")
+
     risk_results = risk_model.predict(features, demand_results["yhat"])
     click.echo(f"  Risk predictions: {len(risk_results)} rows")
 

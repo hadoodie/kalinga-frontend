@@ -255,6 +255,50 @@ def build_demand_features(
     # run_forecast.py checks `if "actual_consumption" in features.columns`
     # and only trains when there are non-null labels.
 
+    # ── Add stockout labels for past hours (enables supervised risk training) ──
+    # A stockout is when current_quantity dropped to 0 for this (hospital, resource)
+    # at a given hour. We derive this from stock_movements: if new_quantity hit 0
+    # after an outflow, that hour is a stockout event.
+    if not stock_movements.empty and "new_quantity" in stock_movements.columns:
+        sm = stock_movements.copy()
+        sm["created_at"] = pd.to_datetime(sm["created_at"])
+        sm["hour"] = sm["created_at"].dt.floor("h")
+
+        type_col = "movement_type" if "movement_type" in sm.columns else "type"
+        outflows = sm[sm[type_col] == "out"].copy()
+
+        if not outflows.empty:
+            # Flag hours where stock hit zero after an outflow
+            stockout_hours = (
+                outflows[outflows["new_quantity"] <= 0]
+                .groupby(["hospital_id", "resource_id", "hour"])
+                .size()
+                .reset_index()
+                .rename(columns={0: "_stockout_count"})
+            )
+            stockout_hours["stockout_occurred"] = 1.0
+
+            # Align timezone for merge
+            if features["forecast_time"].dt.tz is not None and stockout_hours["hour"].dt.tz is None:
+                stockout_hours["hour"] = stockout_hours["hour"].dt.tz_localize(features["forecast_time"].dt.tz)
+            elif features["forecast_time"].dt.tz is None and stockout_hours["hour"].dt.tz is not None:
+                stockout_hours["hour"] = stockout_hours["hour"].dt.tz_localize(None)
+
+            features = features.merge(
+                stockout_hours[["hospital_id", "resource_id", "hour", "stockout_occurred"]],
+                left_on=["hospital_id", "resource_id", "forecast_time"],
+                right_on=["hospital_id", "resource_id", "hour"],
+                how="left",
+            )
+            if "hour" in features.columns:
+                features = features.drop(columns=["hour"])
+
+            # Fill non-stockout past hours with 0 (only where actual_consumption is known)
+            if "actual_consumption" in features.columns:
+                past_mask = features["actual_consumption"].notna()
+                features.loc[past_mask & features["stockout_occurred"].isna(), "stockout_occurred"] = 0.0
+    # stockout_occurred will be NaN for future timestamps and hours without movement data
+
     return features
 
 

@@ -236,10 +236,11 @@ class TestBuildDemandFeatures:
         assert (result["active_blockades"] == 1).all()
 
     def test_no_nan_in_output(self, minimal_data):
-        """All NaN should be filled except actual_consumption (NaN for future hours is expected)."""
+        """All NaN should be filled except training label cols (NaN for future hours is expected)."""
         result = build_demand_features(**minimal_data, horizon_hours=4)
-        # actual_consumption is intentionally NaN for future forecast hours
-        check_cols = [c for c in result.columns if c != "actual_consumption"]
+        # actual_consumption and stockout_occurred are intentionally NaN for future forecast hours
+        label_cols = {"actual_consumption", "stockout_occurred"}
+        check_cols = [c for c in result.columns if c not in label_cols]
         assert result[check_cols].isna().sum().sum() == 0
 
     def test_empty_stock_movements(self, minimal_data):

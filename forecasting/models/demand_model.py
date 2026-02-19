@@ -19,7 +19,13 @@ try:
 except ImportError:
     HAS_LIGHTGBM = False
 
-from forecasting.config import DEMAND_MODEL_PARAMS
+try:
+    import joblib
+    HAS_JOBLIB = True
+except ImportError:
+    HAS_JOBLIB = False
+
+from forecasting.config import DEMAND_MODEL_PARAMS, ARTIFACTS_DIR
 from forecasting.etl.features import DEMAND_FEATURE_COLS
 
 
@@ -31,6 +37,7 @@ class DemandModel:
     """
 
     MIN_TRAINING_ROWS = 100  # need at least this many rows for ML
+    ARTIFACT_NAME = "demand_model.pkl"
 
     def __init__(self):
         self.model = None
@@ -63,6 +70,7 @@ class DemandModel:
     def train(self, features: pd.DataFrame, target: pd.Series):
         """
         Train LightGBM on historical data if enough rows exist.
+        Uses temporal split (not random) to avoid data leakage on time-series.
         Falls back to rule-based otherwise.
         """
         if not HAS_LIGHTGBM or len(features) < self.MIN_TRAINING_ROWS:
@@ -74,7 +82,10 @@ class DemandModel:
         X = features[available_cols].fillna(0)
         y = target.fillna(0)
 
-        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+        # Temporal split — preserve time ordering to avoid data leakage
+        split_idx = int(len(X) * 0.8)
+        X_train, X_val = X.iloc[:split_idx], X.iloc[split_idx:]
+        y_train, y_val = y.iloc[:split_idx], y.iloc[split_idx:]
 
         self.model = lgb.LGBMRegressor(**DEMAND_MODEL_PARAMS)
         self.model.fit(
@@ -88,11 +99,62 @@ class DemandModel:
             "mae": round(mean_absolute_error(y_val, preds), 4),
             "rmse": round(np.sqrt(mean_squared_error(y_val, preds)), 4),
             "rows_trained": len(X_train),
+            "rows_validated": len(X_val),
         }
         self.mode = "lightgbm"
 
         print(f"[demand] LightGBM trained — MAE={self.metrics['mae']}, RMSE={self.metrics['rmse']}")
         return self
+
+    # ── Artifact persistence ─────────────────────────────────
+
+    def save(self, path=None):
+        """Persist trained model to disk as .pkl artifact."""
+        if not HAS_JOBLIB:
+            print("[demand] joblib not available — skipping artifact save")
+            return None
+
+        path = path or (ARTIFACTS_DIR / self.ARTIFACT_NAME)
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        artifact = {
+            "model": self.model,
+            "mode": self.mode,
+            "metrics": self.metrics,
+            "feature_cols": list(DEMAND_FEATURE_COLS),
+        }
+        joblib.dump(artifact, path)
+        print(f"[demand] Saved artifact → {path} (mode={self.mode})")
+        return path
+
+    @classmethod
+    def load(cls, path=None):
+        """
+        Load a previously trained model from disk.
+        Falls back to a fresh rule-based instance if the artifact is missing
+        or joblib is unavailable.
+        """
+        instance = cls()
+        path = path or (ARTIFACTS_DIR / cls.ARTIFACT_NAME)
+
+        if not HAS_JOBLIB:
+            print("[demand] joblib not available — starting with rule-based mode")
+            return instance
+
+        if not path.exists():
+            print(f"[demand] No artifact at {path} — starting with rule-based mode")
+            return instance
+
+        try:
+            artifact = joblib.load(path)
+            instance.model = artifact["model"]
+            instance.mode = artifact.get("mode", "rule_based")
+            instance.metrics = artifact.get("metrics", {})
+            print(f"[demand] Loaded artifact from {path} (mode={instance.mode}, metrics={instance.metrics})")
+        except Exception as e:
+            print(f"[demand] Failed to load artifact: {e} — falling back to rule-based")
+
+        return instance
 
     # ── Prediction ───────────────────────────────────────────
 

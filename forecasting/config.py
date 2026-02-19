@@ -20,6 +20,8 @@ if not os.getenv("FORECAST_DATABASE_URL"):
 PROJECT_ROOT = Path(__file__).resolve().parent
 OUTPUT_DIR = PROJECT_ROOT / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
+ARTIFACTS_DIR = PROJECT_ROOT / "artifacts"
+ARTIFACTS_DIR.mkdir(exist_ok=True)
 
 # ── Database ─────────────────────────────────────────────────
 # Priority: FORECAST_DATABASE_URL (passed by Laravel) > DATABASE_URL > construct from parts
