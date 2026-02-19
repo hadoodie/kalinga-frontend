@@ -105,7 +105,16 @@ def main(demo, production, horizon, seed, output):
     # In demo mode with synthetic data, we use rule-based since no training labels
     # In production, we'd try to train on historical actual consumption
     if production and "actual_consumption" in features.columns:
-        demand_model.train(features, features["actual_consumption"])
+        train_mask = features["actual_consumption"].notna()
+        n_train = train_mask.sum()
+        if n_train >= 50:   # need a meaningful training set
+            click.echo(f"  Training LightGBM on {n_train} historical rows...")
+            demand_model.train(
+                features.loc[train_mask],
+                features.loc[train_mask, "actual_consumption"],
+            )
+        else:
+            click.echo(f"  Only {n_train} labelled rows — need ≥50 for LightGBM, using rule-based")
     else:
         click.echo("  Using rule-based demand model (no training data yet)")
 

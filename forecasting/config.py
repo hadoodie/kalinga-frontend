@@ -9,10 +9,12 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env from project root if present
-_env_path = Path(__file__).resolve().parent.parent / "backend" / ".env"
-if _env_path.exists():
-    load_dotenv(_env_path)
+# Load .env from project root if present (only when FORECAST_DATABASE_URL
+# isn't already set — i.e. not when launched from Laravel's RunForecasts)
+if not os.getenv("FORECAST_DATABASE_URL"):
+    _env_path = Path(__file__).resolve().parent.parent / "backend" / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
 
 # ── Paths ────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -20,7 +22,7 @@ OUTPUT_DIR = PROJECT_ROOT / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
 # ── Database ─────────────────────────────────────────────────
-# Construct from individual vars (matching backend/.env) or use DATABASE_URL
+# Priority: FORECAST_DATABASE_URL (passed by Laravel) > DATABASE_URL > construct from parts
 _db_host = os.getenv("DB_HOST", "127.0.0.1")
 _db_port = os.getenv("DB_PORT", "5432")
 _db_name = os.getenv("DB_DATABASE", "db_kalinga")
@@ -28,9 +30,12 @@ _db_user = os.getenv("DB_USERNAME", "postgres")
 _db_pass = os.getenv("DB_PASSWORD", "")
 _db_ssl  = os.getenv("DB_SSLMODE", "prefer")
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    f"postgresql://{_db_user}:{_db_pass}@{_db_host}:{_db_port}/{_db_name}?sslmode={_db_ssl}",
+_constructed_url = f"postgresql://{_db_user}:{_db_pass}@{_db_host}:{_db_port}/{_db_name}?sslmode={_db_ssl}"
+
+DATABASE_URL = (
+    os.getenv("FORECAST_DATABASE_URL")
+    or os.getenv("DATABASE_URL")
+    or _constructed_url
 )
 
 # ── Forecast Parameters ──────────────────────────────────────
@@ -58,3 +63,6 @@ DEMAND_MODEL_PARAMS = {
 
 RISK_THRESHOLD_HIGH = 0.65
 RISK_THRESHOLD_CRITICAL = 0.85
+
+# ── Data Retention ───────────────────────────────────────────
+FORECAST_RETENTION_DAYS = int(os.getenv("FORECAST_RETENTION_DAYS", "30"))

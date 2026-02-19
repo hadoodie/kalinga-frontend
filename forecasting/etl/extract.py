@@ -52,7 +52,7 @@ def extract_resources(engine=None) -> pd.DataFrame:
 def extract_stock_movements(engine=None, days_back: int = 90) -> pd.DataFrame:
     """Historical stock movements (last N days)."""
     engine = engine or get_engine()
-    query = f"""
+    query = """
         SELECT
             sm.id,
             sm.resource_id,
@@ -67,16 +67,16 @@ def extract_stock_movements(engine=None, days_back: int = 90) -> pd.DataFrame:
             r.category
         FROM stock_movements sm
         JOIN resources r ON sm.resource_id = r.id
-        WHERE sm.created_at >= NOW() - INTERVAL '{days_back} days'
+        WHERE sm.created_at >= NOW() - MAKE_INTERVAL(days => :days_back)
         ORDER BY sm.created_at
     """
-    return pd.read_sql(text(query), engine)
+    return pd.read_sql(text(query), engine, params={"days_back": days_back})
 
 
 def extract_requests(engine=None, days_back: int = 90) -> pd.DataFrame:
     """Resource requests (demand signals)."""
     engine = engine or get_engine()
-    query = f"""
+    query = """
         SELECT
             req.id,
             req.hospital_id,
@@ -88,16 +88,16 @@ def extract_requests(engine=None, days_back: int = 90) -> pd.DataFrame:
             req.status,
             req.created_at
         FROM requests req
-        WHERE req.created_at >= NOW() - INTERVAL '{days_back} days'
+        WHERE req.created_at >= NOW() - MAKE_INTERVAL(days => :days_back)
         ORDER BY req.created_at
     """
-    return pd.read_sql(text(query), engine)
+    return pd.read_sql(text(query), engine, params={"days_back": days_back})
 
 
 def extract_incidents(engine=None, days_back: int = 90) -> pd.DataFrame:
     """Emergency incidents (demand spike signals)."""
     engine = engine or get_engine()
-    query = f"""
+    query = """
         SELECT
             i.id,
             i.type,
@@ -107,10 +107,10 @@ def extract_incidents(engine=None, days_back: int = 90) -> pd.DataFrame:
             i.completed_at,
             i.metadata
         FROM incidents i
-        WHERE i.created_at >= NOW() - INTERVAL '{days_back} days'
+        WHERE i.created_at >= NOW() - MAKE_INTERVAL(days => :days_back)
         ORDER BY i.created_at
     """
-    return pd.read_sql(text(query), engine)
+    return pd.read_sql(text(query), engine, params={"days_back": days_back})
 
 
 def extract_blockades(engine=None) -> pd.DataFrame:

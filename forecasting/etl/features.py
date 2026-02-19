@@ -230,6 +230,31 @@ def build_demand_features(
     # Rename hour → forecast_time for downstream consumers
     features = features.rename(columns={"hour": "forecast_time"})
 
+    # ── Add actual consumption labels for past hours (enables supervised training) ──
+    # For future hours actual_consumption will be NaN; for past hours it holds the
+    # true hourly outflow so LightGBM can learn from it.
+    hourly_labels = build_hourly_consumption(stock_movements)
+    if not hourly_labels.empty:
+        # rename to avoid clash with avg_hourly_consumption
+        hourly_labels = hourly_labels.rename(columns={"consumption": "actual_consumption"})
+        # Align timezone for merge
+        if features["forecast_time"].dt.tz is not None and hourly_labels["hour"].dt.tz is None:
+            hourly_labels["hour"] = hourly_labels["hour"].dt.tz_localize(features["forecast_time"].dt.tz)
+        elif features["forecast_time"].dt.tz is None and hourly_labels["hour"].dt.tz is not None:
+            hourly_labels["hour"] = hourly_labels["hour"].dt.tz_localize(None)
+        features = features.merge(
+            hourly_labels,
+            left_on=["hospital_id", "resource_id", "forecast_time"],
+            right_on=["hospital_id", "resource_id", "hour"],
+            how="left",
+        )
+        # Drop the duplicate 'hour' column from the merge
+        if "hour" in features.columns:
+            features = features.drop(columns=["hour"])
+    # actual_consumption will be NaN for future timestamps — that's expected;
+    # run_forecast.py checks `if "actual_consumption" in features.columns`
+    # and only trains when there are non-null labels.
+
     return features
 
 
