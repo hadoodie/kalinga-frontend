@@ -57,3 +57,26 @@ Schedule::call(function () {
     $status = DatabaseConnectionManager::getConnectionStatus();
     info('Database health check: ' . json_encode($status));
 })->everyTenMinutes();
+
+// ═══════════════════════════════════════════════════════════
+// AI Forecasting Pipeline Schedule
+// ═══════════════════════════════════════════════════════════
+
+// Run demand & risk forecasts every 2 hours
+Schedule::command('forecasts:run --mode=production --auto-reorder --narrative')
+    ->everyTwoHours()
+    ->withoutOverlapping()
+    ->onSuccess(function () {
+        info('Forecast pipeline completed at ' . now());
+    })
+    ->onFailure(function () {
+        info('Forecast pipeline failed at ' . now());
+    });
+
+// Monitor forecast accuracy daily at 6 AM
+Schedule::command('forecasts:monitor --retrain --days=7')
+    ->dailyAt('06:00')
+    ->withoutOverlapping()
+    ->onSuccess(function () {
+        info('Forecast monitoring completed at ' . now());
+    });

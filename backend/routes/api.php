@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\AllocationController;
 use App\Http\Controllers\Api\ResponderController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LogisticsController;
+use App\Http\Controllers\Api\ForecastController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -295,7 +296,17 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
 
     // Admin and Logistics routes
     Route::middleware(['role:admin,logistics'])->group(function () {
-        
+
+        // ── AI Forecasting Routes ────────────────────────────
+        Route::prefix('forecasts')->group(function () {
+            Route::get('/demand',             [ForecastController::class, 'demand']);
+            Route::get('/risk',               [ForecastController::class, 'risk']);
+            Route::get('/summary',            [ForecastController::class, 'summary']);
+            Route::get('/hospital/{hospital}', [ForecastController::class, 'hospitalDetail']);
+            Route::get('/narrative',          [ForecastController::class, 'narrative']);
+            Route::get('/auto-reorders',      [ForecastController::class, 'autoReorders']);
+        });
+
             Route::get('/requests', [RequestController::class, 'index']);
             Route::post('/requests', [RequestController::class, 'store']);
             Route::get('/requests/{request}', [RequestController::class, 'show']);
