@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Bot, Package, Clock, AlertTriangle, CheckCircle2, ArrowRight, RefreshCw } from "lucide-react";
+import {
+  Bot,
+  Package,
+  Clock,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowRight,
+  RefreshCw,
+} from "lucide-react";
 import forecastService from "../../services/forecastService";
 import { generateDemoAutoReorders } from "./demoForecastData";
 
@@ -78,8 +86,12 @@ export default function AutoReorderMonitor() {
         {orders.length === 0 ? (
           <div className="p-8 text-center">
             <CheckCircle2 className="w-10 h-10 text-green-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">No auto-reorders in the last 48 hours</p>
-            <p className="text-xs text-gray-400 mt-1">All supply levels are within safe thresholds</p>
+            <p className="text-sm text-gray-500">
+              No auto-reorders in the last 48 hours
+            </p>
+            <p className="text-xs text-gray-400 mt-1">
+              All supply levels are within safe thresholds
+            </p>
           </div>
         ) : (
           orders.map((order, idx) => (
@@ -118,11 +130,18 @@ function OrderRow({ order }) {
   };
 
   const riskMeta = order.meta || {};
-  const riskProb = riskMeta.risk_prob ? `${Math.round(riskMeta.risk_prob * 100)}%` : null;
-  const daysLeft = riskMeta.days_until_stockout ? `${riskMeta.days_until_stockout.toFixed(1)}d` : null;
+  const riskProb = riskMeta.risk_prob
+    ? `${Math.round(riskMeta.risk_prob * 100)}%`
+    : null;
+  const daysLeft = riskMeta.days_until_stockout
+    ? `${riskMeta.days_until_stockout.toFixed(1)}d`
+    : null;
 
   const hospitalName = order.hospital?.name || `Hospital #${order.hospital_id}`;
-  const resourceName = order.resource?.name || order.resource_name || `Resource #${order.resource_id}`;
+  const resourceName =
+    order.resource?.name ||
+    order.resource_name ||
+    `Resource #${order.resource_id}`;
   const timeAgo = formatTimeAgo(order.created_at);
 
   return (
@@ -134,7 +153,9 @@ function OrderRow({ order }) {
             <span className="text-sm font-medium text-gray-900 truncate">
               {resourceName}
             </span>
-            <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${urgencyColors[order.urgency_level] || urgencyColors.Medium}`}>
+            <span
+              className={`text-xs px-1.5 py-0.5 rounded border font-medium ${urgencyColors[order.urgency_level] || urgencyColors.Medium}`}
+            >
               {order.urgency_level}
             </span>
           </div>
@@ -156,7 +177,9 @@ function OrderRow({ order }) {
             )}
           </p>
         </div>
-        <span className="text-xs text-gray-400 whitespace-nowrap ml-2">{timeAgo}</span>
+        <span className="text-xs text-gray-400 whitespace-nowrap ml-2">
+          {timeAgo}
+        </span>
       </div>
     </div>
   );
@@ -176,4 +199,3 @@ function formatTimeAgo(dateStr) {
   if (diffHours < 24) return `${diffHours}h ago`;
   return `${diffDays}d ago`;
 }
-

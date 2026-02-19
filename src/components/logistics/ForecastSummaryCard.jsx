@@ -136,10 +136,7 @@ const ForecastSummaryCard = () => {
                     stroke="none"
                   >
                     {pieData.map((entry) => (
-                      <Cell
-                        key={entry.level}
-                        fill={RISK_COLORS[entry.level]}
-                      />
+                      <Cell key={entry.level} fill={RISK_COLORS[entry.level]} />
                     ))}
                   </Pie>
                   <Tooltip content={renderTooltip} />

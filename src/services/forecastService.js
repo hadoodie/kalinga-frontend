@@ -77,7 +77,10 @@ const forecastService = {
       const response = await api.get(`/forecasts/hospital/${hospitalId}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching forecast for hospital ${hospitalId}:`, error);
+      console.error(
+        `Error fetching forecast for hospital ${hospitalId}:`,
+        error,
+      );
       throw error;
     }
   },

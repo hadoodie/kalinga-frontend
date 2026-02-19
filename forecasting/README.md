@@ -65,12 +65,12 @@ Writes to → `forecast_demand_hourly` and `forecast_risk_hourly` tables.
 
 The ForecastController serves results to the React frontend:
 
-| Endpoint | Description |
-|---|---|
-| `GET /api/forecasts/demand?hospital_id=&resource_id=&hours=48` | Demand predictions |
-| `GET /api/forecasts/risk?risk_level=high` | Risk predictions |
-| `GET /api/forecasts/summary` | Dashboard KPI summary |
-| `GET /api/forecasts/hospital/{id}` | Per-hospital detail |
+| Endpoint                                                       | Description           |
+| -------------------------------------------------------------- | --------------------- |
+| `GET /api/forecasts/demand?hospital_id=&resource_id=&hours=48` | Demand predictions    |
+| `GET /api/forecasts/risk?risk_level=high`                      | Risk predictions      |
+| `GET /api/forecasts/summary`                                   | Dashboard KPI summary |
+| `GET /api/forecasts/hospital/{id}`                             | Per-hospital detail   |
 
 ## Model Details
 

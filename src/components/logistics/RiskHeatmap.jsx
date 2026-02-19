@@ -42,8 +42,7 @@ const RiskHeatmap = () => {
   }, []);
 
   // Group by hospital and resource — take worst risk per pair
-  const { hospitals, resources, grid, criticalAlerts } =
-    buildGrid(riskData);
+  const { hospitals, resources, grid, criticalAlerts } = buildGrid(riskData);
 
   return (
     <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6">
@@ -112,7 +111,9 @@ const RiskHeatmap = () => {
                     key={r.id}
                     className="px-1 py-2 text-center text-gray-500 font-semibold min-w-[80px]"
                   >
-                    <span className="truncate block max-w-[80px]">{r.name}</span>
+                    <span className="truncate block max-w-[80px]">
+                      {r.name}
+                    </span>
                   </th>
                 ))}
               </tr>
@@ -121,7 +122,9 @@ const RiskHeatmap = () => {
               {hospitals.map((h) => (
                 <tr key={h.id} className="border-t border-gray-100">
                   <td className="px-2 py-1.5 font-semibold text-gray-700 sticky left-0 bg-white">
-                    <span className="truncate block max-w-[140px]">{h.name}</span>
+                    <span className="truncate block max-w-[140px]">
+                      {h.name}
+                    </span>
                   </td>
                   {resources.map((r) => {
                     const cell = grid[`${h.id}-${r.id}`];
@@ -228,7 +231,9 @@ const RiskHeatmap = () => {
                   <span className="font-semibold text-gray-800">
                     {alert.resourceName}
                   </span>
-                  <span className="text-gray-500 ml-1">→ {alert.hospitalName}</span>
+                  <span className="text-gray-500 ml-1">
+                    → {alert.hospitalName}
+                  </span>
                 </div>
                 <span className="text-orange-700 font-bold text-xs">
                   {alert.daysLeft < 3 ? "URGENT" : "Reorder Soon"}
@@ -279,9 +284,7 @@ function buildGrid(riskData) {
     // Collect alerts for high/critical
     if (
       (item.risk_level === "high" || item.risk_level === "critical") &&
-      !criticalAlerts.find(
-        (a) => a.hospitalId === hid && a.resourceId === rid
-      )
+      !criticalAlerts.find((a) => a.hospitalId === hid && a.resourceId === rid)
     ) {
       criticalAlerts.push({
         hospitalId: hid,
@@ -299,10 +302,10 @@ function buildGrid(riskData) {
 
   return {
     hospitals: Object.values(hospMap).sort((a, b) =>
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name),
     ),
     resources: Object.values(resMap).sort((a, b) =>
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name),
     ),
     grid,
     criticalAlerts,
