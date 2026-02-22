@@ -24,6 +24,13 @@ return new class extends Migration
             $table->dateTime('appointment_date')->nullable();
             $table->string('status')->default('pending');
             
+            $table->string('contact_email')->nullable();
+            $table->string('contact_phone')->nullable();
+            $table->string('location')->nullable();
+            $table->text('instructions')->nullable();
+            $table->string('provider_name')->nullable();
+            $table->string('provider_specialty')->nullable();
+
             $table->timestamps();
         });
     }

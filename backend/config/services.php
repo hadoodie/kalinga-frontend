@@ -46,4 +46,8 @@ return [
         'default_location_label' => env('MAPS_DEFAULT_LOCATION_LABEL', 'Fallback location (Manila HQ)'),
     ],
 
+    'recaptcha' => [
+        'secret' => env('RECAPTCHA_SECRET_KEY'),
+    ],
+
 ];

@@ -14,7 +14,7 @@ class AppointmentController extends Controller
     {
         $user = Auth::user();
         // Return appointments ordered by newest date first
-        $appointments = $user->appointments()->orderBy('appointment_at', 'asc')->get();
+        $appointments = $user->appointments()->orderBy('appointment_date', 'asc')->get();
         return response()->json($appointments);
     }
 
@@ -28,7 +28,7 @@ class AppointmentController extends Controller
         $validated = $request->validate([
             'hospital' => 'required|string',
             'service' => 'required|string',
-            'appointment_at' => 'required|date', 
+            'appointment_date' => 'required|date', 
             'complaint' => 'required|string',
             'patient_name' => 'required|string',
             'contact_email' => 'nullable|email',
@@ -41,18 +41,25 @@ class AppointmentController extends Controller
             'recaptcha_token' => 'required|string', 
         ]);
 
-        // Verify with Google reCAPTCHA
-        $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
-            'secret' => env('RECAPTCHA_SECRET_KEY'), 
-            'response' => $request->input('recaptcha_token'),
-            'remoteip' => $request->ip(),
-        ]);
+        // Verify with Google reCAPTCHA (skip in dev if secret key is not configured)
+        $recaptchaSecret = config('services.recaptcha.secret');
         
-        // If Google says the check failed, stop here
-        if (!$response->json()['success']) {
-            return response()->json([
-                'message' => 'reCAPTCHA verification failed. Please try again.'
-            ], 422);
+        if ($recaptchaSecret) {
+            $response = Http::asForm()->post('https://www.google.com/recaptcha/api/siteverify', [
+                'secret' => $recaptchaSecret, 
+                'response' => $request->input('recaptcha_token'),
+                'remoteip' => $request->ip(),
+            ]);
+            
+            // If Google says the check failed, stop here
+            if (!$response->json()['success']) {
+                return response()->json([
+                    'message' => 'reCAPTCHA verification failed. Please try again.'
+                ], 422);
+            }
+        } else {
+            // In development without proper reCAPTCHA setup, log a warning
+            \Log::warning('reCAPTCHA verification skipped - RECAPTCHA_SECRET_KEY not configured');
         }
 
         unset($validated['recaptcha_token']);
