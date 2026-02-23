@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getDefaultRouteForRole } from "../../utils/roleRouting";
+// import { getDefaultRouteForRole } from "../../utils/roleRouting"; // Uncomment if used later
 import api from "../../services/api";
 
 export default function FillInfo() {
@@ -9,17 +9,27 @@ export default function FillInfo() {
   const [showModal, setShowModal] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const { user, setUser } = useAuth();
 
-  // Get the selected ID type and file from previous page
-  const { selectedID, file, scannedData } = location.state || {};
+  // --- FIX 1: Correctly extract frontFile and backFile ---
+  const { selectedID, frontFile, backFile, scannedData } = location.state || {};
+
+  // --- FIX 2: Route Protection (handles page refreshes) ---
+  useEffect(() => {
+    if (!selectedID || !frontFile) {
+      alert("Missing ID data. Please upload your ID again.");
+      navigate("/upload-id");
+    }
+  }, [selectedID, frontFile, navigate]);
 
   const [formData, setFormData] = useState({
     idNumber: scannedData?.idNumber || "",
     firstName: scannedData?.firstName || "",
-    middleName: "",
+    // --- FIX 3: Catch middle name from scanned data ---
+    middleName: scannedData?.middleName || "", 
     lastName: scannedData?.lastName || "",
     contactNumber: "",
     
@@ -36,18 +46,8 @@ export default function FillInfo() {
   });
 
   const months = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
   ];
 
   const years = Array.from(
@@ -109,7 +109,7 @@ export default function FillInfo() {
       return;
     }
 
-    if (!selectedID || !file) {
+    if (!selectedID || !frontFile) {
       setError("Missing ID type or file. Please go back and upload your ID.");
       return;
     }
@@ -131,8 +131,8 @@ export default function FillInfo() {
       const birthday = `${formData.birthYear}-${String(
         months.indexOf(formData.birthMonth) + 1
       ).padStart(2, "0")}-${String(formData.birthDay).padStart(2, "0")}`;
+      
       submitData.append("birthday", birthday);
-
       submitData.append("contact_number", formData.contactNumber);
 
       // Combine address fields
@@ -141,7 +141,12 @@ export default function FillInfo() {
 
       // Add ID information
       submitData.append("id_type", selectedID);
-      submitData.append("id_image", file);
+      
+      // --- FIX 4: Use the correct file variable ---
+      submitData.append("id_image", frontFile); 
+      
+      // Optional: If your backend supports the back of the ID, append it too:
+      // if (backFile) submitData.append("id_image_back", backFile);
 
       // Submit to backend
       const response = await api.post("/verify-identity", submitData, {
@@ -175,7 +180,7 @@ export default function FillInfo() {
 
   const confirmBack = () => {
     setShowModal(false);
-    navigate("/upload-id");
+    navigate("/upload-id", { state: { selectedID } }); // Passing the ID back so they don't have to re-select it
   };
 
   return (

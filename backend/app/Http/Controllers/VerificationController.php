@@ -55,6 +55,7 @@ class VerificationController extends Controller
             // Update the User's status to 'pending' immediately 
             $user = Auth::user();
             $user->verification_status = 'pending';
+            $user->contact_number = $request->contact_number;
             $user->save();
 
             return response()->json([

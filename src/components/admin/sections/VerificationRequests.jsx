@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Check, X, Eye, Loader2, FileCheck } from "lucide-react";
+import { Check, X, Eye, Loader2, FileCheck, Mail } from "lucide-react";
 import api from "@/services/api";
 
 const getImageUrl = (path) => {
@@ -13,6 +13,9 @@ export const VerificationRequests = () => {
   const [loading, setLoading] = useState(true);
   const [selectedReq, setSelectedReq] = useState(null); 
   const [processing, setProcessing] = useState(false);
+  
+  // NEW: State to track which ID side is being viewed
+  const [activeImageTab, setActiveImageTab] = useState('front');
 
   // Fetch pending requests
   const fetchRequests = async () => {
@@ -32,17 +35,20 @@ export const VerificationRequests = () => {
 
   // Handle Approve
   const handleApprove = async (id) => {
-    if (!confirm("Are you sure you want to verify this user?")) return;
+    if (!confirm("Are you sure you want to verify this user? An email notification will be sent immediately.")) return;
+    
     setProcessing(true);
     try {
       await api.post(`/admin/verifications/${id}/approve`);
+      
       // Remove from list
       setRequests((prev) => prev.filter((r) => r.id !== id));
       setSelectedReq(null);
-      alert("User verified successfully!");
+      
+      alert("User verified successfully! An email notification has been sent.");
     } catch (error) {
       console.error("Approval failed:", error);
-      alert("Failed to approve user.");
+      alert("Failed to approve user. Check server logs for email configuration errors.");
     } finally {
       setProcessing(false);
     }
@@ -81,7 +87,7 @@ export const VerificationRequests = () => {
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Verification Requests</h2>
         <p className="text-muted-foreground">
-          Review and approve user identity documents.
+          Review front and back identity documents and approve users to trigger access emails.
         </p>
       </div>
 
@@ -113,7 +119,10 @@ export const VerificationRequests = () => {
 
               <div className="mt-4 flex gap-2">
                 <button
-                  onClick={() => setSelectedReq(req)}
+                  onClick={() => {
+                    setSelectedReq(req);
+                    setActiveImageTab('front'); // Reset to front view every time a new modal opens
+                  }}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 py-2 text-sm font-medium text-primary hover:bg-primary/20"
                 >
                   <Eye className="h-4 w-4" /> Review
@@ -127,7 +136,7 @@ export const VerificationRequests = () => {
       {/* Review Modal */}
       {selectedReq && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+          <div className="flex max-h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b p-4">
               <h3 className="text-lg font-bold">Review Application</h3>
@@ -141,17 +150,49 @@ export const VerificationRequests = () => {
 
             {/* Modal Body */}
             <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6 lg:flex-row">
-              {/* Left: Image */}
-              <div className="flex flex-1 items-center justify-center rounded-xl bg-gray-100 p-4">
-                <img
-                  src={getImageUrl(selectedReq.front_image_path)}
-                  alt="ID Document"
-                  className="max-h-[500px] w-full object-contain"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
-                  }}
-                />
+              
+              {/* Left: Image Viewer with Toggle Tabs */}
+              <div className="flex flex-1 flex-col gap-4">
+                {/* Tabs */}
+                <div className="flex gap-2 border-b pb-2">
+                  <button
+                    onClick={() => setActiveImageTab('front')}
+                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                      activeImageTab === 'front' 
+                        ? 'bg-gray-100 text-primary border-b-2 border-primary' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Front of ID
+                  </button>
+                  <button
+                    onClick={() => setActiveImageTab('back')}
+                    className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+                      activeImageTab === 'back' 
+                        ? 'bg-gray-100 text-primary border-b-2 border-primary' 
+                        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    Back of ID
+                  </button>
+                </div>
+
+                {/* Display Image based on active tab */}
+                <div className="flex flex-1 items-center justify-center rounded-xl bg-gray-100 p-4 min-h-[400px]">
+                  <img
+                    src={getImageUrl(
+                      activeImageTab === 'front' 
+                        ? selectedReq.front_image_path 
+                        : selectedReq.back_image_path
+                    )}
+                    alt={`ID Document ${activeImageTab}`}
+                    className="max-h-[500px] w-full object-contain"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Right: Data */}
@@ -189,8 +230,8 @@ export const VerificationRequests = () => {
                     disabled={processing}
                     className="flex items-center justify-center gap-2 rounded-lg bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
                   >
-                    {processing ? <Loader2 className="animate-spin" /> : <Check className="h-4 w-4" />}
-                    Approve & Verify
+                    {processing ? <Loader2 className="animate-spin" /> : <Mail className="h-4 w-4" />}
+                    Approve & Notify
                   </button>
                   <button
                     onClick={() => handleReject(selectedReq.id)}
