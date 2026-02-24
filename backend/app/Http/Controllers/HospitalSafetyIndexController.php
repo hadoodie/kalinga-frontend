@@ -665,6 +665,48 @@ class HospitalSafetyIndexController extends Controller
     }
 
     /**
+     * Update a resilience config
+     */
+    public function updateResilienceConfig(Request $request, ResourceResilienceConfig $config): JsonResponse
+    {
+        $validated = $request->validate([
+            'normal_daily_usage' => 'sometimes|numeric|min:0',
+            'usage_unit' => 'sometimes|string|max:50',
+            'surge_multiplier' => 'sometimes|numeric|min:1|max:5',
+            'critical_threshold_hours' => 'sometimes|numeric|min:0',
+            'warning_threshold_hours' => 'sometimes|numeric|min:0',
+            'optimal_threshold_hours' => 'sometimes|numeric|min:0',
+            'alerts_enabled' => 'sometimes|boolean',
+            'auto_vendor_trigger_enabled' => 'sometimes|boolean',
+            'primary_vendor_id' => 'nullable|exists:vendor_agreements,id',
+            'backup_vendor_id' => 'nullable|exists:vendor_agreements,id',
+            'notes' => 'nullable|string|max:1000',
+        ]);
+
+        $config->update($validated);
+        $config->recalculate()->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Resilience config updated',
+            'data' => $config->load(['resource', 'primaryVendor', 'backupVendor']),
+        ]);
+    }
+
+    /**
+     * Delete a resilience config
+     */
+    public function deleteResilienceConfig(ResourceResilienceConfig $config): JsonResponse
+    {
+        $config->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Resilience config deleted',
+        ]);
+    }
+
+    /**
      * Recalculate resilience for a hospital
      */
     public function recalculateResilience(Hospital $hospital): JsonResponse

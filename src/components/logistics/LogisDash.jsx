@@ -34,193 +34,26 @@ import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
 // Import AI Forecast v2 dashboard
 import ForecastDashboard from "./forecast-v2/ForecastDashboard";
 
-// --- MOCK DATA ---
-const MOCK_RESOURCE_REQUESTS = [
-  {
-    id: "R-1001",
-    location: "Barangay San Jose",
-    urgency: "Critical",
-    time: "2 hours ago",
-    items: 3,
-  },
-  {
-    id: "R-1002",
-    location: "Evacuation Center 3",
-    urgency: "High",
-    time: "3 hours ago",
-    items: 2,
-  },
-  {
-    id: "R-1003",
-    location: "Field Hospital Beta",
-    urgency: "Medium",
-    time: "5 hours ago",
-    items: 1,
-  },
-  {
-    id: "R-1004",
-    location: "Sector 5 Base",
-    urgency: "Critical",
-    time: "1 hour ago",
-    items: 4,
-  },
-  {
-    id: "R-1005",
-    location: "Coastal Village 1",
-    urgency: "Medium",
-    time: "4 hours ago",
-    items: 2,
-  },
-  {
-    id: "R-1006",
-    location: "Alpha Hospital",
-    urgency: "Shipped",
-    time: "4 hours ago",
-    items: 2,
-  },
+// --- DEMO FALLBACK DATA (shown with a visible banner when API is unavailable) ---
+const DEMO_RESOURCE_REQUESTS = [
+  { id: "R-1001", location: "Barangay San Jose", urgency: "Critical", time: "2 hours ago", items: 3 },
+  { id: "R-1002", location: "Evacuation Center 3", urgency: "High", time: "3 hours ago", items: 2 },
+  { id: "R-1003", location: "Field Hospital Beta", urgency: "Medium", time: "5 hours ago", items: 1 },
 ];
 
-const MOCK_INVENTORY_ITEMS = [
-  {
-    resource: "Rice",
-    category: "Food",
-    remaining: 30,
-    unit: "kg",
-    status: "Critical",
-  },
-  {
-    resource: "Canned Goods",
-    category: "Food",
-    remaining: 90,
-    unit: "cans",
-    status: "High",
-  },
-  {
-    resource: "Soap",
-    category: "Hygiene",
-    remaining: 75,
-    unit: "boxes",
-    status: "Moderate",
-  },
-  {
-    resource: "Bottled Water",
-    category: "Water",
-    remaining: 300,
-    unit: "bottles",
-    status: "High",
-  },
-  {
-    resource: "Tents",
-    category: "Shelter",
-    remaining: 15,
-    unit: "units",
-    status: "Critical",
-  },
-  {
-    resource: "Medical Kits",
-    category: "Medical",
-    remaining: 70,
-    unit: "kits",
-    status: "High",
-  },
+const DEMO_SHIPMENTS = [
+  { id: "S-7001", route: "Depot A → Field Hospital", eta: "2025-09-29T20:30:00Z", status: "In Transit", contents: "Medical Supplies", priority: "High" },
+  { id: "S-7002", route: "Warehouse B → Evac Zone 4", eta: "2025-09-29T19:45:00Z", status: "Delayed", contents: "Water, Blankets", priority: "Critical" },
 ];
 
-const MOCK_SHIPMENTS = [
-  {
-    id: "S-7001",
-    route: "Depot A → Field Hospital",
-    eta: "2025-09-29T20:30:00Z",
-    status: "In Transit",
-    contents: "Medical Supplies",
-    priority: "High",
-  },
-  {
-    id: "S-7002",
-    route: "Warehouse B → Evac Zone 4",
-    eta: "2025-09-29T19:45:00Z",
-    status: "Delayed",
-    contents: "Water, Blankets",
-    priority: "Critical",
-  },
-  {
-    id: "S-7003",
-    route: "Staging Area C → Command Post",
-    eta: "2025-09-29T22:00:00Z",
-    status: "En Route",
-    contents: "Satellite Gear",
-    priority: "Medium",
-  },
-  {
-    id: "S-7004",
-    route: "HQ Depot → Barangay San Jose",
-    eta: "2025-09-29T21:15:00Z",
-    status: "In Transit",
-    contents: "Food Rations",
-    priority: "High",
-  },
-];
-
-const MOCK_FACILITIES = [
-  { name: "Central Depot A", resources: 120 },
-  { name: "Evac Center 3", resources: 80 },
-  { name: "Field Hospital Beta", resources: 150 },
-  { name: "Sector 5 Base", resources: 60 },
-  { name: "Warehouse B", resources: 90 },
-  { name: "Clinic 1", resources: 100 },
-  { name: "Clinic 2", resources: 120 },
-];
-
-const MOCK_ASSETS = [
+const DEMO_ASSETS = [
   { name: "Truck 1", status: "In Use" },
   { name: "Truck 2", status: "Idle" },
   { name: "Generator 1", status: "In Use" },
-  { name: "Satellite Kit B", status: "Idle" },
-  { name: "Drone 3", status: "In Use" },
-  { name: "Truck 3", status: "Repair" },
 ];
 
-const MOCK_NOTIFICATIONS = [
-  {
-    id: 1,
-    title: "Low Stock Alert",
-    message:
-      "Rice inventory at Central Depot A is below minimum threshold (30 kg remaining)",
-    priority: "Critical",
-    time: "5 mins ago",
-    read: false,
-  },
-  {
-    id: 2,
-    title: "Delayed Shipment",
-    message: "S-7002 to Evac Zone 4 is delayed by 45 minutes",
-    priority: "High",
-    time: "15 mins ago",
-    read: false,
-  },
-  {
-    id: 3,
-    title: "Asset Maintenance Due",
-    message: "Truck 3 scheduled for maintenance check",
-    priority: "Medium",
-    time: "1 hour ago",
-    read: true,
-  },
-  {
-    id: 4,
-    title: "New Resource Request",
-    message: "Critical request from Barangay San Jose - 3 items needed",
-    priority: "Critical",
-    time: "2 hours ago",
-    read: false,
-  },
-  {
-    id: 5,
-    title: "Delivery Completed",
-    message: "S-7001 successfully delivered to Field Hospital",
-    priority: "Low",
-    time: "3 hours ago",
-    read: true,
-  },
+const DEMO_NOTIFICATIONS = [
+  { id: 1, title: "Low Stock Alert", message: "Demo notification — connect API for real data", priority: "Critical", time: "5 mins ago", read: false },
 ];
 
 const NotificationWidget = () => {
@@ -242,8 +75,8 @@ const NotificationWidget = () => {
         setNotifications(logisticsNotifs.slice(0, 5));
       } catch (err) {
         console.error("Failed to fetch notifications for widget", err);
-        // Fallback to mock data with type field
-        const mockWithType = MOCK_NOTIFICATIONS.map((n) => ({
+        // Fallback to demo data with type field
+        const mockWithType = DEMO_NOTIFICATIONS.map((n) => ({
           ...n,
           type: "logistics",
         }));
@@ -805,13 +638,14 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
 
 // --- MAIN APPLICATION COMPONENT ---
 const LogisDash = () => {
-  const [requests] = useState(MOCK_RESOURCE_REQUESTS);
+  const [requests, setRequests] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [shipments] = useState(MOCK_SHIPMENTS);
-  const [assets] = useState(MOCK_ASSETS);
+  const [shipments, setShipments] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [activeTab, setActiveTab] = useState("logistics"); // 'logistics' or 'hospital'
   const navigate = useNavigate();
 
@@ -820,55 +654,101 @@ const LogisDash = () => {
       try {
         setLoading(true);
         setError(null);
+        let usingFallback = false;
 
-        // Fetch all resources
-        const resourcesResponse = await resourceService.getAll();
+        // ── 1. Resources / Inventory (existing logic) ──
+        let inventoryData = [];
+        let facilitiesData = [];
+        try {
+          const resourcesResponse = await resourceService.getAll();
+          inventoryData = resourcesResponse.map((item) => ({
+            resource: item.name,
+            category: item.category,
+            remaining: parseFloat(item.quantity || 0),
+            unit: item.unit,
+            status: item.status,
+            facility: item.location,
+          }));
 
-        console.log("Resources Response:", resourcesResponse); // Debug log
-
-        // Transform the data to match the inventory format
-        const inventoryData = resourcesResponse.map((item) => ({
-          resource: item.name,
-          category: item.category,
-          remaining: parseFloat(item.quantity || 0), // quantity is already the remaining stock
-          unit: item.unit,
-          status: item.status,
-          facility: item.location,
-        }));
-
+          const facilityMap = {};
+          resourcesResponse.forEach((item) => {
+            const facilityName = item.location || "Unknown";
+            const remaining = parseFloat(item.quantity || 0);
+            if (!facilityMap[facilityName]) {
+              facilityMap[facilityName] = { name: facilityName, resources: 0 };
+            }
+            facilityMap[facilityName].resources += remaining;
+          });
+          facilitiesData = Object.values(facilityMap).filter((f) => f.resources > 0);
+        } catch (e) {
+          console.warn("Resources API unavailable, using demo mode", e);
+          usingFallback = true;
+        }
         setInventory(inventoryData);
-
-        // Group resources by actual hospital/facility name
-        const facilityMap = {};
-
-        resourcesResponse.forEach((item) => {
-          const facilityName = item.location || "Unknown";
-          const remaining = parseFloat(item.quantity || 0);
-
-          if (!facilityMap[facilityName]) {
-            facilityMap[facilityName] = {
-              name: facilityName,
-              resources: 0,
-            };
-          }
-
-          facilityMap[facilityName].resources += remaining;
-        });
-
-        // Only include facilities that have resources
-        const facilitiesData = Object.values(facilityMap).filter(
-          (f) => f.resources > 0,
-        );
         setFacilities(facilitiesData);
 
-        console.log("Inventory Data:", inventoryData); // Debug log
-        console.log("Facilities Data:", facilitiesData); // Debug log
+        // ── 2. Requests ──
+        try {
+          const reqResponse = await api.get("/requests", { params: { per_page: 10, status: "pending" } });
+          const reqData = reqResponse.data?.data || reqResponse.data || [];
+          setRequests(
+            reqData.map((r) => ({
+              id: `R-${r.id}`,
+              location: r.resource_name || r.hospital?.name || "Unknown",
+              urgency: r.urgency_level || "Medium",
+              time: r.created_at
+                ? formatDistanceToNow(new Date(r.created_at), { addSuffix: true })
+                : "",
+              items: r.quantity || 1,
+            }))
+          );
+        } catch (e) {
+          console.warn("Requests API unavailable, using demo fallback", e);
+          setRequests(DEMO_RESOURCE_REQUESTS);
+          usingFallback = true;
+        }
+
+        // ── 3. Shipments (allocations in transit) ──
+        try {
+          const allocResponse = await api.get("/allocations", { params: { per_page: 10 } });
+          const allocData = allocResponse.data?.data || allocResponse.data || [];
+          setShipments(
+            allocData.slice(0, 6).map((a) => ({
+              id: `S-${a.id}`,
+              route: `${a.source_hospital?.name || "Source"} → ${a.destination_hospital?.name || "Dest"}`,
+              eta: a.estimated_delivery || a.updated_at,
+              status: a.status === "in_transit" ? "In Transit" : a.status === "delayed" ? "Delayed" : a.status,
+              contents: a.resource?.name || "Supplies",
+              priority: a.urgency_level || "Medium",
+            }))
+          );
+        } catch (e) {
+          console.warn("Allocations API unavailable, using demo fallback", e);
+          setShipments(DEMO_SHIPMENTS);
+          usingFallback = true;
+        }
+
+        // ── 4. Assets ──
+        try {
+          const assetResponse = await api.get("/assets", { params: { per_page: 20 } });
+          const assetData = assetResponse.data?.data || assetResponse.data || [];
+          setAssets(
+            assetData.map((a) => ({
+              name: a.name || a.code || "Unknown",
+              status: a.status || "Idle",
+            }))
+          );
+        } catch (e) {
+          console.warn("Assets API unavailable, using demo fallback", e);
+          setAssets(DEMO_ASSETS);
+          usingFallback = true;
+        }
+
+        setIsDemoMode(usingFallback);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         setError(error.message);
-        // Fallback to mock data on error
-        setInventory(MOCK_INVENTORY_ITEMS);
-        setFacilities(MOCK_FACILITIES);
+        setIsDemoMode(true);
       } finally {
         setLoading(false);
       }
@@ -921,6 +801,15 @@ const LogisDash = () => {
 
     return (
       <>
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <span>
+              <strong>Demo Mode:</strong> Some data shown is sample data because one or more API endpoints are unavailable.
+            </span>
+          </div>
+        )}
         {/* ROW 1: Top Cards */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <div className="md:col-span-1 lg:col-span-1 h-full">

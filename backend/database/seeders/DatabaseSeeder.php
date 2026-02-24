@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
             RequestSeeder::class,
             AssetSeeder::class,
             ResponderSeeder::class,
+            ResourceResilienceConfigSeeder::class,
         ]);
     }
 }

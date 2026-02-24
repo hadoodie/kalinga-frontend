@@ -185,6 +185,8 @@ export default function ForecastDashboard() {
         setIsDemo(true);
         if (!summaryVal) {
           setFetchError("Could not reach forecast API — showing sample data");
+        } else {
+          setFetchError("No forecast data in database yet — run the pipeline first, or showing sample data");
         }
       }
       setLastRefresh(new Date());

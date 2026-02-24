@@ -408,6 +408,10 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
                 Route::get('/resilience-configs', [HospitalSafetyIndexController::class, 'resilienceConfigs']);
                 Route::post('/resilience-configs', [HospitalSafetyIndexController::class, 'storeResilienceConfig']);
             });
+
+            // Resilience config single-resource routes (outside hospital prefix)
+            Route::patch('/resilience-configs/{config}', [HospitalSafetyIndexController::class, 'updateResilienceConfig']);
+            Route::delete('/resilience-configs/{config}', [HospitalSafetyIndexController::class, 'deleteResilienceConfig']);
             
             // Individual resource routes
             Route::get('/assessments/{assessment}', [HospitalSafetyIndexController::class, 'showAssessment']);
