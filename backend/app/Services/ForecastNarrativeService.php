@@ -115,7 +115,7 @@ class ForecastNarrativeService
 
         // Demand by resource category
         $demandByCategory = $latestDemand
-            ->join('resources', 'forecast_demands.resource_id', '=', 'resources.id')
+            ->join('resources', 'forecast_demand_hourly.resource_id', '=', 'resources.id')
             ->select('resources.category', DB::raw('ROUND(AVG(yhat), 2) as avg_demand'))
             ->groupBy('resources.category')
             ->pluck('avg_demand', 'category')

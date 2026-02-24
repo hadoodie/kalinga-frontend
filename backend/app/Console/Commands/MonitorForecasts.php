@@ -133,7 +133,7 @@ class MonitorForecasts extends Command
 
         // Get actual consumption for the same time windows
         $actuals = StockMovement::where('created_at', '>=', $since)
-            ->where('type', 'out')
+            ->where('movement_type', 'out')
             ->select([
                 'hospital_id',
                 'resource_id',
@@ -150,7 +150,7 @@ class MonitorForecasts extends Command
         $actVals = [];
 
         foreach ($pastForecasts as $fc) {
-            $key = "{$fc->hospital_id}-{$fc->resource_id}-{$fc->forecast_time}";
+            $key = "{$fc->hospital_id}-{$fc->resource_id}-{$fc->forecast_time->format('Y-m-d H:00:00')}";
             $actual = $actuals->get($key);
 
             if ($actual) {
@@ -189,12 +189,18 @@ class MonitorForecasts extends Command
 
     /**
      * Evaluate risk predictions against what actually happened.
+     *
+     * Instead of checking the current resources.current_quantity snapshot
+     * (which may have been restocked since), we look at historical stock
+     * movements during the evaluation window to find (hospital, resource)
+     * pairs where outflows significantly exceeded inflows — a proxy for
+     * stockout stress during the predicted period.
      */
     private function evaluateRiskPredictions(int $days): ?array
     {
         $since = now()->subDays($days);
 
-        // Get past risk predictions
+        // Get past risk predictions that have already elapsed
         $risks = ForecastRisk::where('forecast_time', '<=', now())
             ->where('generated_at', '>=', $since)
             ->get();
@@ -203,13 +209,23 @@ class MonitorForecasts extends Command
             return null;
         }
 
-        // Check if stockouts actually occurred
-        $stockouts = DB::table('resources')
-            ->where('current_quantity', '<=', 0)
-            ->select('hospital_id', 'id as resource_id')
-            ->get()
-            ->mapWithKeys(fn ($r) => ["{$r->hospital_id}-{$r->resource_id}" => true])
-            ->toArray();
+        // Identify (hospital, resource) pairs where net outflow exceeded
+        // inflow during the evaluation window — proxy for stockout stress.
+        $netFlows = DB::table('stock_movements')
+            ->where('created_at', '>=', $since)
+            ->where('created_at', '<=', now())
+            ->select(
+                'hospital_id',
+                'resource_id',
+                DB::raw("SUM(CASE WHEN movement_type = 'out' THEN quantity ELSE 0 END) as total_out"),
+                DB::raw("SUM(CASE WHEN movement_type = 'in' THEN quantity ELSE 0 END) as total_in")
+            )
+            ->groupBy('hospital_id', 'resource_id')
+            ->get();
+
+        $stressedPairs = $netFlows
+            ->filter(fn ($r) => $r->total_out > $r->total_in * 1.5)
+            ->mapWithKeys(fn ($r) => ["{$r->hospital_id}-{$r->resource_id}" => true]);
 
         $correct = 0;
         $falseAlarms = 0;
@@ -218,19 +234,19 @@ class MonitorForecasts extends Command
 
         foreach ($risks->groupBy(fn ($r) => "{$r->hospital_id}-{$r->resource_id}") as $key => $group) {
             $worstLevel = $group->sortByDesc('risk_prob')->first()->risk_level;
-            $didStockOut = $stockouts[$key] ?? false;
+            $actualStress = $stressedPairs->has($key);
             $total++;
 
             $predictedHigh = in_array($worstLevel, ['high', 'critical']);
 
-            if ($predictedHigh && $didStockOut) {
-                $correct++;
-            } elseif (!$predictedHigh && !$didStockOut) {
-                $correct++;
-            } elseif ($predictedHigh && !$didStockOut) {
-                $falseAlarms++;
-            } elseif (!$predictedHigh && $didStockOut) {
-                $missedRisks++;
+            if ($predictedHigh && $actualStress) {
+                $correct++;         // True positive
+            } elseif (!$predictedHigh && !$actualStress) {
+                $correct++;         // True negative
+            } elseif ($predictedHigh && !$actualStress) {
+                $falseAlarms++;     // False positive
+            } elseif (!$predictedHigh && $actualStress) {
+                $missedRisks++;     // False negative
             }
         }
 

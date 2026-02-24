@@ -44,9 +44,10 @@ def write_demand_forecasts(df: pd.DataFrame, engine=None):
 
     with engine.begin() as conn:
         # Delete stale forecasts (older than retention period)
-        conn.execute(text(
-            f"DELETE FROM forecast_demand_hourly WHERE generated_at < NOW() - INTERVAL '{FORECAST_RETENTION_DAYS} days'"
-        ))
+        conn.execute(
+            text("DELETE FROM forecast_demand_hourly WHERE generated_at < NOW() - :days * INTERVAL '1 day'"),
+            {"days": FORECAST_RETENTION_DAYS},
+        )
         out.to_sql("forecast_demand_hourly", conn, if_exists="append", index=False)
 
     print(f"[writer] Wrote {len(out)} demand forecasts to DB")
@@ -82,9 +83,10 @@ def write_risk_forecasts(df: pd.DataFrame, engine=None):
     out = pd.DataFrame(records)
 
     with engine.begin() as conn:
-        conn.execute(text(
-            f"DELETE FROM forecast_risk_hourly WHERE generated_at < NOW() - INTERVAL '{FORECAST_RETENTION_DAYS} days'"
-        ))
+        conn.execute(
+            text("DELETE FROM forecast_risk_hourly WHERE generated_at < NOW() - :days * INTERVAL '1 day'"),
+            {"days": FORECAST_RETENTION_DAYS},
+        )
         out.to_sql("forecast_risk_hourly", conn, if_exists="append", index=False)
 
     print(f"[writer] Wrote {len(out)} risk forecasts to DB")
@@ -101,12 +103,14 @@ def prune_old_forecasts(engine=None, retention_days: int | None = None):
     days = retention_days or FORECAST_RETENTION_DAYS
 
     with engine.begin() as conn:
-        d = conn.execute(text(
-            f"DELETE FROM forecast_demand_hourly WHERE generated_at < NOW() - INTERVAL '{days} days'"
-        ))
-        r = conn.execute(text(
-            f"DELETE FROM forecast_risk_hourly WHERE generated_at < NOW() - INTERVAL '{days} days'"
-        ))
+        d = conn.execute(
+            text("DELETE FROM forecast_demand_hourly WHERE generated_at < NOW() - :days * INTERVAL '1 day'"),
+            {"days": days},
+        )
+        r = conn.execute(
+            text("DELETE FROM forecast_risk_hourly WHERE generated_at < NOW() - :days * INTERVAL '1 day'"),
+            {"days": days},
+        )
     demand_deleted = d.rowcount
     risk_deleted = r.rowcount
     print(f"[prune] Removed {demand_deleted} demand + {risk_deleted} risk rows older than {days}d")

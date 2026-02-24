@@ -31,8 +31,8 @@ ENV PORT=8001
 EXPOSE ${PORT}
 
 # Health check for Render / Docker Compose
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen(f'http://localhost:{__import__(\"os\").environ.get(\"PORT\",8001)}/api/v1/health')" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:${PORT}/api/v1/health || exit 1
 
 # Start uvicorn — Render sets $PORT automatically
 CMD ["sh", "-c", "uvicorn forecasting.api:app --host 0.0.0.0 --port ${PORT}"]

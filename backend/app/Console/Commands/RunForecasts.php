@@ -57,7 +57,21 @@ class RunForecasts extends Command
         if ($dryRun) {
             $this->warn("  [DRY-RUN] Would execute: {$pythonCmd}");
         } else {
-            $result = Process::timeout(300)->run($pythonCmd);
+            $projectRoot = base_path() . '/..';
+            $env = [];
+
+            try {
+                $env['FORECAST_DATABASE_URL'] = $this->buildDatabaseUrl();
+            } catch (\Exception $e) {
+                Log::warning('Could not build FORECAST_DATABASE_URL, Python will use its own .env', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            $result = Process::path($projectRoot)
+                ->env($env)
+                ->timeout(300)
+                ->run($pythonCmd);
 
             if (!$result->successful()) {
                 $this->error('  ✗ Python pipeline failed:');
@@ -166,53 +180,42 @@ class RunForecasts extends Command
 
     /**
      * Build the Python command to run the forecast pipeline.
-     * Passes FORECAST_DATABASE_URL so Python writes to the same DB Laravel reads.
      */
     private function buildPythonCommand(string $mode, int $horizon): string
     {
-        $projectRoot = base_path() . '/..';
         $python = $this->findPython();
 
-        $args = [
+        return implode(' ', array_map('escapeshellarg', [
             $python,
             '-m', 'forecasting.run_forecast',
             "--{$mode}",
             '--horizon', (string) $horizon,
-        ];
-
-        // Build env prefix to guarantee Python targets the same DB as Laravel
-        $envPrefix = $this->buildDatabaseEnvPrefix();
-
-        return 'cd ' . escapeshellarg($projectRoot) . ' && ' . $envPrefix . implode(' ', array_map('escapeshellarg', $args));
+        ]));
     }
 
     /**
-     * Build an env-var prefix so the Python subprocess targets the active DB.
+     * Build the PostgreSQL connection URL for the Python pipeline.
+     * Credentials are URL-encoded to handle special characters safely.
      */
-    private function buildDatabaseEnvPrefix(): string
+    private function buildDatabaseUrl(): string
     {
-        try {
-            $cfg = config('database.connections.' . config('database.default'));
-            $host = $cfg['host'] ?? '127.0.0.1';
-            $port = $cfg['port'] ?? 5432;
-            $db   = $cfg['database'] ?? 'db_kalinga';
-            $user = $cfg['username'] ?? 'postgres';
-            $pass = $cfg['password'] ?? '';
-            $ssl  = $cfg['sslmode'] ?? 'prefer';
+        $cfg = config('database.connections.' . config('database.default'));
+        $host = $cfg['host'] ?? '127.0.0.1';
+        $port = $cfg['port'] ?? 5432;
+        $db   = $cfg['database'] ?? 'db_kalinga';
+        $user = $cfg['username'] ?? 'postgres';
+        $pass = $cfg['password'] ?? '';
+        $ssl  = $cfg['sslmode'] ?? 'prefer';
 
-            $url = "postgresql://{$user}:{$pass}@{$host}:{$port}/{$db}?sslmode={$ssl}";
-
-            if (PHP_OS_FAMILY === 'Windows') {
-                return 'set "FORECAST_DATABASE_URL=' . $url . '" && ';
-            }
-
-            return 'FORECAST_DATABASE_URL=' . escapeshellarg($url) . ' ';
-        } catch (\Exception $e) {
-            Log::warning('Could not build FORECAST_DATABASE_URL, Python will use its own .env', [
-                'error' => $e->getMessage(),
-            ]);
-            return '';
-        }
+        return sprintf(
+            'postgresql://%s:%s@%s:%s/%s?sslmode=%s',
+            rawurlencode($user),
+            rawurlencode($pass),
+            $host,
+            $port,
+            $db,
+            $ssl
+        );
     }
 
     /**

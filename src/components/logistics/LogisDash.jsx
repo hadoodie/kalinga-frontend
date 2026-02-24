@@ -31,12 +31,8 @@ import { formatDistanceToNow } from "date-fns";
 // Import Hospital Dashboard
 import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
 
-// Import AI Forecast components
-import ForecastSummaryCard from "./ForecastSummaryCard";
-import DemandForecastChart from "./DemandForecastChart";
-import RiskHeatmap from "./RiskHeatmap";
-import ForecastNarrative from "./ForecastNarrative";
-import AutoReorderMonitor from "./AutoReorderMonitor";
+// Import AI Forecast v2 dashboard
+import ForecastDashboard from "./forecast-v2/ForecastDashboard";
 
 // --- MOCK DATA ---
 const MOCK_RESOURCE_REQUESTS = [
@@ -887,29 +883,7 @@ const LogisDash = () => {
     }
 
     if (activeTab === "forecast") {
-      return (
-        <div className="space-y-6">
-          {/* Row 1: AI Executive Summary */}
-          <ForecastNarrative />
-
-          {/* Row 2: Summary Card + Auto-Reorder side by side */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ForecastSummaryCard />
-            <AutoReorderMonitor />
-          </div>
-
-          {/* Row 3: Demand Chart */}
-          <DemandForecastChart />
-
-          {/* Row 4: Risk Heatmap */}
-          <RiskHeatmap />
-
-          <footer className="text-center mt-8 text-sm text-gray-500">
-            AI Forecasting v0.1 — Models update every 2 hours • Auto-reorder
-            enabled
-          </footer>
-        </div>
-      );
+      return <ForecastDashboard />;
     }
 
     if (loading) {
