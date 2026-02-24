@@ -222,6 +222,14 @@ def main(demo, production, horizon, seed, output):
         n_risk = write_risk_forecasts(risk_output)
         click.echo(f"  📊 Written to database: {n_demand} demand + {n_risk} risk forecasts")
 
+    # ── Cleanup old artifacts ────────────────────────────────
+    click.echo("\n[cleanup] Removing stale artifacts...")
+    try:
+        from forecasting.etl.cleanup import cleanup_old_artifacts
+        cleanup_old_artifacts()
+    except Exception as e:
+        click.echo(f"  ⚠ Artifact cleanup failed ({e}), continuing")
+
     elapsed = time.time() - start_time
     click.echo(f"\n✅ Pipeline complete in {elapsed:.1f}s")
 

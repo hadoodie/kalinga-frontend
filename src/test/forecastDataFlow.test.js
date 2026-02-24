@@ -28,30 +28,26 @@ describe("Logistics forecast data-flow integration", () => {
 
   describe("forecastService exports", () => {
     it("exposes getHospitalDetail method", async () => {
-      const { default: forecastService } = await import(
-        "../services/forecastService"
-      );
+      const { default: forecastService } =
+        await import("../services/forecastService");
       expect(typeof forecastService.getHospitalDetail).toBe("function");
     });
 
     it("exposes getAutoReorders method", async () => {
-      const { default: forecastService } = await import(
-        "../services/forecastService"
-      );
+      const { default: forecastService } =
+        await import("../services/forecastService");
       expect(typeof forecastService.getAutoReorders).toBe("function");
     });
 
     it("exposes getNarrative method", async () => {
-      const { default: forecastService } = await import(
-        "../services/forecastService"
-      );
+      const { default: forecastService } =
+        await import("../services/forecastService");
       expect(typeof forecastService.getNarrative).toBe("function");
     });
 
     it("exposes getSummary method", async () => {
-      const { default: forecastService } = await import(
-        "../services/forecastService"
-      );
+      const { default: forecastService } =
+        await import("../services/forecastService");
       expect(typeof forecastService.getSummary).toBe("function");
     });
   });

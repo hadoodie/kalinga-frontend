@@ -87,8 +87,8 @@ Schedule::command('forecasts:monitor --retrain --days=7')
         info('Forecast monitoring completed at ' . now());
     });
 
-// Prune old forecast data weekly (keep last 30 days)
-Schedule::command('forecasts:prune --days=30')
+// Prune old forecast data weekly (retention read from FORECAST_RETENTION_DAYS env)
+Schedule::command('forecasts:prune')
     ->weekly()
     ->sundays()
     ->at('03:00')

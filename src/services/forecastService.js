@@ -147,6 +147,70 @@ const forecastService = {
       throw error;
     }
   },
+
+  // ── Pipeline Health ──────────────────────────────────────
+
+  /**
+   * Fetch pipeline health status.
+   * Returns: { status, last_run, demand_rows, risk_rows, model_version, stale, checked_at }
+   */
+  getHealth: async () => {
+    try {
+      const response = await api.get("/forecasts/health");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching forecast health:", error);
+      throw error;
+    }
+  },
+
+  // ── Forecast Accuracy ────────────────────────────────────
+
+  /**
+   * Fetch accuracy metrics (MAPE/MAE per resource).
+   * @param {Object} params - { days }
+   */
+  getAccuracy: async (params = {}) => {
+    try {
+      const response = await api.get("/forecasts/accuracy", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching forecast accuracy:", error);
+      throw error;
+    }
+  },
+
+  // ── Pipeline History ─────────────────────────────────────
+
+  /**
+   * Fetch past pipeline run history.
+   * @param {Object} params - { limit }
+   */
+  getHistory: async (params = {}) => {
+    try {
+      const response = await api.get("/forecasts/history", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching forecast history:", error);
+      throw error;
+    }
+  },
+
+  // ── Manual Trigger ───────────────────────────────────────
+
+  /**
+   * Manually trigger a forecast pipeline run.
+   * @param {Object} params - { mode, horizon }
+   */
+  triggerRun: async (params = {}) => {
+    try {
+      const response = await api.post("/forecasts/trigger", params);
+      return response.data;
+    } catch (error) {
+      console.error("Error triggering forecast run:", error);
+      throw error;
+    }
+  },
 };
 
 export default forecastService;

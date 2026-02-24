@@ -28,6 +28,8 @@ import ScenarioSandbox from "./ScenarioSandbox";
 import RiskHeatmapV2 from "./RiskHeatmapV2";
 import NarrativeDrawer from "./NarrativeDrawer";
 import ActionSlideOver from "./ActionSlideOver";
+import PipelineHealthBar from "./PipelineHealthBar";
+import AccuracyPanel from "./AccuracyPanel";
 
 // ── Loading screen with animated forecast visuals ────────────
 function ForecastLoadingScreen() {
@@ -196,7 +198,9 @@ export default function ForecastDashboard() {
         if (!summaryVal) {
           setFetchError("Could not reach forecast API — showing sample data");
         } else {
-          setFetchError("No forecast data in database yet — run the pipeline first, or showing sample data");
+          setFetchError(
+            "No forecast data in database yet — run the pipeline first, or showing sample data",
+          );
         }
       }
       setLastRefresh(new Date());
@@ -240,7 +244,10 @@ export default function ForecastDashboard() {
   useEffect(() => {
     const channel = echo.channel("logistics");
     channel.listen(".forecast.generated", (event) => {
-      console.info("[ForecastDashboard] forecast.generated event received", event);
+      console.info(
+        "[ForecastDashboard] forecast.generated event received",
+        event,
+      );
       fetchAll();
       fetchAutoReorders();
     });
@@ -405,6 +412,9 @@ export default function ForecastDashboard() {
         loading={isLoading}
       />
 
+      {/* Pipeline Health Bar (expandable) */}
+      {!isDemo && <PipelineHealthBar onRefreshData={fetchAll} />}
+
       {/* API error banner */}
       {fetchError && isDemo && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 flex items-center gap-2">
@@ -494,14 +504,21 @@ export default function ForecastDashboard() {
                 (last 48h)
               </span>
             </h3>
-            <span className="text-xs text-slate-400">{autoReorders.length} request{autoReorders.length !== 1 ? "s" : ""}</span>
+            <span className="text-xs text-slate-400">
+              {autoReorders.length} request
+              {autoReorders.length !== 1 ? "s" : ""}
+            </span>
           </div>
           <div className="overflow-x-auto max-h-52 overflow-y-auto">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-white">
                 <tr className="text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                  <th className="text-left px-5 py-2.5 font-medium">Resource</th>
-                  <th className="text-left px-3 py-2.5 font-medium">Hospital</th>
+                  <th className="text-left px-5 py-2.5 font-medium">
+                    Resource
+                  </th>
+                  <th className="text-left px-3 py-2.5 font-medium">
+                    Hospital
+                  </th>
                   <th className="text-right px-3 py-2.5 font-medium">Qty</th>
                   <th className="text-left px-3 py-2.5 font-medium">Urgency</th>
                   <th className="text-left px-5 py-2.5 font-medium">Created</th>
@@ -509,9 +526,14 @@ export default function ForecastDashboard() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {autoReorders.slice(0, 20).map((req) => (
-                  <tr key={req.id} className="hover:bg-slate-50/60 transition-colors">
+                  <tr
+                    key={req.id}
+                    className="hover:bg-slate-50/60 transition-colors"
+                  >
                     <td className="px-5 py-2.5 font-medium text-slate-700 truncate max-w-[160px]">
-                      {req.resource?.name || req.resource_name || `#${req.resource_id}`}
+                      {req.resource?.name ||
+                        req.resource_name ||
+                        `#${req.resource_id}`}
                     </td>
                     <td className="px-3 py-2.5 text-slate-500 truncate max-w-[140px]">
                       {req.hospital?.name || `Hospital #${req.hospital_id}`}
@@ -520,13 +542,15 @@ export default function ForecastDashboard() {
                       {Number(req.quantity).toLocaleString()}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                        req.urgency_level === "Critical"
-                          ? "bg-red-100 text-red-700"
-                          : req.urgency_level === "High"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-amber-100 text-amber-700"
-                      }`}>
+                      <span
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                          req.urgency_level === "Critical"
+                            ? "bg-red-100 text-red-700"
+                            : req.urgency_level === "High"
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
                         {req.urgency_level}
                       </span>
                     </td>
@@ -569,6 +593,9 @@ export default function ForecastDashboard() {
         riskDistribution={riskDistribution}
         isLoading={isLoading}
       />
+
+      {/* Layer 4: Accuracy tracking */}
+      {!isDemo && <AccuracyPanel />}
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-400 pb-4">

@@ -36,14 +36,46 @@ import ForecastDashboard from "./forecast-v2/ForecastDashboard";
 
 // --- DEMO FALLBACK DATA (shown with a visible banner when API is unavailable) ---
 const DEMO_RESOURCE_REQUESTS = [
-  { id: "R-1001", location: "Barangay San Jose", urgency: "Critical", time: "2 hours ago", items: 3 },
-  { id: "R-1002", location: "Evacuation Center 3", urgency: "High", time: "3 hours ago", items: 2 },
-  { id: "R-1003", location: "Field Hospital Beta", urgency: "Medium", time: "5 hours ago", items: 1 },
+  {
+    id: "R-1001",
+    location: "Barangay San Jose",
+    urgency: "Critical",
+    time: "2 hours ago",
+    items: 3,
+  },
+  {
+    id: "R-1002",
+    location: "Evacuation Center 3",
+    urgency: "High",
+    time: "3 hours ago",
+    items: 2,
+  },
+  {
+    id: "R-1003",
+    location: "Field Hospital Beta",
+    urgency: "Medium",
+    time: "5 hours ago",
+    items: 1,
+  },
 ];
 
 const DEMO_SHIPMENTS = [
-  { id: "S-7001", route: "Depot A → Field Hospital", eta: "2025-09-29T20:30:00Z", status: "In Transit", contents: "Medical Supplies", priority: "High" },
-  { id: "S-7002", route: "Warehouse B → Evac Zone 4", eta: "2025-09-29T19:45:00Z", status: "Delayed", contents: "Water, Blankets", priority: "Critical" },
+  {
+    id: "S-7001",
+    route: "Depot A → Field Hospital",
+    eta: "2025-09-29T20:30:00Z",
+    status: "In Transit",
+    contents: "Medical Supplies",
+    priority: "High",
+  },
+  {
+    id: "S-7002",
+    route: "Warehouse B → Evac Zone 4",
+    eta: "2025-09-29T19:45:00Z",
+    status: "Delayed",
+    contents: "Water, Blankets",
+    priority: "Critical",
+  },
 ];
 
 const DEMO_ASSETS = [
@@ -53,7 +85,14 @@ const DEMO_ASSETS = [
 ];
 
 const DEMO_NOTIFICATIONS = [
-  { id: 1, title: "Low Stock Alert", message: "Demo notification — connect API for real data", priority: "Critical", time: "5 mins ago", read: false },
+  {
+    id: 1,
+    title: "Low Stock Alert",
+    message: "Demo notification — connect API for real data",
+    priority: "Critical",
+    time: "5 mins ago",
+    read: false,
+  },
 ];
 
 const NotificationWidget = () => {
@@ -679,7 +718,9 @@ const LogisDash = () => {
             }
             facilityMap[facilityName].resources += remaining;
           });
-          facilitiesData = Object.values(facilityMap).filter((f) => f.resources > 0);
+          facilitiesData = Object.values(facilityMap).filter(
+            (f) => f.resources > 0,
+          );
         } catch (e) {
           console.warn("Resources API unavailable, using demo mode", e);
           usingFallback = true;
@@ -689,7 +730,9 @@ const LogisDash = () => {
 
         // ── 2. Requests ──
         try {
-          const reqResponse = await api.get("/requests", { params: { per_page: 10, status: "pending" } });
+          const reqResponse = await api.get("/requests", {
+            params: { per_page: 10, status: "pending" },
+          });
           const reqData = reqResponse.data?.data || reqResponse.data || [];
           setRequests(
             reqData.map((r) => ({
@@ -697,10 +740,12 @@ const LogisDash = () => {
               location: r.resource_name || r.hospital?.name || "Unknown",
               urgency: r.urgency_level || "Medium",
               time: r.created_at
-                ? formatDistanceToNow(new Date(r.created_at), { addSuffix: true })
+                ? formatDistanceToNow(new Date(r.created_at), {
+                    addSuffix: true,
+                  })
                 : "",
               items: r.quantity || 1,
-            }))
+            })),
           );
         } catch (e) {
           console.warn("Requests API unavailable, using demo fallback", e);
@@ -710,17 +755,25 @@ const LogisDash = () => {
 
         // ── 3. Shipments (allocations in transit) ──
         try {
-          const allocResponse = await api.get("/allocations", { params: { per_page: 10 } });
-          const allocData = allocResponse.data?.data || allocResponse.data || [];
+          const allocResponse = await api.get("/allocations", {
+            params: { per_page: 10 },
+          });
+          const allocData =
+            allocResponse.data?.data || allocResponse.data || [];
           setShipments(
             allocData.slice(0, 6).map((a) => ({
               id: `S-${a.id}`,
               route: `${a.source_hospital?.name || "Source"} → ${a.destination_hospital?.name || "Dest"}`,
               eta: a.estimated_delivery || a.updated_at,
-              status: a.status === "in_transit" ? "In Transit" : a.status === "delayed" ? "Delayed" : a.status,
+              status:
+                a.status === "in_transit"
+                  ? "In Transit"
+                  : a.status === "delayed"
+                    ? "Delayed"
+                    : a.status,
               contents: a.resource?.name || "Supplies",
               priority: a.urgency_level || "Medium",
-            }))
+            })),
           );
         } catch (e) {
           console.warn("Allocations API unavailable, using demo fallback", e);
@@ -730,13 +783,16 @@ const LogisDash = () => {
 
         // ── 4. Assets ──
         try {
-          const assetResponse = await api.get("/assets", { params: { per_page: 20 } });
-          const assetData = assetResponse.data?.data || assetResponse.data || [];
+          const assetResponse = await api.get("/assets", {
+            params: { per_page: 20 },
+          });
+          const assetData =
+            assetResponse.data?.data || assetResponse.data || [];
           setAssets(
             assetData.map((a) => ({
               name: a.name || a.code || "Unknown",
               status: a.status || "Idle",
-            }))
+            })),
           );
         } catch (e) {
           console.warn("Assets API unavailable, using demo fallback", e);
@@ -806,7 +862,8 @@ const LogisDash = () => {
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
             <AlertTriangle className="h-4 w-4 flex-shrink-0" />
             <span>
-              <strong>Demo Mode:</strong> Some data shown is sample data because one or more API endpoints are unavailable.
+              <strong>Demo Mode:</strong> Some data shown is sample data because
+              one or more API endpoints are unavailable.
             </span>
           </div>
         )}
