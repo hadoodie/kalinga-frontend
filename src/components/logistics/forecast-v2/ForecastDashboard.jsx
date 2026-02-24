@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { BrainCircuit, Loader2, TrendingUp, ShieldAlert, BarChart3 } from "lucide-react";
 import forecastService from "../../../services/forecastService";
 import api from "../../../services/api";
 import {
@@ -18,23 +19,47 @@ import RiskHeatmapV2 from "./RiskHeatmapV2";
 import NarrativeDrawer from "./NarrativeDrawer";
 import ActionSlideOver from "./ActionSlideOver";
 
-// ── Skeleton matching the real layout ────────────────────────
-function DashboardSkeleton() {
+// ── Loading screen with animated forecast visuals ────────────
+function ForecastLoadingScreen() {
+  const steps = [
+    { icon: BrainCircuit, label: "Connecting to forecast engine", color: "text-violet-500" },
+    { icon: TrendingUp, label: "Analyzing demand patterns", color: "text-blue-500" },
+    { icon: ShieldAlert, label: "Evaluating supply risk", color: "text-amber-500" },
+    { icon: BarChart3, label: "Building dashboard", color: "text-emerald-500" },
+  ];
+
   return (
-    <div className="space-y-6 animate-pulse" aria-busy="true" aria-label="Loading forecast dashboard">
-      <div className="h-16 rounded-2xl bg-slate-100" />
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-2xl bg-slate-100" />)}
+    <div className="flex items-center justify-center min-h-[60vh]" aria-busy="true" aria-label="Loading AI forecast dashboard">
+      <div className="text-center max-w-sm">
+        {/* Animated icon ring */}
+        <div className="relative mx-auto mb-8 h-24 w-24">
+          {/* Outer spinning ring */}
+          <div className="absolute inset-0 rounded-full border-2 border-slate-100" />
+          <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-blue-500 border-r-violet-500 animate-spin" />
+          {/* Inner pulsing icon */}
+          <div className="absolute inset-3 flex items-center justify-center rounded-full bg-gradient-to-br from-blue-50 to-violet-50">
+            <BrainCircuit className="h-10 w-10 text-blue-600 animate-pulse" />
+          </div>
+        </div>
+
+        <h3 className="text-lg font-bold text-slate-800 mb-2">Loading AI Forecast</h3>
+        <p className="text-sm text-slate-400 mb-6">Crunching 48-hour predictions across all facilities</p>
+
+        {/* Step indicators */}
+        <div className="space-y-3 text-left">
+          {steps.map((step, i) => (
+            <div
+              key={step.label}
+              className="flex items-center gap-3 rounded-xl bg-white border border-slate-100 px-4 py-2.5 shadow-sm animate-pulse"
+              style={{ animationDelay: `${i * 200}ms`, animationDuration: "1.5s" }}
+            >
+              <step.icon className={`h-4 w-4 shrink-0 ${step.color}`} />
+              <span className="text-sm text-slate-600">{step.label}</span>
+              <Loader2 className="h-3.5 w-3.5 ml-auto text-slate-300 animate-spin" />
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-2 h-72 rounded-2xl bg-slate-100" />
-        <div className="lg:col-span-3 h-72 rounded-2xl bg-slate-100" />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="h-52 rounded-2xl bg-slate-100" />
-        <div className="lg:col-span-2 h-52 rounded-2xl bg-slate-100" />
-      </div>
-      <div className="h-16 rounded-2xl bg-slate-100" />
     </div>
   );
 }
@@ -248,7 +273,7 @@ export default function ForecastDashboard() {
 
   // ── Render ─────────────────────────────────────────────────
   if (isLoading && !summary) {
-    return <DashboardSkeleton />;
+    return <ForecastLoadingScreen />;
   }
 
   return (

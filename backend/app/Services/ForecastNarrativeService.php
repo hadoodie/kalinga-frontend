@@ -76,21 +76,19 @@ class ForecastNarrativeService
      */
     private function gatherForecastStats(): array
     {
-        $latestDemand = ForecastDemand::latestRun();
-        $latestRisk = ForecastRisk::latestRun();
-
-        $totalDemand = $latestDemand->count();
-        $totalRisk = $latestRisk->count();
+        // IMPORTANT: Each query needs a fresh scope — Eloquent builders are mutable.
+        $totalDemand = ForecastDemand::latestRun()->count();
+        $totalRisk = ForecastRisk::latestRun()->count();
 
         // Risk distribution
-        $riskDist = $latestRisk
+        $riskDist = ForecastRisk::latestRun()
             ->select('risk_level', DB::raw('COUNT(*) as count'))
             ->groupBy('risk_level')
             ->pluck('count', 'risk_level')
             ->toArray();
 
         // Top critical items (hospital × resource)
-        $criticalItems = $latestRisk
+        $criticalItems = ForecastRisk::latestRun()
             ->whereIn('risk_level', ['high', 'critical'])
             ->select([
                 'hospital_id', 'resource_id',
@@ -101,20 +99,23 @@ class ForecastNarrativeService
             ->groupBy('hospital_id', 'resource_id')
             ->orderByDesc('max_risk')
             ->limit(10)
-            ->with(['hospital:id,name', 'resource:id,name,category'])
             ->get()
-            ->map(fn ($item) => [
-                'hospital' => $item->hospital?->name ?? "H#{$item->hospital_id}",
-                'resource' => $item->resource?->name ?? "R#{$item->resource_id}",
-                'category' => $item->resource?->category ?? 'unknown',
-                'risk_prob' => round($item->max_risk * 100),
-                'days_until_stockout' => round($item->min_days, 1),
-                'risk_level' => $item->worst_level,
-            ])
+            ->map(function ($item) {
+                $hospital = \App\Models\Hospital::find($item->hospital_id);
+                $resource = \App\Models\Resource::find($item->resource_id);
+                return [
+                    'hospital' => $hospital?->name ?? "H#{$item->hospital_id}",
+                    'resource' => $resource?->name ?? "R#{$item->resource_id}",
+                    'category' => $resource?->category ?? 'unknown',
+                    'risk_prob' => round($item->max_risk * 100),
+                    'days_until_stockout' => round($item->min_days, 1),
+                    'risk_level' => $item->worst_level,
+                ];
+            })
             ->toArray();
 
         // Demand by resource category
-        $demandByCategory = $latestDemand
+        $demandByCategory = ForecastDemand::latestRun()
             ->join('resources', 'forecast_demand_hourly.resource_id', '=', 'resources.id')
             ->select('resources.category', DB::raw('ROUND(AVG(yhat), 2) as avg_demand'))
             ->groupBy('resources.category')
@@ -122,23 +123,25 @@ class ForecastNarrativeService
             ->toArray();
 
         // Hospitals with most risk
-        $riskByHospital = $latestRisk
+        $riskByHospital = ForecastRisk::latestRun()
             ->whereIn('risk_level', ['high', 'critical'])
             ->select('hospital_id', DB::raw('COUNT(*) as risk_count'))
             ->groupBy('hospital_id')
             ->orderByDesc('risk_count')
             ->limit(5)
-            ->with('hospital:id,name')
             ->get()
-            ->map(fn ($h) => [
-                'name' => $h->hospital?->name ?? "H#{$h->hospital_id}",
-                'risk_count' => $h->risk_count,
-            ])
+            ->map(function ($h) {
+                $hospital = \App\Models\Hospital::find($h->hospital_id);
+                return [
+                    'name' => $hospital?->name ?? "H#{$h->hospital_id}",
+                    'risk_count' => $h->risk_count,
+                ];
+            })
             ->toArray();
 
         // Model info
-        $modelVersion = $latestDemand->value('model_version') ?? 'N/A';
-        $generatedAt = $latestDemand->value('generated_at');
+        $modelVersion = ForecastDemand::latestRun()->value('model_version') ?? 'N/A';
+        $generatedAt = ForecastDemand::latestRun()->value('generated_at');
 
         return [
             'total_demand' => $totalDemand,
