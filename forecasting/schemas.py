@@ -169,3 +169,25 @@ class HealthResponse(BaseModel):
     risk_mode: str = "not_loaded"
     uptime_seconds: float = 0.0
     timestamp: str = ""
+
+
+# ═══════════════════════════════════════════════════════════════
+# Pipeline trigger schemas (called by Laravel on Render)
+# ═══════════════════════════════════════════════════════════════
+
+class RunPipelineRequest(BaseModel):
+    """Request body for POST /api/v1/run-pipeline."""
+    mode: str = Field("production", description="Run mode: production or demo")
+    horizon: int = Field(48, ge=1, le=168, description="Forecast horizon in hours")
+
+
+class RunPipelineResponse(BaseModel):
+    """Response from the pipeline run."""
+    success: bool = True
+    mode: str = "production"
+    demand_rows: int = 0
+    risk_rows: int = 0
+    high_risk_count: int = 0
+    model_version: str = ""
+    elapsed_s: float = 0.0
+    error: str | None = None

@@ -1,0 +1,38 @@
+# ── Render Blueprint — Kalinga Forecasting API ──────────────
+# Add this service to your existing render.yaml or use it standalone.
+# https://render.com/docs/blueprint-spec
+#
+# Deploy manually:
+#   - New > Web Service
+#   - Root Directory: forecasting
+#   - Dockerfile: ./Dockerfile
+#   - Health Check: /api/v1/health
+# ─────────────────────────────────────────────────────────────
+
+services:
+  - type: web
+    name: kalinga-forecast-api
+    runtime: docker
+    region: singapore          # closest to Philippines
+    plan: starter              # 512 MB — enough for LightGBM
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./forecasting
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+
+    envVars:
+      # Render injects PORT automatically
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kalinga-db
+          property: connectionString
+        # OR paste the Supabase connection string directly:
+        # value: postgresql://user:pass@host:5432/db_kalinga?sslmode=require
+
+      # Optional overrides
+      - key: FORECAST_HORIZON_HOURS
+        value: "48"
+      - key: MODEL_VERSION
+        value: "v0.1"
+      - key: FORECAST_RETENTION_DAYS
+        value: "30"

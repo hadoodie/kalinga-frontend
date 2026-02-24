@@ -46,4 +46,23 @@ return [
         'default_location_label' => env('MAPS_DEFAULT_LOCATION_LABEL', 'Fallback location (Manila HQ)'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Forecasting Microservice (FastAPI on Render)
+    |--------------------------------------------------------------------------
+    |
+    | When FORECAST_API_URL is set, the forecasts:run command will call the
+    | FastAPI microservice over HTTP instead of spawning a Python subprocess.
+    | This is the expected mode on Render (separate services).
+    |
+    | Leave FORECAST_API_URL empty/null for local dev (uses subprocess).
+    |
+    */
+    'forecasting' => [
+        'base_url'   => env('FORECAST_API_URL'),          // e.g. https://kalinga-forecasting.onrender.com
+        'api_prefix' => env('FORECAST_API_PREFIX', '/api/v1'),
+        'timeout'    => (int) env('FORECAST_API_TIMEOUT', 300),
+        'enabled'    => (bool) env('FORECAST_ENABLED', true),
+    ],
+
 ];

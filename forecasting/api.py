@@ -40,6 +40,8 @@ from forecasting.schemas import (
     PredictRequest,
     PredictResponse,
     RiskPrediction,
+    RunPipelineRequest,
+    RunPipelineResponse,
 )
 
 
@@ -215,6 +217,107 @@ async def reload_models():
 
 
 # ── Predict ──────────────────────────────────────────────────
+
+@app.post(
+    "/api/v1/run-pipeline",
+    response_model=RunPipelineResponse,
+    tags=["pipeline"],
+    summary="Trigger full ETL → predict → DB-write cycle",
+)
+async def run_pipeline(request: RunPipelineRequest):
+    """
+    Runs the complete forecasting pipeline:
+      1. Reads hospitals/resources/stock from PostgreSQL
+      2. Builds the feature matrix
+      3. Predicts demand + risk using loaded models
+      4. Writes results back to forecast_demand_hourly / forecast_risk_hourly
+
+    This endpoint is called by Laravel's ``forecasts:run`` command when
+    running on Render (separate services, no subprocess available).
+    """
+    import subprocess as _sp
+
+    t0 = time.perf_counter()
+
+    # Build the CLI command that run_forecast.py expects
+    cmd = [
+        sys.executable, "-m", "forecasting.run_forecast",
+        f"--{request.mode}",
+        "--horizon", str(request.horizon),
+    ]
+
+    try:
+        result = _sp.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=280,                     # stay under the 300 s HTTP timeout
+            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        )
+
+        elapsed = round(time.perf_counter() - t0, 2)
+
+        if result.returncode != 0:
+            print(f"[api] run-pipeline FAILED (exit {result.returncode})")
+            print(result.stderr[-2000:] if result.stderr else "(no stderr)")
+            return RunPipelineResponse(
+                success=False,
+                mode=request.mode,
+                elapsed_s=elapsed,
+                error=result.stderr[-1000:] if result.stderr else "Non-zero exit code",
+            )
+
+        # Parse stdout for row counts (run_forecast.py prints them)
+        stdout = result.stdout or ""
+        demand_rows = _parse_count(stdout, "demand")
+        risk_rows = _parse_count(stdout, "risk")
+        high_risk = _parse_count(stdout, "high")
+
+        print(f"[api] run-pipeline OK — demand={demand_rows}, risk={risk_rows}, elapsed={elapsed}s")
+
+        return RunPipelineResponse(
+            success=True,
+            mode=request.mode,
+            demand_rows=demand_rows,
+            risk_rows=risk_rows,
+            high_risk_count=high_risk,
+            model_version=MODEL_VERSION,
+            elapsed_s=elapsed,
+        )
+
+    except _sp.TimeoutExpired:
+        return RunPipelineResponse(
+            success=False,
+            mode=request.mode,
+            elapsed_s=round(time.perf_counter() - t0, 2),
+            error="Pipeline timed out (280 s limit)",
+        )
+    except Exception as e:
+        return RunPipelineResponse(
+            success=False,
+            mode=request.mode,
+            elapsed_s=round(time.perf_counter() - t0, 2),
+            error=str(e),
+        )
+
+
+def _parse_count(stdout: str, keyword: str) -> int:
+    """
+    Extract a number from lines like:
+        [writer] Wrote 2160 demand forecasts to DB
+        High/Critical Risks: 268
+    """
+    import re
+    for line in stdout.splitlines():
+        lower = line.lower()
+        if keyword in lower:
+            nums = re.findall(r"[\d,]+", line)
+            for n in nums:
+                val = int(n.replace(",", ""))
+                if val > 0:
+                    return val
+    return 0
+
 
 @app.post(
     "/api/v1/predict",
