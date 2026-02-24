@@ -1,4 +1,4 @@
-hospital_id,resource_id,forecast_time,horizon_h,risk_prob,projected_stock,days_until_stockout,risk_level,model_version,generated_at
+ehospital_id,resource_id,forecast_time,horizon_h,risk_prob,projected_stock,days_until_stockout,risk_level,model_version,generated_at
 1,1,2026-02-07 00:00:00+08:00,1,0.03,197.5591,7.67,low,v0.1,2026-02-06 16:30:20.856153
 1,1,2026-02-07 01:00:00+08:00,2,0.03,195.1182,7.58,low,v0.1,2026-02-06 16:30:20.856153
 1,1,2026-02-07 02:00:00+08:00,3,0.03,192.6773,7.48,low,v0.1,2026-02-06 16:30:20.856153

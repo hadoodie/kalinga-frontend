@@ -18,18 +18,66 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { useAuth } from "@/context/AuthContext";
 
 // Lazy-loaded admin sections — each chunk is split out of the main bundle
-const DashboardSection = lazy(() => import("@/components/admin/sections/DashboardSection").then(m => ({ default: m.DashboardSection })));
-const UserRoleManagement = lazy(() => import("@/components/admin/sections/UserRoleManagement").then(m => ({ default: m.UserRoleManagement })));
-const IncidentHeatMap = lazy(() => import("@/components/admin/sections/IncidentHeatMap").then(m => ({ default: m.IncidentHeatMap })));
-const ResourceManagement = lazy(() => import("@/components/admin/sections/ResourceManagement").then(m => ({ default: m.ResourceManagement })));
-const TrainingSection = lazy(() => import("@/components/admin/sections/TrainingSection").then(m => ({ default: m.TrainingSection })));
-const ConnectivityMonitoring = lazy(() => import("@/components/admin/sections/ConnectivityMonitoring").then(m => ({ default: m.ConnectivityMonitoring })));
-const MonitoringSecurity = lazy(() => import("@/components/admin/sections/MonitoringSecurity").then(m => ({ default: m.MonitoringSecurity })));
-const BroadcastControl = lazy(() => import("@/components/admin/sections/BroadcastControl").then(m => ({ default: m.BroadcastControl })));
-const LogisticsOverview = lazy(() => import("@/components/admin/sections/LogisticsOverview").then(m => ({ default: m.LogisticsOverview })));
-const ResponderOverview = lazy(() => import("@/components/admin/sections/ResponderOverview").then(m => ({ default: m.ResponderOverview })));
-const PatientOverview = lazy(() => import("@/components/admin/sections/PatientOverview").then(m => ({ default: m.PatientOverview })));
-const HospitalSafetyIndexSection = lazy(() => import("@/components/admin/sections/HospitalSafetyIndex").then(m => ({ default: m.HospitalSafetyIndexSection })));
+const DashboardSection = lazy(() =>
+  import("@/components/admin/sections/DashboardSection").then((m) => ({
+    default: m.DashboardSection,
+  })),
+);
+const UserRoleManagement = lazy(() =>
+  import("@/components/admin/sections/UserRoleManagement").then((m) => ({
+    default: m.UserRoleManagement,
+  })),
+);
+const IncidentHeatMap = lazy(() =>
+  import("@/components/admin/sections/IncidentHeatMap").then((m) => ({
+    default: m.IncidentHeatMap,
+  })),
+);
+const ResourceManagement = lazy(() =>
+  import("@/components/admin/sections/ResourceManagement").then((m) => ({
+    default: m.ResourceManagement,
+  })),
+);
+const TrainingSection = lazy(() =>
+  import("@/components/admin/sections/TrainingSection").then((m) => ({
+    default: m.TrainingSection,
+  })),
+);
+const ConnectivityMonitoring = lazy(() =>
+  import("@/components/admin/sections/ConnectivityMonitoring").then((m) => ({
+    default: m.ConnectivityMonitoring,
+  })),
+);
+const MonitoringSecurity = lazy(() =>
+  import("@/components/admin/sections/MonitoringSecurity").then((m) => ({
+    default: m.MonitoringSecurity,
+  })),
+);
+const BroadcastControl = lazy(() =>
+  import("@/components/admin/sections/BroadcastControl").then((m) => ({
+    default: m.BroadcastControl,
+  })),
+);
+const LogisticsOverview = lazy(() =>
+  import("@/components/admin/sections/LogisticsOverview").then((m) => ({
+    default: m.LogisticsOverview,
+  })),
+);
+const ResponderOverview = lazy(() =>
+  import("@/components/admin/sections/ResponderOverview").then((m) => ({
+    default: m.ResponderOverview,
+  })),
+);
+const PatientOverview = lazy(() =>
+  import("@/components/admin/sections/PatientOverview").then((m) => ({
+    default: m.PatientOverview,
+  })),
+);
+const HospitalSafetyIndexSection = lazy(() =>
+  import("@/components/admin/sections/HospitalSafetyIndex").then((m) => ({
+    default: m.HospitalSafetyIndexSection,
+  })),
+);
 
 // Section loading spinner
 const SectionLoader = () => (
