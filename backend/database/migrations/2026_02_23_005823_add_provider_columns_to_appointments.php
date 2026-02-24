@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
+         Schema::table('appointments', function (Blueprint $table) {
             // Add these columns to store the provider and location details
             $table->string('provider_name')->nullable();
             $table->string('provider_specialty')->nullable();

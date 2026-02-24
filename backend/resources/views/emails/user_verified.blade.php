@@ -6,7 +6,9 @@
 <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
     <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
         <h2 style="color: #166534;">You are verified!</h2>
-        <p>Hello {{ $user->first_name }},</p>
+        
+        <p>Hello {{ $user->name }},</p>
+        
         <p>Great news! Your identity verification documents have been reviewed and <strong>approved</strong>.</p>
         <p>You now have full access to the Kalinga Patient Portal. You can book appointments, view your records, and request assistance.</p>
         

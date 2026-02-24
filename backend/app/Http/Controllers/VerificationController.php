@@ -44,7 +44,6 @@ class VerificationController extends Controller
                 $backPath = $request->file('back_image')->store('verification-docs', 'public');
             }
 
-            // Save to Database
             $verification = UserVerification::create([
                 'user_id' => Auth::id(),
                 'id_type' => $request->id_type,
@@ -95,12 +94,10 @@ class VerificationController extends Controller
     {
 
         $verification = UserVerification::findOrFail($id);
-        
-        // Update Verification Record
+
         $verification->status = 'verified';
         $verification->save();
 
-        // Update User & Send Email
         $user = User::find($verification->user_id);
         
         if ($user) {
@@ -110,8 +107,7 @@ class VerificationController extends Controller
             $token = $user->createToken('magic-link')->plainTextToken;
 
             try {
-                
-                // SEND EMAIL
+
                 Mail::to($user->email)->send(new UserVerified($user, $token));
                 
             } catch (\Exception $e) {
@@ -134,21 +130,18 @@ class VerificationController extends Controller
         ]);
 
         $verification = UserVerification::findOrFail($id);
-        
-        // Update Verification Record
+
         $verification->status = 'rejected';
         $verification->rejection_reason = $request->reason;
         $verification->save();
 
-        // Update User & Send Email
         $user = User::find($verification->user_id);
         if ($user) {
             $user->verification_status = 'rejected';
             $user->save();
-            
-            // Send Rejection Email (Wrapped in try-catch to be safe)
+
             try {
-                Mail::to($user->email)->send(new UserRejected($request->reason));
+                Mail::to($user->email)->send(new UserRejected($request->reason, $user)); 
             } catch (\Exception $e) {
                 Log::error("Rejection email failed to send: " . $e->getMessage());
             }

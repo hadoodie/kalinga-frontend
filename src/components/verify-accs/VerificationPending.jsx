@@ -5,7 +5,8 @@ import { Clock, RefreshCw, LogOut } from "lucide-react";
 import api from "../../services/api";
 
 export default function VerificationPending() {
-  const { setUser } = useAuth();
+  // 1. Extract 'user' alongside 'setUser' from your AuthContext
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -53,6 +54,11 @@ export default function VerificationPending() {
         <div className="h-20 w-20 bg-yellow-100 rounded-full flex items-center justify-center mb-6">
           <Clock className="h-10 w-10 text-yellow-600" />
         </div>
+
+        {/* 2. Added Greeting with the User's Name */}
+        <h1 className="text-xl font-medium text-gray-500 mb-1">
+          Hi, {user?.name}!
+        </h1>
 
         {/* Title */}
         <h2 className="text-2xl font-bold text-gray-900 mb-2">

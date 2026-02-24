@@ -128,7 +128,7 @@ export default function VerificationPending() {
                 </div>
                 <div className="space-y-1 text-sm">
                   <p>
-                    <span className="font-medium">Name:</span> {user?.first_name} {user?.last_name}
+                    <span className="font-medium">Name:</span> {user?.name || "Kalinga Patient"}
                   </p>
                   <p>
                     <span className="font-medium">Email:</span> {user?.email}

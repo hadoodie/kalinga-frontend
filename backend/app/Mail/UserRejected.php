@@ -14,13 +14,15 @@ class UserRejected extends Mailable
     use Queueable, SerializesModels;
 
     public $reason; 
+    public $user; 
 
     /**
      * Create a new message instance.
      */
-    public function __construct($reason)
+    public function __construct($reason, $user) 
     {
         $this->reason = $reason;
+        $this->user = $user; 
     }
 
     /**
