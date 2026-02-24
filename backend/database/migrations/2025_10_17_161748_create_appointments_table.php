@@ -11,12 +11,40 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('appointments', function (Blueprint $table) {
-            $table->renameColumn('provider_name', 'hospital');
-            $table->renameColumn('provider_specialty', 'service');
-            $table->renameColumn('reason', 'complaint');
+        if (!Schema::hasTable('appointments')) {
+            Schema::create('appointments', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id')->constrained()->onDelete('cascade');
+                $table->string('patient_name')->nullable();
+                $table->string('hospital')->nullable();
+                $table->string('service')->nullable();
+                $table->text('complaint')->nullable();
+                $table->timestamp('appointment_at')->nullable();
+                $table->string('location')->nullable();
+                $table->string('contact_phone')->nullable();
+                $table->string('contact_email')->nullable();
+                $table->text('instructions')->nullable();
+                $table->string('status')->nullable();
+                $table->timestamps();
+            });
+        }
 
-            $table->string('patient_name')->nullable()->after('user_id'); 
+        Schema::table('appointments', function (Blueprint $table) {
+            if (Schema::hasColumn('appointments', 'provider_name')) {
+                $table->renameColumn('provider_name', 'hospital');
+            }
+
+            if (Schema::hasColumn('appointments', 'provider_specialty')) {
+                $table->renameColumn('provider_specialty', 'service');
+            }
+
+            if (Schema::hasColumn('appointments', 'reason')) {
+                $table->renameColumn('reason', 'complaint');
+            }
+
+            if (!Schema::hasColumn('appointments', 'patient_name')) {
+                $table->string('patient_name')->nullable()->after('user_id');
+            }
         });
     }
 
@@ -25,11 +53,23 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (!Schema::hasTable('appointments')) {
+            return;
+        }
+
         Schema::table('appointments', function (Blueprint $table) {
-            $table->dropColumn('patient_name');
-            $table->renameColumn('hospital', 'provider_name');
-            $table->renameColumn('service', 'provider_specialty');
-            $table->renameColumn('complaint', 'reason');
+            if (Schema::hasColumn('appointments', 'patient_name')) {
+                $table->dropColumn('patient_name');
+            }
+            if (Schema::hasColumn('appointments', 'hospital')) {
+                $table->renameColumn('hospital', 'provider_name');
+            }
+            if (Schema::hasColumn('appointments', 'service')) {
+                $table->renameColumn('service', 'provider_specialty');
+            }
+            if (Schema::hasColumn('appointments', 'complaint')) {
+                $table->renameColumn('complaint', 'reason');
+            }
         });
     }
 };

@@ -18,42 +18,146 @@ import {
   ChartColumnStacked,
   Bell,
   Building,
-  Users
+  Users,
+  BrainCircuit,
 } from "lucide-react";
 import { evacMapImg } from "@images";
-import { Link, useNavigate } from "react-router-dom"; 
+import { Link, useNavigate } from "react-router-dom";
 import resourceService from "../../services/resourceService";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-import api from "../../services/api"; 
-import { formatDistanceToNow } from 'date-fns';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import api from "../../services/api";
+import { formatDistanceToNow } from "date-fns";
 
 // Import Hospital Dashboard
 import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
 
+// Import AI Forecast v2 dashboard
+import ForecastDashboard from "./forecast-v2/ForecastDashboard";
+
 // --- MOCK DATA ---
 const MOCK_RESOURCE_REQUESTS = [
-  { id: "R-1001", location: "Barangay San Jose", urgency: "Critical", time: "2 hours ago", items: 3 },
-  { id: "R-1002", location: "Evacuation Center 3", urgency: "High", time: "3 hours ago", items: 2 },
-  { id: "R-1003", location: "Field Hospital Beta", urgency: "Medium", time: "5 hours ago", items: 1 },
-  { id: "R-1004", location: "Sector 5 Base", urgency: "Critical", time: "1 hour ago", items: 4 },
-  { id: "R-1005", location: "Coastal Village 1", urgency: "Medium", time: "4 hours ago", items: 2 },
-  { id: "R-1006", location: "Alpha Hospital", urgency: "Shipped", time: "4 hours ago", items: 2 },
+  {
+    id: "R-1001",
+    location: "Barangay San Jose",
+    urgency: "Critical",
+    time: "2 hours ago",
+    items: 3,
+  },
+  {
+    id: "R-1002",
+    location: "Evacuation Center 3",
+    urgency: "High",
+    time: "3 hours ago",
+    items: 2,
+  },
+  {
+    id: "R-1003",
+    location: "Field Hospital Beta",
+    urgency: "Medium",
+    time: "5 hours ago",
+    items: 1,
+  },
+  {
+    id: "R-1004",
+    location: "Sector 5 Base",
+    urgency: "Critical",
+    time: "1 hour ago",
+    items: 4,
+  },
+  {
+    id: "R-1005",
+    location: "Coastal Village 1",
+    urgency: "Medium",
+    time: "4 hours ago",
+    items: 2,
+  },
+  {
+    id: "R-1006",
+    location: "Alpha Hospital",
+    urgency: "Shipped",
+    time: "4 hours ago",
+    items: 2,
+  },
 ];
 
 const MOCK_INVENTORY_ITEMS = [
-  { resource: "Rice", category: "Food", remaining: 30, unit: "kg", status: "Critical" },
-  { resource: "Canned Goods", category: "Food", remaining: 90, unit: "cans", status: "High" },
-  { resource: "Soap", category: "Hygiene", remaining: 75, unit: "boxes", status: "Moderate" },
-  { resource: "Bottled Water", category: "Water", remaining: 300, unit: "bottles", status: "High" },
-  { resource: "Tents", category: "Shelter", remaining: 15, unit: "units", status: "Critical" },
-  { resource: "Medical Kits", category: "Medical", remaining: 70, unit: "kits", status: "High" },
+  {
+    resource: "Rice",
+    category: "Food",
+    remaining: 30,
+    unit: "kg",
+    status: "Critical",
+  },
+  {
+    resource: "Canned Goods",
+    category: "Food",
+    remaining: 90,
+    unit: "cans",
+    status: "High",
+  },
+  {
+    resource: "Soap",
+    category: "Hygiene",
+    remaining: 75,
+    unit: "boxes",
+    status: "Moderate",
+  },
+  {
+    resource: "Bottled Water",
+    category: "Water",
+    remaining: 300,
+    unit: "bottles",
+    status: "High",
+  },
+  {
+    resource: "Tents",
+    category: "Shelter",
+    remaining: 15,
+    unit: "units",
+    status: "Critical",
+  },
+  {
+    resource: "Medical Kits",
+    category: "Medical",
+    remaining: 70,
+    unit: "kits",
+    status: "High",
+  },
 ];
 
 const MOCK_SHIPMENTS = [
-  { id: "S-7001", route: "Depot A → Field Hospital", eta: "2025-09-29T20:30:00Z", status: "In Transit", contents: "Medical Supplies", priority: "High" },
-  { id: "S-7002", route: "Warehouse B → Evac Zone 4", eta: "2025-09-29T19:45:00Z", status: "Delayed", contents: "Water, Blankets", priority: "Critical" },
-  { id: "S-7003", route: "Staging Area C → Command Post", eta: "2025-09-29T22:00:00Z", status: "En Route", contents: "Satellite Gear", priority: "Medium" },
-  { id: "S-7004", route: "HQ Depot → Barangay San Jose", eta: "2025-09-29T21:15:00Z", status: "In Transit", contents: "Food Rations", priority: "High" },
+  {
+    id: "S-7001",
+    route: "Depot A → Field Hospital",
+    eta: "2025-09-29T20:30:00Z",
+    status: "In Transit",
+    contents: "Medical Supplies",
+    priority: "High",
+  },
+  {
+    id: "S-7002",
+    route: "Warehouse B → Evac Zone 4",
+    eta: "2025-09-29T19:45:00Z",
+    status: "Delayed",
+    contents: "Water, Blankets",
+    priority: "Critical",
+  },
+  {
+    id: "S-7003",
+    route: "Staging Area C → Command Post",
+    eta: "2025-09-29T22:00:00Z",
+    status: "En Route",
+    contents: "Satellite Gear",
+    priority: "Medium",
+  },
+  {
+    id: "S-7004",
+    route: "HQ Depot → Barangay San Jose",
+    eta: "2025-09-29T21:15:00Z",
+    status: "In Transit",
+    contents: "Food Rations",
+    priority: "High",
+  },
 ];
 
 const MOCK_FACILITIES = [
@@ -76,11 +180,47 @@ const MOCK_ASSETS = [
 ];
 
 const MOCK_NOTIFICATIONS = [
-  { id: 1, title: "Low Stock Alert", message: "Rice inventory at Central Depot A is below minimum threshold (30 kg remaining)", priority: "Critical", time: "5 mins ago", read: false },
-  { id: 2, title: "Delayed Shipment", message: "S-7002 to Evac Zone 4 is delayed by 45 minutes", priority: "High", time: "15 mins ago", read: false },
-  { id: 3, title: "Asset Maintenance Due", message: "Truck 3 scheduled for maintenance check", priority: "Medium", time: "1 hour ago", read: true },
-  { id: 4, title: "New Resource Request", message: "Critical request from Barangay San Jose - 3 items needed", priority: "Critical", time: "2 hours ago", read: false },
-  { id: 5, title: "Delivery Completed", message: "S-7001 successfully delivered to Field Hospital", priority: "Low", time: "3 hours ago", read: true },
+  {
+    id: 1,
+    title: "Low Stock Alert",
+    message:
+      "Rice inventory at Central Depot A is below minimum threshold (30 kg remaining)",
+    priority: "Critical",
+    time: "5 mins ago",
+    read: false,
+  },
+  {
+    id: 2,
+    title: "Delayed Shipment",
+    message: "S-7002 to Evac Zone 4 is delayed by 45 minutes",
+    priority: "High",
+    time: "15 mins ago",
+    read: false,
+  },
+  {
+    id: 3,
+    title: "Asset Maintenance Due",
+    message: "Truck 3 scheduled for maintenance check",
+    priority: "Medium",
+    time: "1 hour ago",
+    read: true,
+  },
+  {
+    id: 4,
+    title: "New Resource Request",
+    message: "Critical request from Barangay San Jose - 3 items needed",
+    priority: "Critical",
+    time: "2 hours ago",
+    read: false,
+  },
+  {
+    id: 5,
+    title: "Delivery Completed",
+    message: "S-7001 successfully delivered to Field Hospital",
+    priority: "Low",
+    time: "3 hours ago",
+    read: true,
+  },
 ];
 
 const NotificationWidget = () => {
@@ -91,19 +231,22 @@ const NotificationWidget = () => {
     const fetchNotifications = async () => {
       try {
         setLoading(true);
-        const response = await api.get('/notifications');
-        console.log('Fetched notifications:', response.data); // DEBUG LOG
-        
+        const response = await api.get("/notifications");
+        console.log("Fetched notifications:", response.data); // DEBUG LOG
+
         // Filter for logistics notifications only
-        const logisticsNotifs = response.data.filter(n => 
-          n.type === 'logistics' || !n.type // Include if no type field
+        const logisticsNotifs = response.data.filter(
+          (n) => n.type === "logistics" || !n.type, // Include if no type field
         );
-        
+
         setNotifications(logisticsNotifs.slice(0, 5));
       } catch (err) {
         console.error("Failed to fetch notifications for widget", err);
         // Fallback to mock data with type field
-        const mockWithType = MOCK_NOTIFICATIONS.map(n => ({ ...n, type: 'logistics' }));
+        const mockWithType = MOCK_NOTIFICATIONS.map((n) => ({
+          ...n,
+          type: "logistics",
+        }));
         setNotifications(mockWithType);
       } finally {
         setLoading(false);
@@ -117,22 +260,32 @@ const NotificationWidget = () => {
   }
 
   if (notifications.length === 0) {
-    return <div className="text-center text-sm text-gray-500">No new notifications.</div>;
+    return (
+      <div className="text-center text-sm text-gray-500">
+        No new notifications.
+      </div>
+    );
   }
 
   return (
     <ul className="space-y-3 text-left">
       {notifications.map((notif) => (
-        <li key={notif.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg text-primary text-sm border-l-4 border-green-700">
+        <li
+          key={notif.id}
+          className="flex gap-3 p-3 bg-gray-50 rounded-lg text-primary text-sm border-l-4 border-green-700"
+        >
           <span className="flex-shrink-0 w-2 h-2 mt-1.5 bg-green-700 rounded-full"></span>
           <div className="flex-1">
             <p className="font-semibold">{notif.title}</p>
-            <p className="text-xs text-gray-600">{notif.description || notif.message}</p>
+            <p className="text-xs text-gray-600">
+              {notif.description || notif.message}
+            </p>
             <p className="text-xs text-gray-500 mt-1">
-              {notif.created_at 
-                ? formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })
-                : notif.time
-              }
+              {notif.created_at
+                ? formatDistanceToNow(new Date(notif.created_at), {
+                    addSuffix: true,
+                  })
+                : notif.time}
             </p>
           </div>
         </li>
@@ -175,7 +328,14 @@ const formatETA = (isoTime) => {
 
 // --- CHART COMPONENT ---
 const FacilityPieChart = ({ data }) => {
-  const COLORS = [ '#34D399', '#1c2414', '#394e2c', '#FBBF24', '#f0d003', '#fae526'];
+  const COLORS = [
+    "#34D399",
+    "#1c2414",
+    "#394e2c",
+    "#FBBF24",
+    "#f0d003",
+    "#fae526",
+  ];
 
   if (!data || data.length === 0) {
     return (
@@ -185,7 +345,7 @@ const FacilityPieChart = ({ data }) => {
     );
   }
 
-  const facilityResourceData = data.map(item => ({
+  const facilityResourceData = data.map((item) => ({
     name: item.name,
     value: item.resources,
   }));
@@ -198,7 +358,9 @@ const FacilityPieChart = ({ data }) => {
       return (
         <div className="bg-white p-3 rounded-lg text-sm shadow-xl text-gray-900 border border-gray-300">
           <p className="font-bold text-lg">{payload[0].name}</p>
-          <p className="text-gray-600">{value} total resources ({percent}%)</p>
+          <p className="text-gray-600">
+            {value} total resources ({percent}%)
+          </p>
         </div>
       );
     }
@@ -229,27 +391,35 @@ const FacilityPieChart = ({ data }) => {
 };
 
 const OverallStatusCard = ({ inventory, facilities }) => {
-  const totalRemaining = inventory?.reduce((sum, i) => sum + (i.remaining || 0), 0) || 0;
-  const criticalCount = inventory?.filter(i => i.status === 'Critical').length || 0;
+  const totalRemaining =
+    inventory?.reduce((sum, i) => sum + (i.remaining || 0), 0) || 0;
+  const criticalCount =
+    inventory?.filter((i) => i.status === "Critical").length || 0;
   const facilityCount = facilities?.length || 0;
-  const itemCategories = [...new Set(inventory?.map(i => i.category) || [])].length;
+  const itemCategories = [...new Set(inventory?.map((i) => i.category) || [])]
+    .length;
 
   return (
     <Link to="/logistics/resource-management" className="block h-full">
       <div className="p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col h-full text-gray-900 border border-gray-200">
-        <h3 className="text-xl font-bold mb-4 border-b border-gray-100 pb-3 flex justify-center items-center">Resource Overview</h3>
+        <h3 className="text-xl font-bold mb-4 border-b border-gray-100 pb-3 flex justify-center items-center">
+          Resource Overview
+        </h3>
         <div className="flex flex-col md:flex-row gap-1 flex-1">
           <div className="w-full md:w-1/2 flex flex-col justify-start items-start">
             <p className="text-5xl font-extrabold mb-4">{totalRemaining}</p>
             <div className="space-y-1 text-15px">
               <p className="font-medium text-gray-600 flex items-center">
-                <Home className="h-4 w-4 mr-1 text-gray-500" /> {facilityCount} Facilities
+                <Home className="h-4 w-4 mr-1 text-gray-500" /> {facilityCount}{" "}
+                Facilities
               </p>
               <p className="font-medium text-gray-600 flex items-center">
-                <Briefcase className="h-4 w-4 mr-1 text-gray-500" /> {itemCategories} Categories
+                <Briefcase className="h-4 w-4 mr-1 text-gray-500" />{" "}
+                {itemCategories} Categories
               </p>
               <p className="font-medium text-red-600 flex items-center">
-                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {criticalCount} Critical
+                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" />{" "}
+                {criticalCount} Critical
               </p>
             </div>
           </div>
@@ -272,28 +442,36 @@ const OverallStatusCard = ({ inventory, facilities }) => {
 
 const AssetStatusCard = ({ assets }) => {
   const totalAssets = assets?.length || 0;
-  const inUse = assets?.filter(a => a.status === 'In Use').length || 0;
-  const repair = assets?.filter(a => a.status === 'Repair').length || 0;
+  const inUse = assets?.filter((a) => a.status === "In Use").length || 0;
+  const repair = assets?.filter((a) => a.status === "Repair").length || 0;
   const idle = totalAssets - inUse - repair;
 
   return (
     <Link to="/logistics/asset-registry" className="block h-full">
       <div className="p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200">
-        <h3 className="text-xl font-bold border-b border-gray-100 pb-3 flex justify-center items-center"> Asset Registry Status</h3>
+        <h3 className="text-xl font-bold border-b border-gray-100 pb-3 flex justify-center items-center">
+          {" "}
+          Asset Registry Status
+        </h3>
         <div className="flex-1 flex flex-col justify-center space-y-1">
           <div className="text-5xl font-extrabold flex items-baseline">
-            {totalAssets} 
-            <span className="text-lg font-medium ml-2 text-gray-600">Total Registered Assets</span>
+            {totalAssets}
+            <span className="text-lg font-medium ml-2 text-gray-600">
+              Total Registered Assets
+            </span>
           </div>
-          
+
           <p className="text-15px font-semibold mt-1 text-green-600 flex items-center">
-            <ChartColumnStacked className="h-4 w-4 mr-1 text-green-600" /> {inUse} Active Assets
+            <ChartColumnStacked className="h-4 w-4 mr-1 text-green-600" />{" "}
+            {inUse} Active Assets
           </p>
           <p className="text-15px font-semibold text-gray-700 flex items-center">
-            <ShieldQuestionMark className="h-4 w-4 mr-1 text-gray-500" /> {idle} Assets Unassigned
+            <ShieldQuestionMark className="h-4 w-4 mr-1 text-gray-500" /> {idle}{" "}
+            Assets Unassigned
           </p>
           <p className="text-15px font-semibold text-gray-700 flex items-center">
-            <Wrench className="h-4 w-4 mr-1 text-gray-500" /> {repair} Vehicles Under Repair
+            <Wrench className="h-4 w-4 mr-1 text-gray-500" /> {repair} Vehicles
+            Under Repair
           </p>
         </div>
       </div>
@@ -310,15 +488,24 @@ const DeliveryPerformanceCard = ({ requests, shipments }) => {
   return (
     <Link to="/logistics/supply-tracking" className="block h-full">
       <div className="p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200 cursor-pointer">
-        <h3 className="text-xl font-bold mb-0 border-b border-gray-100 pb-3 flex justify-center items-center"> Delivery Performance</h3>
+        <h3 className="text-xl font-bold mb-0 border-b border-gray-100 pb-3 flex justify-center items-center">
+          {" "}
+          Delivery Performance
+        </h3>
         <div className="flex-1 flex flex-col justify-center space-y-4">
           <div className="text-5xl font-extrabold flex flex-row items-baseline">
-            {avgDispatchTime} <span className="text-2xl font-extrabold mr-1">{avgDispatchUnit}</span>
-            <span className="text-sm font-light ml-2 text-gray-600">Avg Dispatch Time</span>
+            {avgDispatchTime}{" "}
+            <span className="text-2xl font-extrabold mr-1">
+              {avgDispatchUnit}
+            </span>
+            <span className="text-sm font-light ml-2 text-gray-600">
+              Avg Dispatch Time
+            </span>
           </div>
-          
+
           <p className="text-15px font-semibold text-red-600 flex items-center">
-            <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {delayed} Delayed Shipments
+            <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {delayed}{" "}
+            Delayed Shipments
           </p>
 
           <div className="text-15px font-medium flex items-center text-gray-600">
@@ -332,35 +519,43 @@ const DeliveryPerformanceCard = ({ requests, shipments }) => {
 
 const PendingRequestsCard = ({ requests }) => {
   const totalRequests = requests?.length || 0;
-  const criticalRequests = requests?.filter(r => r.urgency === 'Critical').length || 0;
-  const shippedRequests = requests?.filter(r => r.urgency === 'Shipped').length || 0;
-  const highRequests = requests?.filter(r => r.urgency === 'High').length || 0;
+  const criticalRequests =
+    requests?.filter((r) => r.urgency === "Critical").length || 0;
+  const shippedRequests =
+    requests?.filter((r) => r.urgency === "Shipped").length || 0;
+  const highRequests =
+    requests?.filter((r) => r.urgency === "High").length || 0;
 
   return (
     <Link to="/logistics/requested-allocation" className="block h-full">
       <div className="p-5 bg-white rounded-2xl shadow-md hover:shadow-xl transition flex flex-col justify-between h-full text-gray-900 border border-gray-200">
         <h3 className="text-xl font-bold border-b border-gray-100 pb-3 flex justify-center items-center">
-            Requested Allocation
+          Requested Allocation
         </h3>
-        
+
         <div className="flex-1 flex flex-col justify-center space-y-1">
           <div className="text-5xl font-extrabold flex items-baseline">
-            {totalRequests} <span className="text-lg font-medium ml-2 text-gray-600">Total Pending Requests</span>
+            {totalRequests}{" "}
+            <span className="text-lg font-medium ml-2 text-gray-600">
+              Total Pending Requests
+            </span>
           </div>
-          
+
           <p className="text-15px font-semibold mt-1 text-red-600 flex items-center">
-            <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {criticalRequests} Critical
+            <AlertTriangle className="h-4 w-4 mr-1 text-red-600" />{" "}
+            {criticalRequests} Critical
           </p>
           <p className="text-15px font-semibold text-yellow-600 flex items-center">
-            <Clock className="h-4 w-4 mr-1 text-yellow-600" /> {highRequests} High Priority
+            <Clock className="h-4 w-4 mr-1 text-yellow-600" /> {highRequests}{" "}
+            High Priority
           </p>
           <p className="text-15px font-semibold text-gray-600 flex items-center">
-            <Truck className="h-4 w-4 mr-1 text-gray-600" /> {shippedRequests} Shipments Dispatched
+            <Truck className="h-4 w-4 mr-1 text-gray-600" /> {shippedRequests}{" "}
+            Shipments Dispatched
           </p>
         </div>
       </div>
     </Link>
-    
   );
 };
 
@@ -383,7 +578,7 @@ const LiveMap = () => (
 
 const NotificationsList = () => {
   const navigate = useNavigate();
-  
+
   return (
     <div className="bg-white rounded-2xl shadow-xl p-5 border border-gray-100 h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
@@ -397,8 +592,6 @@ const NotificationsList = () => {
     </div>
   );
 };
-
-
 
 const ActiveDeliveriesList = ({ shipments }) => {
   return (
@@ -422,14 +615,18 @@ const ActiveDeliveriesList = ({ shipments }) => {
             {shipments && shipments.length > 0 ? (
               shipments.map((s) => (
                 <tr key={s.id} className="hover:bg-green-50">
-                  <td className="px-3 py-2 text-center font-semibold">{s.id}</td>
+                  <td className="px-3 py-2 text-center font-semibold">
+                    {s.id}
+                  </td>
                   <td className="px-3 py-2 text-center">
                     <span className="flex items-center justify-center">
                       <CornerDownRight className="h-4 w-4 mr-1 text-gray-400" />
                       {s.route}
                     </span>
                   </td>
-                  <td className="px-3 py-2 text-center text-gray-600">{s.contents}</td>
+                  <td className="px-3 py-2 text-center text-gray-600">
+                    {s.contents}
+                  </td>
                   <td className="px-3 py-2 text-center">
                     <span
                       className={`px-2 py-1 rounded-full text-xs font-bold ${getStatusColor(s.status)}`}
@@ -443,7 +640,7 @@ const ActiveDeliveriesList = ({ shipments }) => {
                 </tr>
               ))
             ) : (
-               <tr>
+              <tr>
                 <td colSpan="5" className="text-center py-8 text-gray-500">
                   No active shipments to display.
                 </td>
@@ -492,13 +689,15 @@ const ResourceRequestsList = ({ requests }) => (
                 <td className="px-3 py-2 text-center">
                   <span
                     className={`px-2 py-1 rounded-full border ${getUrgencyColor(
-                      r.urgency
+                      r.urgency,
                     )}`}
                   >
                     {r.urgency}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-center text-gray-500">{r.time}</td>
+                <td className="px-3 py-2 text-center text-gray-500">
+                  {r.time}
+                </td>
               </tr>
             ))
           ) : (
@@ -526,19 +725,26 @@ const ResourceRequestsList = ({ requests }) => (
 const TabNavigation = ({ activeTab, setActiveTab }) => {
   const tabs = [
     {
-      id: 'logistics',
-      label: 'DOH Logistics Dashboard',
+      id: "logistics",
+      label: "DOH Logistics Dashboard",
       icon: <Truck className="w-5 h-5" />,
-      color: 'bg-gradient-to-r from-green-600 to-emerald-700',
-      description: 'National Resource Allocation & Tracking'
+      color: "bg-gradient-to-r from-green-600 to-emerald-700",
+      description: "National Resource Allocation & Tracking",
     },
     {
-      id: 'hospital',
-      label: 'Hospital Dashboard',
+      id: "hospital",
+      label: "Hospital Dashboard",
       icon: <Building className="w-5 h-5" />,
-      color: 'bg-gradient-to-r from-blue-600 to-blue-800',
-      description: 'Hospital Resource Management'
-    }
+      color: "bg-gradient-to-r from-blue-600 to-blue-800",
+      description: "Hospital Resource Management",
+    },
+    {
+      id: "forecast",
+      label: "AI Forecast",
+      icon: <BrainCircuit className="w-5 h-5" />,
+      color: "bg-gradient-to-r from-purple-600 to-indigo-700",
+      description: "AI-Powered Demand Forecasting & Risk Analysis",
+    },
   ];
 
   return (
@@ -546,13 +752,13 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800">
-            {tabs.find(t => t.id === activeTab)?.label || 'Logistics System'}
+            {tabs.find((t) => t.id === activeTab)?.label || "Logistics System"}
           </h1>
           <p className="text-gray-600 mt-1">
-            {tabs.find(t => t.id === activeTab)?.description}
+            {tabs.find((t) => t.id === activeTab)?.description}
           </p>
         </div>
-        
+
         <div className="flex space-x-2 bg-gray-100 p-1 rounded-xl">
           {tabs.map((tab) => (
             <button
@@ -561,7 +767,7 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
               className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${
                 activeTab === tab.id
                   ? `${tab.color} text-white shadow-lg`
-                  : 'text-gray-700 hover:bg-gray-200'
+                  : "text-gray-700 hover:bg-gray-200"
               }`}
             >
               {tab.icon}
@@ -576,15 +782,21 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm font-semibold text-green-700">
-            {activeTab === 'logistics' ? 'DOH Operations Active' : 'Hospital Management Active'}
+            {activeTab === "logistics"
+              ? "DOH Operations Active"
+              : "Hospital Management Active"}
           </span>
         </div>
-        <div className={`px-3 py-1 rounded-full text-sm font-bold ${
-          activeTab === 'logistics'
-            ? 'bg-green-100 text-green-800 border border-green-300'
-            : 'bg-blue-100 text-blue-800 border border-blue-300'
-        }`}>
-          {activeTab === 'logistics' ? 'National Logistics View' : 'Hospital Admin View'}
+        <div
+          className={`px-3 py-1 rounded-full text-sm font-bold ${
+            activeTab === "logistics"
+              ? "bg-green-100 text-green-800 border border-green-300"
+              : "bg-blue-100 text-blue-800 border border-blue-300"
+          }`}
+        >
+          {activeTab === "logistics"
+            ? "National Logistics View"
+            : "Hospital Admin View"}
         </div>
       </div>
     </div>
@@ -600,73 +812,78 @@ const LogisDash = () => {
   const [error, setError] = useState(null);
   const [shipments] = useState(MOCK_SHIPMENTS);
   const [assets] = useState(MOCK_ASSETS);
-  const [activeTab, setActiveTab] = useState('logistics'); // 'logistics' or 'hospital'
+  const [activeTab, setActiveTab] = useState("logistics"); // 'logistics' or 'hospital'
   const navigate = useNavigate();
 
   useEffect(() => {
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      // Fetch all resources
-      const resourcesResponse = await resourceService.getAll();
-      
-      console.log('Resources Response:', resourcesResponse); // Debug log
+        // Fetch all resources
+        const resourcesResponse = await resourceService.getAll();
 
-      // Transform the data to match the inventory format
-      const inventoryData = resourcesResponse.map(item => ({
-        resource: item.name,
-        category: item.category,
-        remaining: parseFloat(item.quantity || 0), // quantity is already the remaining stock
+        console.log("Resources Response:", resourcesResponse); // Debug log
+
+        // Transform the data to match the inventory format
+        const inventoryData = resourcesResponse.map((item) => ({
+          resource: item.name,
+          category: item.category,
+          remaining: parseFloat(item.quantity || 0), // quantity is already the remaining stock
           unit: item.unit,
           status: item.status,
-          facility: item.location
-      }));
+          facility: item.location,
+        }));
 
-      setInventory(inventoryData);
+        setInventory(inventoryData);
 
-      // Group resources by actual hospital/facility name
-      const facilityMap = {};
+        // Group resources by actual hospital/facility name
+        const facilityMap = {};
 
-      resourcesResponse.forEach(item => {
-        const facilityName = item.location || 'Unknown';
-        const remaining = parseFloat(item.quantity || 0);
-          
+        resourcesResponse.forEach((item) => {
+          const facilityName = item.location || "Unknown";
+          const remaining = parseFloat(item.quantity || 0);
+
           if (!facilityMap[facilityName]) {
             facilityMap[facilityName] = {
               name: facilityName,
-              resources: 0
+              resources: 0,
             };
           }
-          
+
           facilityMap[facilityName].resources += remaining;
         });
 
-      // Only include facilities that have resources
-      const facilitiesData = Object.values(facilityMap).filter(f => f.resources > 0);
-      setFacilities(facilitiesData);
+        // Only include facilities that have resources
+        const facilitiesData = Object.values(facilityMap).filter(
+          (f) => f.resources > 0,
+        );
+        setFacilities(facilitiesData);
 
-      console.log('Inventory Data:', inventoryData); // Debug log
-      console.log('Facilities Data:', facilitiesData); // Debug log
-
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      setError(error.message);
-      // Fallback to mock data on error
-      setInventory(MOCK_INVENTORY_ITEMS);
-      setFacilities(MOCK_FACILITIES);
+        console.log("Inventory Data:", inventoryData); // Debug log
+        console.log("Facilities Data:", facilitiesData); // Debug log
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        setError(error.message);
+        // Fallback to mock data on error
+        setInventory(MOCK_INVENTORY_ITEMS);
+        setFacilities(MOCK_FACILITIES);
       } finally {
         setLoading(false);
       }
     };
 
-  fetchDashboardData();
-}, []);
+    fetchDashboardData();
+  }, []);
 
   const renderContent = () => {
-    if (activeTab === 'hospital') {
+    if (activeTab === "hospital") {
       return <HospitalDashboard />;
+    }
+
+    if (activeTab === "forecast") {
+      return <ForecastDashboard />;
     }
 
     if (loading) {
@@ -674,7 +891,9 @@ const LogisDash = () => {
         <div className="flex items-center justify-center h-screen bg-gray-100">
           <div className="text-center">
             <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto mb-4"></div>
-            <div className="text-xl text-gray-700">Loading dashboard data...</div>
+            <div className="text-xl text-gray-700">
+              Loading dashboard data...
+            </div>
           </div>
         </div>
       );
@@ -685,9 +904,11 @@ const LogisDash = () => {
         <div className="flex items-center justify-center h-screen bg-gray-100">
           <div className="text-center bg-white p-8 rounded-xl shadow-lg">
             <AlertTriangle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <div className="text-xl text-gray-700 mb-2">Error loading dashboard</div>
+            <div className="text-xl text-gray-700 mb-2">
+              Error loading dashboard
+            </div>
             <div className="text-sm text-gray-500">{error}</div>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
             >
@@ -711,7 +932,10 @@ const LogisDash = () => {
           </div>
 
           <div className="md:col-span-1 lg:col-span-1 h-full">
-            <DeliveryPerformanceCard requests={requests} shipments={shipments} />
+            <DeliveryPerformanceCard
+              requests={requests}
+              shipments={shipments}
+            />
           </div>
 
           <div className="md:col-span-1 lg:col-span-1 h-full">
@@ -727,10 +951,10 @@ const LogisDash = () => {
           </div>
 
           <div className="col-span-12 lg:col-span-4 h-[600px]">
-            <NotificationsList  />
+            <NotificationsList />
           </div>
         </section>
-            
+
         {/* ROW 3: Active Deliveries */}
         <section className="mb-6">
           <ActiveDeliveriesList shipments={shipments} />
@@ -752,7 +976,7 @@ const LogisDash = () => {
     <div className="min-h-screen bg-gray-100 font-sans p-4 md:p-8">
       {/* Tab Navigation */}
       <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
-      
+
       {/* Main Content */}
       {renderContent()}
     </div>

@@ -102,10 +102,15 @@ class HospitalSafetyIndexController extends Controller
     {
         $validated = $request->validate([
             // General Information
-            'routine_bed_capacity' => 'required|integer|min:1',
-            'maximum_bed_capacity' => 'required|integer|min:1',
+            'routine_bed_capacity' => 'nullable|integer|min:1',
+            'maximum_bed_capacity' => 'nullable|integer|min:1',
             'routine_staff_count' => 'nullable|integer|min:0',
             'maximum_staff_count' => 'nullable|integer|min:0',
+            'conducted_at' => 'nullable|date',
+            'conducted_via' => 'nullable|string|max:255',
+            'checklist' => 'nullable|array',
+            'overall_index' => 'nullable|numeric|min:0|max:100',
+            'category' => 'nullable|string|max:10',
             
             // Module 2: Structural
             'structural_score' => 'required|numeric|min:0|max:100',
@@ -120,6 +125,25 @@ class HospitalSafetyIndexController extends Controller
             'water_reserve_liters' => 'nullable|numeric|min:0',
             'water_consumption_per_bed_day' => 'nullable|numeric|min:0',
             'oxygen_reserve_days' => 'nullable|numeric|min:0',
+            'medical_gas_reserve_days' => 'nullable|numeric|min:0',
+            'ventilator_survival_hours' => 'nullable|numeric|min:0',
+            'power_rating' => 'nullable|in:low,medium,high',
+            'water_rating' => 'nullable|in:low,medium,high',
+            'medical_gas_rating' => 'nullable|in:low,medium,high',
+            'life_support_rating' => 'nullable|in:low,medium,high',
+            'evidence_structural_drawings' => 'nullable|string|max:2048',
+            'evidence_maintenance_logs' => 'nullable|string|max:2048',
+            'evidence_training_certificates' => 'nullable|string|max:2048',
+            'evidence_water_coa' => 'nullable|string|max:2048',
+            'seismic_bracing_medical_gas' => 'boolean',
+            'flexible_connections_pipes' => 'boolean',
+            'electrical_panels_above_flood' => 'boolean',
+            'risk_model' => 'nullable|in:high_risk,low_risk',
+            'max_emergency_beds' => 'nullable|integer|min:0',
+            'hazards_geological' => 'nullable|array',
+            'hazards_hydrometeorological' => 'nullable|array',
+            'hazards_biological' => 'nullable|array',
+            'hazards_societal' => 'nullable|array',
             
             // Module 4: Emergency Management
             'emergency_mgmt_score' => 'required|numeric|min:0|max:100',
@@ -132,19 +156,40 @@ class HospitalSafetyIndexController extends Controller
             'notes' => 'nullable|string|max:5000',
         ]);
 
+        // Apply sensible defaults from hospital profile when omitted by UI
+        $validated['routine_bed_capacity'] = $validated['routine_bed_capacity']
+            ?? $hospital->routine_bed_capacity
+            ?? $hospital->capacity
+            ?? 0;
+
+        $validated['maximum_bed_capacity'] = $validated['maximum_bed_capacity']
+            ?? $hospital->maximum_bed_capacity
+            ?? $hospital->capacity
+            ?? $validated['routine_bed_capacity'];
+
         $validated['hospital_id'] = $hospital->id;
         $validated['assessor_id'] = $request->user()->id;
-        $validated['assessment_date'] = now();
+        $validated['risk_model'] = $validated['risk_model'] ?? \App\Models\HospitalSafetyAssessment::MODEL_HIGH_RISK;
+        $validated['assessment_date'] = $validated['conducted_at'] ?? now();
         $validated['next_assessment_due'] = now()->addYear();
         $validated['status'] = 'completed';
 
         // Calculate water reserve hours
+        $maxBeds = $validated['max_emergency_beds']
+            ?? $validated['maximum_bed_capacity']
+            ?? $hospital->max_emergency_beds
+            ?? $hospital->maximum_bed_capacity
+            ?? $hospital->capacity;
+
         if (isset($validated['water_reserve_liters']) && isset($validated['water_consumption_per_bed_day'])) {
-            $dailyUsage = $validated['maximum_bed_capacity'] * $validated['water_consumption_per_bed_day'];
+            $dailyUsage = $maxBeds * $validated['water_consumption_per_bed_day'];
             $validated['water_reserve_hours'] = $dailyUsage > 0 
                 ? ($validated['water_reserve_liters'] / ($dailyUsage / 24)) 
                 : 0;
         }
+
+        // Enforce critical thresholds when ratings are declared High
+        $this->enforceCriticalSystemThresholds($validated, $maxBeds);
 
         // Check oxygen meets 15-day requirement
         $validated['oxygen_meets_15day_requirement'] = ($validated['oxygen_reserve_days'] ?? 0) >= 15;
@@ -153,7 +198,8 @@ class HospitalSafetyIndexController extends Controller
         $validated['overall_safety_index'] = $this->resilienceService->calculateOverallSafetyIndex(
             $validated['structural_score'],
             $validated['non_structural_score'],
-            $validated['emergency_mgmt_score']
+            $validated['emergency_mgmt_score'],
+            $validated['risk_model']
         );
 
         // Determine safety category
@@ -199,6 +245,78 @@ class HospitalSafetyIndexController extends Controller
             'success' => true,
             'data' => $assessment->load(['hospital', 'assessor:id,name']),
         ]);
+    }
+
+    /**
+     * Enforce DOH high-rating gates and hazard-driven critical items.
+     */
+    protected function enforceCriticalSystemThresholds(array &$validated, int $maxBeds): void
+    {
+        // Water: 300 L/bed/day for 72h
+        if (($validated['water_rating'] ?? null) === 'high') {
+            $requiredLiters = $maxBeds * 300 * 3; // 300 L/bed/day * 3 days
+            $actual = $validated['water_reserve_liters'] ?? 0;
+            if ($actual < $requiredLiters) {
+                abort(422, 'Water rating High requires at least 300L/bed/day for 72h.');
+            }
+            if (empty($validated['evidence_water_coa'])) {
+                abort(422, 'Water rating High requires a Certificate of Analysis upload.');
+            }
+        }
+
+        // Generator + fuel: start <=10s and 72h fuel
+        if (($validated['power_rating'] ?? null) === 'high') {
+            if (empty($validated['generator_starts_within_10s'])) {
+                abort(422, 'Power rating High requires generator start within 10 seconds.');
+            }
+            if (($validated['fuel_reserve_hours'] ?? 0) < 72) {
+                abort(422, 'Power rating High requires at least 72 hours of fuel reserve.');
+            }
+            if (empty($validated['evidence_maintenance_logs'])) {
+                abort(422, 'Power rating High requires maintenance/testing logs for generators/pumps.');
+            }
+        }
+
+        // Medical gases: 15 days reserve
+        if (($validated['medical_gas_rating'] ?? null) === 'high') {
+            if (($validated['medical_gas_reserve_days'] ?? 0) < 15) {
+                abort(422, 'Medical gas rating High requires 15 days reserve capacity.');
+            }
+        }
+
+        // Life support: ventilators 72h
+        if (($validated['life_support_rating'] ?? null) === 'high') {
+            if (($validated['ventilator_survival_hours'] ?? 0) < 72) {
+                abort(422, 'Life support rating High requires ventilator/life support availability for 72 hours.');
+            }
+        }
+
+        // Evidence for structural, maintenance, training
+        if (($validated['structural_score'] ?? 0) >= 80 && empty($validated['evidence_structural_drawings'])) {
+            abort(422, 'High structural rating requires as-built drawings upload.');
+        }
+        if (($validated['emergency_mgmt_score'] ?? 0) >= 80 && empty($validated['evidence_training_certificates'])) {
+            abort(422, 'High emergency management rating requires training certificates.');
+        }
+
+        // Hazard-driven critical flags
+        $geologicalHazards = $validated['hazards_geological'] ?? [];
+        $hydroHazards = $validated['hazards_hydrometeorological'] ?? [];
+
+        $geoHigh = is_array($geologicalHazards) && (in_array('high', $geologicalHazards, true) || in_array('High', $geologicalHazards, true));
+        $floodHigh = is_array($hydroHazards) && (in_array('flood_high', $hydroHazards, true) || in_array('flood', $hydroHazards, true) || in_array('high', $hydroHazards, true));
+
+        if ($geoHigh) {
+            if (empty($validated['seismic_bracing_medical_gas']) || empty($validated['flexible_connections_pipes'])) {
+                abort(422, 'Geological hazard High requires seismic bracing for medical gases and flexible pipe connections.');
+            }
+        }
+
+        if ($floodHigh) {
+            if (empty($validated['electrical_panels_above_flood'])) {
+                abort(422, 'Flood hazard High requires electrical panels located above flood level.');
+            }
+        }
     }
 
     // ==========================================

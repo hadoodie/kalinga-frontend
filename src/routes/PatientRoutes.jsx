@@ -54,6 +54,11 @@ const PatientHospitalMap = lazy(() =>
     default: module.PatientHospitalMap,
   }))
 );
+const PatientHospitalNavigator = lazy(() =>
+  import("../pages-patients/HospitalNavigator").then((module) => ({
+    default: module.PatientHospitalNavigator,
+  }))
+);
 const Notifications = lazy(() =>
   import("../pages-patients/Notifications").then((module) => ({
     default: module.Notifications,
@@ -152,6 +157,14 @@ export const PatientRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={patientRoles}>
           <PatientHospitalMap />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.PATIENT.HOSPITAL_NAVIGATOR}
+      element={
+        <ProtectedRoute allowedRoles={patientRoles}>
+          <PatientHospitalNavigator />
         </ProtectedRoute>
       }
     />

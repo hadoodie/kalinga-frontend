@@ -81,7 +81,7 @@ const WeatherWidget = () => {
         setLoading(true);
         setError(false);
         const response = await fetch(
-          "https://api.open-meteo.com/v1/forecast?latitude=14.5995&longitude=120.9842&current=temperature_2m,weathercode&timezone=Asia%2FManila"
+          "https://api.open-meteo.com/v1/forecast?latitude=14.5995&longitude=120.9842&current=temperature_2m,weathercode&timezone=Asia%2FManila",
         );
         if (!response.ok) throw new Error("Failed to fetch");
         const data = await response.json();
@@ -138,7 +138,7 @@ const NotificationWidget = () => {
   // Get only the first 3 notifications
   const notifications = useMemo(
     () => allNotifications.slice(0, 3),
-    [allNotifications]
+    [allNotifications],
   );
 
   if (loading) {
@@ -253,10 +253,10 @@ const AppointmentWidget = () => {
         </div>
         <div className="flex-1">
           <p className="font-bold text-primary text-sm line-clamp-1">
-            {appointment.provider_name}
+            {appointment.hospital}
           </p>
           <p className="text-xs text-green-700 font-medium mb-1">
-            {appointment.provider_specialty}
+            {appointment.service}
           </p>
           <div className="flex items-center gap-1 text-xs text-gray-600">
             <Clock size={12} />
@@ -405,7 +405,7 @@ export default function PatientDash() {
   const totalPages = Math.ceil(results.length / resultsPerPage);
   const paginatedResults = results.slice(
     (currentPage - 1) * resultsPerPage,
-    currentPage * resultsPerPage
+    currentPage * resultsPerPage,
   );
 
   const formattedResults = paginatedResults.map((result) => ({

@@ -76,9 +76,9 @@ export default function PatientSidebar() {
       icon: <Cloud size={25} />,
     },
     {
-      label: "Hospital Map",
-      path: "/patient/hospital-map",
-      icon: <MapPin size={25} />,
+      label: "Hospital Navigator",
+      path: "/patient/hospital-navigator",
+      icon: <Navigation size={25} />,
     },
     {
       label: "Notifications",
