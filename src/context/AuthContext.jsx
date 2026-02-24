@@ -195,6 +195,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const setSession = (userData, authToken) => {
+    setUser(userData);
+    setToken(authToken);
+    localStorage.setItem("token", authToken);
+    localStorage.setItem("user", JSON.stringify(userData));
+    preloadCriticalData({ userRole: userData.role });
+  };
+
   const value = {
     user,
     setUser,
@@ -203,6 +211,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     register,
+    setSession, 
     isAuthenticated: !!token && !!user,
   };
 

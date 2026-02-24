@@ -22,6 +22,7 @@ class VerificationController extends Controller
         $request->validate([
             'id_type' => 'required|string',
             'id_image' => 'required|image|max:10240', 
+            'back_image' => 'nullable|image|max:10240', 
             'id_number' => 'required|string',
             'first_name' => 'required|string',
             'last_name' => 'required|string',
@@ -32,10 +33,15 @@ class VerificationController extends Controller
         ]);
 
         try {
-            // Handle File Upload
-            $path = null;
+            $frontPath = null;
+            $backPath = null; 
+            
             if ($request->hasFile('id_image')) {
-                $path = $request->file('id_image')->store('verification-docs', 'public');
+                $frontPath = $request->file('id_image')->store('verification-docs', 'public');
+            }
+
+            if ($request->hasFile('back_image')) {
+                $backPath = $request->file('back_image')->store('verification-docs', 'public');
             }
 
             // Save to Database
@@ -48,11 +54,11 @@ class VerificationController extends Controller
                 'last_name' => $request->last_name,
                 'date_of_birth' => $request->birthday, 
                 'address' => $request->address,
-                'front_image_path' => $path, 
+                'front_image_path' => $frontPath, 
+                'back_image_path' => $backPath, 
                 'status' => 'pending'
             ]);
             
-            // Update the User's status to 'pending' immediately 
             $user = Auth::user();
             $user->verification_status = 'pending';
             $user->contact_number = $request->contact_number;
@@ -60,7 +66,7 @@ class VerificationController extends Controller
 
             return response()->json([
                 'message' => 'Verification submitted successfully!', 
-                'user' => $user, // Return updated user 
+                'user' => $user, 
                 'data' => $verification
             ], 201);
 
@@ -74,7 +80,7 @@ class VerificationController extends Controller
      */
     public function index()
     {
-        $requests = UserVerification::with('user') // Load user details
+        $requests = UserVerification::with('user') 
             ->where('status', 'pending')
             ->orderBy('created_at', 'asc')
             ->get();
@@ -87,7 +93,6 @@ class VerificationController extends Controller
      */
     public function approve($id)
     {
-        Log::info("Attempting to approve verification ID: " . $id); // Log 1
 
         $verification = UserVerification::findOrFail($id);
         
@@ -95,23 +100,20 @@ class VerificationController extends Controller
         $verification->status = 'verified';
         $verification->save();
 
-        Log::info("Verification record updated for ID: " . $id); // Log 2
-
         // Update User & Send Email
         $user = User::find($verification->user_id);
         
         if ($user) {
             $user->verification_status = 'verified';
             $user->save();
-            Log::info("User status updated for User ID: " . $user->id); // Log 3
+
+            $token = $user->createToken('magic-link')->plainTextToken;
 
             try {
-                Log::info("Attempting to send email to: " . $user->email); // Log 4
                 
                 // SEND EMAIL
-                Mail::to($user->email)->send(new UserVerified());
+                Mail::to($user->email)->send(new UserVerified($user, $token));
                 
-                Log::info("Email sent successfully!"); // Log 5
             } catch (\Exception $e) {
                 Log::error("Email failed to send: " . $e->getMessage()); // Error Log
             }

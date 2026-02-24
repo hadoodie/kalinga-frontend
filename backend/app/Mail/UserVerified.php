@@ -13,12 +13,16 @@ class UserVerified extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public $user;
+    public $token;
+
     /**
      * Create a new message instance.
      */
-    public function __construct()
+    public function __construct($user, $token)
     {
-        //
+        $this->user = $user;
+        $this->token = $token;
     }
 
     /**

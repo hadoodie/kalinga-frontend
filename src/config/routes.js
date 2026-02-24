@@ -8,12 +8,14 @@ export const ROUTES = {
   PRIVACY_POLICY: "/privacy-policy",
   TERMS_AND_CONDITIONS: "/terms-and-conditions",
   FAQS: "/faqs",
+  MAGIC_LOGIN: "/magic-login",
 
   // Account creation flow
   VERIFY_ID: "/verify-id",
   UPLOAD_ID: "/upload-id",
   FILL_INFO: "/fill-info",
   VERIFICATION_PENDING: "/verification-pending",
+
 
   // Patient routes
   PATIENT: {

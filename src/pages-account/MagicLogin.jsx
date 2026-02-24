@@ -1,0 +1,75 @@
+import { useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { Loader2 } from "lucide-react";
+import authService from "@/services/authService";
+import api, { getCsrfCookie } from "@/services/api";
+
+export const MagicLogin = () => {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { setSession } = useAuth();
+
+  useEffect(() => {
+    const processLogin = async () => {
+      const token = searchParams.get("token");
+      const role = searchParams.get("role");
+
+      if (!token) {
+        navigate("/login");
+        return;
+      }
+
+      try {
+        // 1. Immediately save the token
+        localStorage.setItem("token", token);
+
+        // 2. FORCE Axios to use this exact token immediately for the next request
+        api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+        // 3. Ensure we have a fresh CSRF cookie (prevents 419 errors)
+        await getCsrfCookie();
+
+        // 4. Now fetch the user data
+        const userData = await authService.getCurrentUser();
+
+        // 5. Sync session globally using your AuthContext helper
+        setSession(userData, token);
+
+        // 6. Redirect based on role
+        if (role === "admin") {
+          navigate("/admin/dashboard");
+        } else if (role === "patient") {
+          navigate("/patient/dashboard");
+        } else if (role === "responder") {
+          navigate("/responder/dashboard");
+        } else if (role === "logistics") {
+          navigate("/logistics/dashboard");
+        } else {
+          navigate("/");
+        }
+
+      } catch (error) {
+        console.error("Magic login failed", error);
+        
+        // Clean up the invalid token so it doesn't break future normal logins
+        localStorage.removeItem("token");
+        delete api.defaults.headers.common["Authorization"]; 
+        
+        alert("This login link has expired or is invalid. Please log in manually.");
+        navigate("/login");
+      }
+    };
+
+    processLogin();
+  }, [navigate, searchParams, setSession]);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex flex-col items-center space-y-4">
+        <Loader2 className="h-10 w-10 animate-spin text-green-700" />
+        <p className="text-lg font-medium text-gray-700">Authenticating your secure link...</p>
+      </div>
+    </div>
+  );
+};

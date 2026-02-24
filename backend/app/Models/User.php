@@ -10,7 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Appointment;
 use App\Models\Notification;
-use App\Models\AllocationRequest; // <-- ADDED THIS IMPORT
+use App\Models\AllocationRequest; 
 use Illuminate\Support\Str;
 
 class User extends Authenticatable
@@ -29,6 +29,7 @@ class User extends Authenticatable
         'password',
         'role',
         'phone',
+        'uuid',
         'profile_image',
         'address',
         'barangay',
