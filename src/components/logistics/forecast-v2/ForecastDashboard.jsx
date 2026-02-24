@@ -1,13 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   BrainCircuit,
   Loader2,
   TrendingUp,
   ShieldAlert,
   BarChart3,
+  Repeat,
 } from "lucide-react";
 import forecastService from "../../../services/forecastService";
 import api from "../../../services/api";
+import echo from "../../../services/echo";
+import { ROUTES } from "../../../config/routes";
 import {
   getDemoSummary,
   generateDemoRiskData,
@@ -111,6 +115,8 @@ function unwrapData(val, fallback = []) {
  * ForecastDashboard — root orchestrator for the v2 forecast UI.
  */
 export default function ForecastDashboard() {
+  const navigate = useNavigate();
+
   // ── Data state ─────────────────────────────────────────────
   const [summary, setSummary] = useState(null);
   const [riskData, setRiskData] = useState([]);
@@ -127,6 +133,10 @@ export default function ForecastDashboard() {
 
   // ── Action slide-over state ────────────────────────────────
   const [slideOver, setSlideOver] = useState(null);
+
+  // ── Auto-reorders state ────────────────────────────────────
+  const [autoReorders, setAutoReorders] = useState([]);
+  const [reordersLoading, setReordersLoading] = useState(false);
 
   // ── Fetch all data ─────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -208,6 +218,38 @@ export default function ForecastDashboard() {
     fetchAll();
   }, [fetchAll]);
 
+  // ── Fetch auto-reorders independently ──────────────────────
+  const fetchAutoReorders = useCallback(async () => {
+    setReordersLoading(true);
+    try {
+      const res = await forecastService.getAutoReorders({ hours: 48 });
+      setAutoReorders(res?.data || []);
+    } catch {
+      // Non-critical — silently ignore
+      setAutoReorders([]);
+    } finally {
+      setReordersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAutoReorders();
+  }, [fetchAutoReorders]);
+
+  // ── WebSocket: auto-refresh on new forecast run ────────────
+  useEffect(() => {
+    const channel = echo.channel("logistics");
+    channel.listen(".forecast.generated", (event) => {
+      console.info("[ForecastDashboard] forecast.generated event received", event);
+      fetchAll();
+      fetchAutoReorders();
+    });
+    return () => {
+      channel.stopListening(".forecast.generated");
+      echo.leaveChannel("logistics");
+    };
+  }, [fetchAll]);
+
   // ── Derived: triage items sorted by urgency ────────────────
   const triageItems = useMemo(() => {
     const highRisk = summary?.high_risk_items || DEMO_HIGH_RISK_ITEMS;
@@ -286,8 +328,20 @@ export default function ForecastDashboard() {
     [],
   );
   const handleCellClick = useCallback(
-    (cell) => setSlideOver({ item: cell, actionType: "po" }),
-    [],
+    (cell) => {
+      if (cell?.hospital_id) {
+        navigate(
+          ROUTES.LOGISTICS.HOSPITAL_FORECAST_DETAIL.replace(
+            ":hospitalId",
+            cell.hospital_id,
+          ),
+        );
+      } else {
+        // Fallback: open the action slide-over
+        setSlideOver({ item: cell, actionType: "po" });
+      }
+    },
+    [navigate],
   );
 
   const handleActionSubmit = useCallback(
@@ -428,6 +482,69 @@ export default function ForecastDashboard() {
           />
         </div>
       </div>
+
+      {/* Layer 1b: Auto-Reorders — AI-generated POs from the pipeline */}
+      {autoReorders.length > 0 && (
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+              <Repeat className="h-4 w-4 text-violet-500" aria-hidden="true" />
+              Auto-Reorders
+              <span className="text-xs font-normal text-slate-400 ml-1">
+                (last 48h)
+              </span>
+            </h3>
+            <span className="text-xs text-slate-400">{autoReorders.length} request{autoReorders.length !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="overflow-x-auto max-h-52 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white">
+                <tr className="text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                  <th className="text-left px-5 py-2.5 font-medium">Resource</th>
+                  <th className="text-left px-3 py-2.5 font-medium">Hospital</th>
+                  <th className="text-right px-3 py-2.5 font-medium">Qty</th>
+                  <th className="text-left px-3 py-2.5 font-medium">Urgency</th>
+                  <th className="text-left px-5 py-2.5 font-medium">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {autoReorders.slice(0, 20).map((req) => (
+                  <tr key={req.id} className="hover:bg-slate-50/60 transition-colors">
+                    <td className="px-5 py-2.5 font-medium text-slate-700 truncate max-w-[160px]">
+                      {req.resource?.name || req.resource_name || `#${req.resource_id}`}
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-500 truncate max-w-[140px]">
+                      {req.hospital?.name || `Hospital #${req.hospital_id}`}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-600">
+                      {Number(req.quantity).toLocaleString()}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                        req.urgency_level === "Critical"
+                          ? "bg-red-100 text-red-700"
+                          : req.urgency_level === "High"
+                            ? "bg-orange-100 text-orange-700"
+                            : "bg-amber-100 text-amber-700"
+                      }`}>
+                        {req.urgency_level}
+                      </span>
+                    </td>
+                    <td className="px-5 py-2.5 text-xs text-slate-400">
+                      {new Date(req.created_at).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Layer 2: Scenario + Risk Heatmap */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

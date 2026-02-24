@@ -53,6 +53,12 @@ const ProfileLogistics = lazy(() =>
   }))
 );
 
+const HospitalForecastDetailPage = lazy(() =>
+  import("../pages-logistics/HospitalForecastDetail").then((module) => ({
+    default: module.HospitalForecastDetailPage,
+  }))
+);
+
 const logisticsRoles = [ROLES.LOGISTICS, ROLES.ADMIN];
 
 export const LogisticsRoutes = () => (
@@ -144,6 +150,14 @@ export const LogisticsRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={logisticsRoles}>
           <ProfileLogistics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.LOGISTICS.HOSPITAL_FORECAST_DETAIL}
+      element={
+        <ProtectedRoute allowedRoles={logisticsRoles}>
+          <HospitalForecastDetailPage />
         </ProtectedRoute>
       }
     />

@@ -84,6 +84,7 @@ export const ROUTES = {
     NOTIFICATIONS: "/logistics/notifications",
     LIVE_MAP: "/logistics/live-map",
     PROFILE: "/logistics/profile",
+    HOSPITAL_FORECAST_DETAIL: "/logistics/forecast/hospital/:hospitalId",
   },
 };
 
