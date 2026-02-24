@@ -114,11 +114,22 @@ export default function ForecastDashboard() {
 
       // Summary has a different shape: { high_risk_items, risk_distribution, ... }
       const summaryVal = summaryRes.status === "fulfilled" ? summaryRes.value : null;
+
+      // Detect whether the API returned actual forecast data.
+      // When the DB is empty the summary endpoint returns risk_distribution
+      // as [] (empty array) and generated_at as null — both are falsy traps.
+      const distObj = summaryVal?.risk_distribution;
+      const hasDistribution =
+        distObj &&
+        !Array.isArray(distObj) &&
+        typeof distObj === "object" &&
+        Object.keys(distObj).length > 0;
+
       const hasRealData =
         summaryVal &&
         (summaryVal.high_risk_items?.length > 0 ||
-          summaryVal.risk_distribution ||
-          summaryVal.meta?.generated_at);
+          hasDistribution ||
+          (summaryVal.meta?.generated_at != null));
 
       if (hasRealData) {
         setSummary(summaryVal);

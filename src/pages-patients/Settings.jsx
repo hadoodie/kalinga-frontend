@@ -16,7 +16,7 @@ export const PatientSettings = () => {
       {/* Main content wrapper */}
       <div
         className={`flex flex-col flex-1 transition-all duration-300 ${
-          collapsed ? "wl-16" : "wl-64"
+          collapsed ? "ml-16" : "ml-64"
         }`}
       >
         {/* Navbar*/}

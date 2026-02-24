@@ -80,7 +80,7 @@ const baseAssessmentDetails = {
   modules: [
     {
       id: "hazards",
-      title: "Module 1 · Hazards Context",
+      title: "Module 1 Â· Hazards Context",
       weight: "Context",
       status: "Documented",
       description:
@@ -92,7 +92,7 @@ const baseAssessmentDetails = {
     },
     {
       id: "structural",
-      title: "Module 2 · Structural Safety",
+      title: "Module 2 Â· Structural Safety",
       weight: "50%",
       score: 75,
       status: "Safe",
@@ -105,7 +105,7 @@ const baseAssessmentDetails = {
     },
     {
       id: "non_structural",
-      title: "Module 3 · Non-Structural Safety",
+      title: "Module 3 Â· Non-Structural Safety",
       weight: "30%",
       score: 70,
       status: "Needs attention",
@@ -118,7 +118,7 @@ const baseAssessmentDetails = {
     },
     {
       id: "emergency",
-      title: "Module 4 · Emergency & Disaster Management",
+      title: "Module 4 Â· Emergency & Disaster Management",
       weight: "20%",
       score: 72,
       status: "On track",
@@ -389,7 +389,7 @@ const HSI_SEED_ASSESSMENT_DETAILS = {
       maximum_capacity: { beds: 200, staff: 360 },
       surge_multiplier: 1.8,
       catchment_facilities: [
-        { name: "Field Hospital – Marikina Sports Center", distance_km: 4.7 },
+        { name: "Field Hospital â€“ Marikina Sports Center", distance_km: 4.7 },
         { name: "QC Evacuation Mega Dome", distance_km: 9.1 },
       ],
     },
@@ -1253,7 +1253,7 @@ const HospitalSafetyIndexContent = () => {
     const resourceLabel = resourceLabels[resourceKey] || resourceKey;
     if (vendor) {
       setLastAutoTrigger(
-        `Auto-triggered ${vendor.name} (${vendor.mou}) for ${resourceLabel} · Contact ${vendor.contact}`
+        `Auto-triggered ${vendor.name} (${vendor.mou}) for ${resourceLabel} Â· Contact ${vendor.contact}`
       );
     } else {
       setLastAutoTrigger(`No vendor playbook configured for ${resourceLabel}.`);
@@ -1280,7 +1280,7 @@ const HospitalSafetyIndexContent = () => {
       <div className="flex h-[60vh] items-center justify-center rounded-2xl border border-slate-200 bg-white/70 shadow-sm">
         <div className="flex items-center gap-3 text-slate-500">
           <RefreshCw className="h-5 w-5 animate-spin text-emerald-600" />
-          <span>Loading hospital safety data…</span>
+          <span>Loading hospital safety dataâ€¦</span>
         </div>
       </div>
     );
@@ -1539,7 +1539,7 @@ const HospitalSafetyIndexContent = () => {
                           WHO module performance
                         </div>
                         <p className="text-xs text-slate-500">
-                          Structural (50%) · Non-Structural (30%) · Emergency
+                          Structural (50%) Â· Non-Structural (30%) Â· Emergency
                           Management (20%)
                         </p>
                         <div className="mt-4 space-y-4">
@@ -1724,8 +1724,8 @@ const HospitalSafetyIndexContent = () => {
                           <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
                             <p className="text-2xl font-bold text-slate-900">
                               {hospitalCompliance.generator.starts_within_10s
-                                ? "✓"
-                                : "✗"}
+                                ? "âœ“"
+                                : "âœ—"}
                             </p>
                             <p className="text-xs text-slate-500">
                               Starts within 10s
@@ -1909,7 +1909,7 @@ const HospitalSafetyIndexPage = () => {
       <LogisticSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <div
         className={`flex flex-1 flex-col transition-all duration-300 ${
-          collapsed ? "wl-16" : "wl-64"
+          collapsed ? "ml-16" : "ml-64"
         }`}
       >
         <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">

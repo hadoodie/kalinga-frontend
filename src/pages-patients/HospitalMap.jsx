@@ -11,7 +11,7 @@ export const PatientHospitalMap = () => {
       <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <div
         className={`flex flex-col flex-1 transition-all duration-300 ${
-          collapsed ? "wl-16" : "wl-64"
+          collapsed ? "ml-16" : "ml-64"
         }`}
       >
         <div className="sticky top-0 z-10 bg-background">

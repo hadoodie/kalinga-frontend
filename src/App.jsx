@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // Context & Components
 import { AuthProvider } from "./context/AuthContext";
@@ -28,7 +29,7 @@ const PageLoader = () => (
 
 function App() {
   return (
-    <>
+    <ErrorBoundary>
       <Toaster />
       <BrowserRouter>
         <AuthProvider>
@@ -78,7 +79,7 @@ function App() {
           </RealtimeProvider>
         </AuthProvider>
       </BrowserRouter>
-    </>
+    </ErrorBoundary>
   );
 }
 

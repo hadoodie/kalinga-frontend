@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, useEffect, useMemo, useState, Suspense } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -15,19 +15,28 @@ import {
   Users,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { DashboardSection } from "@/components/admin/sections/DashboardSection";
-import { UserRoleManagement } from "@/components/admin/sections/UserRoleManagement";
-import { IncidentHeatMap } from "@/components/admin/sections/IncidentHeatMap";
-import { ResourceManagement } from "@/components/admin/sections/ResourceManagement";
-import { TrainingSection } from "@/components/admin/sections/TrainingSection";
-import { ConnectivityMonitoring } from "@/components/admin/sections/ConnectivityMonitoring";
-import { MonitoringSecurity } from "@/components/admin/sections/MonitoringSecurity";
-import { BroadcastControl } from "@/components/admin/sections/BroadcastControl";
-import { LogisticsOverview } from "@/components/admin/sections/LogisticsOverview";
-import { ResponderOverview } from "@/components/admin/sections/ResponderOverview";
-import { PatientOverview } from "@/components/admin/sections/PatientOverview";
-import { HospitalSafetyIndexSection } from "@/components/admin/sections/HospitalSafetyIndex";
 import { useAuth } from "@/context/AuthContext";
+
+// Lazy-loaded admin sections — each chunk is split out of the main bundle
+const DashboardSection = lazy(() => import("@/components/admin/sections/DashboardSection").then(m => ({ default: m.DashboardSection })));
+const UserRoleManagement = lazy(() => import("@/components/admin/sections/UserRoleManagement").then(m => ({ default: m.UserRoleManagement })));
+const IncidentHeatMap = lazy(() => import("@/components/admin/sections/IncidentHeatMap").then(m => ({ default: m.IncidentHeatMap })));
+const ResourceManagement = lazy(() => import("@/components/admin/sections/ResourceManagement").then(m => ({ default: m.ResourceManagement })));
+const TrainingSection = lazy(() => import("@/components/admin/sections/TrainingSection").then(m => ({ default: m.TrainingSection })));
+const ConnectivityMonitoring = lazy(() => import("@/components/admin/sections/ConnectivityMonitoring").then(m => ({ default: m.ConnectivityMonitoring })));
+const MonitoringSecurity = lazy(() => import("@/components/admin/sections/MonitoringSecurity").then(m => ({ default: m.MonitoringSecurity })));
+const BroadcastControl = lazy(() => import("@/components/admin/sections/BroadcastControl").then(m => ({ default: m.BroadcastControl })));
+const LogisticsOverview = lazy(() => import("@/components/admin/sections/LogisticsOverview").then(m => ({ default: m.LogisticsOverview })));
+const ResponderOverview = lazy(() => import("@/components/admin/sections/ResponderOverview").then(m => ({ default: m.ResponderOverview })));
+const PatientOverview = lazy(() => import("@/components/admin/sections/PatientOverview").then(m => ({ default: m.PatientOverview })));
+const HospitalSafetyIndexSection = lazy(() => import("@/components/admin/sections/HospitalSafetyIndex").then(m => ({ default: m.HospitalSafetyIndexSection })));
+
+// Section loading spinner
+const SectionLoader = () => (
+  <div className="flex items-center justify-center py-24">
+    <div className="animate-spin rounded-full h-8 w-8 border-2 border-slate-200 border-t-blue-600" />
+  </div>
+);
 
 const adminSections = [
   {
@@ -232,7 +241,9 @@ export const AdminPortal = () => {
       personaRole={formatRole(user.role)}
       personaEmail={user.email}
     >
-      <ActiveComponent />
+      <Suspense fallback={<SectionLoader />}>
+        <ActiveComponent />
+      </Suspense>
     </AdminLayout>
   );
 };
