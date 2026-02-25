@@ -62,18 +62,16 @@ describe("P3 – Pipeline observability smoke tests", () => {
 
   describe("PipelineHealthBar component", () => {
     it("can be imported", async () => {
-      const mod = await import(
-        "../components/logistics/forecast-v2/PipelineHealthBar"
-      );
+      const mod =
+        await import("../components/logistics/forecast-v2/PipelineHealthBar");
       expect(mod.default).toBeDefined();
     });
   });
 
   describe("AccuracyPanel component", () => {
     it("can be imported", async () => {
-      const mod = await import(
-        "../components/logistics/forecast-v2/AccuracyPanel"
-      );
+      const mod =
+        await import("../components/logistics/forecast-v2/AccuracyPanel");
       expect(mod.default).toBeDefined();
     });
   });

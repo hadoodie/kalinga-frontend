@@ -1,10 +1,5 @@
 import { useState, useEffect, useCallback, memo } from "react";
-import {
-  Target,
-  TrendingUp,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
+import { Target, TrendingUp, AlertCircle, Loader2 } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -147,7 +142,9 @@ const AccuracyPanel = memo(function AccuracyPanel() {
                 </p>
                 <p
                   className="text-xl font-black mt-0.5"
-                  style={{ color: avgMape != null ? mapeColor(avgMape) : "#64748b" }}
+                  style={{
+                    color: avgMape != null ? mapeColor(avgMape) : "#64748b",
+                  }}
                 >
                   {avgMape?.toFixed(1) ?? "—"}%
                 </p>

@@ -9,6 +9,7 @@ use App\Models\Hospital;
 use App\Models\Resource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
@@ -127,12 +128,33 @@ class ForecastController extends Controller
             ]);
         }
 
-        // High-risk items in the next window
-        $highRisk = ForecastRisk::forRun($latestRun)
-            ->nextHours($hours)
-            ->highRisk()
-            ->with(['hospital:id,name', 'resource:id,name,category'])
-            ->orderBy('risk_prob', 'desc')
+        // High-risk items — aggregate by (hospital, resource) to avoid duplicates.
+        // Take the worst-case stats per pair: MAX risk_prob, MIN days_until_stockout.
+        $highRisk = DB::table('forecast_risk_hourly as fr')
+            ->join('hospitals', 'hospitals.id', '=', 'fr.hospital_id')
+            ->join('resources', 'resources.id', '=', 'fr.resource_id')
+            ->select([
+                'fr.hospital_id',
+                'fr.resource_id',
+                'hospitals.name as hospital_name',
+                'resources.name as resource_name',
+                'resources.category as resource_category',
+                DB::raw('MAX(fr.risk_prob) as risk_prob'),
+                DB::raw('MIN(fr.days_until_stockout) as days_until_stockout'),
+                DB::raw("(CASE
+                    WHEN MAX(fr.risk_prob) >= 0.85 THEN 'critical'
+                    WHEN MAX(fr.risk_prob) >= 0.65 THEN 'high'
+                    WHEN MAX(fr.risk_prob) >= 0.35 THEN 'medium'
+                    ELSE 'low'
+                END) as risk_level"),
+                DB::raw('MAX(fr.forecast_time) as forecast_time'),
+            ])
+            ->where('fr.generated_at', $latestRun)
+            ->where('fr.forecast_time', '>=', now())
+            ->where('fr.forecast_time', '<=', now()->addHours($hours))
+            ->whereIn('fr.risk_level', ['high', 'critical'])
+            ->groupBy('fr.hospital_id', 'fr.resource_id', 'hospitals.name', 'resources.name', 'resources.category')
+            ->orderByDesc('risk_prob')
             ->limit(20)
             ->get();
 
@@ -146,11 +168,27 @@ class ForecastController extends Controller
             ->with('resource:id,name,category,unit')
             ->get();
 
-        // Overall risk distribution
-        $riskDistribution = ForecastRisk::forRun($latestRun)
-            ->nextHours($hours)
-            ->selectRaw("risk_level, COUNT(*) as count")
-            ->groupBy('risk_level')
+        // Overall risk distribution — also aggregated per (hospital, resource) pair
+        // so we count unique items, not hourly row duplicates.
+        $riskDistribution = DB::table(
+            DB::raw("(
+                SELECT fr2.hospital_id, fr2.resource_id,
+                       CASE
+                           WHEN MAX(fr2.risk_prob) >= 0.85 THEN 'critical'
+                           WHEN MAX(fr2.risk_prob) >= 0.65 THEN 'high'
+                           WHEN MAX(fr2.risk_prob) >= 0.35 THEN 'medium'
+                           ELSE 'low'
+                       END as agg_risk_level
+                FROM forecast_risk_hourly fr2
+                WHERE fr2.generated_at = ?
+                  AND fr2.forecast_time >= NOW()
+                  AND fr2.forecast_time <= NOW() + INTERVAL '{$hours} hours'
+                GROUP BY fr2.hospital_id, fr2.resource_id
+            ) as pairs")
+        )
+            ->addBinding($latestRun, 'select')
+            ->selectRaw('agg_risk_level as risk_level, COUNT(*) as count')
+            ->groupBy('agg_risk_level')
             ->pluck('count', 'risk_level');
 
         return response()->json([

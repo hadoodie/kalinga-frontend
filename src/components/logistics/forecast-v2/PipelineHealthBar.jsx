@@ -95,7 +95,9 @@ const PipelineHealthBar = memo(function PipelineHealthBar({ onRefreshData }) {
   const StatusIcon = cfg.icon;
 
   return (
-    <section className={`rounded-2xl border shadow-sm overflow-hidden ${cfg.bg}`}>
+    <section
+      className={`rounded-2xl border shadow-sm overflow-hidden ${cfg.bg}`}
+    >
       {/* Compact bar */}
       <button
         type="button"
@@ -121,7 +123,10 @@ const PipelineHealthBar = memo(function PipelineHealthBar({ onRefreshData }) {
           </span>
           <span className="hidden sm:inline">
             <Database className="inline h-3 w-3 mr-0.5" />
-            {((health.demand_rows || 0) + (health.risk_rows || 0)).toLocaleString()} rows
+            {(
+              (health.demand_rows || 0) + (health.risk_rows || 0)
+            ).toLocaleString()}{" "}
+            rows
           </span>
           <span className="font-mono">{health.model_version}</span>
           {expanded ? (
@@ -137,9 +142,18 @@ const PipelineHealthBar = memo(function PipelineHealthBar({ onRefreshData }) {
         <div className="border-t border-slate-200/50 px-5 py-4 bg-white/60 space-y-4">
           {/* Stats grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <StatCell label="Demand Rows" value={(health.demand_rows || 0).toLocaleString()} />
-            <StatCell label="Risk Rows" value={(health.risk_rows || 0).toLocaleString()} />
-            <StatCell label="Model Version" value={health.model_version || "—"} />
+            <StatCell
+              label="Demand Rows"
+              value={(health.demand_rows || 0).toLocaleString()}
+            />
+            <StatCell
+              label="Risk Rows"
+              value={(health.risk_rows || 0).toLocaleString()}
+            />
+            <StatCell
+              label="Model Version"
+              value={health.model_version || "—"}
+            />
             <StatCell
               label="Last Run"
               value={
