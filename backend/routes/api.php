@@ -285,6 +285,19 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Identity Verification
     Route::post('/verify-identity', [VerificationController::class, 'store']);
     
+    // Test route to check if verification image exists (for debugging)
+    Route::get('/test-image/{filename}', function($filename) {
+        $path = storage_path("app/public/verification-docs/{$filename}");
+        if (file_exists($path)) {
+            return response()->file($path, [
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
+        }
+        return response()->json(['error' => 'File not found', 'path' => $path], 404);
+    });
+    
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/admin/users', [AuthController::class, 'getAllUsers']);

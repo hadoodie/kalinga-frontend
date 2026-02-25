@@ -37,12 +37,37 @@ class VerificationController extends Controller
             $backPath = null; 
             
             if ($request->hasFile('id_image')) {
-                $frontPath = $request->file('id_image')->store('verification-docs', 'public');
+                $file = $request->file('id_image');
+                $frontPath = $file->storeAs(
+                    'verification-docs',
+                    'front_' . Auth::id() . '_' . time() . '.' . $file->getClientOriginalExtension(),
+                    'public'
+                );
+                \Log::info("Front image stored at: " . $frontPath);
+            } else {
+                \Log::warning("No front image received in request");
             }
 
             if ($request->hasFile('back_image')) {
-                $backPath = $request->file('back_image')->store('verification-docs', 'public');
+                // Small delay to ensure different timestamp
+                usleep(100000); // 0.1 second
+                $file = $request->file('back_image');
+                $backPath = $file->storeAs(
+                    'verification-docs',
+                    'back_' . Auth::id() . '_' . time() . '.' . $file->getClientOriginalExtension(),
+                    'public'
+                );
+                \Log::info("Back image stored at: " . $backPath);
+            } else {
+                \Log::warning("No back image received in request");
             }
+
+            \Log::info("Creating verification record", [
+                'front_path' => $frontPath,
+                'back_path' => $backPath,
+                'id_type' => $request->id_type,
+                'user_id' => Auth::id()
+            ]);
 
             $verification = UserVerification::create([
                 'user_id' => Auth::id(),
@@ -56,6 +81,12 @@ class VerificationController extends Controller
                 'front_image_path' => $frontPath, 
                 'back_image_path' => $backPath, 
                 'status' => 'pending'
+            ]);
+            
+            \Log::info("Verification record created successfully", [
+                'verification_id' => $verification->id,
+                'stored_front_path' => $verification->front_image_path,
+                'stored_back_path' => $verification->back_image_path
             ]);
             
             $user = Auth::user();

@@ -497,56 +497,64 @@ export default function UploadID() {
         <div className="space-y-4 mb-6">
           
           {/* Front ID Upload */}
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Front of ID</label>
-            {frontPreview ? (
-              <div className="relative group">
-                <img src={frontPreview} alt="Front Preview" className="w-full h-40 object-contain bg-gray-50 rounded-lg border-2 border-green-500" />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveFile('front')}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-lg transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => document.getElementById("front-upload").click()}
-                className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-green-500 transition-colors"
-              >
-                <Camera className="mb-2 opacity-50" size={32} />
-                <span className="text-sm">Tap to upload Front</span>
-              </button>
-            )}
-            <input id="front-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'front')} />
-          </div>
+<div>
+  <label className="block text-sm font-medium mb-1 text-gray-700">Front of ID</label>
+  {frontPreview ? (
+    <div className="relative group w-full bg-gray-50 rounded-lg border-2 border-green-500 overflow-hidden">
+      <img 
+        src={frontPreview} 
+        alt="Front Preview" 
+        className="w-full h-auto block" // h-auto makes the image (and parent) match the photo's aspect ratio
+      />
+      <button
+        type="button"
+        onClick={() => handleRemoveFile('front')}
+        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-lg transition-colors"
+      >
+        <X size={18} />
+      </button>
+    </div>
+  ) : (
+    <button
+      onClick={() => document.getElementById("front-upload").click()}
+      className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-green-500 transition-colors"
+    >
+      <Camera className="mb-2 opacity-50" size={32} />
+      <span className="text-sm">Tap to upload Front</span>
+    </button>
+  )}
+  <input id="front-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'front')} />
+</div>
 
-          {/* Back ID Upload */}
-          <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Back of ID</label>
-            {backPreview ? (
-              <div className="relative group">
-                <img src={backPreview} alt="Back Preview" className="w-full h-40 object-contain bg-gray-50 rounded-lg border-2 border-green-500" />
-                <button
-                  type="button"
-                  onClick={() => handleRemoveFile('back')}
-                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-lg transition-colors"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => document.getElementById("back-upload").click()}
-                className="w-full h-32 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-green-500 transition-colors"
-              >
-                <Upload className="mb-2 opacity-50" size={32} />
-                <span className="text-sm">Tap to upload Back</span>
-              </button>
-            )}
-            <input id="back-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'back')} />
-          </div>
+{/* Back ID Upload */}
+<div>
+  <label className="block text-sm font-medium mb-1 text-gray-700">Back of ID</label>
+  {backPreview ? (
+    <div className="relative group w-full bg-gray-50 rounded-lg border-2 border-green-500 overflow-hidden">
+      <img 
+        src={backPreview} 
+        alt="Back Preview" 
+        className="w-full h-auto block" 
+      />
+      <button
+        type="button"
+        onClick={() => handleRemoveFile('back')}
+        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-lg transition-colors"
+      >
+        <X size={18} />
+      </button>
+    </div>
+  ) : (
+    <button
+      onClick={() => document.getElementById("back-upload").click()}
+      className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-green-500 transition-colors"
+    >
+      <Upload className="mb-2 opacity-50" size={32} />
+      <span className="text-sm">Tap to upload Back</span>
+    </button>
+  )}
+  <input id="back-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'back')} />
+</div>
 
         </div>
 

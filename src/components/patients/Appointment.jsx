@@ -406,7 +406,7 @@ const BookingFlow = ({ onClose, onSuccess }) => {
             const payload = {
                 hospital: formData.hospital,
                 service: formData.serviceType,
-                appointment_at: `${formData.date} ${formData.time}`, // Combine Date & Time
+                appointment_date: `${formData.date} ${formData.time}`, // Combine Date & Time
                 complaint: formData.complaint,
                 patient_name: `${formData.firstName} ${formData.lastName}`,
                 contact_email: formData.email,
@@ -507,7 +507,7 @@ export default function Appointments() {
       
       // Map Laravel snake_case to Frontend Format
       const formattedData = response.data.map(app => {
-          const appDate = new Date(app.appointment_at);
+          const appDate = new Date(app.appointment_date);
           // Capitalize status correctly for tab matching
           const rawStatus = app.status || 'upcoming';
           const formattedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Check, X, Eye, Loader2, FileCheck, Mail } from "lucide-react";
 import api from "@/services/api";
+import { resolveApiBaseUrl } from "@/config/runtime";
 
 const getImageUrl = (path) => {
   if (!path) return null;
-  const baseURL = "http://localhost:8000"; 
+  const baseURL = resolveApiBaseUrl();
   return `${baseURL}/storage/${path}`;
 };
 
@@ -121,7 +122,7 @@ export const VerificationRequests = () => {
                 <button
                   onClick={() => {
                     setSelectedReq(req);
-                    setActiveImageTab('front'); // Reset to front view every time a new modal opens
+                    setActiveImageTab('front');
                   }}
                   className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary/10 py-2 text-sm font-medium text-primary hover:bg-primary/20"
                 >
@@ -178,20 +179,40 @@ export const VerificationRequests = () => {
                 </div>
 
                 {/* Display Image based on active tab */}
-                <div className="flex flex-1 items-center justify-center rounded-xl bg-gray-100 p-4 min-h-[400px]">
-                  <img
-                    src={getImageUrl(
-                      activeImageTab === 'front' 
-                        ? selectedReq.front_image_path 
-                        : selectedReq.back_image_path
-                    )}
-                    alt={`ID Document ${activeImageTab}`}
-                    className="max-h-[500px] w-full object-contain"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
-                    }}
-                  />
+                <div key={activeImageTab} className="flex flex-1 items-center justify-center rounded-xl bg-gray-50 border-2 border-gray-200 p-4 min-h-[400px]">
+                  {activeImageTab === 'front' ? (
+                    selectedReq.front_image_path ? (
+                      <img
+                        key={selectedReq.front_image_path}
+                        src={getImageUrl(selectedReq.front_image_path)}
+                        alt="Front ID"
+                        className="max-h-full max-w-full object-contain"
+                        onError={(e) => {
+                          e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Available";
+                        }}
+                      />
+                    ) : (
+                      <div className="text-center text-gray-400">
+                        <p>No front image</p>
+                      </div>
+                    )
+                  ) : (
+                    selectedReq.back_image_path ? (
+                      <img
+                        key={selectedReq.back_image_path}
+                        src={getImageUrl(selectedReq.back_image_path)}
+                        alt="Back ID"
+                        className="max-h-full max-w-full object-contain"
+                        onError={(e) => {
+                          e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Available";
+                        }}
+                      />
+                    ) : (
+                      <div className="text-center text-gray-400">
+                        <p>No back image</p>
+                      </div>
+                    )
+                  )}
                 </div>
               </div>
 
