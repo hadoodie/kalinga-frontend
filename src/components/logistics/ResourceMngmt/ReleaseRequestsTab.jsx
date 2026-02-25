@@ -1,5 +1,5 @@
 // src/components/logistics/ResourceMngmt/ReleaseRequestsTab.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Bell, 
   CheckCircle, 
@@ -8,42 +8,67 @@ import {
   Truck, 
   Clock,
   MessageSquare,
-  AlertTriangle
+  AlertTriangle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import ReleaseConfirmModal from './ReleaseConfirmModal';
+import api from '../../../services/api';
 
-const ReleaseRequestsTab = () => {
+const ReleaseRequestsTab = ({ hospitalId, facility }) => {
   const [incomingRequests, setIncomingRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchIncomingRequests();
-    // WebSocket connection for real-time updates
-    const ws = new WebSocket(`ws://${window.location.host}/ws/release-requests`);
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'new_request') {
-        setIncomingRequests(prev => [data.request, ...prev]);
-      }
-    };
-
-    return () => ws.close();
-  }, []);
-
-  const fetchIncomingRequests = async () => {
+  const fetchIncomingRequests = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const response = await fetch('/api/allocations/incoming');
-      const data = await response.json();
-      setIncomingRequests(data);
-    } catch (error) {
-      console.error('Error fetching requests:', error);
+      // Use the existing allocations endpoint — filter for allocations
+      // where this hospital is the source (outgoing releases)
+      const response = await api.get('/allocations', {
+        params: { source_hospital_id: hospitalId }
+      });
+      const data = response.data;
+      const list = Array.isArray(data) ? data : (data.data || []);
+
+      // Only show allocations that need action (planned / confirmed status)
+      const actionable = list.filter(a =>
+        ['planned', 'confirmed', 'logistics_assigned'].includes(a.status)
+      );
+
+      // Normalise fields for the card template
+      const normalised = actionable.map(alloc => ({
+        id: alloc.id,
+        resource_type: alloc.request?.resource?.name || alloc.request?.resource_name || 'Resource',
+        quantity: alloc.request?.quantity || alloc.quantity || 0,
+        urgency_level: alloc.request?.urgency_level?.toLowerCase() || 'medium',
+        status: alloc.status,
+        created_at: alloc.created_at,
+        requesting_hospital: alloc.destination_hospital?.name || alloc.request?.hospital?.name || 'Requesting Hospital',
+        reason: alloc.request?.reason || 'Supply request',
+        needed_by: alloc.request?.needed_by || alloc.created_at,
+        available_stock: alloc.source_hospital?.resources?.find(
+          r => r.id === alloc.request?.resource_id
+        )?.quantity ?? '—',
+        _raw: alloc,
+      }));
+
+      setIncomingRequests(normalised);
+    } catch (err) {
+      console.error('Error fetching release requests:', err);
+      setError('Failed to load release requests.');
+      setIncomingRequests([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [hospitalId]);
+
+  useEffect(() => {
+    if (hospitalId) fetchIncomingRequests();
+  }, [hospitalId, fetchIncomingRequests]);
 
   const handleApprove = (request) => {
     setSelectedRequest(request);
@@ -52,31 +77,20 @@ const ReleaseRequestsTab = () => {
 
   const handleDecline = async (requestId, reason) => {
     try {
-      await fetch(`/api/allocations/${requestId}/decline`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason })
-      });
+      await api.delete(`/allocations/${requestId}/reject`);
       setIncomingRequests(prev => prev.filter(req => req.id !== requestId));
-    } catch (error) {
-      console.error('Error declining request:', error);
+    } catch (err) {
+      console.error('Error declining request:', err);
     }
   };
 
   const handleConfirmRelease = async (confirmationData) => {
     try {
-      await fetch(`/api/allocations/${selectedRequest.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          status: 'confirmed',
-          ...confirmationData
-        })
-      });
+      await api.patch(`/allocations/${selectedRequest.id}/confirm`, confirmationData);
       setIncomingRequests(prev => prev.filter(req => req.id !== selectedRequest.id));
       setShowConfirmModal(false);
-    } catch (error) {
-      console.error('Error confirming release:', error);
+    } catch (err) {
+      console.error('Error confirming release:', err);
     }
   };
 
@@ -100,12 +114,42 @@ const ReleaseRequestsTab = () => {
     return badges[urgency] || badges.medium;
   };
 
-  if (incomingRequests.length === 0 && !loading) {
+  if (loading) {
+    return (
+      <div className="p-12 text-center">
+        <Loader2 className="w-10 h-10 mx-auto text-green-600 animate-spin mb-3" />
+        <p className="text-gray-600 font-medium">Loading release requests...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center border-2 border-dashed border-red-300 rounded-xl bg-red-50">
+        <AlertTriangle className="w-12 h-12 mx-auto text-red-400 mb-3" />
+        <p className="text-red-700 font-bold mb-2">{error}</p>
+        <button
+          onClick={fetchIncomingRequests}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold inline-flex items-center gap-2"
+        >
+          <RefreshCw className="w-4 h-4" /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (incomingRequests.length === 0) {
     return (
       <div className="p-8 text-center border-2 border-dashed border-gray-300 rounded-xl bg-gray-50">
         <Bell className="w-16 h-16 mx-auto text-gray-400 mb-4" />
         <h3 className="text-xl font-bold text-gray-600 mb-2">No Release Requests</h3>
         <p className="text-gray-500">You don't have any incoming release requests at the moment.</p>
+        <button
+          onClick={fetchIncomingRequests}
+          className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold inline-flex items-center gap-2"
+        >
+          <RefreshCw className="w-4 h-4" /> Refresh
+        </button>
       </div>
     );
   }

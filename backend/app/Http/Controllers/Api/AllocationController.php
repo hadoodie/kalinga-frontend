@@ -20,15 +20,31 @@ use Illuminate\Support\Facades\Storage;
 class AllocationController extends Controller
 {
 
-public function index()
+public function index(Request $request)
 {
-    return Allocation::with([
+    $query = Allocation::with([
         'request.hospital',
+        'request.resource',
         'sourceHospital',
         'destinationHospital'
-    ])
-    ->orderBy('created_at', 'desc')
-    ->get();
+    ]);
+
+    // Filter by source hospital (for release requests tab)
+    if ($request->filled('source_hospital_id')) {
+        $query->where('source_hospital_id', $request->source_hospital_id);
+    }
+
+    // Filter by destination hospital
+    if ($request->filled('destination_hospital_id')) {
+        $query->where('destination_hospital_id', $request->destination_hospital_id);
+    }
+
+    // Filter by status
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    return $query->orderBy('created_at', 'desc')->get();
 }
 
 

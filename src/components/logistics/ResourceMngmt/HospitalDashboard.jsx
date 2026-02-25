@@ -1,5 +1,5 @@
 // src/components/logistics/ResourceMngmt/HospitalDashboard.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Package,
   Truck,
@@ -24,6 +24,8 @@ import ReleaseRequestsTab from './ReleaseRequestsTab';
 import NotificationCenter from './NotificationCenter';
 import DeliveryConfirmModal from './DeliveryConfirmModal';
 import ReleaseConfirmModal from './ReleaseConfirmModal';
+import RequestSupply from '../RequestSupply';
+import hospitalService from '../../../services/hospitalService';
 
 const HospitalDashboard = () => {
   const [activeTab, setActiveTab] = useState('resources');
@@ -33,6 +35,28 @@ const HospitalDashboard = () => {
   const [selectedDelivery, setSelectedDelivery] = useState(null);
   const [selectedReleaseRequest, setSelectedReleaseRequest] = useState(null);
   const [userRole, setUserRole] = useState('Hospital Admin');
+
+  // ── Hospital context ───────────────────────────────────────
+  const [hospitalId, setHospitalId] = useState(null);
+  const [facility, setFacility] = useState(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+
+  useEffect(() => {
+    const loadHospitalContext = async () => {
+      try {
+        const hospitals = await hospitalService.getAll();
+        const list = hospitals?.data ?? hospitals;
+        if (Array.isArray(list) && list.length > 0) {
+          const h = list[0];
+          setHospitalId(h.id);
+          setFacility({ id: h.id, name: h.name, location: h.address || h.location });
+        }
+      } catch (err) {
+        console.error('Failed to load hospital context:', err);
+      }
+    };
+    loadHospitalContext();
+  }, []);
 
   const tabs = [
     { id: 'resources', label: 'My Resources', icon: <Package className="w-5 h-5" /> },
@@ -48,9 +72,17 @@ const HospitalDashboard = () => {
       case 'assets':
         return <AssetRegis />;
       case 'requests':
-        return <RequestsView />;
+        return hospitalId ? (
+          <RequestsView facility={facility} hospitalId={hospitalId} />
+        ) : (
+          <div className="p-6 text-gray-500">Loading hospital context...</div>
+        );
       case 'release':
-        return <ReleaseRequestsTab />;
+        return hospitalId ? (
+          <ReleaseRequestsTab hospitalId={hospitalId} facility={facility} />
+        ) : (
+          <div className="p-6 text-gray-500">Loading hospital context...</div>
+        );
       default:
         return <ResourceMngmt />;
     }
@@ -72,14 +104,14 @@ const HospitalDashboard = () => {
       label: 'Request Supply', 
       icon: <Package className="w-5 h-5" />, 
       color: 'bg-green-600 hover:bg-green-700',
-      onClick: () => console.log('Request supply')
+      onClick: () => setShowRequestModal(true),
     },
     { 
       id: 'view-deliveries', 
       label: 'View Deliveries', 
       icon: <Truck className="w-5 h-5" />, 
       color: 'bg-blue-600 hover:bg-blue-700',
-      onClick: () => console.log('View deliveries')
+      onClick: () => setActiveTab('requests'),
     },
     { 
       id: 'upload-pod', 
@@ -113,7 +145,9 @@ const HospitalDashboard = () => {
                 <div>
                   <h1 className="text-2xl font-bold text-gray-800">Hospital Logistics Dashboard</h1>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Department of Health - Healthcare Resource Management</span>
+                    <span className="text-sm text-gray-600">
+                      {facility ? facility.name : 'Department of Health - Healthcare Resource Management'}
+                    </span>
                     <span className="px-2 py-1 text-xs font-bold rounded-full bg-green-100 text-green-800 border border-green-300">
                       {userRole}
                     </span>
@@ -154,7 +188,7 @@ const HospitalDashboard = () => {
                 </div>
                 <div className="text-left">
                   <p className="font-bold text-gray-800">Hospital Admin</p>
-                  <p className="text-xs text-gray-500">General Hospital - Metro Manila</p>
+                  <p className="text-xs text-gray-500">{facility?.name || 'General Hospital - Metro Manila'}</p>
                 </div>
               </div>
             </div>
@@ -419,6 +453,23 @@ const HospitalDashboard = () => {
           request={selectedReleaseRequest}
           onConfirm={handleReleaseConfirm}
           onClose={() => setShowReleaseModal(false)}
+        />
+      )}
+
+      {/* Request Supply Modal — triggered by Quick Action */}
+      {showRequestModal && (
+        <RequestSupply
+          isOpen={showRequestModal}
+          onClose={(success) => {
+            setShowRequestModal(false);
+            if (success && activeTab === 'requests') {
+              // Trigger a re-fetch in RequestsView by switching tabs
+              setActiveTab('resources');
+              setTimeout(() => setActiveTab('requests'), 50);
+            }
+          }}
+          initialResource={null}
+          mode="create"
         />
       )}
     </div>

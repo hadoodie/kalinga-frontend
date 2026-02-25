@@ -43,14 +43,16 @@ const requestService = {
     await api.delete(`/requests/${requestId}`);
   },
 
-    markAsUnderReview: async (requestId) => {
-    try {
-      const response = await axios.post(`/api/requests/${requestId}/under-review`);
-      return response.data;
-    } catch (error) {
-      console.error('Error marking request as under review:', error);
-      throw error;
-    }
+  // Update request status (approve, reject, allocate, etc.)
+  updateStatus: async (requestId, status, reason = null) => {
+    const response = await api.patch(`/requests/${requestId}/status`, { status, reason });
+    return response.data;
+  },
+
+  // Mark as under review (DOH dispatcher)
+  markAsUnderReview: async (requestId) => {
+    const response = await api.post(`/requests/${requestId}/under-review`);
+    return response.data;
   },
 };
 

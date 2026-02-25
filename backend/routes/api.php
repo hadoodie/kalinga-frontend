@@ -320,6 +320,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
             Route::post('/requests/{request}/submit', [RequestController::class, 'submitDraft']);
             Route::post('/requests/{request}/under-review', [RequestController::class, 'markAsUnderReview'])
                 ->name('requests.under-review');
+            Route::patch('/requests/{request}/status', [RequestController::class, 'updateStatus'])
+                ->name('requests.update-status');
             
             Route::get('/allocations', [AllocationController::class, 'index']);
             Route::post('/allocations', [AllocationController::class, 'store']);

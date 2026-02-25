@@ -242,4 +242,66 @@ public function destroy(Request $requestModel)    {
         ]);
     });
 }
+
+    /**
+     * PATCH /api/requests/{request}/status
+     *
+     * Update a request's status (approve, reject, allocate, deliver, etc.).
+     * Allowed transitions:
+     *   pending      → approved | rejected
+     *   approved     → allocated
+     *   allocated    → in_transit
+     *   in_transit   → delivered
+     *   delivered    → verified
+     */
+    public function updateStatus(HttpRequest $httpRequest, Request $requestModel)
+    {
+        $validated = $httpRequest->validate([
+            'status' => 'required|string|in:approved,rejected,allocated,in_transit,delivered,verified',
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        $allowed = [
+            'pending'      => ['approved', 'rejected', 'under_review'],
+            'under_review' => ['approved', 'rejected'],
+            'approved'     => ['allocated'],
+            'allocated'    => ['in_transit'],
+            'in_transit'   => ['delivered'],
+            'delivered'    => ['verified'],
+        ];
+
+        $currentStatus = $requestModel->status;
+        $newStatus     = $validated['status'];
+
+        if (!isset($allowed[$currentStatus]) || !in_array($newStatus, $allowed[$currentStatus])) {
+            return response()->json([
+                'error'          => "Cannot transition from '{$currentStatus}' to '{$newStatus}'",
+                'current_status' => $currentStatus,
+                'allowed'        => $allowed[$currentStatus] ?? [],
+            ], 422);
+        }
+
+        return DB::transaction(function () use ($requestModel, $validated, $currentStatus) {
+            $requestModel->update([
+                'status'      => $validated['status'],
+                'approved_by' => in_array($validated['status'], ['approved', 'rejected']) ? Auth::id() : $requestModel->approved_by,
+                'approved_at' => $validated['status'] === 'approved' ? now() : $requestModel->approved_at,
+            ]);
+
+            $requestModel->auditLogs()->create([
+                'action'     => "request_status_{$validated['status']}",
+                'details'    => $validated['reason'] ?? "Status changed from {$currentStatus} to {$validated['status']}",
+                'before'     => ['status' => $currentStatus],
+                'after'      => ['status' => $validated['status']],
+                'user_id'    => Auth::id(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->header('User-Agent'),
+            ]);
+
+            return response()->json([
+                'message' => "Request status updated to {$validated['status']}",
+                'request' => $requestModel->fresh()->load(['resource', 'hospital', 'creator']),
+            ]);
+        });
+    }
 }

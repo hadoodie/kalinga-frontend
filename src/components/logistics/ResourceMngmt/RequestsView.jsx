@@ -495,66 +495,29 @@ const RequestsView = ({ facility, hospitalId }) => {
         hospital_id: hospitalId,
         include_drafts: true,
       });
-      // Add mock delivery data for demonstration
-      const mockRequests = data.data ? data.data.map(req => ({
+
+      // Use real API data directly — no mock injection
+      const realRequests = data.data ? data.data : (Array.isArray(data) ? data : []);
+
+      // Normalise field names: the API returns nested relations (hospital, resource)
+      // but the card templates also check resource_name, hospital_name, facility, unit, etc.
+      const normalised = realRequests.map(req => ({
         ...req,
-        allocation: req.allocation || {
-          vehicle_plate: 'DOH-REF-07',
-          vehicle_type: 'Refrigerated Van',
-          driver: 'John Doe',
-          source_hospital: 'General Hospital B',
-          eta: '30 minutes'
-        }
-      })) : [];
-      
-      // Add some delivered requests for demonstration
-      if (mockRequests.length === 0) {
-        mockRequests.push(
-          {
-            id: 'DEL-001',
-            resource_name: 'IV Fluids',
-            quantity: 500,
-            status: 'delivered',
-            created_at: new Date().toISOString(),
-            urgency_level: 'Critical',
-            unit: 'units',
-            facility: { name: 'Main Warehouse' },
-            allocation: {
-              vehicle_plate: 'DOH-REF-07',
-              vehicle_type: 'Refrigerated Van',
-              driver: 'John Doe',
-              source_hospital: 'General Hospital B',
-              eta: 'Arrived'
-            }
-          },
-          {
-            id: 'DEL-002',
-            resource_name: 'Surgical Masks',
-            quantity: 1000,
-            status: 'in_transit',
-            created_at: new Date().toISOString(),
-            urgency_level: 'High',
-            unit: 'pieces',
-            facility: { name: 'Main Warehouse' },
-            allocation: {
-              vehicle_plate: 'DOH-VAN-12',
-              vehicle_type: 'Delivery Van',
-              driver: 'Jane Smith',
-              source_hospital: 'City Medical Center',
-              eta: '1.5 hours'
-            }
-          }
-        );
-      }
-      
-      setRequests(mockRequests);
+        resource_name: req.resource_name || req.resource?.name || 'Unknown Resource',
+        hospital_name: req.hospital?.name || facility?.name || '',
+        unit: req.unit || req.resource?.unit || 'units',
+        facility: req.facility || req.hospital || facility,
+      }));
+
+      setRequests(normalised);
     } catch (err) {
       setError("Failed to load requests. Please try again.");
       console.error(err);
+      setRequests([]);
     } finally {
       setLoading(false);
     }
-  }, [hospitalId]);
+  }, [hospitalId, facility]);
 
   useEffect(() => {
     if (hospitalId) fetchRequests();
