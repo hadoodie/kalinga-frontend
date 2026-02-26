@@ -212,7 +212,7 @@ const createAssessmentDetails = (overrides = {}) => {
   } else if (overrides.module_overrides) {
     clone.modules = applyModuleOverrides(
       clone.modules,
-      overrides.module_overrides
+      overrides.module_overrides,
     );
   }
   if (overrides.resilience_alerts) {
@@ -1112,7 +1112,7 @@ const HospitalSafetyIndexContent = () => {
   const [hospitals, setHospitals] = useState(HSI_SEED_HOSPITALS);
   const [selectedHospital, setSelectedHospital] = useState(defaultHospitalId);
   const [hospitalCompliance, setHospitalCompliance] = useState(
-    getSeedCompliance(defaultHospitalId)
+    getSeedCompliance(defaultHospitalId),
   );
   const [activeTab, setActiveTab] = useState("overview");
   const [showAssessmentDetails, setShowAssessmentDetails] = useState(false);
@@ -1167,7 +1167,7 @@ const HospitalSafetyIndexContent = () => {
       const response = await getHsiDashboard();
       const payload = response?.data?.data;
       setDashboardData(
-        payload && Object.keys(payload).length ? payload : HSI_SEED_DASHBOARD
+        payload && Object.keys(payload).length ? payload : HSI_SEED_DASHBOARD,
       );
     } catch (error) {
       console.error("Failed to fetch HSI dashboard:", error);
@@ -1200,7 +1200,7 @@ const HospitalSafetyIndexContent = () => {
       setHospitalCompliance(
         payload && Object.keys(payload).length
           ? payload
-          : getSeedCompliance(hospitalId)
+          : getSeedCompliance(hospitalId),
       );
     } catch (error) {
       console.error("Failed to fetch hospital compliance:", error);
@@ -1222,15 +1222,15 @@ const HospitalSafetyIndexContent = () => {
     return {
       water: computePercent(
         hospitalCompliance?.water?.survival_hours,
-        HSI_CONSTANTS.WATER_MINIMUM_HOURS
+        HSI_CONSTANTS.WATER_MINIMUM_HOURS,
       ),
       fuel: computePercent(
         hospitalCompliance?.fuel?.survival_hours,
-        HSI_CONSTANTS.FUEL_MINIMUM_HOURS
+        HSI_CONSTANTS.FUEL_MINIMUM_HOURS,
       ),
       oxygen: computePercent(
         hospitalCompliance?.oxygen?.survival_hours,
-        HSI_CONSTANTS.OXYGEN_MINIMUM_HOURS
+        HSI_CONSTANTS.OXYGEN_MINIMUM_HOURS,
       ),
     };
   }, [hospitalCompliance]);
@@ -1245,7 +1245,7 @@ const HospitalSafetyIndexContent = () => {
 
   const getVendorForResource = (resourceKey) =>
     vendorPlaybooks.find(
-      (vendor) => vendor.resource?.toLowerCase() === resourceKey
+      (vendor) => vendor.resource?.toLowerCase() === resourceKey,
     );
 
   const handleAutoTrigger = (resourceKey) => {
@@ -1253,7 +1253,7 @@ const HospitalSafetyIndexContent = () => {
     const resourceLabel = resourceLabels[resourceKey] || resourceKey;
     if (vendor) {
       setLastAutoTrigger(
-        `Auto-triggered ${vendor.name} (${vendor.mou}) for ${resourceLabel} Â· Contact ${vendor.contact}`
+        `Auto-triggered ${vendor.name} (${vendor.mou}) for ${resourceLabel} Â· Contact ${vendor.contact}`,
       );
     } else {
       setLastAutoTrigger(`No vendor playbook configured for ${resourceLabel}.`);
@@ -1399,7 +1399,7 @@ const HospitalSafetyIndexContent = () => {
                     <Badge variant="destructive">{data.count} flagged</Badge>
                   </div>
                 </div>
-              )
+              ),
             )}
             {Object.entries(dashboardData.critical_tanks || {}).map(
               ([category, data]) => (
@@ -1419,7 +1419,7 @@ const HospitalSafetyIndexContent = () => {
                     <Badge variant="destructive">{data.count} flagged</Badge>
                   </div>
                 </div>
-              )
+              ),
             )}
           </div>
         </section>
@@ -1483,7 +1483,7 @@ const HospitalSafetyIndexContent = () => {
                         <div className="mt-2 flex items-end gap-3">
                           <span className="text-4xl font-bold text-slate-900">
                             {hospitalCompliance.assessment?.overall_index?.toFixed(
-                              1
+                              1,
                             ) || "N/A"}
                           </span>
                           {hospitalCompliance.assessment?.category && (
@@ -1495,7 +1495,7 @@ const HospitalSafetyIndexContent = () => {
                         <p className="mt-1 text-xs text-slate-500">
                           Updated{" "}
                           {new Date(
-                            hospitalCompliance.assessment?.date
+                            hospitalCompliance.assessment?.date,
                           ).toLocaleDateString()}
                         </p>
                       </div>
@@ -1742,7 +1742,7 @@ const HospitalSafetyIndexContent = () => {
                           <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
                             <p className="text-2xl font-bold text-slate-900">
                               {formatSurvivalHours(
-                                hospitalCompliance.generator.fuel_reserve_hours
+                                hospitalCompliance.generator.fuel_reserve_hours,
                               )}
                             </p>
                             <p className="text-xs text-slate-500">
@@ -1836,7 +1836,7 @@ const HospitalSafetyIndexContent = () => {
                           <p className="text-sm text-slate-500">
                             Conducted on{" "}
                             {new Date(
-                              hospitalCompliance.assessment.date
+                              hospitalCompliance.assessment.date,
                             ).toLocaleDateString()}
                           </p>
                           <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6">
@@ -1845,7 +1845,7 @@ const HospitalSafetyIndexContent = () => {
                             </p>
                             <p className="mt-2 text-4xl font-bold text-slate-900">
                               {hospitalCompliance.assessment.overall_index?.toFixed(
-                                1
+                                1,
                               )}
                             </p>
                             <div className="mt-2">
@@ -1902,16 +1902,10 @@ const HospitalSafetyIndexContent = () => {
 };
 
 const HospitalSafetyIndexPage = () => {
-  const [collapsed, setCollapsed] = useState(false);
-
   return (
     <div className="flex h-screen bg-slate-100 text-slate-900">
-      <LogisticSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      <div
-        className={`flex flex-1 flex-col transition-all duration-300 ${
-          collapsed ? "ml-16" : "ml-64"
-        }`}
-      >
+      <LogisticSidebar />
+      <div className="flex flex-1 flex-col transition-all duration-300">
         <div className="sticky top-0 z-20 border-b border-slate-200 bg-white/90 backdrop-blur">
           <NavbarB />
         </div>

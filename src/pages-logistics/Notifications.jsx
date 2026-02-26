@@ -1,22 +1,15 @@
 import LogisticSidebar from "../components/logistics/LogiSide";
 import { NavbarB } from "../components/Navbar_2";
-import { useState } from "react";
 import Notifs from "../components/Notifications";
 
 export const NotificationsLogistics = () => {
-  const [collapsed, setCollapsed] = useState(false);
-
   return (
     <div className="h-screen flex bg-background text-foreground overflow-hidden">
       {/* Sidebar */}
-      <LogisticSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
+      <LogisticSidebar />
 
       {/* Main content */}
-      <div
-        className={`flex flex-col flex-1 transition-all duration-300 ${
-          collapsed ? "ml-16" : "ml-64"
-        }`}
-      >
+      <div className="flex flex-col flex-1 transition-all duration-300">
         {/* Navbar */}
         <div className="sticky top-0 z-10 bg-background">
           <NavbarB />
