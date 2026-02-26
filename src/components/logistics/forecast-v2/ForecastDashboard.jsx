@@ -297,10 +297,18 @@ export default function ForecastDashboard() {
   }, [summary]);
 
   // ── Derived: headline for CommandBar ───────────────────────
-  const criticalCount = useMemo(
-    () => triageItems.filter((i) => i.urgencyScore >= 70).length,
-    [triageItems],
-  );
+  // Use the same risk_distribution data that drives the KPI cards so the
+  // "X items need your attention" count always matches Critical + High.
+  const criticalCount = useMemo(() => {
+    const dist = summary?.risk_distribution;
+    if (dist && typeof dist === 'object') {
+      return (Number(dist.critical) || 0) + (Number(dist.high) || 0);
+    }
+    // Fallback: count triage items that are high/critical by risk_level
+    return triageItems.filter(
+      (i) => i.risk_level === 'critical' || i.risk_level === 'high',
+    ).length;
+  }, [summary, triageItems]);
 
   // ── Derived: total predictions count ────────────────────────
   const totalPredictions = useMemo(() => {

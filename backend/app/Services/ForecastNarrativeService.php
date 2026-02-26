@@ -81,14 +81,18 @@ class ForecastNarrativeService
         // This matches the ForecastController summary() aggregation so numbers
         // in the narrative are consistent with the top-level dashboard cards.
         $totalDemand = ForecastDemand::latestRun()
+            ->nextHours(48)
             ->select(DB::raw('COUNT(DISTINCT CONCAT(hospital_id, \'-\', resource_id)) as cnt'))
             ->value('cnt');
         $totalRisk = ForecastRisk::latestRun()
+            ->nextHours(48)
             ->select(DB::raw('COUNT(DISTINCT CONCAT(hospital_id, \'-\', resource_id)) as cnt'))
             ->value('cnt');
 
         // Risk distribution — aggregate per (hospital, resource) pair first,
         // then classify the pair by its worst-case risk_prob.
+        // Only consider future hours (same window as ForecastController::summary)
+        // so the numbers match the dashboard KPI cards exactly.
         $riskDist = DB::table(
             DB::raw("(
                 SELECT hospital_id, resource_id,
@@ -100,6 +104,7 @@ class ForecastNarrativeService
                        END as agg_risk_level
                 FROM forecast_risk_hourly
                 WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
+                  AND forecast_time >= NOW()
                 GROUP BY hospital_id, resource_id
             ) as pairs")
         )
@@ -108,8 +113,9 @@ class ForecastNarrativeService
             ->pluck('count', 'risk_level')
             ->toArray();
 
-        // Top critical items (hospital × resource)
+        // Top critical items (hospital × resource) — future hours only
         $criticalItems = ForecastRisk::latestRun()
+            ->nextHours(48)
             ->whereIn('risk_level', ['high', 'critical'])
             ->select([
                 'hospital_id', 'resource_id',
@@ -156,6 +162,7 @@ class ForecastNarrativeService
                        END as agg_risk_level
                 FROM forecast_risk_hourly
                 WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
+                  AND forecast_time >= NOW()
                 GROUP BY hospital_id, resource_id
             ) as pairs")
         )
