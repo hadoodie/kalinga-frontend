@@ -66,7 +66,7 @@ function parseNarrativeSections(narrative) {
     // Parse content based on current section
     if (currentSection === "priority") {
       const match = line.match(
-        /^\s*(\d+)\.\s*(.+?)\s*[-—]\s*(.+?):\s*Risk\s*([\d.]+)%,?\s*stockout\s*in\s*~?([\d.]+)d?/i,
+        /^\s*(\d+)\.\s*(.+?)\s*—\s*(.+?):\s*Risk\s*([\d.]+)%,?\s*stockout\s*in\s*~?([\d.]+)d?/i,
       );
       if (match) {
         result.priorityItems.push({
@@ -308,7 +308,10 @@ const NarrativeDrawer = memo(function NarrativeDrawer({
 
           {/* ── Structured Narrative ── */}
           {parsed ? (
-            <StructuredNarrativeView parsed={parsed} hospitalRiskData={hospitalRiskData} />
+            <StructuredNarrativeView
+              parsed={parsed}
+              hospitalRiskData={hospitalRiskData}
+            />
           ) : narrativeText ? (
             /* Fallback: render raw text if parsing returned nothing useful */
             <RawNarrativeFallback narrative={narrativeText} />
@@ -359,7 +362,6 @@ function StructuredNarrativeView({ parsed, hospitalRiskData }) {
   }, [hospitalRiskData, parsed.hospitals]);
 
   const hasHospitals = hospitals.length > 0;
-  const maxSeverity = Math.max(1, ...hospitals.map((h) => h.avgSeverity || 1));
 
   return (
     <div className="space-y-5">
@@ -476,10 +478,8 @@ function StructuredNarrativeView({ parsed, hospitalRiskData }) {
               const isHighSeverity = h.avgSeverity >= 85;
               const isMidSeverity = h.avgSeverity >= 70;
 
-              const barWidth = Math.max(
-                8,
-                Math.round((h.avgSeverity / maxSeverity) * 100),
-              );
+              // Bar width maps directly to avg_severity (0–100%)
+              const barWidth = Math.round(h.avgSeverity);
 
               const cardStyle = isHighSeverity
                 ? "border-red-200 bg-gradient-to-r from-red-50 to-orange-50"
@@ -491,11 +491,11 @@ function StructuredNarrativeView({ parsed, hospitalRiskData }) {
                 : isMidSeverity
                   ? "text-orange-600"
                   : "text-slate-400";
-              const badgeBg = isHighSeverity
-                ? "bg-red-200 text-red-800"
+              const badgeStyle = isHighSeverity
+                ? "bg-red-700 text-white"
                 : isMidSeverity
-                  ? "bg-orange-200 text-orange-800"
-                  : "bg-slate-200 text-slate-600";
+                  ? "bg-orange-700 text-white"
+                  : "bg-slate-600 text-white";
               const barColor = isHighSeverity
                 ? "bg-red-500"
                 : isMidSeverity
@@ -509,35 +509,33 @@ function StructuredNarrativeView({ parsed, hospitalRiskData }) {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <Building2
-                        className={`h-4 w-4 shrink-0 ${iconColor}`}
-                      />
+                      <Building2 className={`h-4 w-4 shrink-0 ${iconColor}`} />
                       <span className="text-sm font-semibold text-slate-800 truncate">
                         {h.name}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    {/* Combined badge: "N At-Risk (M Critical)" */}
+                    <span
+                      className={`text-xs font-bold px-2.5 py-1 rounded-full ${badgeStyle}`}
+                    >
+                      {h.riskCount} At-Risk
                       {hasCritical && (
-                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-200 text-red-800">
-                          {h.criticalCount} critical
+                        <span className="opacity-90 font-semibold">
+                          {" "}
+                          ({h.criticalCount} Critical)
                         </span>
                       )}
-                      <span
-                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${badgeBg}`}
-                      >
-                        {h.riskCount} at-risk
-                      </span>
-                    </div>
+                    </span>
                   </div>
-                  {/* Severity bar — width proportional to avg severity */}
-                  <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                  {/* Severity bar — width maps directly to avg_severity % */}
+                  <div className="h-1.5 w-full bg-slate-300/60 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
                   {h.avgSeverity > 0 && (
-                    <p className="text-[10px] text-slate-400 mt-1">
+                    <p className="text-[10px] text-slate-500 mt-1">
                       Avg severity: {h.avgSeverity}%
                     </p>
                   )}
