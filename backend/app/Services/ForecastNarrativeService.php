@@ -77,13 +77,34 @@ class ForecastNarrativeService
     private function gatherForecastStats(): array
     {
         // IMPORTANT: Each query needs a fresh scope — Eloquent builders are mutable.
-        $totalDemand = ForecastDemand::latestRun()->count();
-        $totalRisk = ForecastRisk::latestRun()->count();
+        // Count unique (hospital, resource) pairs — not raw hourly rows.
+        // This matches the ForecastController summary() aggregation so numbers
+        // in the narrative are consistent with the top-level dashboard cards.
+        $totalDemand = ForecastDemand::latestRun()
+            ->select(DB::raw('COUNT(DISTINCT CONCAT(hospital_id, \'-\', resource_id)) as cnt'))
+            ->value('cnt');
+        $totalRisk = ForecastRisk::latestRun()
+            ->select(DB::raw('COUNT(DISTINCT CONCAT(hospital_id, \'-\', resource_id)) as cnt'))
+            ->value('cnt');
 
-        // Risk distribution
-        $riskDist = ForecastRisk::latestRun()
-            ->select('risk_level', DB::raw('COUNT(*) as count'))
-            ->groupBy('risk_level')
+        // Risk distribution — aggregate per (hospital, resource) pair first,
+        // then classify the pair by its worst-case risk_prob.
+        $riskDist = DB::table(
+            DB::raw("(
+                SELECT hospital_id, resource_id,
+                       CASE
+                           WHEN MAX(risk_prob) >= 0.85 THEN 'critical'
+                           WHEN MAX(risk_prob) >= 0.65 THEN 'high'
+                           WHEN MAX(risk_prob) >= 0.35 THEN 'medium'
+                           ELSE 'low'
+                       END as agg_risk_level
+                FROM forecast_risk_hourly
+                WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
+                GROUP BY hospital_id, resource_id
+            ) as pairs")
+        )
+            ->selectRaw('agg_risk_level as risk_level, COUNT(*) as count')
+            ->groupBy('agg_risk_level')
             ->pluck('count', 'risk_level')
             ->toArray();
 
@@ -122,9 +143,23 @@ class ForecastNarrativeService
             ->pluck('avg_demand', 'category')
             ->toArray();
 
-        // Hospitals with most risk
-        $riskByHospital = ForecastRisk::latestRun()
-            ->whereIn('risk_level', ['high', 'critical'])
+        // Hospitals with most risk — count unique (hospital, resource) pairs
+        // that are high/critical, not raw hourly rows.
+        $riskByHospital = DB::table(
+            DB::raw("(
+                SELECT hospital_id, resource_id,
+                       CASE
+                           WHEN MAX(risk_prob) >= 0.85 THEN 'critical'
+                           WHEN MAX(risk_prob) >= 0.65 THEN 'high'
+                           WHEN MAX(risk_prob) >= 0.35 THEN 'medium'
+                           ELSE 'low'
+                       END as agg_risk_level
+                FROM forecast_risk_hourly
+                WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
+                GROUP BY hospital_id, resource_id
+            ) as pairs")
+        )
+            ->whereIn('agg_risk_level', ['high', 'critical'])
             ->select('hospital_id', DB::raw('COUNT(*) as risk_count'))
             ->groupBy('hospital_id')
             ->orderByDesc('risk_count')
@@ -225,10 +260,10 @@ PROMPT;
 
         // Overall posture
         if ($crit > 0) {
-            $narrative .= "⚠️ ALERT: {$crit} critical risk predictions detected ({$critPct}% of total). ";
+            $narrative .= "⚠️ ALERT: {$crit} critical risk items detected ({$critPct}% of total). ";
             $narrative .= "Immediate action required for the following items:\n\n";
         } elseif ($high > 0) {
-            $narrative .= "⚡ CAUTION: {$high} high-risk predictions detected ({$highPct}% of total). ";
+            $narrative .= "⚡ CAUTION: {$high} high-risk items detected ({$highPct}% of total). ";
             $narrative .= "Proactive reordering recommended:\n\n";
         } else {
             $narrative .= "✅ All supply levels within acceptable risk thresholds. ";
