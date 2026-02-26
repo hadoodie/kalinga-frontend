@@ -211,6 +211,7 @@ class ForecastController extends Controller
     {
         $hours = $request->integer('hours', 48);
 
+        // Demand: keep hourly granularity — the frontend needs it for time-series charts.
         $demand = ForecastDemand::latestRun()
             ->forHospital($hospital->id)
             ->nextHours($hours)
@@ -218,21 +219,51 @@ class ForecastController extends Controller
             ->orderBy('forecast_time')
             ->get();
 
-        $risk = ForecastRisk::latestRun()
-            ->forHospital($hospital->id)
-            ->nextHours($hours)
-            ->with('resource:id,name,category,unit')
-            ->orderBy('risk_prob', 'desc')
-            ->get();
+        // Risk: aggregate by resource_id so each resource appears only once.
+        // Take worst-case: MAX(risk_prob), MIN(days_until_stockout).
+        $latestRun = ForecastRisk::max('generated_at');
+        $riskAgg = collect();
+
+        if ($latestRun) {
+            $riskAgg = DB::table('forecast_risk_hourly as fr')
+                ->join('resources', 'resources.id', '=', 'fr.resource_id')
+                ->select([
+                    'fr.resource_id',
+                    'resources.name as resource_name',
+                    'resources.category as resource_category',
+                    'resources.unit as resource_unit',
+                    DB::raw('MAX(fr.risk_prob) as risk_prob'),
+                    DB::raw('MIN(fr.days_until_stockout) as days_until_stockout'),
+                    DB::raw("(CASE
+                        WHEN MAX(fr.risk_prob) >= 0.85 THEN 'critical'
+                        WHEN MAX(fr.risk_prob) >= 0.65 THEN 'high'
+                        WHEN MAX(fr.risk_prob) >= 0.35 THEN 'medium'
+                        ELSE 'low'
+                    END) as risk_level"),
+                    DB::raw('AVG(fr.projected_stock) as projected_stock'),
+                    DB::raw('AVG(fr.current_stock) as current_stock'),
+                ])
+                ->where('fr.generated_at', $latestRun)
+                ->where('fr.hospital_id', $hospital->id)
+                ->where('fr.forecast_time', '>=', now())
+                ->where('fr.forecast_time', '<=', now()->addHours($hours))
+                ->groupBy('fr.resource_id', 'resources.name', 'resources.category', 'resources.unit')
+                ->orderByDesc('risk_prob')
+                ->get();
+        }
+
+        $criticalCount = $riskAgg->where('risk_level', 'critical')->count();
+        $highCount     = $riskAgg->where('risk_level', 'high')->count();
 
         return response()->json([
             'hospital' => $hospital->only('id', 'name', 'code', 'region'),
             'demand'   => $demand,
-            'risk'     => $risk,
+            'risk'     => $riskAgg,
             'meta'     => [
                 'horizon_hours'   => $hours,
-                'critical_count'  => $risk->where('risk_level', 'critical')->count(),
-                'high_count'      => $risk->where('risk_level', 'high')->count(),
+                'critical_count'  => $criticalCount,
+                'high_count'      => $highCount,
+                'total_resources' => $riskAgg->count(),
             ],
         ]);
     }

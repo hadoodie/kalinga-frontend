@@ -95,13 +95,13 @@ export default function HospitalForecastDetail() {
     }));
   }, [data]);
 
-  // ── Derived risk table ─────────────────────────────────────
+  // ── Derived risk table (backend already aggregated per resource) ──
   const riskRows = useMemo(() => {
     if (!data?.risk?.length) return [];
     return data.risk.map((r) => ({
-      id: r.id,
-      resource_name: r.resource?.name || `Resource ${r.resource_id}`,
-      resource_category: r.resource?.category || "—",
+      id: r.resource_id,
+      resource_name: r.resource_name || r.resource?.name || `Resource ${r.resource_id}`,
+      resource_category: r.resource_category || r.resource?.category || "—",
       risk_level: r.risk_level || "low",
       risk_prob: Number(r.risk_prob) || 0,
       days_until_stockout: r.days_until_stockout ?? null,
@@ -231,7 +231,7 @@ export default function HospitalForecastDetail() {
         />
         <KpiCard
           label="Resources Tracked"
-          value={riskRows.length}
+          value={meta.total_resources ?? riskRows.length}
           icon={Package}
           color="text-emerald-500"
         />
