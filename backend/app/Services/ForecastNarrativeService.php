@@ -105,6 +105,7 @@ class ForecastNarrativeService
                 FROM forecast_risk_hourly
                 WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
                   AND forecast_time >= NOW()
+                  AND forecast_time <= NOW() + INTERVAL '48 hours'
                 GROUP BY hospital_id, resource_id
             ) as pairs")
         )
@@ -163,6 +164,7 @@ class ForecastNarrativeService
                 FROM forecast_risk_hourly
                 WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
                   AND forecast_time >= NOW()
+                  AND forecast_time <= NOW() + INTERVAL '48 hours'
                 GROUP BY hospital_id, resource_id
             ) as pairs")
         )

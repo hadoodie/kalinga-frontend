@@ -100,7 +100,8 @@ export default function HospitalForecastDetail() {
     if (!data?.risk?.length) return [];
     return data.risk.map((r) => ({
       id: r.resource_id,
-      resource_name: r.resource_name || r.resource?.name || `Resource ${r.resource_id}`,
+      resource_name:
+        r.resource_name || r.resource?.name || `Resource ${r.resource_id}`,
       resource_category: r.resource_category || r.resource?.category || "—",
       risk_level: r.risk_level || "low",
       risk_prob: Number(r.risk_prob) || 0,

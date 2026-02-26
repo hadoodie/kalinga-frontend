@@ -196,7 +196,13 @@ class ResourceSeeder extends Seeder
         ];
 
         $createdResources = [];
+        $seenNames = [];
         foreach ($resources as $resource) {
+            // Skip duplicate resources (same name already created for another hospital)
+            if (in_array($resource['name'], $seenNames)) {
+                continue;
+            }
+            $seenNames[] = $resource['name'];
             $res = Resource::create($resource);
             $res->updateStatus();
             $createdResources[] = $res;
