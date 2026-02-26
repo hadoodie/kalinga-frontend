@@ -118,21 +118,21 @@ function parseNarrativeSections(narrative) {
 }
 
 function getRiskColor(pct) {
-  if (pct >= 90)
+  if (pct >= 85)
     return {
       bg: "bg-red-100",
       text: "text-red-700",
       border: "border-red-200",
       dot: "bg-red-500",
     };
-  if (pct >= 70)
+  if (pct >= 65)
     return {
       bg: "bg-orange-100",
       text: "text-orange-700",
       border: "border-orange-200",
       dot: "bg-orange-500",
     };
-  if (pct >= 50)
+  if (pct >= 35)
     return {
       bg: "bg-amber-100",
       text: "text-amber-700",
@@ -171,6 +171,12 @@ const NarrativeDrawer = memo(function NarrativeDrawer({
     typeof narrative === "string"
       ? narrative
       : narrative?.narrative || narrative?.text || null;
+
+  // Extract hospital risk data directly from API stats (richer than parsed text)
+  const hospitalRiskData =
+    typeof narrative === "object" && narrative?.stats?.risk_by_hospital
+      ? narrative.stats.risk_by_hospital
+      : null;
 
   // Parse the narrative into structured data
   const parsed = useMemo(
@@ -302,7 +308,7 @@ const NarrativeDrawer = memo(function NarrativeDrawer({
 
           {/* ── Structured Narrative ── */}
           {parsed ? (
-            <StructuredNarrativeView parsed={parsed} />
+            <StructuredNarrativeView parsed={parsed} hospitalRiskData={hospitalRiskData} />
           ) : narrativeText ? (
             /* Fallback: render raw text if parsing returned nothing useful */
             <RawNarrativeFallback narrative={narrativeText} />
@@ -329,14 +335,31 @@ const NarrativeDrawer = memo(function NarrativeDrawer({
 
 // ── Structured view: parses the rule-based narrative into cards ──
 
-function StructuredNarrativeView({ parsed }) {
+function StructuredNarrativeView({ parsed, hospitalRiskData }) {
   const hasAlert = !!parsed.alert;
   const hasPriority = parsed.priorityItems.length > 0;
-  const hasHospitals = parsed.hospitals.length > 0;
-  const maxHospitalCount = Math.max(
-    1,
-    ...parsed.hospitals.map((h) => h.riskCount),
-  );
+
+  // Prefer API-sourced hospital data (has critical_count + avg_severity for
+  // tie-breaking) over text-parsed data.
+  const hospitals = useMemo(() => {
+    if (hospitalRiskData && hospitalRiskData.length > 0) {
+      return hospitalRiskData.map((h) => ({
+        name: h.name,
+        riskCount: h.risk_count,
+        criticalCount: h.critical_count ?? 0,
+        avgSeverity: h.avg_severity ?? 0,
+      }));
+    }
+    return parsed.hospitals.map((h) => ({
+      name: h.name,
+      riskCount: h.riskCount,
+      criticalCount: 0,
+      avgSeverity: 0,
+    }));
+  }, [hospitalRiskData, parsed.hospitals]);
+
+  const hasHospitals = hospitals.length > 0;
+  const maxSeverity = Math.max(1, ...hospitals.map((h) => h.avgSeverity || 1));
 
   return (
     <div className="space-y-5">
@@ -446,51 +469,78 @@ function StructuredNarrativeView({ parsed }) {
             Hospitals Requiring Attention
           </h4>
           <div className="space-y-2">
-            {parsed.hospitals.map((h, idx) => {
+            {hospitals.map((h, idx) => {
+              // Color based on avg severity — not just position.
+              // >=85 avg = red (critical-heavy), >=70 = orange, else slate
+              const hasCritical = h.criticalCount > 0;
+              const isHighSeverity = h.avgSeverity >= 85;
+              const isMidSeverity = h.avgSeverity >= 70;
+
               const barWidth = Math.max(
                 8,
-                Math.round((h.riskCount / maxHospitalCount) * 100),
+                Math.round((h.avgSeverity / maxSeverity) * 100),
               );
-              const isTop = idx === 0;
+
+              const cardStyle = isHighSeverity
+                ? "border-red-200 bg-gradient-to-r from-red-50 to-orange-50"
+                : isMidSeverity
+                  ? "border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50"
+                  : "border-slate-200 bg-slate-50/50 hover:bg-slate-50";
+              const iconColor = isHighSeverity
+                ? "text-red-600"
+                : isMidSeverity
+                  ? "text-orange-600"
+                  : "text-slate-400";
+              const badgeBg = isHighSeverity
+                ? "bg-red-200 text-red-800"
+                : isMidSeverity
+                  ? "bg-orange-200 text-orange-800"
+                  : "bg-slate-200 text-slate-600";
+              const barColor = isHighSeverity
+                ? "bg-red-500"
+                : isMidSeverity
+                  ? "bg-orange-500"
+                  : "bg-slate-400";
+
               return (
                 <div
                   key={idx}
-                  className={`rounded-xl border p-4 transition-colors ${
-                    isTop
-                      ? "border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50"
-                      : "border-slate-200 bg-slate-50/50 hover:bg-slate-50"
-                  }`}
+                  className={`rounded-xl border p-4 transition-colors ${cardStyle}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <Building2
-                        className={`h-4 w-4 shrink-0 ${
-                          isTop ? "text-orange-600" : "text-slate-400"
-                        }`}
+                        className={`h-4 w-4 shrink-0 ${iconColor}`}
                       />
                       <span className="text-sm font-semibold text-slate-800 truncate">
                         {h.name}
                       </span>
                     </div>
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        isTop
-                          ? "bg-orange-200 text-orange-800"
-                          : "bg-slate-200 text-slate-600"
-                      }`}
-                    >
-                      {h.riskCount} at-risk
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {hasCritical && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-200 text-red-800">
+                          {h.criticalCount} critical
+                        </span>
+                      )}
+                      <span
+                        className={`text-xs font-bold px-2 py-0.5 rounded-full ${badgeBg}`}
+                      >
+                        {h.riskCount} at-risk
+                      </span>
+                    </div>
                   </div>
-                  {/* Mini bar chart */}
+                  {/* Severity bar — width proportional to avg severity */}
                   <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-500 ${
-                        isTop ? "bg-orange-500" : "bg-slate-400"
-                      }`}
+                      className={`h-full rounded-full transition-all duration-500 ${barColor}`}
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
+                  {h.avgSeverity > 0 && (
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Avg severity: {h.avgSeverity}%
+                    </p>
+                  )}
                 </div>
               );
             })}

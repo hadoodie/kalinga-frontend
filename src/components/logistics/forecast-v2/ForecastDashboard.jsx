@@ -301,12 +301,12 @@ export default function ForecastDashboard() {
   // "X items need your attention" count always matches Critical + High.
   const criticalCount = useMemo(() => {
     const dist = summary?.risk_distribution;
-    if (dist && typeof dist === 'object') {
+    if (dist && typeof dist === "object") {
       return (Number(dist.critical) || 0) + (Number(dist.high) || 0);
     }
     // Fallback: count triage items that are high/critical by risk_level
     return triageItems.filter(
-      (i) => i.risk_level === 'critical' || i.risk_level === 'high',
+      (i) => i.risk_level === "critical" || i.risk_level === "high",
     ).length;
   }, [summary, triageItems]);
 

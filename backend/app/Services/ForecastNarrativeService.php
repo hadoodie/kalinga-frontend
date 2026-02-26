@@ -152,9 +152,12 @@ class ForecastNarrativeService
 
         // Hospitals with most risk — count unique (hospital, resource) pairs
         // that are high/critical, not raw hourly rows.
+        // Also compute critical_count + avg severity so we can rank hospitals
+        // meaningfully when they share the same total at-risk count.
         $riskByHospital = DB::table(
             DB::raw("(
                 SELECT hospital_id, resource_id,
+                       MAX(risk_prob) as max_risk_prob,
                        CASE
                            WHEN MAX(risk_prob) >= 0.85 THEN 'critical'
                            WHEN MAX(risk_prob) >= 0.65 THEN 'high'
@@ -169,9 +172,16 @@ class ForecastNarrativeService
             ) as pairs")
         )
             ->whereIn('agg_risk_level', ['high', 'critical'])
-            ->select('hospital_id', DB::raw('COUNT(*) as risk_count'))
+            ->select(
+                'hospital_id',
+                DB::raw('COUNT(*) as risk_count'),
+                DB::raw("SUM(CASE WHEN agg_risk_level = 'critical' THEN 1 ELSE 0 END) as critical_count"),
+                DB::raw('ROUND(AVG(max_risk_prob) * 100, 1) as avg_severity'),
+            )
             ->groupBy('hospital_id')
             ->orderByDesc('risk_count')
+            ->orderByDesc('critical_count')
+            ->orderByDesc('avg_severity')
             ->limit(5)
             ->get()
             ->map(function ($h) {
@@ -179,6 +189,8 @@ class ForecastNarrativeService
                 return [
                     'name' => $hospital?->name ?? "H#{$h->hospital_id}",
                     'risk_count' => $h->risk_count,
+                    'critical_count' => (int) $h->critical_count,
+                    'avg_severity' => (float) $h->avg_severity,
                 ];
             })
             ->toArray();
