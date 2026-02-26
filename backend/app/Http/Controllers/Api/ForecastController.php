@@ -241,7 +241,6 @@ class ForecastController extends Controller
                         ELSE 'low'
                     END) as risk_level"),
                     DB::raw('AVG(fr.projected_stock) as projected_stock'),
-                    DB::raw('AVG(fr.current_stock) as current_stock'),
                 ])
                 ->where('fr.generated_at', $latestRun)
                 ->where('fr.hospital_id', $hospital->id)
