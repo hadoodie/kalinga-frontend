@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Check, X, Eye, Loader2, FileCheck, Mail } from "lucide-react";
 import api from "@/services/api";
 import { resolveApiBaseUrl } from "@/config/runtime";
+import { useToast } from "@/hooks/use-toast";
 
 const getImageUrl = (path) => {
   if (!path) return null;
@@ -15,16 +16,25 @@ export const VerificationRequests = () => {
   const [selectedReq, setSelectedReq] = useState(null); 
   const [processing, setProcessing] = useState(false);
   
-  // NEW: State to track which ID side is being viewed
   const [activeImageTab, setActiveImageTab] = useState('front');
 
-  // Fetch pending requests
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showApproveModal, setShowApproveModal] = useState(false); 
+  
+  const { toast } = useToast(); 
+
   const fetchRequests = async () => {
     try {
       const response = await api.get("/admin/verifications");
       setRequests(response.data);
     } catch (error) {
       console.error("Failed to fetch verifications:", error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching requests",
+        description: "Failed to load the verification list from the server.",
+      });
     } finally {
       setLoading(false);
     }
@@ -34,41 +44,62 @@ export const VerificationRequests = () => {
     fetchRequests();
   }, []);
 
-  // Handle Approve
-  const handleApprove = async (id) => {
-    if (!confirm("Are you sure you want to verify this user? An email notification will be sent immediately.")) return;
-    
+  const handleApprove = async () => {
     setProcessing(true);
     try {
-      await api.post(`/admin/verifications/${id}/approve`);
+      await api.post(`/admin/verifications/${selectedReq.id}/approve`);
       
-      // Remove from list
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      setRequests((prev) => prev.filter((r) => r.id !== selectedReq.id));
+
+      setShowApproveModal(false);
       setSelectedReq(null);
-      
-      alert("User verified successfully! An email notification has been sent.");
+
+      toast({
+        title: "User Verified",
+        description: "The user has been approved and notified via email.",
+        className: "bg-green-50 border-green-200 text-green-800", 
+      });
+
     } catch (error) {
       console.error("Approval failed:", error);
-      alert("Failed to approve user. Check server logs for email configuration errors.");
+      toast({
+        variant: "destructive",
+        title: "Approval Failed",
+        description: "Failed to approve user. Check server logs for email configuration errors.",
+      });
     } finally {
       setProcessing(false);
     }
   };
 
-  // Handle Reject
-  const handleReject = async (id) => {
-    const reason = prompt("Enter reason for rejection:");
-    if (!reason) return;
+  const openRejectModal = () => {
+    setRejectionReason(""); 
+    setShowRejectModal(true);
+  };
+
+  const submitRejection = async () => {
+    if (!rejectionReason.trim()) return;
 
     setProcessing(true);
     try {
-      await api.post(`/admin/verifications/${id}/reject`, { reason });
-      setRequests((prev) => prev.filter((r) => r.id !== id));
+      await api.post(`/admin/verifications/${selectedReq.id}/reject`, { reason: rejectionReason });
+      setRequests((prev) => prev.filter((r) => r.id !== selectedReq.id));
+      
+      setShowRejectModal(false);
       setSelectedReq(null);
-      alert("User rejected.");
+      
+      toast({
+        title: "Application Rejected",
+        description: "User has been rejected and notified with the reason.",
+      });
+
     } catch (error) {
       console.error("Rejection failed:", error);
-      alert("Failed to reject user.");
+      toast({
+        variant: "destructive",
+        title: "Rejection Failed",
+        description: "An error occurred while trying to reject the application.",
+      });
     } finally {
       setProcessing(false);
     }
@@ -247,23 +278,91 @@ export const VerificationRequests = () => {
 
                 <div className="flex flex-col gap-3 pt-4">
                   <button
-                    onClick={() => handleApprove(selectedReq.id)}
+                    onClick={() => setShowApproveModal(true)}
                     disabled={processing}
                     className="flex items-center justify-center gap-2 rounded-lg bg-green-600 py-3 font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
                   >
-                    {processing ? <Loader2 className="animate-spin" /> : <Mail className="h-4 w-4" />}
+                    <Mail className="h-4 w-4" />
                     Approve & Notify
                   </button>
                   <button
-                    onClick={() => handleReject(selectedReq.id)}
+                    onClick={openRejectModal}
                     disabled={processing}
                     className="flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 py-3 font-semibold text-red-600 transition hover:bg-red-100 disabled:opacity-50"
                   >
-                    {processing ? <Loader2 className="animate-spin" /> : <X className="h-4 w-4" />}
+                    <X className="h-4 w-4" />
                     Reject Application
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Approval Confirmation Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md flex flex-col overflow-hidden rounded-2xl bg-white shadow-2xl p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Confirm Approval</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Are you sure you want to verify this user? An email notification containing their access link will be sent immediately.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowApproveModal(false)}
+                disabled={processing}
+                className="rounded-lg px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                disabled={processing}
+                className="flex items-center justify-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-green-700 transition-colors disabled:opacity-50"
+              >
+                {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                Yes, Approve User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Reason Pop-up Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md flex flex-col overflow-hidden rounded-2xl bg-white shadow-2xl p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Reject Application</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Please provide a reason for rejecting this verification request. This will be included in the email sent to the user.
+            </p>
+            
+            <textarea
+              className="w-full rounded-lg border border-gray-300 p-3 text-sm focus:border-green-600 focus:outline-none focus:ring-1 focus:ring-green-600 min-h-[120px] mb-6 resize-none"
+              placeholder="e.g., ID photo is blurry, document is expired..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              disabled={processing}
+            />
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowRejectModal(false)}
+                disabled={processing}
+                className="rounded-lg px-5 py-2.5 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitRejection}
+                disabled={processing || !rejectionReason.trim()}
+                className="flex items-center justify-center gap-2 rounded-lg bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+              >
+                {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                Confirm Rejection
+              </button>
             </div>
           </div>
         </div>
