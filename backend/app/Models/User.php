@@ -49,6 +49,7 @@ class User extends Authenticatable
         'admitted',  
         'emergencyContactName',  
         'emergencyContactPhone',  
+        'uuid', // Added from booted() method context
     ];
 
     /**
@@ -75,9 +76,20 @@ class User extends Authenticatable
         ];
     }
 
+    // Relationships
     public function groups()
     {
         return $this->belongsToMany(Group::class, 'group_users');
+    }
+
+    public function hospitals()
+    {
+        return $this->belongsToMany(Hospital::class, 'hospital_user');
+    }
+
+    public function responder()
+    {
+        return $this->hasOne(Responder::class, 'user_id');
     }
 
     /**

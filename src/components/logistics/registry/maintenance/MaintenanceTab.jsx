@@ -1,4 +1,3 @@
-
 // src/components/logistics/registry/maintenance/MaintenanceTab.jsx
 import { useState, useEffect } from "react";
 import { Plus, Calendar, Clock, AlertTriangle, CheckCircle, Wrench, RefreshCw } from "lucide-react";
@@ -6,7 +5,6 @@ import MaintenanceCalendar from "./MaintenanceCalendar";
 import ServiceHistory from "./ServiceHistory";
 import MaintenanceSchedule from "./MaintenanceSchedule";
 import ScheduleMaintenanceDrawer from "./ScheduleMaintenanceDrawer";
-import { maintenanceCalendarService } from "../../../../services/maintenanceCalendarService";
 
 export default function MaintenanceTab({ loading }) {
   const [activeView, setActiveView] = useState("calendar");

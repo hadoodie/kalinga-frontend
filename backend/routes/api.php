@@ -1,8 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\ResourceController;
-use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\LabResultController;
 use App\Http\Controllers\Api\AppointmentController;
 use App\Http\Controllers\Api\IncidentApiController;
@@ -10,13 +8,19 @@ use App\Http\Controllers\Api\GeminiController;
 use App\Http\Controllers\Api\RoadBlockadeController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\Api\AllocationController;
 use App\Http\Controllers\Api\RouteLogController;
 use App\Http\Controllers\Api\ResponderTrackingController;
 use App\Http\Controllers\Api\NLPController;
 use App\Http\Controllers\HospitalSafetyIndexController;
 use App\Http\Controllers\VerificationController;
 use App\Http\Controllers\OCRController;
+use App\Http\Controllers\Api\ResourceController;
+use App\Http\Controllers\Api\HospitalController;
+use App\Http\Controllers\Api\RequestController;
+use App\Http\Controllers\Api\AllocationController;
+use App\Http\Controllers\Api\ResponderController;
+use App\Http\Controllers\Api\AssetController;
+use App\Http\Controllers\Api\LogisticsController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -312,13 +316,50 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Admin and Logistics routes
     Route::middleware(['role:admin,logistics'])->group(function () {
         
-        // Allocation Request Routes
-        Route::get('/incoming-requests', [AllocationController::class, 'getIncomingRequests']);
-        Route::get('/outgoing-requests', [AllocationController::class, 'getOutgoingRequests']);
-        Route::get('/allocation-history', [AllocationController::class, 'getHistory']);
-        Route::post('/allocation-requests', [AllocationController::class, 'createRequest']);
-        Route::put('/incoming-requests/{id}/status', [AllocationController::class, 'updateIncomingStatus']);
-        Route::get('/supply-tracking', [AllocationController::class, 'getSupplyTracking']);
+            Route::get('/requests', [RequestController::class, 'index']);
+            Route::post('/requests', [RequestController::class, 'store']);
+            Route::get('/requests/{request}', [RequestController::class, 'show']);
+            Route::post('/requests/draft', [RequestController::class, 'storeDraft']);
+            Route::delete('/requests/{request}', [RequestController::class, 'destroy']);
+            Route::patch('/requests/{request}/draft', [RequestController::class, 'updateDraft']);
+            Route::post('/requests/{request}/submit', [RequestController::class, 'submitDraft']);
+            Route::post('/requests/{request}/under-review', [RequestController::class, 'markAsUnderReview'])
+                ->name('requests.under-review');
+            
+            Route::get('/allocations', [AllocationController::class, 'index']);
+            Route::post('/allocations', [AllocationController::class, 'store']);
+            Route::post('/allocations/bulk', [AllocationController::class, 'bulkCreate']);
+            Route::get('/allocations/my', [AllocationController::class, 'myAllocations']);
+            Route::patch('/allocations/{allocation}/confirm', [AllocationController::class, 'confirm']);
+            Route::get('/allocations/suggestions/{request}', [AllocationController::class, 'suggestions']);
+            Route::delete('/allocations/{allocation}/reject', [AllocationController::class, 'rejectSuggestion']);
+
+            Route::prefix('allocations')->group(function () {
+            Route::patch('{allocation}/assign', [AllocationController::class, 'assign']); });
+
+             Route::get('/allocations/{id}/assignment-details', [AllocationController::class, 'assignmentDetails'])
+            ->name('allocations.assignment-details');
+
+            Route::get('/allocations/pending/count', [AllocationController::class, 'pendingCount']);
+            Route::get('/allocations/my/count', [AllocationController::class, 'myAllocationsCount']);
+            Route::get('/allocations/{id}/details', [AllocationController::class, 'showWithDetails']);
+
+            Route::get('/allocations/{id}', [AllocationController::class, 'show']);
+            Route::get('/allocations/{id}/assignment', [AllocationController::class, 'assignment']);
+            Route::get('/allocations/{allocation}/suggest-vehicle', [AllocationController::class, 'suggestVehicle']);
+            Route::get('/allocations/{allocation}/suggest-responder', [AllocationController::class, 'suggestResponder']);
+            Route::get('/allocations/{allocation}/available-vehicles', [AllocationController::class, 'availableVehicles']);
+            Route::get('/allocations/{allocation}/available-responders', [AllocationController::class, 'availableResponders']);
+                
+            Route::get('/responders/available', [ResponderController::class, 'available']);
+
+            Route::get('assets/metrics', [AssetController::class, 'metrics']);
+            Route::get('assets/export/csv', [AssetController::class, 'exportCsv']);
+            Route::get('/assets/available', [AssetController::class, 'available']);
+            Route::post('assets/{code}/adjust-stock', [AssetController::class, 'adjustStock']);
+            Route::apiResource('assets', AssetController::class)->parameters(['assets' => 'code']);
+
+
 
         // Calendar & History Routes (from your calendar feature)
         Route::get('/resources/calendar/events', [ResourceController::class, 'calendarEvents']);

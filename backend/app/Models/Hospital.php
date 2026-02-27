@@ -13,15 +13,32 @@ class Hospital extends Model
 
     protected $fillable = [
         'name',
+        'code',
+        'short_name',
+        'region',
+        'province',
+        'city_municipality',
         'address',
+        'phone',
         'contact_number',
         'contact',
         'email',
+        'director_name',
+        'bed_capacity',
+        'icu_capacity',
+        'negative_pressure_rooms',
         'capacity',
+        'level',
+        'ownership',
         'type',
         'latitude',
         'longitude',
+        'is_active',
+        'is_cold_chain_capable',
         'emergency_services',
+        'capabilities', // JSONB
+        'created_by',
+        'updated_by',
         
         // HSI Capacity Fields
         'routine_bed_capacity',
@@ -40,6 +57,9 @@ class Hospital extends Model
     protected $casts = [
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
+        'capabilities' => 'array',
+        'is_active' => 'boolean',
+        'is_cold_chain_capable' => 'boolean',
         'emergency_services' => 'boolean',
         'disaster_mode_active' => 'boolean',
         'current_safety_index' => 'decimal:2',
@@ -58,10 +78,30 @@ class Hospital extends Model
         return $this->hasMany(Resource::class);
     }
 
+    public function requests(): HasMany
+    {
+        return $this->hasMany(Request::class, 'hospital_id');
+    }
+
     // Incoming Allocation Requests
     public function incomingAllocationRequests(): HasMany
     {
         return $this->hasMany(AllocationRequest::class, 'requester_hospital_id');
+    }
+
+    public function allocationsAsSource(): HasMany
+    {
+        return $this->hasMany(Allocation::class, 'source_hospital_id');
+    }
+
+    public function allocationsAsDestination(): HasMany
+    {
+        return $this->hasMany(Allocation::class, 'destination_hospital_id');
+    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'hospital_user');
     }
 
     // HSI Relationships
@@ -144,8 +184,8 @@ class Hospital extends Model
     public function getCurrentBedCapacity(): int
     {
         return $this->disaster_mode_active 
-            ? ($this->maximum_bed_capacity ?? $this->capacity)
-            : ($this->routine_bed_capacity ?? $this->capacity);
+            ? ($this->maximum_bed_capacity ?? $this->capacity ?? $this->bed_capacity)
+            : ($this->routine_bed_capacity ?? $this->capacity ?? $this->bed_capacity);
     }
 
     /**
@@ -176,6 +216,22 @@ class Hospital extends Model
             'safety_category' => $this->safety_category,
             'disaster_mode' => $this->disaster_mode_active,
         ];
+    }
+
+    // SCOPES — USED IN MatchSuggestions.jsx
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeColdChainCapable($query)
+    {
+        return $query->where('is_cold_chain_capable', true);
+    }
+
+    public function scopeInRegion($query, $region)
+    {
+        return $query->where('region', $region);
     }
 
     /**

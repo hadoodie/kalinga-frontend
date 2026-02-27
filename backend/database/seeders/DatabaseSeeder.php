@@ -15,8 +15,8 @@ class DatabaseSeeder extends Seeder
     {
         // Seed users with different roles, hospitals and resources
         $this->call([
-            UserSeeder::class,
             HospitalSeeder::class,
+            UserSeeder::class,
             ResourceSeeder::class,
             HealthRecordsSeeder::class,
             AppointmentsSeeder::class,
@@ -25,6 +25,9 @@ class DatabaseSeeder extends Seeder
             AllocationRequestSeeder::class,
             IncidentSeeder::class,
             MessagesSeeder::class,
+            RequestSeeder::class,
+            AssetSeeder::class,
+            ResponderSeeder::class,
         ]);
     }
 }

@@ -1,7 +1,6 @@
 // src/components/logistics/registry/ScheduleMaintenanceDrawer.jsx
 import { useState, useEffect } from "react";
 import { X, Save, Calendar, Wrench, DollarSign } from "lucide-react";
-import { mockAssetService } from "../../../../services/mockAssetService";
 
 export default function ScheduleMaintenanceDrawer({ isOpen, onClose, onSchedule }) {
   const [formData, setFormData] = useState({
