@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Broadcast;
 Broadcast::channel('online', function ($user) {
     // A presence channel MUST return an array with 'id' and 'name'.
     // It can also include other info you want to share with clients.
-    return $user ? new UserResource($user) : null;
+    if (!$user) return false;
+    return ['id' => $user->id, 'name' => $user->name, 'role' => $user->role];
 });
 
 Broadcast::channel('incidents', function ($user) {
@@ -18,7 +19,7 @@ Broadcast::channel('incidents', function ($user) {
     $allowedRoles = ['admin', 'responder', 'logistics', 'patient'];
 
     return in_array($user->role, $allowedRoles, true)
-        ? new UserResource($user)
+        ? ['id' => $user->id, 'name' => $user->name, 'role' => $user->role]
         : false;
 });
 
@@ -27,7 +28,7 @@ Broadcast::channel('chat.user.{userId}', function ($user, $userId) {
         return false;
     }
 
-    return new UserResource($user);
+    return ['id' => $user->id, 'name' => $user->name, 'role' => $user->role];
 });
 
 Broadcast::channel('chat.group.{groupId}', function ($user, $groupId) {
@@ -35,7 +36,7 @@ Broadcast::channel('chat.group.{groupId}', function ($user, $groupId) {
         return false;
     }
 
-    return $user->groups()->whereKey($groupId)->exists() ? new UserResource($user) : false;
+    return $user->groups()->whereKey($groupId)->exists() ? ['id' => $user->id, 'name' => $user->name, 'role' => $user->role] : false;
 });
 
 // Channel for responder location tracking during active incidents
@@ -52,12 +53,12 @@ Broadcast::channel('incident.{incidentId}.tracking', function ($user, $incidentI
 
     // Allow admin always
     if ($user->role === 'admin') {
-        return new UserResource($user);
+        return ['id' => $user->id, 'name' => $user->name, 'role' => $user->role];
     }
 
     // Allow the patient who reported the incident
     if ($incident->user_id === $user->id) {
-        return new UserResource($user);
+        return ['id' => $user->id, 'name' => $user->name, 'role' => $user->role];
     }
 
     // Allow responders assigned to this incident
@@ -65,5 +66,5 @@ Broadcast::channel('incident.{incidentId}.tracking', function ($user, $incidentI
         ->where('responder_id', $user->id)
         ->exists();
 
-    return $isAssigned ? new UserResource($user) : false;
+    return $isAssigned ? ['id' => $user->id, 'name' => $user->name, 'role' => $user->role] : false;
 });
