@@ -63,6 +63,24 @@ DEMAND_MODEL_PARAMS = {
     "verbose": -1,
 }
 
+# Quantile regression params — shared across P50/P90/P95 heads.
+# The ``objective`` and ``alpha`` keys are injected at train time.
+QUANTILE_MODEL_PARAMS = {
+    "n_estimators": 250,
+    "max_depth": 6,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "min_child_samples": 10,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "random_state": 42,
+    "verbose": -1,
+}
+
+# Anomaly detection thresholds (Epic 4)
+ANOMALY_Z_THRESHOLD = float(os.getenv("ANOMALY_Z_THRESHOLD", "1.5"))
+ANOMALY_LOOKBACK_HOURS = int(os.getenv("ANOMALY_LOOKBACK_HOURS", "168"))  # 7 days
+
 RISK_THRESHOLD_HIGH = 0.65
 RISK_THRESHOLD_CRITICAL = 0.85
 

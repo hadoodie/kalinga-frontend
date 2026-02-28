@@ -7,6 +7,8 @@ use App\Models\Hospital;
 use App\Models\Request as SupplyRequest;
 use App\Models\Resource;
 use App\Models\ResourceResilienceConfig;
+use App\Services\SafetyStockService;
+use App\Services\InventoryClassifierService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -160,26 +162,60 @@ class AutoReorderService
     }
 
     /**
-     * Calculate how much to reorder based on resilience config and forecast.
+     * Calculate how much to reorder based on probabilistic safety stock.
      *
-     * Strategy: bring stock back to the reorder point (7-day target),
-     * accounting for projected consumption.
+     * Strategy (Epic 2): Uses dynamic safety stock formula:
+     *   SS = Z × √(avg_LT × σ_d² + avg_d² × σ_LT²)
+     * Then calculates reorder quantity as:
+     *   ROP - projected_stock (bring stock up to reorder point)
+     *
+     * The ABC/XYZ class multiplier (Epic 1) is applied to fine-tune
+     * the safety stock based on demand predictability.
      */
     private function calculateReorderQuantity(int $hospitalId, int $resourceId, object $riskItem): int
     {
+        try {
+            $safetyStockService = new SafetyStockService();
+            $resource = Resource::find($resourceId);
+
+            // Get ABC-XYZ class for multiplier adjustment
+            $abcXyzClass = null;
+            if ($resource && $resource->abc_class && $resource->xyz_class) {
+                $abcXyzClass = $resource->abc_class . $resource->xyz_class;
+            }
+
+            $ssResult = $safetyStockService->computeForResource($resourceId, $hospitalId, $abcXyzClass);
+
+            $reorderPoint = $ssResult['reorder_point'];
+            $projectedStock = $riskItem->min_projected_stock ?? 0;
+            $deficit = max(0, $reorderPoint - $projectedStock);
+
+            if ($deficit > 0) {
+                Log::debug("[AutoReorder] Dynamic SS for H{$hospitalId}×R{$resourceId}", [
+                    'safety_stock'  => $ssResult['safety_stock'],
+                    'reorder_point' => $reorderPoint,
+                    'projected'     => $projectedStock,
+                    'deficit'       => $deficit,
+                    'abc_xyz'       => $abcXyzClass,
+                    'service_level' => $ssResult['service_level'],
+                ]);
+                return max(1, (int) ceil($deficit));
+            }
+        } catch (\Exception $e) {
+            Log::warning("[AutoReorder] Dynamic SS failed for H{$hospitalId}×R{$resourceId}: {$e->getMessage()}");
+        }
+
+        // Fallback: resilience config or 7× daily usage
         $resilience = ResourceResilienceConfig::where('hospital_id', $hospitalId)
             ->where('resource_id', $resourceId)
             ->first();
 
-        if ($resilience) {
-            // Target = reorder_point, current ≈ projected_stock
+        if ($resilience && $resilience->reorder_point) {
             $deficit = max(0, $resilience->reorder_point - ($riskItem->min_projected_stock ?? 0));
-            // Add 20% safety buffer
-            return max(1, (int) ceil($deficit * 1.2));
+            return max(1, (int) ceil($deficit));
         }
 
-        // Fallback: order 7× the resource's daily_base usage
-        $resource = Resource::find($resourceId);
+        $resource = $resource ?? Resource::find($resourceId);
         $dailyUsage = $resource->daily_base_usage ?? 10;
 
         return max(1, (int) ceil($dailyUsage * 7));

@@ -32,7 +32,15 @@ from forecasting.config import ARTIFACTS_DIR, MODEL_VERSION
 from forecasting.etl.features import DEMAND_FEATURE_COLS, RISK_FEATURE_COLS
 from forecasting.models.demand_model import DemandModel
 from forecasting.models.risk_model import RiskModel
+from forecasting.models.inventory_classifier import InventoryClassifier
+from forecasting.models.safety_stock import SafetyStockCalculator
+from forecasting.models.anomaly_detector import AnomalyDetector
 from forecasting.schemas import (
+    AnomalyCheckRequest,
+    AnomalyCheckResponse,
+    AnomalyResultSchema,
+    ClassificationResult,
+    ClassifyResponse,
     DemandPrediction,
     HealthResponse,
     ModelInfo,
@@ -42,6 +50,9 @@ from forecasting.schemas import (
     RiskPrediction,
     RunPipelineRequest,
     RunPipelineResponse,
+    SafetyStockRequest,
+    SafetyStockResponse,
+    SafetyStockResult,
 )
 
 
@@ -391,6 +402,7 @@ async def predict(request: PredictRequest):
             yhat=round(float(row["yhat"]), 4),
             yhat_lower=round(float(row.get("yhat_lower", row["yhat"] * 0.7)), 4),
             yhat_upper=round(float(row.get("yhat_upper", row["yhat"] * 1.4)), 4),
+            yhat_p95=round(float(row.get("yhat_p95", row.get("yhat_upper", row["yhat"] * 1.5))), 4),
         ))
 
     risk_out = []
@@ -418,6 +430,235 @@ async def predict(request: PredictRequest):
         row_count=len(demand_out),
         elapsed_ms=elapsed_ms,
     )
+
+
+# ═══════════════════════════════════════════════════════════════
+# Inventory Classification & Safety Stock (Epics 1 & 2)
+# ═══════════════════════════════════════════════════════════════
+
+@app.post(
+    "/api/v1/classify",
+    response_model=ClassifyResponse,
+    tags=["inventory"],
+    summary="ABC/XYZ inventory classification",
+)
+async def classify_inventory(
+    window_days: int = 90,
+    cold_start_days: int = 14,
+):
+    """
+    Run ABC/XYZ classification on all inventory items using
+    stock movement data from the database.
+
+    - **ABC** = volume ranking over a rolling window (Pareto)
+    - **XYZ** = demand predictability via Coefficient of Variation
+    - Items with < ``cold_start_days`` of history default to **Z**
+    """
+    try:
+        from forecasting.etl.extract import extract_all
+
+        data = extract_all()
+        classifier = InventoryClassifier(
+            window_days=window_days,
+            cold_start_days=cold_start_days,
+        )
+        result_df = classifier.classify(
+            stock_movements=data["stock_movements"],
+            resources=data["resources"],
+        )
+
+        items = []
+        for _, row in result_df.iterrows():
+            abc_xyz = str(row.get("abc_xyz_class", "CZ"))
+            items.append(ClassificationResult(
+                hospital_id=int(row["hospital_id"]),
+                resource_id=int(row["resource_id"]),
+                abc_class=str(row["abc_class"]),
+                xyz_class=str(row["xyz_class"]),
+                abc_xyz_class=abc_xyz,
+                total_volume_90d=float(row.get("total_volume_90d", 0)),
+                abc_rank_pct=float(row.get("abc_rank_pct", 1.0)),
+                cv=float(row["cv"]) if pd.notna(row.get("cv")) else None,
+                is_cold_start=bool(row.get("is_cold_start", False)),
+                description=InventoryClassifier.describe_class(abc_xyz),
+            ))
+
+        return ClassifyResponse(
+            success=True,
+            items=items,
+            total_items=len(items),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Classification failed: {e}")
+
+
+@app.post(
+    "/api/v1/safety-stock",
+    response_model=SafetyStockResponse,
+    tags=["inventory"],
+    summary="Probabilistic dynamic safety stock calculation",
+)
+async def compute_safety_stock(request: SafetyStockRequest):
+    """
+    Calculate probabilistic safety stock for all inventory items.
+
+    Uses the formula:
+        SS = Z × √(avg_LT × σ_d² + avg_d² × σ_LT²)
+
+    Where Z is derived from the ``target_service_level``.
+    Lead time variability is computed from historical supply orders.
+    """
+    try:
+        from forecasting.etl.extract import extract_all
+
+        data = extract_all()
+        calc = SafetyStockCalculator(
+            target_service_level=request.target_service_level,
+        )
+
+        # Get demand stats
+        demand_stats = calc.demand_stats_from_movements(
+            data["stock_movements"],
+            window_days=request.demand_window_days,
+        )
+
+        # Get lead time stats (if supply_orders are extractable)
+        lead_time_stats = pd.DataFrame()
+        try:
+            from forecasting.etl.extract import extract_supply_orders
+            supply_orders = extract_supply_orders()
+            if not supply_orders.empty:
+                lead_time_stats = calc.lead_time_stats_from_orders(supply_orders)
+        except (ImportError, Exception):
+            pass  # Will use default lead times
+
+        # Run batch calculation
+        if not demand_stats.empty:
+            results_df = calc.compute_batch(demand_stats, lead_time_stats)
+        else:
+            results_df = pd.DataFrame()
+
+        items = []
+        for _, row in results_df.iterrows():
+            items.append(SafetyStockResult(
+                hospital_id=int(row["hospital_id"]),
+                resource_id=int(row["resource_id"]),
+                safety_stock=float(row["safety_stock"]),
+                reorder_point=float(row["reorder_point"]),
+                avg_daily_demand=float(row["avg_daily_demand"]),
+                std_daily_demand=float(row["std_daily_demand"]),
+                avg_lead_time_days=float(row.get("avg_lt", calc.default_lt)),
+                std_lead_time_days=float(row.get("std_lt", calc.default_lt_std)),
+                z_score=calc.z,
+                service_level=request.target_service_level,
+            ))
+
+        return SafetyStockResponse(
+            success=True,
+            service_level=request.target_service_level,
+            z_score=calc.z,
+            items=items,
+            total_items=len(items),
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Safety stock calculation failed: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════
+# Anomaly Detection (Epic 4)
+# ═══════════════════════════════════════════════════════════════
+
+@app.post(
+    "/api/v1/anomaly-check",
+    response_model=AnomalyCheckResponse,
+    tags=["anomaly"],
+    summary="Intraday anomaly detection (Z-score)",
+)
+async def anomaly_check(request: AnomalyCheckRequest):
+    """
+    Event-driven anomaly check for a single (hospital, resource).
+
+    Compares the provided ``actual_consumption`` for the current hour
+    against the forecasted demand and historical σ.  If the Z-score
+    exceeds the configured threshold (default 1.5σ), the response
+    flags an anomaly and recommends an emergency re-forecast.
+
+    If ``expected_consumption`` or ``historical_std`` are 0, the
+    endpoint will attempt to auto-fetch them from the database.
+
+    This is NOT a scheduled batch endpoint — it is designed to be
+    called in real-time by the Laravel backend whenever new stock
+    movements are recorded.
+    """
+    from forecasting.config import ANOMALY_Z_THRESHOLD, ANOMALY_LOOKBACK_HOURS
+
+    try:
+        detector = AnomalyDetector(
+            z_threshold=ANOMALY_Z_THRESHOLD,
+            lookback_hours=ANOMALY_LOOKBACK_HOURS,
+        )
+
+        expected = request.expected_consumption
+        hist_std = request.historical_std
+
+        # If caller didn't provide expected/std, try to fetch from DB
+        if expected <= 0 or hist_std <= 0:
+            try:
+                from forecasting.etl.extract import extract_all
+                data = extract_all()
+
+                if expected <= 0:
+                    # Use latest forecast yhat if available
+                    if not data.get("stock_movements", pd.DataFrame()).empty:
+                        from forecasting.etl.features import build_hourly_consumption
+                        hourly = build_hourly_consumption(data["stock_movements"])
+                        avg = hourly[
+                            (hourly["hospital_id"] == request.hospital_id)
+                            & (hourly["resource_id"] == request.resource_id)
+                        ]["consumption"].mean()
+                        expected = float(avg) if not pd.isna(avg) else 0.0
+
+                if hist_std <= 0:
+                    from forecasting.etl.features import build_hourly_consumption
+                    hourly = build_hourly_consumption(data["stock_movements"])
+                    resource_hourly = hourly[
+                        (hourly["hospital_id"] == request.hospital_id)
+                        & (hourly["resource_id"] == request.resource_id)
+                    ]["consumption"]
+                    hist_std = float(resource_hourly.std()) if len(resource_hourly) >= 2 else 0.1
+            except Exception:
+                pass  # Fall through with zeros → detector uses min_std
+
+        result = detector.check_single(
+            hospital_id=request.hospital_id,
+            resource_id=request.resource_id,
+            actual_consumption=request.actual_consumption,
+            expected_consumption=expected,
+            historical_std=hist_std,
+        )
+
+        result_schema = AnomalyResultSchema(
+            hospital_id=result.hospital_id,
+            resource_id=result.resource_id,
+            hour=result.hour,
+            actual_consumption=result.actual_consumption,
+            expected_consumption=result.expected_consumption,
+            historical_std=result.historical_std,
+            z_score=result.z_score,
+            is_anomaly=result.is_anomaly,
+            severity=result.severity,
+            recommend_reforecast=result.recommend_reforecast,
+            details=result.details,
+        )
+
+        return AnomalyCheckResponse(
+            success=True,
+            z_threshold=ANOMALY_Z_THRESHOLD,
+            anomalies_found=1 if result.is_anomaly else 0,
+            results=[result_schema],
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Anomaly check failed: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════

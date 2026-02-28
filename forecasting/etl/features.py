@@ -114,11 +114,20 @@ def build_demand_features(
     weather: pd.DataFrame,
     resilience_configs: pd.DataFrame,
     horizon_hours: int = 48,
+    hospitals: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
     Build the full feature matrix for demand forecasting.
 
     One row per (hospital_id, resource_id, future_hour).
+
+    Parameters
+    ----------
+    hospitals : DataFrame, optional
+        Must contain ``hospital_id`` and ``disaster_mode_active`` columns.
+        When provided, the exogenous flag ``is_active_disaster_alert`` is
+        derived from the hospital's disaster mode status.  When *not*
+        provided the flag defaults to 0 (no alert).
     """
     # Generate future hour slots
     now = pd.Timestamp.now(tz="Asia/Manila").floor("h")
@@ -216,6 +225,29 @@ def build_demand_features(
     # Fill NaN
     features = features.fillna(0)
 
+    # ── Exogenous event flag: is_active_disaster_alert ───────
+    # Derived from the hospital's disaster_mode_active column when the
+    # hospitals DataFrame is supplied.  This flag lets the quantile
+    # regression model dynamically scale predictions during active
+    # emergencies.
+    if hospitals is not None and "disaster_mode_active" in hospitals.columns:
+        disaster_map = (
+            hospitals[["id", "disaster_mode_active"]]
+            .rename(columns={"id": "hospital_id"})
+            .drop_duplicates("hospital_id")
+        )
+        disaster_map["is_active_disaster_alert"] = (
+            disaster_map["disaster_mode_active"].astype(int)
+        )
+        features = features.merge(
+            disaster_map[["hospital_id", "is_active_disaster_alert"]],
+            on="hospital_id",
+            how="left",
+        )
+    if "is_active_disaster_alert" not in features.columns:
+        features["is_active_disaster_alert"] = 0
+    features["is_active_disaster_alert"] = features["is_active_disaster_alert"].fillna(0).astype(int)
+
     # Compute stock ratio (current / minimum) as risk signal
     min_stock = features["minimum_stock"] if "minimum_stock" in features.columns else 0
     features["stock_ratio"] = np.where(
@@ -311,6 +343,7 @@ DEMAND_FEATURE_COLS = [
     "temperature_2m", "precipitation_mm", "wind_speed_kph",
     "normal_daily_usage", "surge_multiplier", "current_survival_hours",
     "is_critical", "horizon_h",
+    "is_active_disaster_alert",
 ]
 
 RISK_FEATURE_COLS = DEMAND_FEATURE_COLS  # same features, different target
