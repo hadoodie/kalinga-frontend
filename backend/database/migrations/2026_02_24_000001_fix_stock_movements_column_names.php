@@ -20,6 +20,11 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // If the table already has 'movement_type', it means it was created by an older/different migration
+        if (Schema::hasColumn('stock_movements', 'movement_type')) {
+            return;
+        }
+
         Schema::table('stock_movements', function (Blueprint $table) {
             // 1. Rename 'type' → 'movement_type'
             //    The enum column needs to be recreated on some DB drivers,
