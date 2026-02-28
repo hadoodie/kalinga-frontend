@@ -109,7 +109,6 @@ const echo = new Echo({
             socket_id: socketId,
             channel_name: channel.name,
           }),
-          credentials: "include",
         })
           .then(async (response) => {
             if (!response.ok) {
