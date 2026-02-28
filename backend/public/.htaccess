@@ -1,17 +1,3 @@
-# ── CORS Preflight Handling ────────────────────────────────────────────
-# Add CORS headers at the Apache level as a safety net for error responses.
-# The primary CORS handling is done by Laravel's HandleCors middleware.
-# These headers only apply when mod_headers is loaded AND Origin matches.
-<IfModule mod_headers.c>
-    SetEnvIf Origin "^(https://kalinga-frontend\.onrender\.com)$" CORS_ORIGIN=$1
-    SetEnvIf Origin "^(http://localhost:(5173|5174|4173|4174|3000|4000))$" CORS_ORIGIN=$1
-    SetEnvIf Origin "^(http://127\.0\.0\.1:(5173|5174|3000|4000))$" CORS_ORIGIN=$1
-    Header always set Access-Control-Allow-Origin "%{CORS_ORIGIN}e" env=CORS_ORIGIN
-    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" env=CORS_ORIGIN
-    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-Socket-Id, Accept" env=CORS_ORIGIN
-    Header always set Access-Control-Max-Age "86400" env=CORS_ORIGIN
-</IfModule>
-
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
