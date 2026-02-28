@@ -15,8 +15,8 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install pdo pdo_pgsql zip bcmath gd intl exif pcntl
 
-# 2. Enable Apache mod_rewrite (Required for Laravel)
-RUN a2enmod rewrite
+# 2. Enable Apache modules (rewrite for Laravel routing, headers for CORS)
+RUN a2enmod rewrite headers
 
 # 2b. Ensure .htaccess is honored for Laravel (public/) rewrites
 RUN printf '<Directory /var/www/html/public>\n    AllowOverride All\n    Require all granted\n</Directory>\n' > /etc/apache2/conf-available/laravel.conf \

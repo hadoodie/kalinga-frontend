@@ -1,9 +1,26 @@
+# ── CORS Preflight Handling ────────────────────────────────────────────
+# Handle OPTIONS preflight at the Apache level so CORS works even if
+# PHP/Laravel is unavailable or throws an error during bootstrap.
+<IfModule mod_headers.c>
+    SetEnvIf Origin "https://kalinga-frontend\.onrender\.com$" CORS_ORIGIN=$0
+    SetEnvIf Origin "http://localhost:(5173|5174|4173|4174|3000|4000)$" CORS_ORIGIN=$0
+    SetEnvIf Origin "http://127\.0\.0\.1:(5173|5174|3000|4000)$" CORS_ORIGIN=$0
+    Header always set Access-Control-Allow-Origin %{CORS_ORIGIN}e env=CORS_ORIGIN
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS" env=CORS_ORIGIN
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, X-Socket-Id, Accept" env=CORS_ORIGIN
+    Header always set Access-Control-Max-Age "86400" env=CORS_ORIGIN
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes
     </IfModule>
 
     RewriteEngine On
+
+    # ── Return 204 for CORS preflight requests ──
+    RewriteCond %{REQUEST_METHOD} =OPTIONS
+    RewriteRule ^(.*)$ $1 [R=204,L]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
