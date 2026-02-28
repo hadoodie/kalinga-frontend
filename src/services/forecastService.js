@@ -55,10 +55,11 @@ const forecastService = {
   /**
    * Fetch the forecast summary dashboard data.
    * Returns: { high_risk_items, demand_by_resource, risk_distribution, generated_at }
+   * @param {Object} params - { hospital_id }
    */
-  getSummary: async () => {
+  getSummary: async (params = {}) => {
     try {
-      const response = await api.get("/forecasts/summary");
+      const response = await api.get("/forecasts/summary", { params });
       return response.data;
     } catch (error) {
       console.error("Error fetching forecast summary:", error);
@@ -121,10 +122,11 @@ const forecastService = {
 
   /**
    * Fetch AI-generated executive summary.
+   * @param {Object} params - { hospital_id }
    */
-  getNarrative: async () => {
+  getNarrative: async (params = {}) => {
     try {
-      const response = await api.get("/forecasts/narrative");
+      const response = await api.get("/forecasts/narrative", { params });
       return response.data;
     } catch (error) {
       console.error("Error fetching forecast narrative:", error);

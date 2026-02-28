@@ -10,6 +10,7 @@ import {
   Package,
   Server,
   Shield,
+  TrendingUp,
   Truck,
   UserCheck,
   Users,
@@ -76,6 +77,11 @@ const PatientOverview = lazy(() =>
 const HospitalSafetyIndexSection = lazy(() =>
   import("@/components/admin/sections/HospitalSafetyIndex").then((m) => ({
     default: m.HospitalSafetyIndexSection,
+  })),
+);
+const LogisticsForecastSection = lazy(() =>
+  import("@/components/admin/sections/LogisticsForecastSection").then((m) => ({
+    default: m.LogisticsForecastSection,
   })),
 );
 
@@ -150,6 +156,14 @@ const adminSections = [
       "Monitor supply chain, allocation requests, and shipment tracking.",
     icon: Truck,
     component: LogisticsOverview,
+  },
+  {
+    id: "logistics-forecast",
+    title: "AI Logistics Forecast",
+    description:
+      "AI-driven demand forecasting, stockout risk analysis, and executive narrative.",
+    icon: TrendingUp,
+    component: LogisticsForecastSection,
   },
   {
     id: "training",

@@ -27,6 +27,7 @@ import resourceService from "../../services/resourceService";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import api from "../../services/api";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "../../context/AuthContext";
 
 // Import Hospital Dashboard
 import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
@@ -593,15 +594,15 @@ const ResourceRequestsList = ({ requests }) => (
   </div>
 );
 
-// --- Tab Navigation Component ---
-const TabNavigation = ({ activeTab, setActiveTab }) => {
+// --- Tab Navigation Component (Logistics-only, no national/admin toggle) ---
+const TabNavigation = ({ activeTab, setActiveTab, assignedHospitalName }) => {
   const tabs = [
     {
       id: "logistics",
-      label: "DOH Logistics Dashboard",
+      label: "Logistics Dashboard",
       icon: <Truck className="w-5 h-5" />,
       color: "bg-gradient-to-r from-green-600 to-emerald-700",
-      description: "National Resource Allocation & Tracking",
+      description: "Resource Allocation & Tracking",
     },
     {
       id: "hospital",
@@ -649,26 +650,16 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
         </div>
       </div>
 
-      {/* Role Indicator */}
+      {/* Assigned Hospital Indicator */}
       <div className="mt-4 flex items-center gap-4">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm font-semibold text-green-700">
-            {activeTab === "logistics"
-              ? "DOH Operations Active"
-              : "Hospital Management Active"}
+            Logistics Operations Active
           </span>
         </div>
-        <div
-          className={`px-3 py-1 rounded-full text-sm font-bold ${
-            activeTab === "logistics"
-              ? "bg-green-100 text-green-800 border border-green-300"
-              : "bg-blue-100 text-blue-800 border border-blue-300"
-          }`}
-        >
-          {activeTab === "logistics"
-            ? "National Logistics View"
-            : "Hospital Admin View"}
+        <div className="px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-300">
+          {assignedHospitalName || "Hospital View"}
         </div>
       </div>
     </div>
@@ -685,8 +676,13 @@ const LogisDash = () => {
   const [shipments, setShipments] = useState([]);
   const [assets, setAssets] = useState([]);
   const [isDemoMode, setIsDemoMode] = useState(false);
-  const [activeTab, setActiveTab] = useState("logistics"); // 'logistics' or 'hospital'
+  const [activeTab, setActiveTab] = useState("logistics");
   const navigate = useNavigate();
+
+  // Get the authenticated user and their assigned hospital
+  const { user } = useAuth();
+  const assignedHospital = user?.hospitals?.[0] || null;
+  const assignedHospitalName = assignedHospital?.name || null;
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -921,7 +917,11 @@ const LogisDash = () => {
   return (
     <div className="min-h-screen bg-gray-100 font-sans p-4 md:p-8">
       {/* Tab Navigation */}
-      <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+      <TabNavigation
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        assignedHospitalName={assignedHospitalName}
+      />
 
       {/* Main Content */}
       {renderContent()}

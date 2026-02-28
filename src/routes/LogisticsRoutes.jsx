@@ -59,7 +59,7 @@ const HospitalForecastDetailPage = lazy(() =>
   })),
 );
 
-const logisticsRoles = [ROLES.LOGISTICS, ROLES.ADMIN];
+const logisticsRoles = [ROLES.LOGISTICS];
 
 export const LogisticsRoutes = () => (
   <>

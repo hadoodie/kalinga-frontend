@@ -21,10 +21,10 @@ class ForecastNarrativeService
      *
      * Returns a structured array for the DOH logistics dashboard.
      */
-    public function generateExecutiveSummary(): array
+    public function generateExecutiveSummary(?int $hospitalId = null): array
     {
-        // ── Gather forecast statistics ──────────────────────
-        $stats = $this->gatherForecastStats();
+        // ── Gather forecast statistics ────────────────────
+        $stats = $this->gatherForecastStats($hospitalId);
 
         if ($stats['total_demand'] === 0) {
             return [
@@ -74,7 +74,7 @@ class ForecastNarrativeService
     /**
      * Gather all statistics needed for the narrative.
      */
-    private function gatherForecastStats(): array
+    private function gatherForecastStats(?int $hospitalId = null): array
     {
         // IMPORTANT: Each query needs a fresh scope — Eloquent builders are mutable.
         // Count unique (hospital, resource) pairs — not raw hourly rows.
@@ -82,10 +82,12 @@ class ForecastNarrativeService
         // in the narrative are consistent with the top-level dashboard cards.
         $totalDemand = ForecastDemand::latestRun()
             ->nextHours(48)
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
             ->select(DB::raw('COUNT(DISTINCT CONCAT(hospital_id, \'-\', resource_id)) as cnt'))
             ->value('cnt');
         $totalRisk = ForecastRisk::latestRun()
             ->nextHours(48)
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
             ->select(DB::raw('COUNT(DISTINCT CONCAT(hospital_id, \'-\', resource_id)) as cnt'))
             ->value('cnt');
 
@@ -106,6 +108,7 @@ class ForecastNarrativeService
                 WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
                   AND forecast_time >= NOW()
                   AND forecast_time <= NOW() + INTERVAL '48 hours'
+                  " . ($hospitalId ? "AND hospital_id = {$hospitalId}" : '') . "
                 GROUP BY hospital_id, resource_id
             ) as pairs")
         )
@@ -117,6 +120,7 @@ class ForecastNarrativeService
         // Top critical items (hospital × resource) — future hours only
         $criticalItems = ForecastRisk::latestRun()
             ->nextHours(48)
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
             ->whereIn('risk_level', ['high', 'critical'])
             ->select([
                 'hospital_id', 'resource_id',
@@ -144,6 +148,7 @@ class ForecastNarrativeService
 
         // Demand by resource category
         $demandByCategory = ForecastDemand::latestRun()
+            ->when($hospitalId, fn ($q) => $q->where('forecast_demand_hourly.hospital_id', $hospitalId))
             ->join('resources', 'forecast_demand_hourly.resource_id', '=', 'resources.id')
             ->select('resources.category', DB::raw('ROUND(AVG(yhat), 2) as avg_demand'))
             ->groupBy('resources.category')
@@ -168,6 +173,7 @@ class ForecastNarrativeService
                 WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
                   AND forecast_time >= NOW()
                   AND forecast_time <= NOW() + INTERVAL '48 hours'
+                  " . ($hospitalId ? "AND hospital_id = {$hospitalId}" : '') . "
                 GROUP BY hospital_id, resource_id
             ) as pairs")
         )
