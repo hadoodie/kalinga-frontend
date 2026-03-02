@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertOctagon,
@@ -622,6 +622,9 @@ export const HospitalSafetyIndexSection = () => {
   const [error, setError] = useState(null);
   const [complianceError, setComplianceError] = useState(null);
 
+  // Cache compliance data per hospital to avoid re-fetching on tab switch
+  const complianceCacheRef = useRef(new Map());
+
   const assessmentDetails = hospitalCompliance?.assessment_details ?? null;
 
   const fetchDashboardData = useCallback(async () => {
@@ -652,16 +655,36 @@ export const HospitalSafetyIndexSection = () => {
     }
   }, []);
 
-  const fetchHospitalCompliance = useCallback(async (hospitalId) => {
+  const fetchHospitalCompliance = useCallback(async (hospitalId, { force = false } = {}) => {
     if (!hospitalId) {
       setHospitalCompliance(null);
       return;
     }
+
+    // Return cached data if available (skip network)
+    if (!force && complianceCacheRef.current.has(hospitalId)) {
+      const cached = complianceCacheRef.current.get(hospitalId);
+      setHospitalCompliance(cached);
+      setComplianceError(null);
+      if (cached?.assessment_details?.general_info?.surge_multiplier) {
+        setSurgeMultiplier(
+          cached.assessment_details.general_info.surge_multiplier
+        );
+      }
+      return;
+    }
+
     try {
       const response = await getHospitalCompliance(hospitalId);
       const payload = response?.data?.data || response?.data || null;
       setHospitalCompliance(payload);
       setComplianceError(null);
+
+      // Cache the result
+      if (payload) {
+        complianceCacheRef.current.set(hospitalId, payload);
+      }
+
       if (payload?.assessment_details?.general_info?.surge_multiplier) {
         setSurgeMultiplier(
           payload.assessment_details.general_info.surge_multiplier
@@ -708,10 +731,14 @@ export const HospitalSafetyIndexSection = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    // Invalidate cache for the active hospital so we get fresh data
+    if (selectedHospital) {
+      complianceCacheRef.current.delete(selectedHospital);
+    }
     await Promise.all([
       fetchDashboardData(),
       fetchHospitals(),
-      selectedHospital ? fetchHospitalCompliance(selectedHospital) : null,
+      selectedHospital ? fetchHospitalCompliance(selectedHospital, { force: true }) : null,
     ]);
     setRefreshing(false);
   };
@@ -845,7 +872,9 @@ export const HospitalSafetyIndexSection = () => {
         conducted_via: "Admin console checklist",
       });
 
-      await fetchHospitalCompliance(selectedHospital);
+      // Invalidate cache so we fetch fresh compliance after the new assessment
+      complianceCacheRef.current.delete(selectedHospital);
+      await fetchHospitalCompliance(selectedHospital, { force: true });
       setAssessmentFeedback({
         type: "success",
         message: "Assessment saved and compliance metrics refreshed.",

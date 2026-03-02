@@ -14,7 +14,7 @@ import resourceService from "../../services/resourceService";
 import { generateDemoDemandData } from "./demoForecastData";
 
 const DemandForecastChart = ({ hospitalId = null, resourceId = null }) => {
-  const [forecasts, setForecasts] = useState([]);
+  const [allForecasts, setAllForecasts] = useState([]);
   const [hospitals, setHospitals] = useState([]);
   const [resources, setResources] = useState([]);
   const [selectedHospital, setSelectedHospital] = useState(hospitalId || "");
@@ -48,29 +48,41 @@ const DemandForecastChart = ({ hospitalId = null, resourceId = null }) => {
     fetchFilters();
   }, []);
 
-  // Fetch forecast data
+  // Fetch ALL forecast data ONCE (no filters)
   useEffect(() => {
     const fetchForecasts = async () => {
       try {
         setLoading(true);
-        const params = { hours: 48 };
-        if (selectedHospital) params.hospital_id = selectedHospital;
-        if (selectedResource) params.resource_id = selectedResource;
-
-        const data = await forecastService.getDemandForecasts(params);
-        setForecasts(data?.data || data || []);
+        const data = await forecastService.getDemandForecasts({ hours: 48 });
+        setAllForecasts(data?.data || data || []);
         setError(null);
       } catch (err) {
         console.error("Demand forecast error:", err);
         setError("Could not load demand forecasts");
-        // Generate sample data for offline display
-        setForecasts(generateDemoDemandData());
+        setAllForecasts(generateDemoDemandData());
       } finally {
         setLoading(false);
       }
     };
     fetchForecasts();
-  }, [selectedHospital, selectedResource]);
+  }, []);
+
+  // Client-side filter by hospital / resource
+  const forecasts = useMemo(() => {
+    let filtered = allForecasts;
+    if (selectedHospital) {
+      filtered = filtered.filter(
+        (f) => String(f.hospital_id) === String(selectedHospital),
+      );
+    }
+    if (selectedResource) {
+      filtered = filtered.filter(
+        (f) =>
+          String(f.resource_id) === String(selectedResource),
+      );
+    }
+    return filtered;
+  }, [allForecasts, selectedHospital, selectedResource]);
 
   // Transform data for the chart — aggregate by hour
   const chartData = useMemo(() => {
