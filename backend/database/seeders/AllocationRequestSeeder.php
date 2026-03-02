@@ -24,7 +24,7 @@ class AllocationRequestSeeder extends Seeder
     public function run(): void
     {
         $logisticsUser = User::where('email', 'logistics_verified@kalinga.com')->first();
-        $stLukes       = Hospital::where('name', 'St. Luke\'s Medical Center')->first();
+        $stLukes       = Hospital::where('name', 'St. Luke\'s Medical Center - Global City')->first();
         $central       = Hospital::where('name', 'Central General Hospital')->first();
         $field         = Hospital::where('name', 'Emergency Field Hospital')->first();
 
@@ -83,7 +83,7 @@ class AllocationRequestSeeder extends Seeder
                 'resource_name'  => 'Heart (O-)',
                 'quantity'       => 1,
                 'urgency_level'  => 'Critical',
-                'handling_class' => 'Cold Chain',
+                'handling_class' => 'ColdChain',
                 'reason'         => 'Urgent transplant match — time-critical.',
                 'status'         => 'in_transit',
                 'created_by'     => $uid,
@@ -114,7 +114,7 @@ class AllocationRequestSeeder extends Seeder
                 'resource_name'  => 'Portable Ventilators',
                 'quantity'       => 5,
                 'urgency_level'  => 'High',
-                'handling_class' => 'High-Value',
+                'handling_class' => 'HighValue',
                 'reason'         => 'Emergency field hospital expansion.',
                 'status'         => 'allocated',
                 'created_by'     => $uid,
@@ -145,7 +145,7 @@ class AllocationRequestSeeder extends Seeder
                 'resource_name'  => 'O-Negative Blood Bags',
                 'quantity'       => 50,
                 'urgency_level'  => 'High',
-                'handling_class' => 'Cold Chain',
+                'handling_class' => 'ColdChain',
                 'reason'         => 'Multiple trauma patients in ER.',
                 'status'         => 'allocated',
                 'created_by'     => $uid,
