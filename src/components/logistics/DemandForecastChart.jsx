@@ -12,6 +12,7 @@ import { TrendingUp, Filter } from "lucide-react";
 import forecastService from "../../services/forecastService";
 import resourceService from "../../services/resourceService";
 import { generateDemoDemandData } from "./demoForecastData";
+import { formatDisplayQuantity } from "../../utils/formatQuantity";
 
 const DemandForecastChart = ({ hospitalId = null, resourceId = null }) => {
   const [allForecasts, setAllForecasts] = useState([]);
@@ -118,11 +119,11 @@ const DemandForecastChart = ({ hospitalId = null, resourceId = null }) => {
         <div className="bg-white p-3 rounded-lg shadow-xl border border-gray-200 text-sm">
           <p className="font-bold text-gray-800">{d?.label || label}</p>
           <p className="text-green-700">
-            Predicted: <span className="font-bold">{d?.yhat?.toFixed(1)}</span>{" "}
+            Predicted: <span className="font-bold">{formatDisplayQuantity(d?.yhat, "units")}</span>{" "}
             units
           </p>
           <p className="text-gray-500 text-xs">
-            Range: {d?.yhat_lower?.toFixed(1)} – {d?.yhat_upper?.toFixed(1)}
+            Range: {formatDisplayQuantity(d?.yhat_lower, "units")} – {formatDisplayQuantity(d?.yhat_upper, "units")}
           </p>
         </div>
       );

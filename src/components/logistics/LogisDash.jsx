@@ -29,6 +29,7 @@ import api from "../../services/api";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "../../context/AuthContext";
 import { useSupplyTracking } from "../../hooks/useSupplyTracking";
+import { useForecastPrefetch } from "../../hooks/useForecastPrefetch";
 
 // Import Hospital Dashboard
 import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
@@ -679,8 +680,11 @@ const LogisDash = () => {
   const [activeTab, setActiveTab] = useState("logistics");
   const navigate = useNavigate();
 
-  // Prefetch supply tracking data immediately when the logistics section loads.
-  // This warms the data before the user navigates to the Supply Tracking page.
+  // Silently warm the forecast cache in the background so the AI Forecast
+  // tab renders instantly (no loading spinner) when the user clicks it.
+  useForecastPrefetch();
+
+  // Prefetch supply tracking data so the Supply Tracking page renders instantly.
   const { shipments: liveShipments } = useSupplyTracking({
     pollingInterval: 60000,
   });

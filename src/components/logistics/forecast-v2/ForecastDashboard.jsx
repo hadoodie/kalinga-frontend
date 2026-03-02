@@ -30,6 +30,8 @@ import NarrativeDrawer from "./NarrativeDrawer";
 import ActionSlideOver from "./ActionSlideOver";
 import PipelineHealthBar from "./PipelineHealthBar";
 import AccuracyPanel from "./AccuracyPanel";
+import { consumeCache, invalidateCache } from "../../../services/forecastPrefetchCache";
+import { formatDisplayQuantity } from "../../../utils/formatQuantity";
 
 // ── Loading screen with animated forecast visuals ────────────
 function ForecastLoadingScreen() {
@@ -142,6 +144,30 @@ export default function ForecastDashboard() {
 
   // ── Fetch all data ─────────────────────────────────────────
   const fetchAll = useCallback(async () => {
+    // ── Background prefetch cache hit — renders instantly without loading screen ──
+    const cached = consumeCache();
+    if (cached) {
+      const distObj = cached.summary?.risk_distribution;
+      const hasDistribution =
+        distObj &&
+        !Array.isArray(distObj) &&
+        typeof distObj === "object" &&
+        Object.keys(distObj).length > 0;
+      const hasRealData =
+        cached.summary &&
+        (cached.summary.high_risk_items?.length > 0 || hasDistribution);
+      if (hasRealData) {
+        setSummary(cached.summary);
+        setRiskData(unwrapData(cached.riskData, []));
+        setDemandData(unwrapData(cached.demandData, []));
+        setNarrative(cached.narrative);
+        setIsDemo(false);
+        setFetchError(null);
+        setLastRefresh(new Date());
+        setIsLoading(false);
+        return;
+      }
+    }
     setIsLoading(true);
     setFetchError(null);
     try {
@@ -218,7 +244,11 @@ export default function ForecastDashboard() {
       setIsLoading(false);
     }
   }, []);
-
+  /** Manual refresh: invalidate cache then re-fetch from API */
+  const handleManualRefresh = useCallback(() => {
+    invalidateCache();
+    fetchAll();
+  }, [fetchAll]);
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
@@ -417,12 +447,12 @@ export default function ForecastDashboard() {
             setDemandMultiplier(1);
           }
         }}
-        onRefresh={fetchAll}
+        onRefresh={handleManualRefresh}
         loading={isLoading}
       />
 
       {/* Pipeline Health Bar — always visible so users can trigger the pipeline even in demo/no-data state */}
-      <PipelineHealthBar onRefreshData={fetchAll} forceExpand={isDemo} />
+      <PipelineHealthBar onRefreshData={handleManualRefresh} forceExpand={isDemo} />
 
       {/* API error banner */}
       {fetchError && isDemo && (
@@ -548,7 +578,7 @@ export default function ForecastDashboard() {
                       {req.hospital?.name || `Hospital #${req.hospital_id}`}
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-slate-600">
-                      {Number(req.quantity).toLocaleString()}
+                      {formatDisplayQuantity(req.quantity, req.resource?.unit || "units")}
                     </td>
                     <td className="px-3 py-2.5">
                       <span

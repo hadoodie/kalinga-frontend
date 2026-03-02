@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Package,
 } from "lucide-react";
+import { formatDisplayQuantity } from "../../../utils/formatQuantity";
 
 /**
  * ActionSlideOver
@@ -139,7 +140,7 @@ const ActionSlideOver = memo(function ActionSlideOver({
                 <div>
                   <span className="block text-slate-500 text-xs">Current Stock</span>
                   <span className="font-semibold text-slate-700">
-                    {projectedStock.toLocaleString()}
+                    {formatDisplayQuantity(projectedStock, item?.resource?.unit || "units")}
                   </span>
                 </div>
               </div>
@@ -148,7 +149,7 @@ const ActionSlideOver = memo(function ActionSlideOver({
                 <div>
                   <span className="block text-slate-500 text-xs">Avg Daily Use</span>
                   <span className="font-semibold text-slate-700">
-                    {avgDaily.toLocaleString()}
+                    {formatDisplayQuantity(avgDaily, item?.resource?.unit || "units")}
                   </span>
                 </div>
               </div>
@@ -157,7 +158,7 @@ const ActionSlideOver = memo(function ActionSlideOver({
                 <div>
                   <span className="block text-slate-500 text-xs">Days to Stockout</span>
                   <span className="font-semibold text-orange-600">
-                    {Math.round(daysUntilStockout)}d
+                    {formatDisplayQuantity(daysUntilStockout, "days")}d
                   </span>
                 </div>
               </div>
@@ -195,7 +196,7 @@ const ActionSlideOver = memo(function ActionSlideOver({
               className="w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-200"
             />
             <p className="text-xs text-slate-400 mt-1">
-              AI recommended: <strong>{recommendedQty.toLocaleString()}</strong>{" "}
+              AI recommended: <strong>{formatDisplayQuantity(recommendedQty, item?.resource?.unit || "units")}</strong>{" "}
               ({Math.ceil(avgDaily * 14)} base + {scenarioDelayDays > 0 ? `${scenarioDelayDays}d delay buffer + ` : ""}20% safety)
             </p>
           </div>

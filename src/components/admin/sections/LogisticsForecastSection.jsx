@@ -23,6 +23,7 @@ import {
   generateDemoRiskData,
   generateDemoDemandData,
 } from "../../logistics/demoForecastData";
+import { formatDisplayQuantity, formatWithUnit } from "../../../utils/formatQuantity";
 
 // ── Data helpers ─────────────────────────────────────────────
 
@@ -172,7 +173,7 @@ const RiskTable = ({ items = [] }) => {
                 </td>
                 <td className="py-2.5 pr-4 text-right tabular-nums text-foreground/70">
                   {item.days_until_stockout != null
-                    ? Number(item.days_until_stockout).toFixed(1)
+                    ? formatDisplayQuantity(item.days_until_stockout, "days")
                     : "—"}
                 </td>
                 <td className="py-2.5 text-center">
@@ -218,7 +219,7 @@ const DemandList = ({ items = [] }) => {
                 {res.name || `Resource #${d.resource_id}`}
               </span>
               <span className="tabular-nums text-foreground/70">
-                {demand.toLocaleString()} {res.unit || "units"}
+                {formatWithUnit(demand, res.unit || "units")}
               </span>
             </div>
             <div className="mt-1 h-2 overflow-hidden rounded-full bg-foreground/5">

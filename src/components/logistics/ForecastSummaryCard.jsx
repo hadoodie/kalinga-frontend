@@ -10,6 +10,7 @@ import {
 import { AlertTriangle, TrendingUp, Clock, Shield } from "lucide-react";
 import forecastService from "../../services/forecastService";
 import { getDemoSummary } from "./demoForecastData";
+import { formatDisplayQuantity } from "../../utils/formatQuantity";
 
 const RISK_COLORS = {
   low: "#22c55e",
@@ -215,7 +216,7 @@ const ForecastSummaryCard = () => {
                     </span>
                     {item.days_until_stockout < 7 && (
                       <span className="text-xs text-red-600 font-semibold whitespace-nowrap">
-                        {item.days_until_stockout}d left
+                        {formatDisplayQuantity(item.days_until_stockout, "days")}d left
                       </span>
                     )}
                   </div>

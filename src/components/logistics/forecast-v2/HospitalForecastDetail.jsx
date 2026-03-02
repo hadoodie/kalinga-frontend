@@ -25,6 +25,7 @@ import {
 } from "recharts";
 import forecastService from "../../../services/forecastService";
 import { ROUTES } from "../../../config/routes";
+import { formatDisplayQuantity } from "../../../utils/formatQuantity";
 
 // ── Risk level colour helpers ────────────────────────────────
 const RISK_BADGE = {
@@ -393,17 +394,17 @@ export default function HospitalForecastDetail() {
                     </td>
                     <td className="px-3 py-3 text-right text-slate-600">
                       {row.days_until_stockout != null
-                        ? `${row.days_until_stockout < 1 ? "<1" : Number(row.days_until_stockout).toFixed(1)}d`
+                        ? `${row.days_until_stockout < 1 ? "<1" : formatDisplayQuantity(row.days_until_stockout, "days")}d`
                         : "—"}
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-slate-600">
                       {row.current_stock != null
-                        ? Number(row.current_stock).toLocaleString()
+                        ? formatDisplayQuantity(row.current_stock, row.unit || "units")
                         : "—"}
                     </td>
                     <td className="px-5 py-3 text-right font-mono text-slate-600">
                       {row.projected_stock != null
-                        ? Number(row.projected_stock).toLocaleString()
+                        ? formatDisplayQuantity(row.projected_stock, row.unit || "units")
                         : "—"}
                     </td>
                   </tr>

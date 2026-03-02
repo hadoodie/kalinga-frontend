@@ -8,6 +8,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import forecastService from "../../../services/forecastService";
+import { formatDisplayQuantity } from "../../../utils/formatQuantity";
 
 const URGENCY_DOT = {
   critical: "bg-red-500",
@@ -129,7 +130,7 @@ const TriagePanel = memo(function TriagePanel({
                       ? "border-l-amber-400"
                       : "border-l-emerald-400"
               }`}
-              aria-label={`${resourceName} at ${hospitalName}, risk ${level}, ${daysLeft < 999 ? `${daysLeft.toFixed(1)} days left` : "stock adequate"}`}
+              aria-label={`${resourceName} at ${hospitalName}, risk ${level}, ${daysLeft < 999 ? `${formatDisplayQuantity(daysLeft, "days")} days left` : "stock adequate"}`}
             >
               {/* Rank */}
               <span className="text-xs font-bold text-slate-300 w-5 text-right shrink-0">
@@ -160,7 +161,7 @@ const TriagePanel = memo(function TriagePanel({
                     {daysLeft < 1
                       ? "< 1d"
                       : daysLeft < 999
-                        ? `${daysLeft.toFixed(1)}d`
+                        ? `${formatDisplayQuantity(daysLeft, "days")}d`
                         : "Adequate"}
                   </span>
                   <span className="text-slate-400">
