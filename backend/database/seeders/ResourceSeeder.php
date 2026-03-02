@@ -13,9 +13,12 @@ class ResourceSeeder extends Seeder
 {
     public function run(): void
     {
-        Resource::truncate();
-        StockMovement::truncate();
-        
+        // !! WARNING: DO NOT use Resource::truncate() here! !!
+        // The forecast_demand_hourly and forecast_risk_hourly tables have
+        // CASCADE ON DELETE foreign keys referencing resources.id.
+        // Truncating resources will DESTROY ALL forecast data.
+        // We use updateOrCreate() instead to preserve existing IDs.
+
         $hospitals = Hospital::all();
         $users = User::all();
         
@@ -538,12 +541,25 @@ class ResourceSeeder extends Seeder
 
         $createdResources = [];
         foreach ($resources as $resource) {
-            $res = Resource::create($resource);
+            $hospitalId = $resource['hospital_id'];
+            $name       = $resource['name'];
+
+            // Strip match keys from the attributes payload
+            $attributes = collect($resource)
+                ->except(['hospital_id', 'name'])
+                ->toArray();
+
+            $res = Resource::updateOrCreate(
+                ['hospital_id' => $hospitalId, 'name' => $name],
+                $attributes,
+            );
             $res->updateStatus();
             $createdResources[] = $res;
 
-            // Create extensive stock movements for 2025
-            $this->createExtensiveStockMovements($res, $adminUser?->id);
+            // Only create stock movements if this resource has none yet
+            if ($res->stockMovements()->count() === 0) {
+                $this->createExtensiveStockMovements($res, $adminUser?->id);
+            }
         }
     }
 

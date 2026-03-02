@@ -35,11 +35,14 @@ const normalizeRiskItems = (items = []) =>
   items.map((item) => ({
     ...item,
     hospital_name:
-      item.hospital_name || item.hospital?.name || `Hospital ${item.hospital_id}`,
+      item.hospital_name ||
+      item.hospital?.name ||
+      `Hospital ${item.hospital_id}`,
     resource_name:
-      item.resource_name || item.resource?.name || `Resource ${item.resource_id}`,
-    resource_category:
-      item.resource_category || item.resource?.category || "",
+      item.resource_name ||
+      item.resource?.name ||
+      `Resource ${item.resource_id}`,
+    resource_category: item.resource_category || item.resource?.category || "",
   }));
 
 /**
@@ -56,7 +59,10 @@ const normalizeSummary = (s) => {
       (s.demand_by_resource || []).map((d) => ({
         resource_id: d.resource_id,
         total_demand: d.avg_demand ?? d.total_demand ?? 0,
-        resource: d.resource ?? { name: d.category ?? "Unknown", unit: "units" },
+        resource: d.resource ?? {
+          name: d.category ?? "Unknown",
+          unit: "units",
+        },
       })),
   };
 };
@@ -90,12 +96,7 @@ function riskTone(level) {
   return RISK_TONES[level] || RISK_TONES.low;
 }
 
-function unwrapData(val, fallback = []) {
-  if (!val) return fallback;
-  if (Array.isArray(val)) return val;
-  if (Array.isArray(val.data)) return val.data;
-  return fallback;
-}
+
 
 // ── Sub-components ───────────────────────────────────────────
 
@@ -103,7 +104,8 @@ function unwrapData(val, fallback = []) {
 const RiskBar = ({ distribution }) => {
   const levels = ["critical", "high", "medium", "low"];
   const total = levels.reduce((s, l) => s + (distribution[l] || 0), 0);
-  if (!total) return <span className="text-xs text-foreground/50">No data</span>;
+  if (!total)
+    return <span className="text-xs text-foreground/50">No data</span>;
 
   return (
     <div className="flex items-center gap-2">
@@ -198,7 +200,10 @@ const DemandList = ({ items = [] }) => {
       </p>
     );
 
-  const maxDemand = Math.max(...items.map((d) => Number(d.total_demand) || 0), 1);
+  const maxDemand = Math.max(
+    ...items.map((d) => Number(d.total_demand) || 0),
+    1,
+  );
 
   return (
     <div className="space-y-3">
@@ -234,8 +239,7 @@ const NarrativePanel = ({ narrative, isLoading }) => {
   if (isLoading)
     return (
       <div className="flex items-center gap-3 py-8 text-sm text-foreground/50">
-        <Loader2 className="h-4 w-4 animate-spin" /> Generating AI
-        narrative…
+        <Loader2 className="h-4 w-4 animate-spin" /> Generating AI narrative…
       </div>
     );
 
@@ -260,7 +264,8 @@ const HospitalFilter = ({ hospitals, selected, onSelect }) => {
   const [open, setOpen] = useState(false);
 
   const label = selected
-    ? hospitals.find((h) => String(h.id) === String(selected))?.name || "Unknown"
+    ? hospitals.find((h) => String(h.id) === String(selected))?.name ||
+      "Unknown"
     : "All Hospitals";
 
   return (
@@ -284,7 +289,9 @@ const HospitalFilter = ({ hospitals, selected, onSelect }) => {
                   setOpen(false);
                 }}
                 className={`w-full rounded-lg px-3 py-2 text-left text-sm transition hover:bg-foreground/5 ${
-                  !selected ? "bg-primary/10 font-semibold text-primary" : "text-foreground/80"
+                  !selected
+                    ? "bg-primary/10 font-semibold text-primary"
+                    : "text-foreground/80"
                 }`}
               >
                 All Hospitals (National)
@@ -316,8 +323,8 @@ const HospitalFilter = ({ hospitals, selected, onSelect }) => {
 // ── Main Section Component ───────────────────────────────────
 
 export const LogisticsForecastSection = () => {
-  // Data
-  const [summary, setSummary] = useState(null);
+  // ── Full (national) dataset — fetched ONCE ─────────────────
+  const [fullSummary, setFullSummary] = useState(null);
   const [narrative, setNarrative] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [narrativeLoading, setNarrativeLoading] = useState(false);
@@ -329,7 +336,7 @@ export const LogisticsForecastSection = () => {
   const [triggering, setTriggering] = useState(false);
   const [triggerMsg, setTriggerMsg] = useState(null);
 
-  // Hospital filter
+  // Hospital filter — purely client-side now
   const [hospitals, setHospitals] = useState([]);
   const [selectedHospital, setSelectedHospital] = useState(null);
 
@@ -348,16 +355,14 @@ export const LogisticsForecastSection = () => {
     fetchHospitals();
   }, []);
 
-  // ── Fetch forecast data ────────────────────────────────────
+  // ── Fetch ALL forecast data ONCE (no hospital_id param) ────
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
     try {
-      const params = selectedHospital ? { hospital_id: selectedHospital } : {};
-
       const [summaryRes, narrativeRes] = await Promise.allSettled([
-        forecastService.getSummary(params),
-        forecastService.getNarrative(params),
+        forecastService.getSummary(),
+        forecastService.getNarrative(),
       ]);
 
       const summaryVal =
@@ -377,13 +382,13 @@ export const LogisticsForecastSection = () => {
           summaryVal.meta?.generated_at != null);
 
       if (hasRealData) {
-        setSummary(normalizeSummary(summaryVal));
+        setFullSummary(normalizeSummary(summaryVal));
         setNarrative(
           narrativeRes.status === "fulfilled" ? narrativeRes.value : null,
         );
         setIsDemo(false);
       } else {
-        setSummary(normalizeSummary(getDemoSummary()));
+        setFullSummary(normalizeSummary(getDemoSummary()));
         setNarrative(null);
         setIsDemo(true);
         setFetchError(
@@ -396,7 +401,7 @@ export const LogisticsForecastSection = () => {
       setLastRefresh(new Date());
     } catch (err) {
       console.error("[LogisticsForecastSection] fetch error:", err);
-      setSummary(normalizeSummary(getDemoSummary()));
+      setFullSummary(normalizeSummary(getDemoSummary()));
       setNarrative(null);
       setIsDemo(true);
       setFetchError(err?.message || "Network error");
@@ -404,7 +409,7 @@ export const LogisticsForecastSection = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedHospital]);
+  }, []);
 
   useEffect(() => {
     fetchAll();
@@ -416,7 +421,9 @@ export const LogisticsForecastSection = () => {
     setTriggerMsg(null);
     try {
       const res = await forecastService.triggerRun({ mode: "production" });
-      setTriggerMsg(res?.message || "Pipeline triggered — results ready in ~60s.");
+      setTriggerMsg(
+        res?.message || "Pipeline triggered — results ready in ~60s.",
+      );
       // Auto-refresh after the pipeline has had time to write results
       setTimeout(() => fetchAll(), 65_000);
     } catch {
@@ -425,6 +432,40 @@ export const LogisticsForecastSection = () => {
       setTriggering(false);
     }
   }, [fetchAll]);
+
+  // ── CLIENT-SIDE FILTER: derive a hospital-scoped view ──────
+  const summary = useMemo(() => {
+    if (!fullSummary) return null;
+
+    // No filter → return the full national dataset as-is
+    if (!selectedHospital) return fullSummary;
+
+    const hid = String(selectedHospital);
+
+    // Filter high_risk_items to only this hospital
+    const filteredRisk = (fullSummary.high_risk_items || []).filter(
+      (item) => String(item.hospital_id) === hid,
+    );
+
+    // Recompute risk_distribution from filtered items
+    const filteredDist = {};
+    for (const item of filteredRisk) {
+      const level = item.risk_level || "low";
+      filteredDist[level] = (filteredDist[level] || 0) + 1;
+    }
+
+    // Filter top_demand to this hospital
+    const filteredDemand = (fullSummary.top_demand || []).filter(
+      (d) => String(d.hospital_id) === hid,
+    );
+
+    return {
+      ...fullSummary,
+      high_risk_items: filteredRisk,
+      risk_distribution: filteredDist,
+      top_demand: filteredDemand,
+    };
+  }, [fullSummary, selectedHospital]);
 
   // ── Derived stats ──────────────────────────────────────────
   const riskDist = summary?.risk_distribution || {};
@@ -517,9 +558,7 @@ export const LogisticsForecastSection = () => {
               value={criticalCount}
               tone="danger"
               change={
-                criticalCount > 0
-                  ? `${criticalCount} need reorder`
-                  : undefined
+                criticalCount > 0 ? `${criticalCount} need reorder` : undefined
               }
               trend="up"
             />
@@ -541,6 +580,11 @@ export const LogisticsForecastSection = () => {
           <div className="rounded-2xl border border-border/60 bg-card/60 p-5 shadow-sm">
             <h3 className="mb-3 text-sm font-semibold text-foreground/70">
               Risk Distribution
+              {selectedHospital && (
+                <span className="ml-2 text-xs font-normal text-foreground/40">
+                  (filtered)
+                </span>
+              )}
             </h3>
             <RiskBar distribution={riskDist} />
             <div className="mt-2 flex flex-wrap gap-4 text-xs text-foreground/60">
@@ -562,6 +606,11 @@ export const LogisticsForecastSection = () => {
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground/70">
                   High-Risk Items
+                  {selectedHospital && (
+                    <span className="ml-2 text-xs font-normal text-foreground/40">
+                      (filtered)
+                    </span>
+                  )}
                 </h3>
                 <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-700 dark:bg-rose-500/10 dark:text-rose-300">
                   {highRiskItems.length} items
@@ -588,9 +637,7 @@ export const LogisticsForecastSection = () => {
               </h3>
               {narrative?.source && (
                 <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-600 dark:bg-violet-500/10 dark:text-violet-300">
-                  {narrative.source === "gemini"
-                    ? "Gemini 2.0"
-                    : "Rule-based"}
+                  {narrative.source === "gemini" ? "Gemini 2.0" : "Rule-based"}
                 </span>
               )}
             </div>
@@ -603,11 +650,12 @@ export const LogisticsForecastSection = () => {
           {/* Footer metadata */}
           {lastRefresh && (
             <p className="text-center text-xs text-foreground/40">
-              Last refreshed:{" "}
-              {lastRefresh.toLocaleTimeString()} ·{" "}
-              Horizon: {summary?.meta?.horizon_hours || 48}h ·{" "}
+              Last refreshed: {lastRefresh.toLocaleTimeString()} · Horizon:{" "}
+              {summary?.meta?.horizon_hours || 48}h ·{" "}
               {selectedHospital
-                ? hospitals.find((h) => String(h.id) === String(selectedHospital))?.name || "Selected Hospital"
+                ? hospitals.find(
+                    (h) => String(h.id) === String(selectedHospital),
+                  )?.name || "Selected Hospital"
                 : "National View"}
             </p>
           )}

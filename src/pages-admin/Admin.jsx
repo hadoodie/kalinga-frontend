@@ -92,6 +92,23 @@ const SectionLoader = () => (
   </div>
 );
 
+/** Badge config for sections that require a visual data-status indicator */
+const API_STATUS_CONFIG = {
+  live: null, // no badge needed — fully connected
+  partial: {
+    label: "Partial",
+    className:
+      "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
+    tooltip: "Some data is live, some falls back to demo/static values",
+  },
+  demo: {
+    label: "Demo",
+    className:
+      "bg-rose-100 text-rose-700 dark:bg-rose-500/10 dark:text-rose-300",
+    tooltip: "This section uses demo / static data",
+  },
+};
+
 const adminSections = [
   {
     id: "dashboard",
@@ -100,6 +117,7 @@ const adminSections = [
       "High-level operational picture and response posture overview.",
     icon: LayoutDashboard,
     component: DashboardSection,
+    apiStatus: "live",
   },
   {
     id: "users",
@@ -108,6 +126,7 @@ const adminSections = [
       "Provision operators, manage access tiers, and coordinate agency collaboration.",
     icon: Users,
     component: UserRoleManagement,
+    apiStatus: "live",
   },
   {
     id: "responders",
@@ -116,6 +135,7 @@ const adminSections = [
       "Monitor responder availability, assignments, and deployment status across all teams.",
     icon: UserCheck,
     component: ResponderOverview,
+    apiStatus: "live",
   },
   {
     id: "patients",
@@ -124,6 +144,7 @@ const adminSections = [
       "Track registered patients, active emergencies, and health metrics across the system.",
     icon: Heart,
     component: PatientOverview,
+    apiStatus: "live",
   },
   {
     id: "incidents",
@@ -132,6 +153,7 @@ const adminSections = [
       "Heat map of active incidents with severity clustering and sensor health.",
     icon: Map,
     component: IncidentHeatMap,
+    apiStatus: "live",
   },
   {
     id: "resources",
@@ -140,6 +162,7 @@ const adminSections = [
       "Track logistics pipelines, staging capacity, and resupply cadence.",
     icon: Package,
     component: ResourceManagement,
+    apiStatus: "live",
   },
   {
     id: "hospital-safety",
@@ -148,6 +171,7 @@ const adminSections = [
       "WHO / DOH-aligned compliance, resilience, and resource telemetry per hospital.",
     icon: Activity,
     component: HospitalSafetyIndexSection,
+    apiStatus: "partial",
   },
   {
     id: "logistics",
@@ -156,6 +180,7 @@ const adminSections = [
       "Monitor supply chain, allocation requests, and shipment tracking.",
     icon: Truck,
     component: LogisticsOverview,
+    apiStatus: "live",
   },
   {
     id: "logistics-forecast",
@@ -164,6 +189,7 @@ const adminSections = [
       "AI-driven demand forecasting, stockout risk analysis, and executive narrative.",
     icon: TrendingUp,
     component: LogisticsForecastSection,
+    apiStatus: "partial",
   },
   {
     id: "training",
@@ -171,6 +197,7 @@ const adminSections = [
     description: "Partner-led capability building and workshop coordination.",
     icon: GraduationCap,
     component: TrainingSection,
+    apiStatus: "demo",
   },
   {
     id: "connectivity",
@@ -179,6 +206,7 @@ const adminSections = [
       "Network uptime, throughput, and connected population metrics.",
     icon: Server,
     component: ConnectivityMonitoring,
+    apiStatus: "demo",
   },
   {
     id: "security",
@@ -187,6 +215,7 @@ const adminSections = [
       "Physical and cyber telemetry from the command center perimeter.",
     icon: Shield,
     component: MonitoringSecurity,
+    apiStatus: "demo",
   },
   {
     id: "broadcast",
@@ -195,6 +224,7 @@ const adminSections = [
     icon: Megaphone,
     component: BroadcastControl,
     optional: true,
+    apiStatus: "partial",
   },
 ];
 
@@ -302,6 +332,7 @@ export const AdminPortal = () => {
       personaName={user.name}
       personaRole={formatRole(user.role)}
       personaEmail={user.email}
+      apiStatusConfig={API_STATUS_CONFIG}
     >
       <Suspense fallback={<SectionLoader />}>
         <ActiveComponent />

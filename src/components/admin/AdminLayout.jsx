@@ -77,6 +77,7 @@ export const AdminLayout = ({
   autoRefreshLabel = "Auto-refresh",
   autoRefreshHint = "Every 10 seconds",
   consoleBadgeLabel = "Current View",
+  apiStatusConfig = {},
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -394,6 +395,7 @@ export const AdminLayout = ({
   const renderNavItem = (section) => {
     const Icon = section.icon;
     const isActive = section.id === activeSection.id;
+    const statusCfg = apiStatusConfig[section.apiStatus];
 
     return (
       <button
@@ -417,7 +419,20 @@ export const AdminLayout = ({
           <Icon className="h-5 w-5" />
         </span>
         <span className="space-y-1">
-          <p className="text-sm font-semibold">{section.title}</p>
+          <p className="text-sm font-semibold flex items-center gap-2">
+            {section.title}
+            {statusCfg && (
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+                  statusCfg.className,
+                )}
+                title={statusCfg.tooltip}
+              >
+                {statusCfg.label}
+              </span>
+            )}
+          </p>
           {section.description && (
             <p className="text-xs text-foreground/60 leading-relaxed">
               {section.description}
