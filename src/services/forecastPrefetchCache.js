@@ -9,11 +9,12 @@
  * Exports:
  *   prefetchForecasts()  — fire-and-forget: kick off background fetch
  *   consumeCache()       — return cached payload if warm, else null
+ *   populateCache(data)  — write-back from a successful fetchAll
  *   invalidateCache()    — reset to idle (forces next fetch to re-hit API)
  *   getCacheStatus()     — "idle" | "fetching" | "ready" | "error"
  */
 
-import api from "../services/api";
+import forecastService from "./forecastService";
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -24,7 +25,7 @@ let _cache = {
   narrative: null,
   timestamp: null,
   status: "idle", // "idle" | "fetching" | "ready" | "error"
-  promise: null,  // in-flight Promise (deduplication)
+  promise: null, // in-flight Promise (deduplication)
 };
 
 /** True if cache is populated and not stale */
@@ -38,6 +39,9 @@ function _isFresh() {
 
 /**
  * Fire-and-forget background prefetch.
+ * Uses the same forecastService methods that ForecastDashboard uses,
+ * so endpoint paths and response unwrapping are guaranteed identical.
+ *
  * Safe to call multiple times — deduplicates in-flight requests.
  *
  * @returns {Promise<void>}
@@ -51,34 +55,29 @@ export function prefetchForecasts() {
   _cache.status = "fetching";
 
   const p = Promise.allSettled([
-    api.get("/forecast/summary"),
-    api.get("/forecast/risk"),
-    api.get("/forecast/demand"),
-    api.get("/forecast/narrative"),
-  ]).then(([summaryRes, riskRes, demandRes, narrativeRes]) => {
-    const unwrap = (res) => {
-      if (res.status === "fulfilled") {
-        const d = res.value?.data;
-        // handle { data: [...] } or { data: { data: [...] } } wrapping
-        if (d && d.data !== undefined) return d.data;
-        return d;
-      }
-      return null;
-    };
+    forecastService.getSummary(),
+    forecastService.getRiskForecasts(),
+    forecastService.getDemandForecasts(),
+    forecastService.getNarrative(),
+  ])
+    .then(([summaryRes, riskRes, demandRes, narrativeRes]) => {
+      const val = (res) =>
+        res.status === "fulfilled" ? res.value : null;
 
-    _cache = {
-      summary: unwrap(summaryRes),
-      riskData: unwrap(riskRes),
-      demandData: unwrap(demandRes),
-      narrative: unwrap(narrativeRes),
-      timestamp: Date.now(),
-      status: "ready",
-      promise: null,
-    };
-  }).catch(() => {
-    _cache.status = "error";
-    _cache.promise = null;
-  });
+      _cache = {
+        summary: val(summaryRes),
+        riskData: val(riskRes),
+        demandData: val(demandRes),
+        narrative: val(narrativeRes),
+        timestamp: Date.now(),
+        status: "ready",
+        promise: null,
+      };
+    })
+    .catch(() => {
+      _cache.status = "error";
+      _cache.promise = null;
+    });
 
   _cache.promise = p;
   return p;
@@ -96,6 +95,24 @@ export function consumeCache() {
     riskData: _cache.riskData,
     demandData: _cache.demandData,
     narrative: _cache.narrative,
+  };
+}
+
+/**
+ * Write-back: after a successful fetchAll in ForecastDashboard,
+ * populate the module-level cache so subsequent tab switches render instantly.
+ *
+ * @param {{ summary, riskData, demandData, narrative }} data
+ */
+export function populateCache({ summary, riskData, demandData, narrative }) {
+  _cache = {
+    summary,
+    riskData,
+    demandData,
+    narrative,
+    timestamp: Date.now(),
+    status: "ready",
+    promise: null,
   };
 }
 

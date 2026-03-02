@@ -30,7 +30,11 @@ import NarrativeDrawer from "./NarrativeDrawer";
 import ActionSlideOver from "./ActionSlideOver";
 import PipelineHealthBar from "./PipelineHealthBar";
 import AccuracyPanel from "./AccuracyPanel";
-import { consumeCache, invalidateCache } from "../../../services/forecastPrefetchCache";
+import {
+  consumeCache,
+  invalidateCache,
+  populateCache,
+} from "../../../services/forecastPrefetchCache";
 import { formatDisplayQuantity } from "../../../utils/formatQuantity";
 
 // ── Loading screen with animated forecast visuals ────────────
@@ -201,20 +205,16 @@ export default function ForecastDashboard() {
         (summaryVal.high_risk_items?.length > 0 || hasDistribution);
 
       if (hasRealData) {
+        const riskVal = unwrapData(riskRes.status === "fulfilled" ? riskRes.value : null, []);
+        const demandVal = unwrapData(demandRes.status === "fulfilled" ? demandRes.value : null, []);
+        const narrativeVal = narrativeRes.status === "fulfilled" ? narrativeRes.value : null;
         setSummary(summaryVal);
-        setRiskData(
-          unwrapData(riskRes.status === "fulfilled" ? riskRes.value : null, []),
-        );
-        setDemandData(
-          unwrapData(
-            demandRes.status === "fulfilled" ? demandRes.value : null,
-            [],
-          ),
-        );
-        setNarrative(
-          narrativeRes.status === "fulfilled" ? narrativeRes.value : null,
-        );
+        setRiskData(riskVal);
+        setDemandData(demandVal);
+        setNarrative(narrativeVal);
         setIsDemo(false);
+        // Write-back so tab switches use the cache instead of re-fetching
+        populateCache({ summary: summaryVal, riskData: riskVal, demandData: demandVal, narrative: narrativeVal });
       } else {
         // Fall back to demo data
         setSummary(getDemoSummary());
@@ -452,7 +452,10 @@ export default function ForecastDashboard() {
       />
 
       {/* Pipeline Health Bar — always visible so users can trigger the pipeline even in demo/no-data state */}
-      <PipelineHealthBar onRefreshData={handleManualRefresh} forceExpand={isDemo} />
+      <PipelineHealthBar
+        onRefreshData={handleManualRefresh}
+        forceExpand={isDemo}
+      />
 
       {/* API error banner */}
       {fetchError && isDemo && (
@@ -578,7 +581,10 @@ export default function ForecastDashboard() {
                       {req.hospital?.name || `Hospital #${req.hospital_id}`}
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-slate-600">
-                      {formatDisplayQuantity(req.quantity, req.resource?.unit || "units")}
+                      {formatDisplayQuantity(
+                        req.quantity,
+                        req.resource?.unit || "units",
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <span

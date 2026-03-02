@@ -797,15 +797,49 @@ const LogisDash = () => {
     fetchDashboardData();
   }, []);
 
+  // Memoize which tabs have been visited so we keep them mounted
+  const [visitedTabs, setVisitedTabs] = useState(new Set(["logistics"]));
+  useEffect(() => {
+    setVisitedTabs((prev) => {
+      if (prev.has(activeTab)) return prev;
+      const next = new Set(prev);
+      next.add(activeTab);
+      return next;
+    });
+  }, [activeTab]);
+
   const renderContent = () => {
-    if (activeTab === "hospital") {
-      return <HospitalDashboard />;
-    }
+    // Keep ForecastDashboard and HospitalDashboard mounted (CSS-hidden)
+    // once visited so they don't lose React state on tab switch.
+    const showLogistics = activeTab === "logistics";
+    const showForecast = activeTab === "forecast";
+    const showHospital = activeTab === "hospital";
 
-    if (activeTab === "forecast") {
-      return <ForecastDashboard />;
-    }
+    return (
+      <>
+        {/* Forecast tab — stays mounted once visited */}
+        {visitedTabs.has("forecast") && (
+          <div style={{ display: showForecast ? undefined : "none" }}>
+            <ForecastDashboard />
+          </div>
+        )}
 
+        {/* Hospital tab — stays mounted once visited */}
+        {visitedTabs.has("hospital") && (
+          <div style={{ display: showHospital ? undefined : "none" }}>
+            <HospitalDashboard />
+          </div>
+        )}
+
+        {/* Logistics / main tab */}
+        <div style={{ display: showLogistics ? undefined : "none" }}>
+          {renderLogisticsContent()}
+        </div>
+      </>
+    );
+  };
+
+  const renderLogisticsContent = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center h-screen bg-gray-100">
@@ -840,6 +874,7 @@ const LogisDash = () => {
     }
 
     return (
+      /* Main logistics tab content */
       <>
         {/* Demo Mode Banner */}
         {isDemoMode && (
