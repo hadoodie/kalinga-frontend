@@ -29,7 +29,7 @@ import api from "../../services/api";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "../../context/AuthContext";
 import { useSupplyTracking } from "../../hooks/useSupplyTracking";
-import { useForecastPrefetch } from "../../hooks/useForecastPrefetch";
+import useForecastPrefetch from "../../hooks/useForecastPrefetch";
 
 // Import Hospital Dashboard
 import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
@@ -680,13 +680,13 @@ const LogisDash = () => {
   const [activeTab, setActiveTab] = useState("logistics");
   const navigate = useNavigate();
 
-  // Silently warm the forecast cache in the background so the AI Forecast
-  // tab renders instantly (no loading spinner) when the user clicks it.
+  // Prefetch forecast data in the background so ForecastDashboard renders instantly
   useForecastPrefetch();
 
-  // Prefetch supply tracking data so the Supply Tracking page renders instantly.
+  // Prefetch supply tracking data — only poll when logistics tab is active
   const { shipments: liveShipments } = useSupplyTracking({
     pollingInterval: 60000,
+    enabled: activeTab === "logistics",
   });
   // Fall back to demo data only when explicitly in demo mode AND no live data yet
   const shipments =
@@ -704,12 +704,18 @@ const LogisDash = () => {
         setError(null);
         let usingFallback = false;
 
-        // ── 1. Resources / Inventory (existing logic) ──
-        let inventoryData = [];
-        let facilitiesData = [];
-        try {
-          const resourcesResponse = await resourceService.getAll();
-          inventoryData = resourcesResponse.map((item) => ({
+        // Fire all three independent API calls in parallel
+        const [resourcesResult, requestsResult, assetsResult] =
+          await Promise.allSettled([
+            resourceService.getAll(),
+            api.get("/requests", { params: { per_page: 10, status: "pending" } }),
+            api.get("/assets", { params: { per_page: 20 } }),
+          ]);
+
+        // ── 1. Resources / Inventory ──
+        if (resourcesResult.status === "fulfilled") {
+          const resourcesResponse = resourcesResult.value;
+          const inventoryData = resourcesResponse.map((item) => ({
             resource: item.name,
             category: item.category,
             remaining: parseFloat(item.quantity || 0),
@@ -727,22 +733,19 @@ const LogisDash = () => {
             }
             facilityMap[facilityName].resources += remaining;
           });
-          facilitiesData = Object.values(facilityMap).filter(
+          const facilitiesData = Object.values(facilityMap).filter(
             (f) => f.resources > 0,
           );
-        } catch (e) {
-          console.warn("Resources API unavailable, using demo mode", e);
+          setInventory(inventoryData);
+          setFacilities(facilitiesData);
+        } else {
+          console.warn("Resources API unavailable, using demo mode", resourcesResult.reason);
           usingFallback = true;
         }
-        setInventory(inventoryData);
-        setFacilities(facilitiesData);
 
         // ── 2. Requests ──
-        try {
-          const reqResponse = await api.get("/requests", {
-            params: { per_page: 10, status: "pending" },
-          });
-          const reqData = reqResponse.data?.data || reqResponse.data || [];
+        if (requestsResult.status === "fulfilled") {
+          const reqData = requestsResult.value.data?.data || requestsResult.value.data || [];
           setRequests(
             reqData.map((r) => ({
               id: `R-${r.id}`,
@@ -756,30 +759,26 @@ const LogisDash = () => {
               items: r.quantity || 1,
             })),
           );
-        } catch (e) {
-          console.warn("Requests API unavailable, using demo fallback", e);
+        } else {
+          console.warn("Requests API unavailable, using demo fallback", requestsResult.reason);
           setRequests(DEMO_RESOURCE_REQUESTS);
           usingFallback = true;
         }
 
-        // ── 3. Shipments: now handled by useSupplyTracking hook above ──
-        // (removed manual /allocations fetch — hook manages WebSocket + polling)
+        // ── 3. Shipments: handled by useSupplyTracking hook above ──
 
         // ── 4. Assets ──
-        try {
-          const assetResponse = await api.get("/assets", {
-            params: { per_page: 20 },
-          });
+        if (assetsResult.status === "fulfilled") {
           const assetData =
-            assetResponse.data?.data || assetResponse.data || [];
+            assetsResult.value.data?.data || assetsResult.value.data || [];
           setAssets(
             assetData.map((a) => ({
               name: a.name || a.code || "Unknown",
               status: a.status || "Idle",
             })),
           );
-        } catch (e) {
-          console.warn("Assets API unavailable, using demo fallback", e);
+        } else {
+          console.warn("Assets API unavailable, using demo fallback", assetsResult.reason);
           setAssets(DEMO_ASSETS);
           usingFallback = true;
         }
@@ -797,49 +796,15 @@ const LogisDash = () => {
     fetchDashboardData();
   }, []);
 
-  // Memoize which tabs have been visited so we keep them mounted
-  const [visitedTabs, setVisitedTabs] = useState(new Set(["logistics"]));
-  useEffect(() => {
-    setVisitedTabs((prev) => {
-      if (prev.has(activeTab)) return prev;
-      const next = new Set(prev);
-      next.add(activeTab);
-      return next;
-    });
-  }, [activeTab]);
-
   const renderContent = () => {
-    // Keep ForecastDashboard and HospitalDashboard mounted (CSS-hidden)
-    // once visited so they don't lose React state on tab switch.
-    const showLogistics = activeTab === "logistics";
-    const showForecast = activeTab === "forecast";
-    const showHospital = activeTab === "hospital";
+    if (activeTab === "hospital") {
+      return <HospitalDashboard />;
+    }
 
-    return (
-      <>
-        {/* Forecast tab — stays mounted once visited */}
-        {visitedTabs.has("forecast") && (
-          <div style={{ display: showForecast ? undefined : "none" }}>
-            <ForecastDashboard />
-          </div>
-        )}
+    if (activeTab === "forecast") {
+      return <ForecastDashboard />;
+    }
 
-        {/* Hospital tab — stays mounted once visited */}
-        {visitedTabs.has("hospital") && (
-          <div style={{ display: showHospital ? undefined : "none" }}>
-            <HospitalDashboard />
-          </div>
-        )}
-
-        {/* Logistics / main tab */}
-        <div style={{ display: showLogistics ? undefined : "none" }}>
-          {renderLogisticsContent()}
-        </div>
-      </>
-    );
-  };
-
-  const renderLogisticsContent = () => {
     if (loading) {
       return (
         <div className="flex items-center justify-center h-screen bg-gray-100">
@@ -874,7 +839,6 @@ const LogisDash = () => {
     }
 
     return (
-      /* Main logistics tab content */
       <>
         {/* Demo Mode Banner */}
         {isDemoMode && (

@@ -1,0 +1,3 @@
+<?php require 'vendor/autoload.php'; $app = require_once 'bootstrap/app.php'; $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class); $kernel->bootstrap(); $incident = App\Models\Incident::first(); $assign = $incident->assignments()->first(); $request = Illuminate\Http\Request::create('/api/incidents/{$incident->id}/status', 'POST', ['status' => 'cancelled']); $request->setUserResolver(function() use ($assign) { return App\Models\User::find($assign->responder_id); }); $controller = app(App\Http\Controllers\Api\IncidentApiController::class); try { $r = $controller->updateStatus($request, $incident); echo 'WORKED: cancelled
+'; } catch (\Exception $e) { echo 'ERROR: cancelled - ' . $e->getMessage() . '
+'; }

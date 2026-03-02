@@ -72,10 +72,14 @@ const forecastService = {
   /**
    * Fetch forecast detail for a specific hospital.
    * @param {number} hospitalId
+   * @param {Object} [options]
+   * @param {number} [options.horizon] - Forecast horizon in hours (24/48/72)
    */
-  getHospitalDetail: async (hospitalId) => {
+  getHospitalDetail: async (hospitalId, { horizon } = {}) => {
     try {
-      const response = await api.get(`/forecasts/hospital/${hospitalId}`);
+      const params = {};
+      if (horizon) params.horizon = horizon;
+      const response = await api.get(`/forecasts/hospital/${hospitalId}`, { params });
       return response.data;
     } catch (error) {
       console.error(

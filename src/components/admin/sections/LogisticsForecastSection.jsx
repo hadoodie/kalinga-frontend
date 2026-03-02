@@ -18,12 +18,12 @@ import {
 import { SectionHeader } from "../SectionHeader";
 import { StatCard } from "../StatCard";
 import forecastService from "../../../services/forecastService";
+import { formatDisplayQuantity, formatWithUnit } from "../../../utils/formatQuantity";
 import {
   getDemoSummary,
   generateDemoRiskData,
   generateDemoDemandData,
 } from "../../logistics/demoForecastData";
-import { formatDisplayQuantity, formatWithUnit } from "../../../utils/formatQuantity";
 
 // ── Data helpers ─────────────────────────────────────────────
 
@@ -96,8 +96,6 @@ const RISK_TONES = {
 function riskTone(level) {
   return RISK_TONES[level] || RISK_TONES.low;
 }
-
-
 
 // ── Sub-components ───────────────────────────────────────────
 

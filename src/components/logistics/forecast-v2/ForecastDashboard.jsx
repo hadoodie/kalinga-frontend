@@ -30,12 +30,11 @@ import NarrativeDrawer from "./NarrativeDrawer";
 import ActionSlideOver from "./ActionSlideOver";
 import PipelineHealthBar from "./PipelineHealthBar";
 import AccuracyPanel from "./AccuracyPanel";
+import { formatDisplayQuantity } from "../../../utils/formatQuantity";
 import {
   consumeCache,
   invalidateCache,
-  populateCache,
 } from "../../../services/forecastPrefetchCache";
-import { formatDisplayQuantity } from "../../../utils/formatQuantity";
 
 // ── Loading screen with animated forecast visuals ────────────
 function ForecastLoadingScreen() {
@@ -148,9 +147,12 @@ export default function ForecastDashboard() {
 
   // ── Fetch all data ─────────────────────────────────────────
   const fetchAll = useCallback(async () => {
-    // ── Background prefetch cache hit — renders instantly without loading screen ──
+    setIsLoading(true);
+    setFetchError(null);
+
+    // ── Check prefetch cache first ───────────────────────────
     const cached = consumeCache();
-    if (cached) {
+    if (cached?.summary) {
       const distObj = cached.summary?.risk_distribution;
       const hasDistribution =
         distObj &&
@@ -160,20 +162,19 @@ export default function ForecastDashboard() {
       const hasRealData =
         cached.summary &&
         (cached.summary.high_risk_items?.length > 0 || hasDistribution);
+
       if (hasRealData) {
         setSummary(cached.summary);
         setRiskData(unwrapData(cached.riskData, []));
         setDemandData(unwrapData(cached.demandData, []));
         setNarrative(cached.narrative);
         setIsDemo(false);
-        setFetchError(null);
         setLastRefresh(new Date());
         setIsLoading(false);
-        return;
+        return; // Cache hit — skip network calls
       }
     }
-    setIsLoading(true);
-    setFetchError(null);
+
     try {
       const [summaryRes, riskRes, demandRes, narrativeRes] =
         await Promise.allSettled([
@@ -205,16 +206,20 @@ export default function ForecastDashboard() {
         (summaryVal.high_risk_items?.length > 0 || hasDistribution);
 
       if (hasRealData) {
-        const riskVal = unwrapData(riskRes.status === "fulfilled" ? riskRes.value : null, []);
-        const demandVal = unwrapData(demandRes.status === "fulfilled" ? demandRes.value : null, []);
-        const narrativeVal = narrativeRes.status === "fulfilled" ? narrativeRes.value : null;
         setSummary(summaryVal);
-        setRiskData(riskVal);
-        setDemandData(demandVal);
-        setNarrative(narrativeVal);
+        setRiskData(
+          unwrapData(riskRes.status === "fulfilled" ? riskRes.value : null, []),
+        );
+        setDemandData(
+          unwrapData(
+            demandRes.status === "fulfilled" ? demandRes.value : null,
+            [],
+          ),
+        );
+        setNarrative(
+          narrativeRes.status === "fulfilled" ? narrativeRes.value : null,
+        );
         setIsDemo(false);
-        // Write-back so tab switches use the cache instead of re-fetching
-        populateCache({ summary: summaryVal, riskData: riskVal, demandData: demandVal, narrative: narrativeVal });
       } else {
         // Fall back to demo data
         setSummary(getDemoSummary());
@@ -244,11 +249,13 @@ export default function ForecastDashboard() {
       setIsLoading(false);
     }
   }, []);
-  /** Manual refresh: invalidate cache then re-fetch from API */
+
+  // ── Manual refresh (invalidates cache, then re-fetches) ───
   const handleManualRefresh = useCallback(() => {
     invalidateCache();
     fetchAll();
   }, [fetchAll]);
+
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
@@ -286,7 +293,7 @@ export default function ForecastDashboard() {
       channel.stopListening(".forecast.generated");
       echo.leaveChannel("logistics");
     };
-  }, [fetchAll]);
+  }, [fetchAll, fetchAutoReorders]);
 
   // ── Derived: triage items sorted by urgency ────────────────
   const triageItems = useMemo(() => {
@@ -373,6 +380,25 @@ export default function ForecastDashboard() {
     (item) => setSlideOver({ item, actionType: "transfer" }),
     [],
   );
+
+  // Stable callbacks for TriagePanel — prevents defeating memo
+  const handleTriageResolve = useCallback(
+    (item, type) => {
+      if (type === "purchase_order") setSlideOver({ item, actionType: "po" });
+      else setSlideOver({ item, actionType: "transfer" });
+    },
+    [],
+  );
+  const handleTriageSelect = useCallback(
+    (item) => setSlideOver({ item, actionType: "po" }),
+    [],
+  );
+  // Stable callback for scenario toggle
+  const handleToggleScenario = useCallback(() => {
+    setDelayDays((prev) => (prev !== 0 ? 0 : prev));
+    setDemandMultiplier((prev) => (prev !== 1 ? 1 : prev));
+  }, []);
+
   const handleCellClick = useCallback(
     (cell) => {
       if (cell?.hospital_id) {
@@ -441,21 +467,13 @@ export default function ForecastDashboard() {
         lastUpdated={lastRefresh}
         isDemo={isDemo}
         scenarioMode={scenarioMode}
-        onToggleScenario={() => {
-          if (scenarioMode) {
-            setDelayDays(0);
-            setDemandMultiplier(1);
-          }
-        }}
+        onToggleScenario={handleToggleScenario}
         onRefresh={handleManualRefresh}
         loading={isLoading}
       />
 
       {/* Pipeline Health Bar — always visible so users can trigger the pipeline even in demo/no-data state */}
-      <PipelineHealthBar
-        onRefreshData={handleManualRefresh}
-        forceExpand={isDemo}
-      />
+      <PipelineHealthBar onRefreshData={handleManualRefresh} forceExpand={isDemo} />
 
       {/* API error banner */}
       {fetchError && isDemo && (
@@ -502,7 +520,7 @@ export default function ForecastDashboard() {
           </p>
           <p className="text-2xl font-black text-slate-800 mt-1">
             {originalStockoutDays != null
-              ? `${originalStockoutDays < 1 ? "<1" : originalStockoutDays.toFixed(1)}d`
+              ? `${originalStockoutDays < 1 ? "<1" : formatDisplayQuantity(originalStockoutDays, "days")}d`
               : "Safe"}
           </p>
           <p className="text-xs text-slate-400 mt-0.5">
@@ -520,11 +538,8 @@ export default function ForecastDashboard() {
             items={triageItems}
             scenarioMode={scenarioMode}
             scenarioParams={scenarioParams}
-            onResolve={(item, type) => {
-              if (type === "purchase_order") handleDraftPO(item);
-              else handleTransfer(item);
-            }}
-            onSelect={(item) => setSlideOver({ item, actionType: "po" })}
+            onResolve={handleTriageResolve}
+            onSelect={handleTriageSelect}
           />
         </div>
         <div className="lg:col-span-3">
@@ -581,10 +596,7 @@ export default function ForecastDashboard() {
                       {req.hospital?.name || `Hospital #${req.hospital_id}`}
                     </td>
                     <td className="px-3 py-2.5 text-right font-mono text-slate-600">
-                      {formatDisplayQuantity(
-                        req.quantity,
-                        req.resource?.unit || "units",
-                      )}
+                      {formatDisplayQuantity(req.quantity, "units")}
                     </td>
                     <td className="px-3 py-2.5">
                       <span

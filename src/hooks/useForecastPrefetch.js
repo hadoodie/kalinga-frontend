@@ -1,40 +1,30 @@
-/**
- * useForecastPrefetch.js
- *
- * Drop-in hook that triggers a non-blocking background prefetch of the
- * AI logistics forecast data when the parent component mounts.
- *
- * Uses requestIdleCallback (3 s timeout) when available, falls back to a
- * 1500 ms setTimeout on browsers that do not support rIC (Safari < 16.4).
- *
- * Usage:
- *   import { useForecastPrefetch } from "../../hooks/useForecastPrefetch";
- *
- *   const LogisDash = () => {
- *     useForecastPrefetch();          // ← add this one line
- *     // … rest of component
- *   };
- */
-
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { prefetchForecasts } from "../services/forecastPrefetchCache";
 
-export function useForecastPrefetch() {
+/**
+ * useForecastPrefetch
+ *
+ * Fire-and-forget hook — call at the top of LogisDash (or any parent)
+ * to warm the forecast cache before the user clicks the AI Forecast tab.
+ * Uses requestIdleCallback so it never blocks the main thread.
+ * No returned state, no re-renders.
+ */
+export default function useForecastPrefetch() {
+  const fired = useRef(false);
+
   useEffect(() => {
-    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
-      const id = window.requestIdleCallback(
-        () => {
-          prefetchForecasts();
-        },
-        { timeout: 3000 },
-      );
-      return () => window.cancelIdleCallback(id);
-    } else {
-      // Fallback: wait 1.5 s so the initial render has settled
-      const timer = setTimeout(() => {
-        prefetchForecasts();
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, []); // run once on mount
+    if (fired.current) return;
+    fired.current = true;
+
+    const schedule =
+      typeof window.requestIdleCallback === "function"
+        ? window.requestIdleCallback
+        : (cb) => setTimeout(cb, 1500);
+
+    schedule(() => {
+      prefetchForecasts().catch(() => {
+        /* silent — ForecastDashboard will fetch normally if cache misses */
+      });
+    });
+  }, []);
 }

@@ -1,55 +1,14 @@
 /**
- * formatQuantity.js
+ * Smart Number Formatting for Logistics Display
  *
- * Display-only smart number formatter for logistics / forecast UI.
- * NEVER mutates raw API data — call only at render time.
+ * Rules:
+ * - Continuous units (liters, kg, ml, etc.) → 1 decimal place
+ * - Discrete units (bottles, vials, packs, days, etc.) → whole numbers
+ * - Null / undefined / NaN → "—"
+ * - Thousand separators via toLocaleString("en-PH")
  *
- *  - Discrete units (bottles, boxes, kits, …)  → whole number  (Math.round)
- *  - Continuous units (liters, kg, ml, …)       → 1 decimal max (drops trailing .0)
- *  - Unknown / no unit                          → whole number (safe default)
- *  - null / undefined / NaN                     → "—"
+ * NEVER mutate raw API data — these are display-only helpers.
  */
-
-const DISCRETE_UNITS = new Set([
-  "units",
-  "unit",
-  "boxes",
-  "box",
-  "kits",
-  "kit",
-  "bags",
-  "bag",
-  "vials",
-  "vial",
-  "pieces",
-  "piece",
-  "packs",
-  "pack",
-  "sets",
-  "set",
-  "rolls",
-  "roll",
-  "pairs",
-  "pair",
-  "tablets",
-  "tablet",
-  "capsules",
-  "capsule",
-  "bottles",
-  "bottle",
-  "ampules",
-  "ampule",
-  "syringes",
-  "syringe",
-  "tubes",
-  "tube",
-  "cans",
-  "can",
-  "sachets",
-  "sachet",
-  "strips",
-  "strip",
-]);
 
 const CONTINUOUS_UNITS = new Set([
   "liters",
@@ -57,63 +16,54 @@ const CONTINUOUS_UNITS = new Set([
   "l",
   "ml",
   "milliliters",
-  "milliliter",
   "kg",
   "kilograms",
-  "kilogram",
   "g",
   "grams",
-  "gram",
   "oz",
-  "ounce",
   "ounces",
   "gallons",
   "gallon",
-  "gal",
   "cc",
-  "fl oz",
+  "mg",
+  "milligrams",
+  "mcg",
+  "micrograms",
 ]);
 
 /**
- * Format a numeric quantity for display.
- *
- * @param {number|string|null|undefined} value - The raw value from the API.
- * @param {string} [unit=""] - The unit string (e.g. "bottles", "kg").
- * @returns {string} Formatted number string, or "—" if value is not numeric.
+ * Format a numeric value for display based on its unit type.
+ * @param {number|string|null} value - The raw numeric value
+ * @param {string} [unit="units"] - The unit label (used to detect continuous vs discrete)
+ * @returns {string} Formatted display string (e.g. "1,234" or "5.2" or "—")
  */
-export function formatDisplayQuantity(value, unit = "") {
-  if (value === null || value === undefined || value === "") return "—";
+export function formatDisplayQuantity(value, unit = "units") {
+  if (value == null || value === "") return "—";
   const num = Number(value);
   if (Number.isNaN(num)) return "—";
 
-  const normalizedUnit = (unit || "").trim().toLowerCase();
-  const isContinuous = CONTINUOUS_UNITS.has(normalizedUnit);
+  const isContinuous = CONTINUOUS_UNITS.has(
+    String(unit).toLowerCase().trim(),
+  );
 
-  if (isContinuous) {
-    // 1 decimal max — drop trailing ".0" so "2.0" becomes "2"
-    const fixed = num.toFixed(1);
-    const parsed = parseFloat(fixed);
-    return parsed % 1 === 0
-      ? parsed.toLocaleString("en-PH")
-      : parsed.toLocaleString("en-PH", {
-          minimumFractionDigits: 1,
-          maximumFractionDigits: 1,
-        });
-  }
+  const formatted = isContinuous
+    ? num.toLocaleString("en-PH", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      })
+    : Math.round(num).toLocaleString("en-PH");
 
-  // Discrete or unknown → whole number
-  return Math.round(num).toLocaleString("en-PH");
+  return formatted;
 }
 
 /**
- * Format a numeric quantity and append its unit string.
- *
- * @param {number|string|null|undefined} value
- * @param {string} [unit=""]
- * @returns {string} e.g. "613 bottles" or "2.5 liters" or "— units"
+ * Format a value AND append its unit label.
+ * @param {number|string|null} value
+ * @param {string} [unit="units"]
+ * @returns {string} e.g. "1,234 bottles" or "5.2 liters" or "—"
  */
-export function formatWithUnit(value, unit = "") {
+export function formatWithUnit(value, unit = "units") {
   const formatted = formatDisplayQuantity(value, unit);
-  if (!unit) return formatted;
+  if (formatted === "—") return "—";
   return `${formatted} ${unit}`;
 }

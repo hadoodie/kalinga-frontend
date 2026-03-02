@@ -57,7 +57,7 @@ export default function HospitalForecastDetail() {
     setLoading(true);
     setError(null);
     try {
-      const res = await forecastService.getHospitalDetail(hospitalId);
+      const res = await forecastService.getHospitalDetail(hospitalId, { horizon });
       setData(res);
     } catch (err) {
       console.error("[HospitalForecastDetail] fetch error", err);
@@ -65,7 +65,7 @@ export default function HospitalForecastDetail() {
     } finally {
       setLoading(false);
     }
-  }, [hospitalId]);
+  }, [hospitalId, horizon]);
 
   useEffect(() => {
     if (hospitalId) fetchDetail();
@@ -399,12 +399,12 @@ export default function HospitalForecastDetail() {
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-slate-600">
                       {row.current_stock != null
-                        ? formatDisplayQuantity(row.current_stock, row.unit || "units")
+                        ? formatDisplayQuantity(row.current_stock, "units")
                         : "—"}
                     </td>
                     <td className="px-5 py-3 text-right font-mono text-slate-600">
                       {row.projected_stock != null
-                        ? formatDisplayQuantity(row.projected_stock, row.unit || "units")
+                        ? formatDisplayQuantity(row.projected_stock, "units")
                         : "—"}
                     </td>
                   </tr>

@@ -1,17 +1,12 @@
 /**
- * forecastPrefetchCache.js
+ * Forecast Prefetch Cache
  *
- * Module-level (outside React tree) cache for the AI logistics forecast.
- * Lives for the lifetime of the browser tab — survives React navigation.
+ * Module-level (non-React) cache that pre-fetches forecast data
+ * when LogisDash mounts, so ForecastDashboard renders instantly.
  *
- * TTL: 5 minutes. After that, a fresh fetch is triggered automatically.
- *
- * Exports:
- *   prefetchForecasts()  — fire-and-forget: kick off background fetch
- *   consumeCache()       — return cached payload if warm, else null
- *   populateCache(data)  — write-back from a successful fetchAll
- *   invalidateCache()    — reset to idle (forces next fetch to re-hit API)
- *   getCacheStatus()     — "idle" | "fetching" | "ready" | "error"
+ * - 5-minute TTL before stale
+ * - Won't stack concurrent requests
+ * - consumeCache() returns data or null (caller falls back to normal fetch)
  */
 
 import forecastService from "./forecastService";
@@ -23,115 +18,99 @@ let _cache = {
   riskData: null,
   demandData: null,
   narrative: null,
-  timestamp: null,
-  status: "idle", // "idle" | "fetching" | "ready" | "error"
-  promise: null, // in-flight Promise (deduplication)
+
+  timestamp: 0, // Date.now() when last fetched
+  status: "idle", // idle | fetching | ready | stale
+  promise: null, // in-flight promise (dedup guard)
 };
 
-/** True if cache is populated and not stale */
-function _isFresh() {
-  return (
-    _cache.status === "ready" &&
-    _cache.timestamp !== null &&
-    Date.now() - _cache.timestamp < CACHE_TTL_MS
-  );
-}
-
 /**
- * Fire-and-forget background prefetch.
- * Uses the same forecastService methods that ForecastDashboard uses,
- * so endpoint paths and response unwrapping are guaranteed identical.
- *
- * Safe to call multiple times — deduplicates in-flight requests.
- *
+ * Fire off all four forecast fetches in parallel.
+ * Safe to call multiple times — won't stack requests.
  * @returns {Promise<void>}
  */
-export function prefetchForecasts() {
-  // Already warm or in-flight — nothing to do
-  if (_isFresh() || _cache.status === "fetching") {
-    return _cache.promise || Promise.resolve();
+export async function prefetchForecasts() {
+  // Already fetching or fresh — skip
+  if (_cache.status === "fetching") return _cache.promise;
+  if (
+    _cache.status === "ready" &&
+    Date.now() - _cache.timestamp < CACHE_TTL_MS
+  ) {
+    return;
   }
 
   _cache.status = "fetching";
 
-  const p = Promise.allSettled([
-    forecastService.getSummary(),
-    forecastService.getRiskForecasts(),
-    forecastService.getDemandForecasts(),
-    forecastService.getNarrative(),
-  ])
-    .then(([summaryRes, riskRes, demandRes, narrativeRes]) => {
-      const val = (res) =>
-        res.status === "fulfilled" ? res.value : null;
+  const work = (async () => {
+    try {
+      const [summaryRes, riskRes, demandRes, narrativeRes] =
+        await Promise.allSettled([
+          forecastService.getSummary(),
+          forecastService.getRiskForecasts(),
+          forecastService.getDemandForecasts(),
+          forecastService.getNarrative(),
+        ]);
 
-      _cache = {
-        summary: val(summaryRes),
-        riskData: val(riskRes),
-        demandData: val(demandRes),
-        narrative: val(narrativeRes),
-        timestamp: Date.now(),
-        status: "ready",
-        promise: null,
-      };
-    })
-    .catch(() => {
-      _cache.status = "error";
+      _cache.summary =
+        summaryRes.status === "fulfilled" ? summaryRes.value : null;
+      _cache.riskData =
+        riskRes.status === "fulfilled" ? riskRes.value : null;
+      _cache.demandData =
+        demandRes.status === "fulfilled" ? demandRes.value : null;
+      _cache.narrative =
+        narrativeRes.status === "fulfilled" ? narrativeRes.value : null;
+
+      _cache.timestamp = Date.now();
+      _cache.status = "ready";
+    } catch {
+      _cache.status = "stale";
+    } finally {
       _cache.promise = null;
-    });
+    }
+  })();
 
-  _cache.promise = p;
-  return p;
+  _cache.promise = work;
+  return work;
 }
 
 /**
- * Return the cached payload if it is fresh, otherwise return null.
- *
- * @returns {{ summary, riskData, demandData, narrative } | null}
+ * Consume the cached data if it's fresh.
+ * Returns { summary, riskData, demandData, narrative } or null.
  */
 export function consumeCache() {
-  if (!_isFresh()) return null;
-  return {
-    summary: _cache.summary,
-    riskData: _cache.riskData,
-    demandData: _cache.demandData,
-    narrative: _cache.narrative,
-  };
+  if (
+    _cache.status === "ready" &&
+    Date.now() - _cache.timestamp < CACHE_TTL_MS
+  ) {
+    return {
+      summary: _cache.summary,
+      riskData: _cache.riskData,
+      demandData: _cache.demandData,
+      narrative: _cache.narrative,
+    };
+  }
+  return null;
 }
 
 /**
- * Write-back: after a successful fetchAll in ForecastDashboard,
- * populate the module-level cache so subsequent tab switches render instantly.
- *
- * @param {{ summary, riskData, demandData, narrative }} data
- */
-export function populateCache({ summary, riskData, demandData, narrative }) {
-  _cache = {
-    summary,
-    riskData,
-    demandData,
-    narrative,
-    timestamp: Date.now(),
-    status: "ready",
-    promise: null,
-  };
-}
-
-/**
- * Force the next prefetchForecasts() / fetchAll() to re-hit the API.
+ * Force-invalidate the cache (e.g. after pipeline re-run).
  */
 export function invalidateCache() {
-  _cache = {
-    summary: null,
-    riskData: null,
-    demandData: null,
-    narrative: null,
-    timestamp: null,
-    status: "idle",
-    promise: null,
-  };
+  _cache.status = "stale";
+  _cache.timestamp = 0;
+  _cache.promise = null;
 }
 
-/** Return the current cache status string */
+/**
+ * Debug helper — returns current cache status.
+ */
 export function getCacheStatus() {
-  return _cache.status;
+  return {
+    status: _cache.status,
+    age: _cache.timestamp ? Date.now() - _cache.timestamp : null,
+    hasSummary: !!_cache.summary,
+    hasRisk: !!_cache.riskData,
+    hasDemand: !!_cache.demandData,
+    hasNarrative: !!_cache.narrative,
+  };
 }

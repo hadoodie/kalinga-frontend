@@ -78,8 +78,7 @@ const DemandForecastChart = ({ hospitalId = null, resourceId = null }) => {
     }
     if (selectedResource) {
       filtered = filtered.filter(
-        (f) =>
-          String(f.resource_id) === String(selectedResource),
+        (f) => String(f.resource_id) === String(selectedResource),
       );
     }
     return filtered;
