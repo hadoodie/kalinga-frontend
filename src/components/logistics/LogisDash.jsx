@@ -681,9 +681,12 @@ const LogisDash = () => {
 
   // Prefetch supply tracking data immediately when the logistics section loads.
   // This warms the data before the user navigates to the Supply Tracking page.
-  const { shipments: liveShipments } = useSupplyTracking({ pollingInterval: 60000 });
+  const { shipments: liveShipments } = useSupplyTracking({
+    pollingInterval: 60000,
+  });
   // Fall back to demo data only when explicitly in demo mode AND no live data yet
-  const shipments = liveShipments.length > 0 ? liveShipments : (isDemoMode ? DEMO_SHIPMENTS : []);
+  const shipments =
+    liveShipments.length > 0 ? liveShipments : isDemoMode ? DEMO_SHIPMENTS : [];
 
   // Get the authenticated user and their assigned hospital
   const { user } = useAuth();

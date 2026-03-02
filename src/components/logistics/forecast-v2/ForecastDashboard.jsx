@@ -421,8 +421,8 @@ export default function ForecastDashboard() {
         loading={isLoading}
       />
 
-      {/* Pipeline Health Bar (expandable) */}
-      {!isDemo && <PipelineHealthBar onRefreshData={fetchAll} />}
+      {/* Pipeline Health Bar — always visible so users can trigger the pipeline even in demo/no-data state */}
+      <PipelineHealthBar onRefreshData={fetchAll} forceExpand={isDemo} />
 
       {/* API error banner */}
       {fetchError && isDemo && (

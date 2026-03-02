@@ -21,12 +21,21 @@ const formatETA = (utcDateString) => {
 const getStatusVisuals = (status) => {
   switch (status) {
     case "Delayed":
-      return { pillClass: "bg-red-500 text-white animate-pulse", icon: <Construction size={16} /> };
+      return {
+        pillClass: "bg-red-500 text-white animate-pulse",
+        icon: <Construction size={16} />,
+      };
     case "Shipped":
     case "On-the-Way": // Backend status 'Shipped' or 'On-the-Way'
-      return { pillClass: "bg-yellow-400 text-gray-800", icon: <Truck size={16} /> };
+      return {
+        pillClass: "bg-yellow-400 text-gray-800",
+        icon: <Truck size={16} />,
+      };
     case "Delivered":
-      return { pillClass: "bg-green-500 text-white", icon: <Check size={16} /> };
+      return {
+        pillClass: "bg-green-500 text-white",
+        icon: <Check size={16} />,
+      };
     default:
       return {
         pillClass: "bg-blue-300 text-blue-800",
@@ -36,8 +45,8 @@ const getStatusVisuals = (status) => {
 };
 
 const formatRelativeTime = (ping) => {
-    // Backend now sends a formatted string like "3 minutes ago"
-    return ping || 'N/A';
+  // Backend now sends a formatted string like "3 minutes ago"
+  return ping || "N/A";
 };
 
 export default function Supply() {
@@ -55,10 +64,10 @@ export default function Supply() {
           (s) =>
             s.status === "Delayed" ||
             s.priority === "Critical" ||
-            (s.eta && new Date(s.eta) < Date.now() + 4 * 60 * 60 * 1000)
+            (s.eta && new Date(s.eta) < Date.now() + 4 * 60 * 60 * 1000),
         )
         .sort((a, b) => new Date(a.eta) - new Date(b.eta)),
-    [shipments]
+    [shipments],
   );
 
   return (
@@ -66,7 +75,7 @@ export default function Supply() {
       {/* HEADER */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center p-4 bg-white rounded-xl shadow-lg">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
-          Supply Tracking 
+          Supply Tracking
         </h1>
         <div className="flex items-center space-x-3 mt-3 md:mt-0">
           <span className="text-sm font-medium text-gray-500">
@@ -85,7 +94,8 @@ export default function Supply() {
         {/* CRITICAL PANEL */}
         <section className="lg:col-span-1 space-y-4">
           <h2 className="text-xl font-bold text-gray-700 border-b-2 pb-2">
-            Critical Shipment Overview <span className="text-xs"> (ETA &lt; 4h or Delayed)</span>
+            Critical Shipment Overview{" "}
+            <span className="text-xs"> (ETA &lt; 4h or Delayed)</span>
           </h2>
           {loading ? (
             <div className="text-center p-8 bg-white rounded-xl shadow-lg">
@@ -95,9 +105,9 @@ export default function Supply() {
               </p>
             </div>
           ) : error ? (
-             <div className="bg-red-50 p-6 rounded-xl border border-red-200 text-center">
-                <p className="text-lg font-semibold text-red-700">{error}</p>
-             </div>
+            <div className="bg-red-50 p-6 rounded-xl border border-red-200 text-center">
+              <p className="text-lg font-semibold text-red-700">{error}</p>
+            </div>
           ) : criticalShipments.length === 0 ? (
             <div className="bg-green-50 p-6 rounded-xl border border-green-200 text-center">
               <p className="text-lg font-semibold text-green-700">
@@ -128,7 +138,9 @@ export default function Supply() {
                     <span className="text-sm font-bold text-gray-500">
                       ID: {s.id}
                     </span>
-                    <div className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold status-pill rounded-full ${pillClass}`}>
+                    <div
+                      className={`flex items-center gap-1 px-3 py-1 text-xs font-semibold status-pill rounded-full ${pillClass}`}
+                    >
                       {icon} {s.status}
                     </div>
                   </div>
@@ -157,7 +169,9 @@ export default function Supply() {
                       </p>
                       <p className="text-xs font-medium text-gray-500">
                         Last Ping:{" "}
-                        <span className="text-green-500">{formatRelativeTime(s.lastPing)}</span>
+                        <span className="text-green-500">
+                          {formatRelativeTime(s.lastPing)}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -200,30 +214,47 @@ export default function Supply() {
 
         {/* SHIPMENT TABLE */}
         <section className="lg:col-span-3 w-full bg-white rounded-xl shadow-lg p-6">
-            <h2 className="text-xl font-bold text-gray-700 mb-4 border-b pb-2">
+          <h2 className="text-xl font-bold text-gray-700 mb-4 border-b pb-2">
             Full Manifest & Historical Data
-            </h2>
-            <div className="overflow-x-auto w-full">
+          </h2>
+          <div className="overflow-x-auto w-full">
             <table className="w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <thead className="bg-gray-50">
                 <tr>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Route (O → D)</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">ETA</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Contents</th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Last Ping</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ID
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Route (O → D)
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    ETA
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Contents
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Last Ping
+                  </th>
                 </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
                 {loading ? (
-                    <tr><td colSpan="6" className="text-center p-8"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></td></tr>
+                  <tr>
+                    <td colSpan="6" className="text-center p-8">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                    </td>
+                  </tr>
                 ) : (
-                    shipments.map((s) => {
+                  shipments.map((s) => {
                     const { pillClass, icon } = getStatusVisuals(s.status);
-                    const isUrgent = s.status === "Delayed" || s.priority === "Critical";
+                    const isUrgent =
+                      s.status === "Delayed" || s.priority === "Critical";
                     return (
-                        <tr
+                      <tr
                         key={s.id}
                         onClick={() => setSelectedShipment(s)}
                         className={`${
@@ -232,28 +263,44 @@ export default function Supply() {
                           selectedShipment?.id === s.id ? "bg-gray-200" : ""
                         }`}
                       >
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{s.id}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {s.id}
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                            <div className={`flex items-center justify-center gap-1 py-1 px-2 text-xs font-semibold status-pill rounded-full ${pillClass}`}>
+                          <div
+                            className={`flex items-center justify-center gap-1 py-1 px-2 text-xs font-semibold status-pill rounded-full ${pillClass}`}
+                          >
                             {icon} {s.status}
-                            </div>
+                          </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{s.route}</td>
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${isUrgent ? "text-red-700" : "text-gray-900"}`}>
-                            {formatETA(s.eta)}
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {s.route}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{s.contents}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatRelativeTime(s.lastPing)}</td>
-                        </tr>
+                        <td
+                          className={`px-6 py-4 whitespace-nowrap text-sm font-bold ${isUrgent ? "text-red-700" : "text-gray-900"}`}
+                        >
+                          {formatETA(s.eta)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                          {s.contents}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {formatRelativeTime(s.lastPing)}
+                        </td>
+                      </tr>
                     );
-                    })
+                  })
                 )}
                 {!loading && shipments.length === 0 && (
-                    <tr><td colSpan="6" className="text-center text-gray-500 p-8">No active shipments to display.</td></tr>
+                  <tr>
+                    <td colSpan="6" className="text-center text-gray-500 p-8">
+                      No active shipments to display.
+                    </td>
+                  </tr>
                 )}
-                </tbody>
+              </tbody>
             </table>
-            </div>
+          </div>
         </section>
       </main>
     </div>

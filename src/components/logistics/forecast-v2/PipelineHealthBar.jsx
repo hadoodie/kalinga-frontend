@@ -43,7 +43,7 @@ function timeAgo(dateStr) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-const PipelineHealthBar = memo(function PipelineHealthBar({ onRefreshData }) {
+const PipelineHealthBar = memo(function PipelineHealthBar({ onRefreshData, forceExpand = false }) {
   const [health, setHealth] = useState(null);
   const [history, setHistory] = useState([]);
   const [expanded, setExpanded] = useState(false);
@@ -89,7 +89,41 @@ const PipelineHealthBar = memo(function PipelineHealthBar({ onRefreshData }) {
     }
   }, [fetchHealth, onRefreshData]);
 
-  if (!health) return null;
+  // Auto-expand when forced (demo mode / no data) so the Run button is immediately visible
+  useEffect(() => {
+    if (forceExpand || health?.status === 'no_data') {
+      setExpanded(true);
+    }
+  }, [forceExpand, health?.status]);
+
+  if (!health) {
+    // Still no health data — show a minimal skeleton trigger so user isn't stuck
+    return (
+      <section className="rounded-2xl border border-red-200 bg-red-50 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-3">
+          <div className="flex items-center gap-3">
+            <Activity className="h-4 w-4 text-slate-500" />
+            <span className="text-sm font-bold text-slate-800">Pipeline Status</span>
+            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full text-red-600">
+              <XCircle className="h-3 w-3" /> No Data
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleTrigger}
+            disabled={triggerLoading}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold rounded-xl bg-blue-600 text-white px-4 py-2 hover:bg-blue-700 transition disabled:opacity-50"
+          >
+            {triggerLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            Run Pipeline Now
+          </button>
+        </div>
+        {triggerMsg && (
+          <div className="px-5 pb-3 text-xs text-slate-500">{triggerMsg}</div>
+        )}
+      </section>
+    );
+  }
 
   const cfg = STATUS_CONFIG[health.status] || STATUS_CONFIG.no_data;
   const StatusIcon = cfg.icon;
