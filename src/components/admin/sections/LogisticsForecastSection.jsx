@@ -6,9 +6,11 @@ import {
   BrainCircuit,
   Building2,
   ChevronDown,
+  CheckCircle2,
   ExternalLink,
   Loader2,
   Package,
+  Play,
   RefreshCw,
   ShieldAlert,
   TrendingUp,
@@ -21,6 +23,43 @@ import {
   generateDemoRiskData,
   generateDemoDemandData,
 } from "../../logistics/demoForecastData";
+
+// ── Data helpers ─────────────────────────────────────────────
+
+/**
+ * Normalize risk items to always have flat hospital_name / resource_name /
+ * resource_category — handles both the live API (flat) and demo data (nested)
+ * object shapes.
+ */
+const normalizeRiskItems = (items = []) =>
+  items.map((item) => ({
+    ...item,
+    hospital_name:
+      item.hospital_name || item.hospital?.name || `Hospital ${item.hospital_id}`,
+    resource_name:
+      item.resource_name || item.resource?.name || `Resource ${item.resource_id}`,
+    resource_category:
+      item.resource_category || item.resource?.category || "",
+  }));
+
+/**
+ * Normalize a raw summary payload so the component always works with the same
+ * field names regardless of whether data came from the live API or getDemoSummary.
+ */
+const normalizeSummary = (s) => {
+  if (!s) return s;
+  return {
+    ...s,
+    high_risk_items: normalizeRiskItems(s.high_risk_items || []),
+    top_demand:
+      s.top_demand ??
+      (s.demand_by_resource || []).map((d) => ({
+        resource_id: d.resource_id,
+        total_demand: d.avg_demand ?? d.total_demand ?? 0,
+        resource: d.resource ?? { name: d.category ?? "Unknown", unit: "units" },
+      })),
+  };
+};
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -286,6 +325,10 @@ export const LogisticsForecastSection = () => {
   const [fetchError, setFetchError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
 
+  // Pipeline trigger
+  const [triggering, setTriggering] = useState(false);
+  const [triggerMsg, setTriggerMsg] = useState(null);
+
   // Hospital filter
   const [hospitals, setHospitals] = useState([]);
   const [selectedHospital, setSelectedHospital] = useState(null);
@@ -334,13 +377,13 @@ export const LogisticsForecastSection = () => {
           summaryVal.meta?.generated_at != null);
 
       if (hasRealData) {
-        setSummary(summaryVal);
+        setSummary(normalizeSummary(summaryVal));
         setNarrative(
           narrativeRes.status === "fulfilled" ? narrativeRes.value : null,
         );
         setIsDemo(false);
       } else {
-        setSummary(getDemoSummary());
+        setSummary(normalizeSummary(getDemoSummary()));
         setNarrative(null);
         setIsDemo(true);
         setFetchError(
@@ -353,7 +396,7 @@ export const LogisticsForecastSection = () => {
       setLastRefresh(new Date());
     } catch (err) {
       console.error("[LogisticsForecastSection] fetch error:", err);
-      setSummary(getDemoSummary());
+      setSummary(normalizeSummary(getDemoSummary()));
       setNarrative(null);
       setIsDemo(true);
       setFetchError(err?.message || "Network error");
@@ -365,6 +408,22 @@ export const LogisticsForecastSection = () => {
 
   useEffect(() => {
     fetchAll();
+  }, [fetchAll]);
+
+  // ── Pipeline trigger ───────────────────────────────────────
+  const handleTrigger = useCallback(async () => {
+    setTriggering(true);
+    setTriggerMsg(null);
+    try {
+      const res = await forecastService.triggerRun({ mode: "production" });
+      setTriggerMsg(res?.message || "Pipeline triggered — results ready in ~60s.");
+      // Auto-refresh after the pipeline has had time to write results
+      setTimeout(() => fetchAll(), 65_000);
+    } catch {
+      setTriggerMsg("Failed to trigger pipeline. Is the queue worker running?");
+    } finally {
+      setTriggering(false);
+    }
   }, [fetchAll]);
 
   // ── Derived stats ──────────────────────────────────────────
@@ -394,6 +453,19 @@ export const LogisticsForecastSection = () => {
               onSelect={setSelectedHospital}
             />
             <button
+              onClick={handleTrigger}
+              disabled={triggering || isLoading}
+              className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:opacity-50"
+              title="Manually run the AI forecast pipeline"
+            >
+              {triggering ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {triggering ? "Running…" : "Run Pipeline"}
+            </button>
+            <button
               onClick={fetchAll}
               disabled={isLoading}
               className="inline-flex items-center gap-2 rounded-xl border border-border/60 bg-card/80 px-4 py-2 text-sm font-medium text-foreground shadow-sm transition hover:border-primary/40 disabled:opacity-50"
@@ -406,6 +478,14 @@ export const LogisticsForecastSection = () => {
           </div>
         }
       />
+
+      {/* Trigger result banner */}
+      {triggerMsg && (
+        <div className="flex items-center gap-2 rounded-xl border border-violet-300/60 bg-violet-50 px-4 py-2.5 text-sm text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/10 dark:text-violet-200">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {triggerMsg}
+        </div>
+      )}
 
       {/* Error / demo banner */}
       {fetchError && (
