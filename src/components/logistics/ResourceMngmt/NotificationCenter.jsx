@@ -1,5 +1,5 @@
 // src/components/logistics/ResourceMngmt/NotificationCenter.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import {
   Bell,
   CheckCircle,
@@ -16,27 +16,10 @@ const NotificationCenter = () => {
   const [notifications, setNotifications] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const audioRef = useRef(null);
 
-  useEffect(() => {
-    // Connect to WebSocket for real-time notifications
-    const ws = new WebSocket(`ws://${window.location.host}/ws/notifications`);
-    
-    ws.onmessage = (event) => {
-      const notification = JSON.parse(event.data);
-      handleNewNotification(notification);
-    };
-
-    // Play sound for certain notifications
-    const playSound = () => {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
-      }
-    };
-
-    return () => ws.close();
-  }, []);
+  // Note: Real-time notifications are handled by the useNotifications hook
+  // (Echo/Reverb). This component only renders the notification UI.
+  // No raw WebSocket connection needed here.
 
   const handleNewNotification = (notification) => {
     const newNotification = {
@@ -48,11 +31,6 @@ const NotificationCenter = () => {
 
     setNotifications(prev => [newNotification, ...prev.slice(0, 49)]);
     setUnreadCount(prev => prev + 1);
-
-    // Play sound for important notifications
-    if (notification.type === 'critical' || notification.type === 'match') {
-      playSound();
-    }
 
     // Auto-dismiss certain notifications
     if (notification.autoDismiss) {
@@ -126,7 +104,7 @@ const NotificationCenter = () => {
 
   return (
     <>
-      <audio ref={audioRef} src="/notification-sound.mp3" preload="auto" />
+      {/* Audio notification removed — file not available */}
 
       {/* Banner Notifications */}
       <div className="fixed top-4 right-4 z-40 space-y-2 w-96">
