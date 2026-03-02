@@ -347,6 +347,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
             Route::get('/allocations/{allocation}/suggest-responder', [AllocationController::class, 'suggestResponder']);
             Route::get('/allocations/{allocation}/available-vehicles', [AllocationController::class, 'availableVehicles']);
             Route::get('/allocations/{allocation}/available-responders', [AllocationController::class, 'availableResponders']);
+
+            Route::get('/supply-tracking', [AllocationController::class, 'getSupplyTracking']);
                 
             Route::get('/responders/available', [ResponderController::class, 'available']);
 

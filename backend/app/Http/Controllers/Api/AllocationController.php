@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class AllocationController extends Controller
 {
@@ -641,6 +642,73 @@ public function showWithDetails($id)
     ])->findOrFail($id);
     
     return response()->json($allocation);
+}
+
+/**
+ * Get all active shipments for the Supply Tracking page.
+ * Adapted from the original AllocationRequest-based implementation
+ * to work with the current Allocation + Request architecture.
+ */
+public function getSupplyTracking()
+{
+    $activeStatuses = ['planned', 'confirmed', 'logistics_assigned', 'in_transit', 'delivered'];
+
+    $allocations = Allocation::with(['request.resource', 'sourceHospital', 'destinationHospital'])
+        ->whereIn('status', $activeStatuses)
+        ->orderBy('dispatched_at', 'asc')
+        ->orderBy('updated_at', 'desc')
+        ->get();
+
+    $formattedShipments = $allocations->map(function ($alloc) {
+        $now = Carbon::now();
+
+        // Map internal statuses to front-end display statuses
+        $statusMap = [
+            'planned'             => 'Approved',
+            'confirmed'           => 'Packed',
+            'logistics_assigned'  => 'Shipped',
+            'in_transit'          => 'On-the-Way',
+            'delivered'           => 'Delivered',
+        ];
+        $displayStatus = $statusMap[$alloc->status] ?? ucfirst($alloc->status);
+
+        // Compute ETA: use dispatched_at + 4 hours as rough ETA if no explicit field
+        $eta = $alloc->dispatched_at
+            ? Carbon::parse($alloc->dispatched_at)->addHours(4)->toIso8601String()
+            : ($alloc->assigned_at
+                ? Carbon::parse($alloc->assigned_at)->addHours(6)->toIso8601String()
+                : null);
+
+        // Mark as Delayed if ETA is past and not yet delivered
+        if ($eta && Carbon::parse($eta)->isPast() && $alloc->status !== 'delivered') {
+            $displayStatus = 'Delayed';
+        }
+
+        $source      = optional($alloc->sourceHospital)->name ?? 'Logistics HQ';
+        $destination = optional($alloc->destinationHospital)->name ?? 'Logistics HQ';
+
+        $resourceName = optional(optional($alloc->request)->resource)->name
+            ?? optional($alloc->request)->resource_name
+            ?? $alloc->resource_type
+            ?? 'Supplies';
+        $quantity = $alloc->quantity ?? optional($alloc->request)->quantity ?? 0;
+
+        // Map urgency from the request
+        $urgency = optional($alloc->request)->urgency_level ?? 'Normal';
+
+        return [
+            'id'        => 'S-' . $alloc->id,
+            'route'     => $source . ' → ' . $destination,
+            'eta'       => $eta,
+            'status'    => $displayStatus,
+            'contents'  => $resourceName . ' (Qty: ' . $quantity . ')',
+            'lastPing'  => Carbon::parse($alloc->updated_at)->diffForHumans(),
+            'priority'  => $urgency,
+            'location'  => [null, null], // No real-time GPS yet
+        ];
+    });
+
+    return response()->json($formattedShipments);
 }
 
 }

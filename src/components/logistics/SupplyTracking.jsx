@@ -1,6 +1,9 @@
-import { useEffect, useState } from "react";
-import { Construction, Truck, Check, FileQuestionMark, Loader2 } from "lucide-react";
-import api from "../../services/api";
+import { useState, useMemo } from "react";
+import { Construction, Truck, Check, Package, Loader2 } from "lucide-react";
+import { useSupplyTracking } from "../../hooks/useSupplyTracking";
+import LiveTrackingMap from "../../components/logistics/LiveTrackingMap";
+import { useNavigate } from "react-router-dom";
+import { ROUTES } from "../../config/routes";
 
 // Helpers
 const formatETA = (utcDateString) => {
@@ -25,8 +28,10 @@ const getStatusVisuals = (status) => {
     case "Delivered":
       return { pillClass: "bg-green-500 text-white", icon: <Check size={16} /> };
     default:
-      // Catches 'Approved' and 'Packed'
-      return { pillClass: "bg-blue-300 text-blue-800", icon: <FileQuestionMark size={16} /> };
+      return {
+        pillClass: "bg-blue-300 text-blue-800",
+        icon: <Package size={16} />,
+      };
   }
 };
 
@@ -36,40 +41,25 @@ const formatRelativeTime = (ping) => {
 };
 
 export default function Supply() {
-  const [shipments, setShipments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Use the real-time supply tracking hook (polls every 60s as fallback, uses WebSocket when available)
+  const { shipments, loading, error } = useSupplyTracking({
+    pollingInterval: 60000,
+  });
+  const [selectedShipment, setSelectedShipment] = useState(null);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchSupplyData = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await api.get('/supply-tracking'); 
-        setShipments(response.data);
-      } catch (err) {
-        console.error("Failed to fetch supply data:", err);
-        setError("Failed to load tracking data.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchSupplyData();
-    // Refresh data every 30 seconds
-    const interval = setInterval(fetchSupplyData, 30000); 
-    return () => clearInterval(interval);
-  }, []);
-
-  // Critical shipments (Delayed, Critical, or ETA < 4h)
-  const criticalShipments = shipments
-    .filter(
-      (s) =>
-        s.status === "Delayed" ||
-        s.priority === "Critical" ||
-        (s.eta && new Date(s.eta) < Date.now() + 4 * 60 * 60 * 1000)
-    )
-    .sort((a, b) => new Date(a.eta) - new Date(b.eta));
+  const criticalShipments = useMemo(
+    () =>
+      shipments
+        .filter(
+          (s) =>
+            s.status === "Delayed" ||
+            s.priority === "Critical" ||
+            (s.eta && new Date(s.eta) < Date.now() + 4 * 60 * 60 * 1000)
+        )
+        .sort((a, b) => new Date(a.eta) - new Date(b.eta)),
+    [shipments]
+  );
 
   return (
     <div className="bg-background min-h-screen p-4 md:p-6 space-y-6 font-inter">
@@ -125,11 +115,14 @@ export default function Supply() {
               return (
                 <div
                   key={s.id}
-                  className={`bg-white p-4 rounded-xl shadow-md border-l-4 ${
+                  onClick={() => setSelectedShipment(s)}
+                  className={`bg-white p-4 rounded-xl shadow-md border-l-4 cursor-pointer ${
                     isCritical
                       ? "border-red-500 shadow-xl"
                       : "border-yellow-500"
-                  } transition duration-300 hover:shadow-2xl`}
+                  } transition duration-300 hover:shadow-2xl ${
+                    selectedShipment?.id === s.id ? "ring-2 ring-primary" : ""
+                  }`}
                 >
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-bold text-gray-500">
@@ -175,20 +168,34 @@ export default function Supply() {
         </section>
 
         {/* MAP */}
-        <section className="lg:col-span-2 bg-white rounded-xl shadow-lg p-0 flex flex-col">
-            <div className="p-4 border-b">
-              <h2 className="text-xl font-bold text-gray-700">
-              Real-time Asset Tracking & Hazard Zones
-              </h2>
+        <section className="lg:col-span-2 bg-white rounded-xl shadow-lg p-0 flex flex-col h-[60vh] lg:h-[600px]">
+          <div className="p-4 border-b flex justify-between items-center">
+            <h2 className="text-xl font-bold text-gray-700">
+              Real-time Asset Tracking
+            </h2>
+            <span className="text-xs text-primary font-semibold animate-pulse">
+              ● Live
+            </span>
+          </div>
+
+          <div
+            className="w-full flex-1 rounded-b-xl overflow-hidden relative group cursor-pointer"
+            onClick={() => navigate(ROUTES.LOGISTICS.LIVE_MAP)}
+          >
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 z-[400] transition-colors flex items-center justify-center">
+              <span className="bg-white/90 text-primary px-4 py-2 rounded-full shadow-lg font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                View Full Screen Map
+              </span>
             </div>
-            <div className="w-full flex-1 rounded-b-xl overflow-hidden">
-                {/* Placeholder map image */}
-                <img
-                src="https://placehold.co/1000x600/e2e8f0/64748b?text=Live+Map+Placeholder"
-                alt="Evacuation Map"
-                className="w-full h-full object-cover"
-                />
+
+            <div className="w-full h-full pointer-events-none">
+              <LiveTrackingMap
+                selectedShipment={selectedShipment}
+                allShipments={shipments.filter((s) => s.status !== "Delivered")}
+                onShipmentSelect={setSelectedShipment}
+              />
             </div>
+          </div>
         </section>
 
         {/* SHIPMENT TABLE */}
@@ -216,7 +223,15 @@ export default function Supply() {
                     const { pillClass, icon } = getStatusVisuals(s.status);
                     const isUrgent = s.status === "Delayed" || s.priority === "Critical";
                     return (
-                        <tr key={s.id} className={`${isUrgent ? "bg-red-50 hover:bg-red-100" : "hover:bg-gray-50"}`}>
+                        <tr
+                        key={s.id}
+                        onClick={() => setSelectedShipment(s)}
+                        className={`${
+                          isUrgent ? "bg-red-50" : ""
+                        } hover:bg-gray-100 cursor-pointer ${
+                          selectedShipment?.id === s.id ? "bg-gray-200" : ""
+                        }`}
+                      >
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{s.id}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                             <div className={`flex items-center justify-center gap-1 py-1 px-2 text-xs font-semibold status-pill rounded-full ${pillClass}`}>
