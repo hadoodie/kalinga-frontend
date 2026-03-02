@@ -704,7 +704,11 @@ public function getSupplyTracking()
             'contents'  => $resourceName . ' (Qty: ' . $quantity . ')',
             'lastPing'  => Carbon::parse($alloc->updated_at)->diffForHumans(),
             'priority'  => $urgency,
-            'location'  => [null, null], // No real-time GPS yet
+            // Return GPS from meta JSON so LiveTrackingMap can place truck markers
+            'location'  => [
+                $alloc->meta['current_location_lat'] ?? null,
+                $alloc->meta['current_location_lng'] ?? null,
+            ],
         ];
     });
 

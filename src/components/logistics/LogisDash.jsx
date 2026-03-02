@@ -28,6 +28,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import api from "../../services/api";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "../../context/AuthContext";
+import { useSupplyTracking } from "../../hooks/useSupplyTracking";
 
 // Import Hospital Dashboard
 import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
@@ -673,11 +674,16 @@ const LogisDash = () => {
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [shipments, setShipments] = useState([]);
   const [assets, setAssets] = useState([]);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [activeTab, setActiveTab] = useState("logistics");
   const navigate = useNavigate();
+
+  // Prefetch supply tracking data immediately when the logistics section loads.
+  // This warms the data before the user navigates to the Supply Tracking page.
+  const { shipments: liveShipments } = useSupplyTracking({ pollingInterval: 60000 });
+  // Fall back to demo data only when explicitly in demo mode AND no live data yet
+  const shipments = liveShipments.length > 0 ? liveShipments : (isDemoMode ? DEMO_SHIPMENTS : []);
 
   // Get the authenticated user and their assigned hospital
   const { user } = useAuth();
@@ -749,33 +755,8 @@ const LogisDash = () => {
           usingFallback = true;
         }
 
-        // ── 3. Shipments (allocations in transit) ──
-        try {
-          const allocResponse = await api.get("/allocations", {
-            params: { per_page: 10 },
-          });
-          const allocData =
-            allocResponse.data?.data || allocResponse.data || [];
-          setShipments(
-            allocData.slice(0, 6).map((a) => ({
-              id: `S-${a.id}`,
-              route: `${a.source_hospital?.name || "Source"} → ${a.destination_hospital?.name || "Dest"}`,
-              eta: a.estimated_delivery || a.updated_at,
-              status:
-                a.status === "in_transit"
-                  ? "In Transit"
-                  : a.status === "delayed"
-                    ? "Delayed"
-                    : a.status,
-              contents: a.resource?.name || "Supplies",
-              priority: a.urgency_level || "Medium",
-            })),
-          );
-        } catch (e) {
-          console.warn("Allocations API unavailable, using demo fallback", e);
-          setShipments(DEMO_SHIPMENTS);
-          usingFallback = true;
-        }
+        // ── 3. Shipments: now handled by useSupplyTracking hook above ──
+        // (removed manual /allocations fetch — hook manages WebSocket + polling)
 
         // ── 4. Assets ──
         try {
