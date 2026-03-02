@@ -160,6 +160,9 @@ export default function ForecastDashboard() {
       // Detect whether the API returned actual forecast data.
       // When the DB is empty the summary endpoint returns risk_distribution
       // as [] (empty array) and generated_at as null — both are falsy traps.
+      // When forecast data has expired (all forecast_time < NOW()), the API
+      // returns generated_at (non-null) but empty high_risk_items and
+      // distribution — we must NOT treat that as "real data".
       const distObj = summaryVal?.risk_distribution;
       const hasDistribution =
         distObj &&
@@ -169,9 +172,7 @@ export default function ForecastDashboard() {
 
       const hasRealData =
         summaryVal &&
-        (summaryVal.high_risk_items?.length > 0 ||
-          hasDistribution ||
-          summaryVal.meta?.generated_at != null);
+        (summaryVal.high_risk_items?.length > 0 || hasDistribution);
 
       if (hasRealData) {
         setSummary(summaryVal);
