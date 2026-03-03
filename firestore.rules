@@ -1,0 +1,17 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Training courses: readable by all (responders see courses); writable by all
+    // (admin uploads from dashboard). App uses its own auth, not Firebase Auth.
+    match /training_courses/{courseId} {
+      allow read, write: if true;
+    }
+    match /training_progress/{progressId} {
+      allow read, write: if true;
+    }
+    match /{document=**} {
+      allow read, write: if request.time < timestamp.date(2026, 3, 2);
+    }
+  }
+}

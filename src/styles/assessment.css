@@ -1,0 +1,110 @@
+/* src/styles/assessment.css */
+
+.assessment-wrapper {
+  max-width: 900px;
+  margin: 28px auto;
+  padding: 18px;
+}
+
+.assessment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  gap: 12px;
+}
+
+.assessment-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.muted {
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+.timer {
+  background: #f8fafc;
+  border: 1px solid #e6eef5;
+  padding: 8px 12px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.timer-value {
+  font-weight: 700;
+  font-size: 18px;
+  margin-top: 4px;
+}
+
+.question-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 18px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+
+.question-meta {
+  margin-bottom: 10px;
+}
+
+.question-text {
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e6edf2;
+  cursor: pointer;
+}
+
+.option input[type="radio"] {
+  transform: scale(1.05);
+}
+
+.option.selected {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+}
+
+.question-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.btn { padding: 8px 12px; border-radius: 8px; border: none; cursor: pointer; }
+.btn-light { background: #f1f5f9; }
+.btn-primary { background: rgb(0, 88, 74) ; color: white; }
+.btn-outline { background: transparent; border: 1px solid #ddd; }
+
+.progress-line { display:flex; gap:8px; margin-top:12px; }
+.progress-dot {
+  width:14px;
+  height:14px;
+  background:#f1f5f9;
+  border-radius:50%;
+  cursor:pointer;
+  border:1px solid #e2e8f0;
+}
+.progress-dot.answered { background:#34d399; border-color:#34d399; }
+.progress-dot.active { box-shadow:0 0 0 4px rgba(59,130,246,0.12); }
+
+.result-card { background:#fff; padding:18px; border-radius:10px; box-shadow:0 4px 12px rgba(0,0,0,0.05); }
+.result-actions { display:flex; gap:8px; margin-top:12px; }
+.answers-review { margin-top:14px; }
+.review-item { padding:10px; border-radius:8px; border:1px solid #f1f5f9; margin-top:8px; background:#fafafa; }

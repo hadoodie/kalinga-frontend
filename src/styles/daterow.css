@@ -1,0 +1,29 @@
+.date-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 15px 0;   /* space sa taas at baba */
+  padding: 0 20px;
+}
+
+.date-text {
+  font-size: 22px;
+  font-weight: bold;
+  color: #004d25;
+}
+
+.date-text .weekday {
+  font-weight: bold;
+  color: #ffcc00;
+}
+
+.dropdowns select {
+  padding: 6px 12px;
+  margin-left: 10px;
+  border-radius: 8px;
+  border: 1px solid #004d25;
+  background: #004d25;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}

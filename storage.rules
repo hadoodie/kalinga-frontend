@@ -1,0 +1,26 @@
+rules_version = '2';
+
+// Training: admin uploads course files (PDF, video, documents); responders read.
+// App uses its own auth (not Firebase Auth); read/write for training path only.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /training/{courseId}/{fileName} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /submissions/{userId}/{courseId}/{fileName} {
+      allow read, write: if true;
+    }
+    match /certificates/{fileName} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /certificates/generated/{fileName} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

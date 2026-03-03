@@ -1,0 +1,91 @@
+.page-title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 15px;
+}
+
+.triage-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.triage-tabs .tab {
+  background: #f1f1f1;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.triage-tabs .tab.active {
+  background: #007bff;
+  color: white;
+}
+
+.triage-table table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.triage-table th,
+.triage-table td {
+  border: 1px solid #ddd;
+  padding: 10px;
+}
+
+.low {
+  background-color: #28a745;
+  color: white;
+}
+.medium {
+  background-color: #17a2b8;
+  color: white;
+}
+.high {
+  background-color: #ffc107;
+  color: black;
+}
+.very-high {
+  background-color: #fd7e14;
+  color: white;
+}
+.critical {
+  background-color: #dc3545;
+  color: white;
+}
+
+.legend {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+
+.legend span {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  color: white;
+}
+
+.alert-card {
+  background: #fff3f3;
+  border-left: 4px solid #dc3545;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.highlight-card {
+  background: #f9f9f9;
+  border-left: 4px solid #007bff;
+  padding: 12px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  font-size: 14px;
+}

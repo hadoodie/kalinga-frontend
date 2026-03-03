@@ -1,0 +1,15 @@
+.sidebar a {
+  color: white !important;
+  text-decoration: none !important;
+  display: block;
+  padding: 10px;
+}
+
+.sidebar a:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar .active {
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.2);
+}

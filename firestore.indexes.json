@@ -1,0 +1,12 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "training_courses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
