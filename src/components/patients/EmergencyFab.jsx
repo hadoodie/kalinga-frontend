@@ -1,16 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { AlertCircle } from "lucide-react";
-import { EmergencyPopup } from "../emergency-sos/PopUp"; 
+import { EmergencyPopup } from "../emergency-sos/PopUp";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import RescueChatFab from "./rescue/RescueChatFab";
+import api from "../../services/api";
 
-export default function EmergencyFab() {
+/**
+ * EmergencyFab — global floating action button for patient pages.
+ *
+ * Behaviour:
+ *  • Default: shows the red "Emergency SOS" button.
+ *  • When the patient has an active emergency response (is being rescued),
+ *    automatically swaps to a blue "Chat with Responder" button that deep-links
+ *    to the patient ↔ responder conversation thread.
+ *
+ * @param {string} [activeIncidentId] — If the parent already knows the active
+ *        incident id, pass it to skip the extra API call.
+ */
+export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) {
   const [showPopup, setShowPopup] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  // --- Active-rescue detection (auto-switch to Chat FAB) ---
+  const [detectedIncidentId, setDetectedIncidentId] = useState(null);
+  const checkedRef = useRef(false);
 
-  // Emergency logic (same as Sidebar/Report)
+  useEffect(() => {
+    // If the parent already told us, skip the API call
+    if (propIncidentId) return;
+    // Only check once per mount
+    if (checkedRef.current) return;
+    checkedRef.current = true;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await api.get("/rescue/active");
+        if (!cancelled && res.data?.has_active_rescue) {
+          setDetectedIncidentId(
+            res.data.data?.incident?.id ?? null
+          );
+        }
+      } catch {
+        // Silently ignore — fall back to default SOS button
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [propIncidentId]);
+
+  const activeIncidentId = propIncidentId ?? detectedIncidentId;
+
+  // If there is an active rescue, render the Chat FAB instead
+  if (activeIncidentId) {
+    return <RescueChatFab incidentId={activeIncidentId} />;
+  }
+
+  // --- Standard Emergency SOS logic ---
   const resolveLocation = () =>
     new Promise((resolve) => {
       if (typeof navigator === "undefined" || !navigator.geolocation) {

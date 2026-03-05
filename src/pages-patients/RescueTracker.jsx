@@ -22,7 +22,6 @@ import RescueDetailPanel, {
   formatETA,
   formatDistance,
 } from "../components/patients/rescue/RescueDetailPanel";
-import RescueChatFab from "../components/patients/rescue/RescueChatFab";
 import { useAuth } from "../context/AuthContext";
 import { getEchoInstance, reconnectEcho } from "../services/echo";
 import { KALINGA_CONFIG } from "../constants/mapConfig";
@@ -541,12 +540,8 @@ export const RescueTracker = () => {
         </main>
       </div>
 
-      {/* Feature 2: Replace EmergencyFab with Chat FAB during active rescue */}
-      {rescueData?.incident?.id ? (
-        <RescueChatFab incidentId={rescueData.incident.id} />
-      ) : (
-        <EmergencyFab />
-      )}
+      {/* EmergencyFab auto-detects active rescue and swaps to Chat FAB */}
+      <EmergencyFab activeIncidentId={rescueData?.incident?.id} />
     </div>
   );
 };
