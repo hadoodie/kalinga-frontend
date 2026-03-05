@@ -13,7 +13,7 @@ class UserVerification extends Model
         'user_id', 'id_type', 'id_number', 
         'first_name', 'middle_name', 'last_name', 
         'date_of_birth', 'address',
-        'front_image_path', 'back_image_path', 'status'
+        'front_image_path', 'back_image_path', 'status', 'rejection_reason'
     ];
 
     public function user()

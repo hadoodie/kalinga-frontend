@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { Clock, RefreshCw, LogOut } from "lucide-react"; 
 import api from "../../services/api";
+import { useToast } from "@/hooks/use-toast"; 
 
 export default function VerificationPending() {
   // 1. Extract 'user' alongside 'setUser' from your AuthContext
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast(); 
 
   const handleCheckStatus = async () => {
     setLoading(true);
@@ -21,16 +23,32 @@ export default function VerificationPending() {
       setUser(updatedUser);
       
       if (updatedUser.verification_status === "verified") {
-        alert("Great news! Your account has been verified.");
+        toast({
+          title: "Account Verified!",
+          description: "Great news! Your account has been successfully verified.",
+          className: "bg-green-50 border-green-200 text-green-800",
+        });
         navigate("/patient/dashboard");
       } else if (updatedUser.verification_status === "rejected") {
-        alert("Your verification was rejected. Please try again.");
+        toast({
+          variant: "destructive",
+          title: "Verification Rejected",
+          description: "Your verification was rejected. Please review the feedback and try again.",
+        });
         navigate("/verify-id");
       } else {
-        alert("Your account is still under review. Please check back later.");
+        toast({
+          title: "Still Under Review",
+          description: "Your account is still being reviewed. Please check back later.",
+        });
       }
     } catch (error) {
       console.error("Error checking status:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to check status. Please try again later.",
+      });
     } finally {
       setLoading(false);
     }
@@ -55,9 +73,9 @@ export default function VerificationPending() {
           <Clock className="h-10 w-10 text-yellow-600" />
         </div>
 
-        {/* 2. Added Greeting with the User's Name */}
+        {/* Added Greeting with the User's Name */}
         <h1 className="text-xl font-medium text-gray-500 mb-1">
-          Hi, {user?.name}!
+          Hi, {user?.name || "Patient"}!
         </h1>
 
         {/* Title */}

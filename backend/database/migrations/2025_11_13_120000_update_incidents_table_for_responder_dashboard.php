@@ -13,8 +13,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('incidents', function (Blueprint $table) {
-            $table->unsignedTinyInteger('responders_required')->default(1); 
-            $table->json('metadata')->nullable();
+            // SAFETY CHECK: Only add if they don't exist yet
+            if (!Schema::hasColumn('incidents', 'responders_required')) {
+                $table->unsignedTinyInteger('responders_required')->default(1); 
+            }
+            if (!Schema::hasColumn('incidents', 'metadata')) {
+                $table->json('metadata')->nullable();
+            }
         });
 
         $driver = Schema::getConnection()->getDriverName();
@@ -57,7 +62,13 @@ return new class extends Migration
             ->update(['status' => 'completed']);
 
         Schema::table('incidents', function (Blueprint $table) {
-            $table->dropColumn(['metadata', 'responders_required']);
+            // SAFETY CHECK: Only drop if they actually exist
+            if (Schema::hasColumn('incidents', 'metadata')) {
+                $table->dropColumn('metadata');
+            }
+            if (Schema::hasColumn('incidents', 'responders_required')) {
+                $table->dropColumn('responders_required');
+            }
         });
     }
 };

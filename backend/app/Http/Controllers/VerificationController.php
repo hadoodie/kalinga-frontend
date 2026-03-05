@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\UserVerified;
 use App\Mail\UserRejected;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class VerificationController extends Controller
 {
@@ -40,8 +42,8 @@ class VerificationController extends Controller
                 $file = $request->file('id_image');
                 $frontPath = $file->storeAs(
                     'verification-docs',
-                    'front_' . Auth::id() . '_' . time() . '.' . $file->getClientOriginalExtension(),
-                    'public'
+                    'front_' . Auth::id() . '_' . uniqid() . '.' . $file->getClientOriginalExtension(),
+                    'local'
                 );
                 \Log::info("Front image stored at: " . $frontPath);
             } else {
@@ -49,13 +51,11 @@ class VerificationController extends Controller
             }
 
             if ($request->hasFile('back_image')) {
-                // Small delay to ensure different timestamp
-                usleep(100000); // 0.1 second
                 $file = $request->file('back_image');
                 $backPath = $file->storeAs(
                     'verification-docs',
-                    'back_' . Auth::id() . '_' . time() . '.' . $file->getClientOriginalExtension(),
-                    'public'
+                    'back_' . Auth::id() . '_' . uniqid() . '.' . $file->getClientOriginalExtension(),
+                    'local'
                 );
                 \Log::info("Back image stored at: " . $backPath);
             } else {
@@ -115,6 +115,20 @@ class VerificationController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
+        $requests->transform(function ($req) {
+            if ($req->front_image_path) {
+                $req->secure_front_url = URL::temporarySignedRoute(
+                    'secure.document', now()->addMinutes(60), ['path' => $req->front_image_path]
+                );
+            }
+            if ($req->back_image_path) {
+                $req->secure_back_url = URL::temporarySignedRoute(
+                    'secure.document', now()->addMinutes(60), ['path' => $req->back_image_path]
+                );
+            }
+            return $req;
+        });
+
         return response()->json($requests);
     }
 
@@ -135,12 +149,15 @@ class VerificationController extends Controller
             $user->verification_status = 'verified';
             $user->save();
 
-            $token = $user->createToken('magic-link')->plainTextToken;
+            $tokenResult = $user->createToken('magic-link');
+            $tokenResult->accessToken->forceFill([
+                'expires_at' => now()->addMinutes(30),
+            ])->save();
+            
+            $token = $tokenResult->plainTextToken;
 
             try {
-
                 Mail::to($user->email)->send(new UserVerified($user, $token));
-                
             } catch (\Exception $e) {
                 Log::error("Email failed to send: " . $e->getMessage()); // Error Log
             }
@@ -179,5 +196,25 @@ class VerificationController extends Controller
         }
 
         return response()->json(['message' => 'User verification rejected']);
+    }
+
+    /**
+     * Securely serve the document via a signed URL
+     */
+    public function showDocument(Request $request)
+    {
+        // Check if the link has been tampered with or expired
+        if (! $request->hasValidSignature()) {
+            abort(403, 'Unauthorized or expired image link.');
+        }
+
+        $path = $request->query('path');
+        
+        // Fetch it from the private 'local' disk
+        if (!Storage::disk('local')->exists($path)) {
+            abort(404, 'Document not found.');
+        }
+
+        return response()->file(Storage::disk('local')->path($path));
     }
 }

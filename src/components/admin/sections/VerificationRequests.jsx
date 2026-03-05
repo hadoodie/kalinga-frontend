@@ -215,7 +215,7 @@ export const VerificationRequests = () => {
                     selectedReq.front_image_path ? (
                       <img
                         key={selectedReq.front_image_path}
-                        src={getImageUrl(selectedReq.front_image_path)}
+                        src={selectedReq.secure_front_url}
                         alt="Front ID"
                         className="max-h-full max-w-full object-contain"
                         onError={(e) => {
@@ -231,7 +231,7 @@ export const VerificationRequests = () => {
                     selectedReq.back_image_path ? (
                       <img
                         key={selectedReq.back_image_path}
-                        src={getImageUrl(selectedReq.back_image_path)}
+                        src={selectedReq.secure_back_url}
                         alt="Back ID"
                         className="max-h-full max-w-full object-contain"
                         onError={(e) => {

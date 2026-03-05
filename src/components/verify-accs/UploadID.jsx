@@ -3,17 +3,37 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { X, ScanLine, Loader2, Camera, Upload } from "lucide-react";
 import Tesseract from 'tesseract.js';
 
+// IMAGE PROCESSING CONSTANTS
+
+// Scaling: Max width for OCR processing to prevent memory crashes
+const TARGET_IMAGE_WIDTH = 2000;
+
+// Grayscale Conversion: Standard Rec. 709 Luma coefficients
+const LUMA_RED = 0.2126;
+const LUMA_GREEN = 0.7152;
+const LUMA_BLUE = 0.0722;
+
+// Color bounds
+const RGB_MAX = 255;
+const RGB_MIN = 0;
+
+// Thresholding: Forces high contrast for better OCR reading
+const WHITE_THRESHOLD = 180; // Pixels brighter than this become pure white
+const BLACK_THRESHOLD = 100; // Pixels darker than this become pure black
+
+// File Upload Constraints
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
 export default function UploadID() {
   const location = useLocation();
   const navigate = useNavigate();
   const canvasRef = useRef(null);
 
-  // --- FIX: Persist ID Type across refreshes ---
   const [currentIDType, setCurrentIDType] = useState(
     location.state?.selectedID || localStorage.getItem("selectedID") || ""
   );
 
-  // Safety Check: If we still don't have an ID type, send them back to start.
   useEffect(() => {
     if (!currentIDType) {
       alert("No ID Type selected. Returning to selection screen.");
@@ -38,7 +58,23 @@ export default function UploadID() {
   // Handle file selection 
   const handleFileChange = (e, type) => {
     const uploadedFile = e.target.files[0];
+    
     if (uploadedFile) {
+      // 1. Validate File Type (Must be an image)
+      if (!uploadedFile.type.startsWith("image/")) {
+        alert("Invalid file format. Please upload a valid image file (JPEG, PNG, etc.).");
+        e.target.value = ""; // Clear the input
+        return;
+      }
+
+      // 2. Validate File Size (Must be under 10MB to match backend)
+      if (uploadedFile.size > MAX_FILE_SIZE_BYTES) {
+        alert(`File is too large. Please upload an image smaller than ${MAX_FILE_SIZE_MB}MB.`);
+        e.target.value = ""; // Clear the input
+        return;
+      }
+
+      // If it passes validation, proceed as normal
       const previewUrl = URL.createObjectURL(uploadedFile);
       if (type === 'front') {
         setFrontFile(uploadedFile);
@@ -62,7 +98,7 @@ export default function UploadID() {
     }
   };
 
-  // --- ENHANCED IMAGE PRE-PROCESSING ---
+  // ENHANCED IMAGE PRE-PROCESSING 
   const preprocessImage = (imageFile) => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -72,9 +108,8 @@ export default function UploadID() {
         const ctx = canvas.getContext('2d');
         
         // Scale up for better OCR
-        const TARGET_WIDTH = 2000;
-        const scaleFactor = TARGET_WIDTH / img.width;
-        const width = TARGET_WIDTH;
+        const scaleFactor = TARGET_IMAGE_WIDTH / img.width;
+        const width = TARGET_IMAGE_WIDTH;
         const height = img.height * scaleFactor;
 
         canvas.width = width;
@@ -85,23 +120,23 @@ export default function UploadID() {
         const data = imageData.data;
 
         // Grayscale & High Contrast Logic
-        let min = 255, max = 0;
+        let min = RGB_MAX, max = RGB_MIN;
         for (let i = 0; i < data.length; i += 4) {
-          const avg = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+          const avg = LUMA_RED * data[i] + LUMA_GREEN * data[i + 1] + LUMA_BLUE * data[i + 2];
           if (avg < min) min = avg;
           if (avg > max) max = avg;
         }
 
         const range = max - min;
-        const factor = 255 / (range || 1); 
+        const factor = RGB_MAX / (range || 1); 
 
         for (let i = 0; i < data.length; i += 4) {
-          const avg = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+          const avg = LUMA_RED * data[i] + LUMA_GREEN * data[i + 1] + LUMA_BLUE * data[i + 2];
           const newVal = (avg - min) * factor;
           
           let final = newVal;
-          if (final > 180) final = 255; 
-          if (final < 100) final = 0;   
+          if (final > WHITE_THRESHOLD) final = RGB_MAX; 
+          if (final < BLACK_THRESHOLD) final = RGB_MIN;   
 
           data[i] = final;
           data[i + 1] = final;
@@ -114,7 +149,6 @@ export default function UploadID() {
     });
   };
 
-  // --- CLEANING UTILITIES ---
   const cleanName = (text) => {
     if (!text) return "";
     const cleaned = text
@@ -167,7 +201,6 @@ export default function UploadID() {
       const extractedData = parseIDText(text, currentIDType); 
       console.log("Extracted Data:", extractedData);
 
-      // --- CRITICAL FIX FOR NEXT PAGE ---
       navigate("/fill-info", { 
         state: { 
           selectedID: currentIDType,
@@ -192,7 +225,7 @@ export default function UploadID() {
     }
   };
 
-  // ==================== SPECIALIZED PHILIPPINE NATIONAL ID PARSER ====================
+  // SPECIALIZED PHILIPPINE NATIONAL ID PARSER 
   const parsePhilippineNationalID = (text, lines) => {
     console.log("=== USING PHILIPPINE NATIONAL ID PARSER ===");
     
@@ -321,7 +354,7 @@ export default function UploadID() {
     return data;
   };
 
-  // ==================== DRIVER'S LICENSE PARSER ====================
+  // DRIVER'S LICENSE PARSER
   const parseDriversLicense = (text, lines) => {
     console.log("=== USING DRIVER'S LICENSE PARSER ===");
     const data = { idNumber: "", firstName: "", lastName: "", middleName: "", birthYear: "", birthMonth: "", birthDay: "", address: "" };
@@ -354,7 +387,7 @@ export default function UploadID() {
     return data;
   };
 
-  // ==================== PASSPORT PARSER ====================
+  // PASSPORT PARSER
   const parsePassport = (text, lines) => {
     console.log("=== USING PASSPORT PARSER ===");
     const data = { idNumber: "", firstName: "", lastName: "", middleName: "", birthYear: "", birthMonth: "", birthDay: "", address: "" };
@@ -402,7 +435,7 @@ export default function UploadID() {
     return data;
   };
 
-  // ==================== MAIN PARSER WITH ID-TYPE ROUTING ====================
+  // MAIN PARSER WITH ID-TYPE ROUTING
   const parseIDText = (text, idType) => {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const idTypeLower = idType ? idType.toLowerCase() : '';
@@ -419,7 +452,7 @@ export default function UploadID() {
       return parsePassport(text, lines);
     }
 
-    // === GENERIC PARSER ===
+    // Generic fallback parser 
     const data = { idNumber: "", firstName: "", lastName: "", middleName: "", birthYear: "", birthMonth: "", birthDay: "", address: "" };
 
     const datePatterns = [
@@ -497,65 +530,64 @@ export default function UploadID() {
         <div className="space-y-4 mb-6">
           
           {/* Front ID Upload */}
-<div>
-  <label className="block text-sm font-medium mb-1 text-gray-700">Front of ID</label>
-  {frontPreview ? (
-    <div className="relative group w-full bg-gray-50 rounded-lg border-2 border-green-500 overflow-hidden">
-      <img 
-        src={frontPreview} 
-        alt="Front Preview" 
-        className="w-full h-auto block" // h-auto makes the image (and parent) match the photo's aspect ratio
-      />
-      <button
-        type="button"
-        onClick={() => handleRemoveFile('front')}
-        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-lg transition-colors"
-      >
-        <X size={18} />
-      </button>
-    </div>
-  ) : (
-    <button
-      onClick={() => document.getElementById("front-upload").click()}
-      className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-green-500 transition-colors"
-    >
-      <Camera className="mb-2 opacity-50" size={32} />
-      <span className="text-sm">Tap to upload Front</span>
-    </button>
-  )}
-  <input id="front-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'front')} />
-</div>
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Front of ID</label>
+            {frontPreview ? (
+              <div className="relative group w-full bg-gray-50 rounded-lg border-2 border-green-500 overflow-hidden">
+                <img 
+                  src={frontPreview} 
+                  alt="Front Preview" 
+                  className="w-full h-auto block" 
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFile('front')}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-lg transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => document.getElementById("front-upload").click()}
+                className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-green-500 transition-colors"
+              >
+                <Camera className="mb-2 opacity-50" size={32} />
+                <span className="text-sm">Tap to upload Front</span>
+              </button>
+            )}
+            <input id="front-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'front')} />
+          </div>
 
-{/* Back ID Upload */}
-<div>
-  <label className="block text-sm font-medium mb-1 text-gray-700">Back of ID</label>
-  {backPreview ? (
-    <div className="relative group w-full bg-gray-50 rounded-lg border-2 border-green-500 overflow-hidden">
-      <img 
-        src={backPreview} 
-        alt="Back Preview" 
-        className="w-full h-auto block" 
-      />
-      <button
-        type="button"
-        onClick={() => handleRemoveFile('back')}
-        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-lg transition-colors"
-      >
-        <X size={18} />
-      </button>
-    </div>
-  ) : (
-    <button
-      onClick={() => document.getElementById("back-upload").click()}
-      className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-green-500 transition-colors"
-    >
-      <Upload className="mb-2 opacity-50" size={32} />
-      <span className="text-sm">Tap to upload Back</span>
-    </button>
-  )}
-  <input id="back-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'back')} />
-</div>
-
+          {/* Back ID Upload */}
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700">Back of ID</label>
+            {backPreview ? (
+              <div className="relative group w-full bg-gray-50 rounded-lg border-2 border-green-500 overflow-hidden">
+                <img 
+                  src={backPreview} 
+                  alt="Back Preview" 
+                  className="w-full h-auto block" 
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFile('back')}
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100 shadow-lg transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => document.getElementById("back-upload").click()}
+                className="w-full h-48 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-gray-500 hover:bg-gray-50 hover:border-green-500 transition-colors"
+              >
+                <Upload className="mb-2 opacity-50" size={32} />
+                <span className="text-sm">Tap to upload Back</span>
+              </button>
+            )}
+            <input id="back-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleFileChange(e, 'back')} />
+          </div>
         </div>
 
         {/* Debug: Show extracted text */}

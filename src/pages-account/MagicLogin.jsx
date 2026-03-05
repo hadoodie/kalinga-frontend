@@ -4,11 +4,13 @@ import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import authService from "@/services/authService";
 import api, { getCsrfCookie } from "@/services/api";
+import { useToast } from "@/hooks/use-toast"; 
 
 export const MagicLogin = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setSession } = useAuth();
+  const { toast } = useToast(); 
 
   useEffect(() => {
     const processLogin = async () => {
@@ -56,13 +58,18 @@ export const MagicLogin = () => {
         localStorage.removeItem("token");
         delete api.defaults.headers.common["Authorization"]; 
         
-        alert("This login link has expired or is invalid. Please log in manually.");
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "This login link has expired or is invalid. Please log in manually.",
+        });
+        
         navigate("/login");
       }
     };
 
     processLogin();
-  }, [navigate, searchParams, setSession]);
+  }, [navigate, searchParams, setSession, toast]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">

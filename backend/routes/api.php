@@ -76,7 +76,7 @@ Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-    Route::post('/parse-id', [OCRController::class, 'processImage']);
+  //Route::post('/parse-id', [OCRController::class, 'processImage']);
 });
 
 // Public reverse geocode proxy (limits to avoid CORS on Nominatim)
@@ -272,6 +272,11 @@ Route::middleware(['throttle:60,1'])->group(function () {
     Route::get('/resources', [ResourceController::class, 'index']);
 });
 
+// Secure Image Serving (Requires Valid Signature)
+Route::get('/secure-document', [\App\Http\Controllers\VerificationController::class, 'showDocument'])
+    ->middleware('signed')
+    ->name('secure.document');;
+
 // Protected routes (require authentication + rate limiting)
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Common authenticated routes
@@ -285,23 +290,11 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/route-logs/{routeLog}/deviations', [RouteLogController::class, 'storeDeviation']);
     Route::get('/route-logs', [RouteLogController::class, 'index']);
     Route::post('/book-appointment', [AppointmentController::class, 'store']);
+    Route::post('/parse-id', [OCRController::class, 'processImage']);
 
     // Identity Verification
     Route::post('/verify-identity', [VerificationController::class, 'store']);
-    
-    // Test route to check if verification image exists (for debugging)
-    Route::get('/test-image/{filename}', function($filename) {
-        $path = storage_path("app/public/verification-docs/{$filename}");
-        if (file_exists($path)) {
-            return response()->file($path, [
-                'Cache-Control' => 'no-cache, no-store, must-revalidate',
-                'Pragma' => 'no-cache',
-                'Expires' => '0'
-            ]);
-        }
-        return response()->json(['error' => 'File not found', 'path' => $path], 404);
-    });
-    
+  
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/admin/users', [AuthController::class, 'getAllUsers']);
