@@ -2689,6 +2689,56 @@ export default function MessagesContact() {
     });
   }, [location, navigate, triggerEmergencyConversation]);
 
+  // Handle deep-link into a specific incident's conversation thread
+  // (used by the rescue tracker's Chat FAB)
+  useEffect(() => {
+    const openChat = location.state?.openIncidentChat;
+    if (!openChat?.incidentId) return;
+
+    // Prevent duplicate triggers for the same incident
+    const triggerKey = `incident:${openChat.incidentId}`;
+    if (lastEmergencyTriggerRef.current === triggerKey) return;
+    lastEmergencyTriggerRef.current = triggerKey;
+
+    // Try to select the matching conversation
+    const match = conversationsWithPresence.find((conv) => {
+      const convIncident =
+        conv.activeIncidentId ?? conv.incidentId ?? conv.incident_id;
+      if (convIncident && String(convIncident) === String(openChat.incidentId)) {
+        return true;
+      }
+      if (
+        openChat.conversationId &&
+        String(conv.id ?? conv.conversationId) === String(openChat.conversationId)
+      ) {
+        return true;
+      }
+      return false;
+    });
+
+    if (match) {
+      // Inline conversation selection (mirrors handleSelectConversation)
+      window.scrollTo({ top: 0, behavior: "instant" });
+      selectedConversationIdRef.current = match.id;
+      selectedConversationSnapshotRef.current = match;
+      const bufferKey = buildConversationBufferKey(
+        match,
+        match?.participant?.id ?? null
+      );
+      if (bufferKey) flushBufferedIncomingMessages(bufferKey);
+      setSelectedConversationId(match.id);
+      setActiveTab(MainContentTabs.INBOX);
+    }
+
+    // Clear state so it doesn't re-trigger
+    navigate(location.pathname, {
+      replace: true,
+      state: location.state?.filterCategory
+        ? { filterCategory: location.state.filterCategory }
+        : null,
+    });
+  }, [location, navigate, conversationsWithPresence]);
+
   const navigateToContacts = () => {
     setActiveTab(MainContentTabs.CONTACTS);
     setSelectedConversationId(null);

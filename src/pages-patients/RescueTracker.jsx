@@ -11,22 +11,18 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import {
   AlertTriangle,
-  CheckCircle,
-  Clock,
   Loader2,
-  MapPin,
-  MessageSquare,
   Navigation2,
-  Phone,
-  RefreshCw,
-  Truck,
-  User,
-  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { NavbarB } from "../components/Navbar_2";
 import PatientSidebar from "../components/patients/Sidebar";
 import EmergencyFab from "../components/patients/EmergencyFab";
+import RescueDetailPanel, {
+  formatETA,
+  formatDistance,
+} from "../components/patients/rescue/RescueDetailPanel";
+import RescueChatFab from "../components/patients/rescue/RescueChatFab";
 import { useAuth } from "../context/AuthContext";
 import { getEchoInstance, reconnectEcho } from "../services/echo";
 import { KALINGA_CONFIG } from "../constants/mapConfig";
@@ -160,213 +156,6 @@ const MapController = ({
   return null;
 };
 
-// Format helpers
-const formatETA = (minutes) => {
-  if (!minutes || minutes <= 0) return "Calculating...";
-  if (minutes < 1) return "Arriving now";
-  if (minutes < 60) return `${Math.round(minutes)} min`;
-  const hours = Math.floor(minutes / 60);
-  const mins = Math.round(minutes % 60);
-  return `${hours}h ${mins}m`;
-};
-
-const formatDistance = (km) => {
-  if (!km || km <= 0) return "--";
-  if (km < 1) return `${Math.round(km * 1000)} m`;
-  return `${km.toFixed(1)} km`;
-};
-
-const STATUS_LABELS = {
-  acknowledged: "Dispatch Confirmed",
-  en_route: "Responder En Route to Incident",
-  transporting: "Responder En Route to Hospital",
-  hospital_transfer: "Transferring to Hospital",
-  on_scene: "Responder Arrived",
-  needs_support: "Additional Support",
-  resolved: "Rescue Complete",
-  cancelled: "Cancelled",
-};
-
-const STATUS_COLORS = {
-  acknowledged: "bg-yellow-500",
-  en_route: "bg-blue-500",
-  transporting: "bg-cyan-500",
-  hospital_transfer: "bg-cyan-500",
-  on_scene: "bg-green-500",
-  needs_support: "bg-orange-500",
-  resolved: "bg-gray-500",
-  cancelled: "bg-gray-400",
-};
-
-const RescueProgressTracker = ({ status, hospitalName }) => {
-  const steps = [
-    {
-      id: 1,
-      label: "En Route",
-      active: ["acknowledged", "en_route"].includes(status),
-      completed: [
-        "on_scene",
-        "transporting",
-        "hospital_transfer",
-        "resolved",
-      ].includes(status),
-    },
-    {
-      id: 2,
-      label: "At Location",
-      active: status === "on_scene",
-      completed: ["transporting", "hospital_transfer", "resolved"].includes(
-        status
-      ),
-    },
-    {
-      id: 3,
-      label: "To Hospital",
-      active: ["transporting", "hospital_transfer", "resolved"].includes(
-        status
-      ),
-      completed: status === "resolved",
-    },
-  ];
-
-  // Calculate progress percentage
-  const progress =
-    (steps.filter((s) => s.completed).length / (steps.length - 1)) * 100;
-
-  return (
-    <div className="w-full mb-6 px-4">
-      <div className="relative flex items-center justify-between">
-        {/* Background Line */}
-        <div className="absolute left-0 top-4 w-full h-1 bg-gray-200 -z-10 rounded-full" />
-
-        {/* Active Progress Line */}
-        <div
-          className="absolute left-0 top-4 h-1 bg-green-500 -z-10 transition-all duration-500 rounded-full"
-          style={{ width: `${progress}%` }}
-        />
-
-        {steps.map((step) => (
-          <div key={step.id} className="flex flex-col items-center relative">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center border-[3px] transition-colors duration-300 z-10 bg-white ${
-                step.completed
-                  ? "border-green-500 bg-green-500 text-white"
-                  : step.active
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-gray-300 text-gray-300"
-              }`}
-            >
-              {step.completed ? (
-                <CheckCircle size={16} strokeWidth={3} />
-              ) : (
-                <span className="text-xs font-black">{step.id}</span>
-              )}
-            </div>
-            <div className="mt-2 text-center absolute top-8 left-1/2 transform -translate-x-1/2 w-32">
-              <p
-                className={`text-[10px] font-bold uppercase tracking-wide ${
-                  step.active
-                    ? "text-blue-600"
-                    : step.completed
-                    ? "text-green-600"
-                    : "text-gray-400"
-                }`}
-              >
-                {step.label}
-              </p>
-              {step.id === 3 && step.active && hospitalName && (
-                <p className="text-xs font-bold text-gray-900 mt-0.5 leading-tight">
-                  {hospitalName}
-                </p>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-const RescueStatusCard = ({
-  eta,
-  distance,
-  responder,
-  vehicle,
-  status,
-  hospitalName,
-}) => {
-  const isToHospital = [
-    "transporting",
-    "hospital_transfer",
-    "resolved",
-  ].includes(status);
-
-  return (
-    <div className="relative md:absolute md:bottom-6 md:left-6 md:w-[400px] bg-white rounded-t-3xl md:rounded-2xl shadow-[0_-4px_20px_rgba(0,0,0,0.15)] md:shadow-2xl z-[1000] overflow-hidden transition-all duration-300">
-      {/* Drag Handle for Mobile */}
-      <div className="w-full flex justify-center pt-3 pb-1 md:hidden">
-        <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
-      </div>
-
-      <div className="p-5 pt-2 md:pt-5">
-        {/* Progress Tracker */}
-        <div className="mb-8">
-          <RescueProgressTracker status={status} hospitalName={hospitalName} />
-        </div>
-
-        {/* High-Contrast Data Block */}
-        <div className="bg-gray-100 rounded-xl p-4 mb-5 flex items-center justify-between border border-gray-200">
-          <div>
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">
-              {isToHospital ? "TIME TO HOSPITAL" : "EST. ARRIVAL"}
-            </p>
-            <h2 className="text-3xl font-black text-gray-900 leading-none">
-              {eta}
-            </h2>
-          </div>
-          <div className="h-10 w-px bg-gray-300 mx-4" />
-          <div className="text-right">
-            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">
-              {isToHospital ? "DISTANCE" : "DISTANCE"}
-            </p>
-            <p className="text-3xl font-black text-gray-900 leading-none">
-              {distance}
-            </p>
-          </div>
-        </div>
-
-        {/* Actionable Details Section */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 border-2 border-blue-200">
-              <Truck size={24} strokeWidth={2.5} />
-            </div>
-            <div>
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                Responding Team
-              </p>
-              <h3 className="text-lg font-bold text-gray-900 leading-tight">
-                {responder?.name || "Ambulance Team"}
-              </h3>
-              <p className="text-sm font-medium text-gray-600">
-                {vehicle?.plate_number || "Plate No: ---"}
-              </p>
-            </div>
-          </div>
-
-          <button
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-red-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            onClick={() => (window.location.href = "tel:911")}
-          >
-            <Phone size={20} strokeWidth={2.5} />
-            <span>CALL DISPATCH</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export const RescueTracker = () => {
   const [collapsed, setCollapsed] = useState(false);
   const { user } = useAuth();
@@ -378,7 +167,6 @@ export const RescueTracker = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [showDetails, setShowDetails] = useState(false);
 
   const channelRef = useRef(null);
   const pollIntervalRef = useRef(null);
@@ -562,6 +350,12 @@ export const RescueTracker = () => {
   }, [fetchRoute]);
 
   // Derived values
+  const isTransporting = ["transporting", "hospital_transfer"].includes(
+    rescueData?.incident?.status
+  );
+
+  // Feature 3: When "En Route to Hospital", the patient is WITH the responder.
+  // So the patient's map reference point becomes the responder's live location.
   const patientPosition = useMemo(() => {
     if (!rescueData?.incident?.coordinates) return null;
     return [
@@ -569,6 +363,14 @@ export const RescueTracker = () => {
       rescueData.incident.coordinates.longitude,
     ];
   }, [rescueData?.incident?.coordinates]);
+
+  // The effective patient position for map centering: follows responder during transport
+  const effectivePatientPosition = useMemo(() => {
+    if (isTransporting && responderLocation) {
+      return [responderLocation.lat, responderLocation.lng];
+    }
+    return patientPosition;
+  }, [isTransporting, responderLocation, patientPosition]);
 
   const responderPosition = useMemo(() => {
     if (!responderLocation) return null;
@@ -579,15 +381,7 @@ export const RescueTracker = () => {
     return createResponderIcon(responderLocation?.heading || 0);
   }, [responderLocation?.heading]);
 
-  const statusLabel = rescueData?.incident?.status
-    ? STATUS_LABELS[rescueData.incident.status] || rescueData.incident.status
-    : "Unknown";
-
-  const statusColor = rescueData?.incident?.status
-    ? STATUS_COLORS[rescueData.incident.status] || "bg-gray-500"
-    : "bg-gray-500";
-
-  // No active rescue
+  // No active rescue — show the default EmergencyFab (not the Chat FAB)
   if (!loading && !rescueData) {
     return (
       <div className="h-screen flex bg-background text-foreground overflow-hidden">
@@ -623,16 +417,27 @@ export const RescueTracker = () => {
     );
   }
 
+  // --- Active rescue view ---
+  // Detail panel props shared between mobile bottom sheet & desktop sidebar
+  const detailProps = {
+    eta: formatETA(responderLocation?.eta),
+    distance: formatDistance(responderLocation?.distance),
+    responder: rescueData?.responder,
+    vehicle: rescueData?.vehicle,
+    status: rescueData?.incident?.status,
+    hospitalName: rescueData?.hospital?.name,
+  };
+
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-background text-foreground">
+    <div className="h-screen flex flex-col md:flex-row bg-background text-foreground overflow-hidden">
       <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
 
-      <div className="flex flex-col flex-1 transition-all duration-300">
+      <div className="flex flex-col flex-1 min-w-0 transition-all duration-300">
         <div className="sticky z-10 bg-background">
           <NavbarB />
         </div>
 
-        <main className="flex-1 flex flex-col relative min-h-[calc(100vh-64px)]">
+        <main className="flex-1 flex relative overflow-hidden">
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -653,11 +458,18 @@ export const RescueTracker = () => {
             </div>
           ) : (
             <>
-              {/* Map */}
-              <div className="flex-1 relative h-[60vh] md:h-auto">
+              {/* RescueDetailPanel renders:
+                  • Desktop (≥ 768 px): collapsible left sidebar (flex sibling of map)
+                  • Mobile  (< 768 px): fixed bottom sheet (overlays map) */}
+              <RescueDetailPanel {...detailProps} />
+
+              {/* Map fills remaining space */}
+              <div className="flex-1 relative">
                 <MapContainer
                   center={
-                    responderPosition || patientPosition || DEFAULT_POSITION
+                    responderPosition ||
+                    effectivePatientPosition ||
+                    DEFAULT_POSITION
                   }
                   zoom={16}
                   className="h-full w-full absolute inset-0"
@@ -670,7 +482,7 @@ export const RescueTracker = () => {
 
                   <MapController
                     responderPosition={responderPosition}
-                    patientPosition={patientPosition}
+                    patientPosition={effectivePatientPosition}
                     shouldCenter={true}
                   />
 
@@ -684,24 +496,23 @@ export const RescueTracker = () => {
                     />
                   )}
 
-                  {/* Patient marker - Hide when transporting to hospital */}
-                  {patientPosition &&
-                    !["transporting", "hospital_transfer", "resolved"].includes(
-                      rescueData?.incident?.status
-                    ) && (
-                      <Marker position={patientPosition} icon={patientIcon}>
-                        <Tooltip direction="top" offset={[0, -20]} permanent>
-                          <span className="font-semibold">Your Location</span>
-                        </Tooltip>
-                      </Marker>
-                    )}
+                  {/* Patient marker — hidden during transport (patient is with responder) */}
+                  {patientPosition && !isTransporting && (
+                    <Marker position={patientPosition} icon={patientIcon}>
+                      <Tooltip direction="top" offset={[0, -20]} permanent>
+                        <span className="font-semibold">Your Location</span>
+                      </Tooltip>
+                    </Marker>
+                  )}
 
-                  {/* Responder marker */}
+                  {/* Responder / ambulance marker */}
                   {responderPosition && (
                     <Marker position={responderPosition} icon={responderIcon}>
                       <Tooltip direction="top" offset={[0, -20]}>
                         <span className="font-semibold">
-                          {rescueData?.responder?.name || "Responder"}
+                          {isTransporting
+                            ? "You & Responder"
+                            : rescueData?.responder?.name || "Responder"}
                         </span>
                       </Tooltip>
                     </Marker>
@@ -724,23 +535,18 @@ export const RescueTracker = () => {
                     </Marker>
                   )}
                 </MapContainer>
-
-                {/* Status Card Overlay */}
-                <RescueStatusCard
-                  key={rescueData?.incident?.status}
-                  eta={formatETA(responderLocation?.eta)}
-                  distance={formatDistance(responderLocation?.distance)}
-                  responder={rescueData?.responder}
-                  vehicle={rescueData?.vehicle}
-                  status={rescueData?.incident?.status}
-                  hospitalName={rescueData?.hospital?.name}
-                />
               </div>
             </>
           )}
         </main>
       </div>
-      <EmergencyFab />
+
+      {/* Feature 2: Replace EmergencyFab with Chat FAB during active rescue */}
+      {rescueData?.incident?.id ? (
+        <RescueChatFab incidentId={rescueData.incident.id} />
+      ) : (
+        <EmergencyFab />
+      )}
     </div>
   );
 };
