@@ -216,7 +216,11 @@ const ForecastSummaryCard = () => {
                     </span>
                     {item.days_until_stockout < 7 && (
                       <span className="text-xs text-red-600 font-semibold whitespace-nowrap">
-                        {formatDisplayQuantity(item.days_until_stockout, "days")}d left
+                        {formatDisplayQuantity(
+                          item.days_until_stockout,
+                          "days",
+                        )}
+                        d left
                       </span>
                     )}
                   </div>

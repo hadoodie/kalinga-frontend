@@ -42,9 +42,7 @@ export function formatDisplayQuantity(value, unit = "units") {
   const num = Number(value);
   if (Number.isNaN(num)) return "—";
 
-  const isContinuous = CONTINUOUS_UNITS.has(
-    String(unit).toLowerCase().trim(),
-  );
+  const isContinuous = CONTINUOUS_UNITS.has(String(unit).toLowerCase().trim());
 
   const formatted = isContinuous
     ? num.toLocaleString("en-PH", {

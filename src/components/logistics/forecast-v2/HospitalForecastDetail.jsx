@@ -57,7 +57,9 @@ export default function HospitalForecastDetail() {
     setLoading(true);
     setError(null);
     try {
-      const res = await forecastService.getHospitalDetail(hospitalId, { horizon });
+      const res = await forecastService.getHospitalDetail(hospitalId, {
+        horizon,
+      });
       setData(res);
     } catch (err) {
       console.error("[HospitalForecastDetail] fetch error", err);

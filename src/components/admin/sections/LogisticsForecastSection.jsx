@@ -18,7 +18,10 @@ import {
 import { SectionHeader } from "../SectionHeader";
 import { StatCard } from "../StatCard";
 import forecastService from "../../../services/forecastService";
-import { formatDisplayQuantity, formatWithUnit } from "../../../utils/formatQuantity";
+import {
+  formatDisplayQuantity,
+  formatWithUnit,
+} from "../../../utils/formatQuantity";
 import {
   getDemoSummary,
   generateDemoRiskData,

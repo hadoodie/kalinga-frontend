@@ -53,8 +53,7 @@ export async function prefetchForecasts() {
 
       _cache.summary =
         summaryRes.status === "fulfilled" ? summaryRes.value : null;
-      _cache.riskData =
-        riskRes.status === "fulfilled" ? riskRes.value : null;
+      _cache.riskData = riskRes.status === "fulfilled" ? riskRes.value : null;
       _cache.demandData =
         demandRes.status === "fulfilled" ? demandRes.value : null;
       _cache.narrative =

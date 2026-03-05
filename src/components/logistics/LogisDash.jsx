@@ -708,7 +708,9 @@ const LogisDash = () => {
         const [resourcesResult, requestsResult, assetsResult] =
           await Promise.allSettled([
             resourceService.getAll(),
-            api.get("/requests", { params: { per_page: 10, status: "pending" } }),
+            api.get("/requests", {
+              params: { per_page: 10, status: "pending" },
+            }),
             api.get("/assets", { params: { per_page: 20 } }),
           ]);
 
@@ -739,13 +741,17 @@ const LogisDash = () => {
           setInventory(inventoryData);
           setFacilities(facilitiesData);
         } else {
-          console.warn("Resources API unavailable, using demo mode", resourcesResult.reason);
+          console.warn(
+            "Resources API unavailable, using demo mode",
+            resourcesResult.reason,
+          );
           usingFallback = true;
         }
 
         // ── 2. Requests ──
         if (requestsResult.status === "fulfilled") {
-          const reqData = requestsResult.value.data?.data || requestsResult.value.data || [];
+          const reqData =
+            requestsResult.value.data?.data || requestsResult.value.data || [];
           setRequests(
             reqData.map((r) => ({
               id: `R-${r.id}`,
@@ -760,7 +766,10 @@ const LogisDash = () => {
             })),
           );
         } else {
-          console.warn("Requests API unavailable, using demo fallback", requestsResult.reason);
+          console.warn(
+            "Requests API unavailable, using demo fallback",
+            requestsResult.reason,
+          );
           setRequests(DEMO_RESOURCE_REQUESTS);
           usingFallback = true;
         }
@@ -778,7 +787,10 @@ const LogisDash = () => {
             })),
           );
         } else {
-          console.warn("Assets API unavailable, using demo fallback", assetsResult.reason);
+          console.warn(
+            "Assets API unavailable, using demo fallback",
+            assetsResult.reason,
+          );
           setAssets(DEMO_ASSETS);
           usingFallback = true;
         }

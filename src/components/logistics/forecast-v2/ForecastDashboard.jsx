@@ -382,13 +382,10 @@ export default function ForecastDashboard() {
   );
 
   // Stable callbacks for TriagePanel — prevents defeating memo
-  const handleTriageResolve = useCallback(
-    (item, type) => {
-      if (type === "purchase_order") setSlideOver({ item, actionType: "po" });
-      else setSlideOver({ item, actionType: "transfer" });
-    },
-    [],
-  );
+  const handleTriageResolve = useCallback((item, type) => {
+    if (type === "purchase_order") setSlideOver({ item, actionType: "po" });
+    else setSlideOver({ item, actionType: "transfer" });
+  }, []);
   const handleTriageSelect = useCallback(
     (item) => setSlideOver({ item, actionType: "po" }),
     [],
@@ -473,7 +470,10 @@ export default function ForecastDashboard() {
       />
 
       {/* Pipeline Health Bar — always visible so users can trigger the pipeline even in demo/no-data state */}
-      <PipelineHealthBar onRefreshData={handleManualRefresh} forceExpand={isDemo} />
+      <PipelineHealthBar
+        onRefreshData={handleManualRefresh}
+        forceExpand={isDemo}
+      />
 
       {/* API error banner */}
       {fetchError && isDemo && (

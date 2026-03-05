@@ -79,7 +79,9 @@ const forecastService = {
     try {
       const params = {};
       if (horizon) params.horizon = horizon;
-      const response = await api.get(`/forecasts/hospital/${hospitalId}`, { params });
+      const response = await api.get(`/forecasts/hospital/${hospitalId}`, {
+        params,
+      });
       return response.data;
     } catch (error) {
       console.error(
