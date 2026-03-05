@@ -10,7 +10,7 @@ import { useNavigate } from "react-router-dom";
 import responseModeService from "../../../services/responseMode";
 import api from "../../../services/api";
 
-export default function RescueChatFab({ incidentId }) {
+export default function RescueChatFab({ incidentId, className = "", style }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -41,10 +41,10 @@ export default function RescueChatFab({ incidentId }) {
 
       let conversationId = null;
       try {
-        const conversation = await responseModeService.getConversation(
-          resolvedIncidentId
-        );
-        conversationId = conversation?.id ?? conversation?.conversationId ?? null;
+        const conversation =
+          await responseModeService.getConversation(resolvedIncidentId);
+        conversationId =
+          conversation?.id ?? conversation?.conversationId ?? null;
       } catch (error) {
         console.error("Failed to fetch conversation for incident:", error);
       }
@@ -71,7 +71,8 @@ export default function RescueChatFab({ incidentId }) {
       type="button"
       onClick={openChat}
       disabled={loading}
-      className="fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white p-4 rounded-full shadow-lg transition-transform transform hover:scale-110 active:scale-95 flex items-center justify-center group"
+      className={`fixed bottom-6 right-6 z-50 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white p-4 rounded-full shadow-lg transition-transform transform hover:scale-110 active:scale-95 flex items-center justify-center group ${className}`}
+      style={style}
       title="Chat with Responder"
     >
       {loading ? (

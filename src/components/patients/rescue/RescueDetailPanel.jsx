@@ -68,7 +68,12 @@ const STATUS_STEPS = [
     id: 1,
     label: "En Route",
     matchStatuses: ["acknowledged", "en_route"],
-    completedAfter: ["on_scene", "transporting", "hospital_transfer", "resolved"],
+    completedAfter: [
+      "on_scene",
+      "transporting",
+      "hospital_transfer",
+      "resolved",
+    ],
   },
   {
     id: 2,
@@ -112,8 +117,8 @@ function ProgressTracker({ status, hospitalName }) {
                 step.completed
                   ? "border-green-500 bg-green-500 text-white"
                   : step.active
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-gray-300 text-gray-300"
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-gray-300 text-gray-300"
               }`}
             >
               {step.completed ? (
@@ -128,8 +133,8 @@ function ProgressTracker({ status, hospitalName }) {
                   step.active
                     ? "text-blue-600"
                     : step.completed
-                    ? "text-green-600"
-                    : "text-gray-400"
+                      ? "text-green-600"
+                      : "text-gray-400"
                 }`}
               >
                 {step.label}
@@ -149,8 +154,19 @@ function ProgressTracker({ status, hospitalName }) {
 
 // ── Shared detail content (used in both mobile & desktop) ────────────────────
 
-function DetailContent({ eta, distance, responder, vehicle, status, hospitalName }) {
-  const isToHospital = ["transporting", "hospital_transfer", "resolved"].includes(status);
+function DetailContent({
+  eta,
+  distance,
+  responder,
+  vehicle,
+  status,
+  hospitalName,
+}) {
+  const isToHospital = [
+    "transporting",
+    "hospital_transfer",
+    "resolved",
+  ].includes(status);
 
   return (
     <div className="space-y-4">
@@ -165,14 +181,18 @@ function DetailContent({ eta, distance, responder, vehicle, status, hospitalName
           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">
             {isToHospital ? "TIME TO HOSPITAL" : "EST. ARRIVAL"}
           </p>
-          <h2 className="text-3xl font-black text-gray-900 leading-none">{eta}</h2>
+          <h2 className="text-3xl font-black text-gray-900 leading-none">
+            {eta}
+          </h2>
         </div>
         <div className="h-10 w-px bg-gray-300 mx-4" />
         <div className="text-right">
           <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">
             DISTANCE
           </p>
-          <p className="text-3xl font-black text-gray-900 leading-none">{distance}</p>
+          <p className="text-3xl font-black text-gray-900 leading-none">
+            {distance}
+          </p>
         </div>
       </div>
 
@@ -237,12 +257,18 @@ function MobileBottomSheet(props) {
   const { eta, distance, status } = props;
   const [expanded, setExpanded] = useState(false);
 
-  const isToHospital = ["transporting", "hospital_transfer", "resolved"].includes(status);
+  const isToHospital = [
+    "transporting",
+    "hospital_transfer",
+    "resolved",
+  ].includes(status);
 
   return (
     <div
       className={`fixed bottom-0 left-0 right-0 z-[1000] bg-white rounded-t-3xl shadow-[0_-4px_30px_rgba(0,0,0,0.18)] transition-all duration-300 ease-in-out md:hidden ${
-        expanded ? "max-h-[85vh] overflow-y-auto" : "max-h-[140px] overflow-hidden"
+        expanded
+          ? "max-h-[85vh] overflow-y-auto"
+          : "max-h-[140px] overflow-hidden"
       }`}
     >
       {/* Drag handle */}
@@ -275,14 +301,18 @@ function MobileBottomSheet(props) {
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                   {isToHospital ? "TO HOSPITAL" : "ETA"}
                 </p>
-                <p className="text-2xl font-black text-gray-900 leading-none">{eta}</p>
+                <p className="text-2xl font-black text-gray-900 leading-none">
+                  {eta}
+                </p>
               </div>
             </div>
             <div className="text-right">
               <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                 DISTANCE
               </p>
-              <p className="text-2xl font-black text-gray-900 leading-none">{distance}</p>
+              <p className="text-2xl font-black text-gray-900 leading-none">
+                {distance}
+              </p>
             </div>
           </div>
         </div>
@@ -357,7 +387,14 @@ export default function RescueDetailPanel({
   status,
   hospitalName,
 }) {
-  const sharedProps = { eta, distance, responder, vehicle, status, hospitalName };
+  const sharedProps = {
+    eta,
+    distance,
+    responder,
+    vehicle,
+    status,
+    hospitalName,
+  };
 
   return (
     <>

@@ -18,7 +18,9 @@ import api from "../../services/api";
  * @param {string} [activeIncidentId] — If the parent already knows the active
  *        incident id, pass it to skip the extra API call.
  */
-export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) {
+export default function EmergencyFab({
+  activeIncidentId: propIncidentId,
+} = {}) {
   const [showPopup, setShowPopup] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -84,12 +86,25 @@ export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) 
     return Date.now() - pendingEmergencyAt < 10 * 60 * 1000;
   }, [pendingEmergencyAt]);
 
-  // Lifecycle rule:
-  // State 1 (no active/pending incident): SOS button
-  // State 2 (active incident reported): Chat button
-  if (activeIncidentId || hasPendingEmergency) {
-    return <RescueChatFab incidentId={activeIncidentId} />;
-  }
+  const targetMode = activeIncidentId || hasPendingEmergency ? "chat" : "sos";
+  const [renderMode, setRenderMode] = useState(targetMode);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+
+  useEffect(() => {
+    if (targetMode === renderMode) return;
+
+    setIsAnimatingOut(true);
+    const timer = window.setTimeout(() => {
+      setRenderMode(targetMode);
+      setIsAnimatingOut(false);
+    }, 140);
+
+    return () => window.clearTimeout(timer);
+  }, [targetMode, renderMode]);
+
+  const swapAnimationClass = isAnimatingOut
+    ? "opacity-0 scale-95"
+    : "opacity-100 scale-100";
 
   // --- Standard Emergency SOS logic ---
   const resolveLocation = () =>
@@ -113,7 +128,7 @@ export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) 
               error?.message ||
               "Unable to access location automatically. Please share it manually if prompted.",
           }),
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
       );
     });
 
@@ -136,8 +151,12 @@ export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) 
       state: {
         startEmergencyChat: {
           triggeredAt,
-          ...(locationPayload.location ? { location: locationPayload.location } : {}),
-          ...(locationPayload.error ? { locationError: locationPayload.error } : {}),
+          ...(locationPayload.location
+            ? { location: locationPayload.location }
+            : {}),
+          ...(locationPayload.error
+            ? { locationError: locationPayload.error }
+            : {}),
         },
       },
     });
@@ -153,20 +172,28 @@ export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) 
 
   return (
     <>
-      {/* Floating Action Button */}
-      <button
-        onClick={() => setShowPopup(true)}
-        className="fixed bottom-6 right-6 z-50 bg-red-600 hover:bg-red-700 text-white p-4 rounded-full shadow-lg transition-transform transform hover:scale-110 flex items-center justify-center group"
-        title="Emergency SOS"
-      >
-        <AlertCircle size={32} className="animate-pulse" />
-        <span className="absolute right-full mr-3 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-          Emergency SOS
-        </span>
-      </button>
+      {renderMode === "chat" ? (
+        <RescueChatFab
+          incidentId={activeIncidentId}
+          className={`duration-200 ease-out ${swapAnimationClass}`}
+          style={{ transitionProperty: "opacity, transform" }}
+        />
+      ) : (
+        <button
+          onClick={() => setShowPopup(true)}
+          className={`fixed bottom-6 right-6 z-50 bg-red-600 hover:bg-red-700 text-white p-4 rounded-full shadow-lg transition-transform transform hover:scale-110 flex items-center justify-center group duration-200 ease-out ${swapAnimationClass}`}
+          style={{ transitionProperty: "opacity, transform" }}
+          title="Emergency SOS"
+        >
+          <AlertCircle size={32} className="animate-pulse" />
+          <span className="absolute right-full mr-3 bg-gray-800 text-white text-xs font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Emergency SOS
+          </span>
+        </button>
+      )}
 
       {/* Popup Modal */}
-      {showPopup && (
+      {showPopup && renderMode === "sos" && (
         <EmergencyPopup
           onSendNow={handleEmergencySend}
           onCancel={handleEmergencyCancel}

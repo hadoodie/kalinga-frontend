@@ -70,7 +70,7 @@ const normalizePerson = (person = {}, fallbackName = "Unknown") => {
 const normalizeMessage = (
   message = {},
   fallbackSenderName = "",
-  currentUserId = null
+  currentUserId = null,
 ) => {
   const timestamp =
     message.timestamp || message.created_at || new Date().toISOString();
@@ -170,7 +170,7 @@ const normalizeConversation = (conversation = {}, currentUserId = null) => {
     }
 
     const fromArray = participantsRaw.find(
-      (person) => person?.id && person.id !== currentUserId
+      (person) => person?.id && person.id !== currentUserId,
     );
 
     if (fromArray) {
@@ -211,7 +211,7 @@ const normalizeConversation = (conversation = {}, currentUserId = null) => {
   const participantName = participant.name ?? "Unknown";
   const normalizedMessages = Array.isArray(conversation.messages)
     ? conversation.messages.map((msg) =>
-        normalizeMessage(msg, participantName, currentUserId)
+        normalizeMessage(msg, participantName, currentUserId),
       )
     : [];
   const lastMessage = normalizedMessages[normalizedMessages.length - 1];
@@ -301,7 +301,7 @@ const insertMessageChronologically = (messages, newMessage) => {
 
 const buildConversationBufferKey = (
   conversation,
-  fallbackParticipantId = null
+  fallbackParticipantId = null,
 ) => {
   if (conversation?.conversationId) {
     return `cid:${conversation.conversationId}`;
@@ -320,27 +320,27 @@ const buildConversationBufferKey = (
 
 const mergeConversationSnapshot = (
   currentSnapshot = {},
-  incomingSnapshot = {}
+  incomingSnapshot = {},
 ) => {
   const mergedMessages = Array.isArray(incomingSnapshot.messages)
     ? incomingSnapshot.messages.length
       ? incomingSnapshot.messages
       : Array.isArray(currentSnapshot.messages)
-      ? currentSnapshot.messages
-      : incomingSnapshot.messages
+        ? currentSnapshot.messages
+        : incomingSnapshot.messages
     : Array.isArray(currentSnapshot.messages)
-    ? currentSnapshot.messages
-    : [];
+      ? currentSnapshot.messages
+      : [];
 
   const mergedParticipants = Array.isArray(incomingSnapshot.participants)
     ? incomingSnapshot.participants.length
       ? incomingSnapshot.participants
       : Array.isArray(currentSnapshot.participants)
-      ? currentSnapshot.participants
-      : incomingSnapshot.participants
+        ? currentSnapshot.participants
+        : incomingSnapshot.participants
     : Array.isArray(currentSnapshot.participants)
-    ? currentSnapshot.participants
-    : [];
+      ? currentSnapshot.participants
+      : [];
 
   return {
     ...currentSnapshot,
@@ -422,12 +422,12 @@ const ConversationListItem = ({ conversation, onSelect, isSelected }) => {
   const statusClass = isSelected
     ? "border-blue-300 bg-blue-50"
     : isEmergency
-    ? hasUnread
-      ? "border-red-400 bg-red-50"
-      : "border-red-200 bg-red-50/50"
-    : hasUnread
-    ? "border-green-200 bg-green-50"
-    : "bg-white hover:bg-gray-50 border-gray-100";
+      ? hasUnread
+        ? "border-red-400 bg-red-50"
+        : "border-red-200 bg-red-50/50"
+      : hasUnread
+        ? "border-green-200 bg-green-50"
+        : "bg-white hover:bg-gray-50 border-gray-100";
   const timeFormatted = conversation.lastMessageTime
     ? new Date(conversation.lastMessageTime).toLocaleString("en-US", {
         month: "short",
@@ -1177,7 +1177,7 @@ export default function MessagesContact() {
     }
 
     const match = conversations.find(
-      (conv) => conv.id === selectedConversationId
+      (conv) => conv.id === selectedConversationId,
     );
 
     selectedConversationSnapshotRef.current = match ?? null;
@@ -1229,8 +1229,8 @@ export default function MessagesContact() {
         if (!isCancelled) {
           const normalized = sortConversationsByRecency(
             data.map((conversation) =>
-              normalizeConversation(conversation, user?.id ?? null)
-            )
+              normalizeConversation(conversation, user?.id ?? null),
+            ),
           );
 
           setConversations(normalized);
@@ -1296,7 +1296,7 @@ export default function MessagesContact() {
           conversationId: meta.conversationId,
         });
         const normalizedMessages = data.map((msg) =>
-          normalizeMessage(msg, "", user.id)
+          normalizeMessage(msg, "", user.id),
         );
         const latestMessage =
           normalizedMessages[normalizedMessages.length - 1] ?? null;
@@ -1330,8 +1330,8 @@ export default function MessagesContact() {
                 lastMessageTime:
                   latestMessage?.timestamp ?? conv.lastMessageTime,
               };
-            })
-          )
+            }),
+          ),
         );
       } catch (error) {
         console.error("Failed to refresh conversation messages", error);
@@ -1339,7 +1339,7 @@ export default function MessagesContact() {
         inflightConversationFetch.current.delete(key);
       }
     },
-    [user]
+    [user],
   );
 
   const scheduleConversationRefresh = useCallback(
@@ -1360,7 +1360,7 @@ export default function MessagesContact() {
 
       scheduledConversationRefreshes.current.set(key, timer);
     },
-    [refreshConversationMessages]
+    [refreshConversationMessages],
   );
 
   const applyBufferedMessageToState = useCallback(
@@ -1380,14 +1380,14 @@ export default function MessagesContact() {
           matchFound = true;
 
           const isActive = isConversationCurrentlyActive(
-            conversationSnapshot ?? conv
+            conversationSnapshot ?? conv,
           );
           const preparedMessage = isActive
             ? { ...message, isRead: true }
             : message;
 
           const existingIndex = conv.messages.findIndex(
-            (msg) => msg.id === preparedMessage.id
+            (msg) => msg.id === preparedMessage.id,
           );
 
           let nextMessages;
@@ -1400,7 +1400,7 @@ export default function MessagesContact() {
           } else {
             nextMessages = insertMessageChronologically(
               conv.messages,
-              preparedMessage
+              preparedMessage,
             );
           }
 
@@ -1422,8 +1422,8 @@ export default function MessagesContact() {
             unreadCount: isActive
               ? 0
               : existingIndex !== -1
-              ? conv.unreadCount ?? 0
-              : (conv.unreadCount ?? 0) + 1,
+                ? (conv.unreadCount ?? 0)
+                : (conv.unreadCount ?? 0) + 1,
           };
         });
 
@@ -1438,12 +1438,12 @@ export default function MessagesContact() {
             : [];
 
           const baseWithoutIncoming = baseMessages.filter(
-            (existing) => existing?.id !== preparedMessage.id
+            (existing) => existing?.id !== preparedMessage.id,
           );
 
           const nextMessages = insertMessageChronologically(
             baseWithoutIncoming,
-            preparedMessage
+            preparedMessage,
           );
 
           const finalLastMessage =
@@ -1461,7 +1461,7 @@ export default function MessagesContact() {
         return sortConversationsByRecency(updated);
       });
     },
-    [isConversationCurrentlyActive]
+    [isConversationCurrentlyActive],
   );
 
   const flushBufferedIncomingMessages = useCallback(
@@ -1505,41 +1505,44 @@ export default function MessagesContact() {
           backlogSize > INCOMING_QUEUE_HIGH_PRESSURE_THRESHOLD
             ? INCOMING_QUEUE_AGGRESSIVE_INTERVAL_MS
             : isActive
-            ? INCOMING_QUEUE_ACTIVE_DRAIN_INTERVAL_MS
-            : INCOMING_QUEUE_PASSIVE_DRAIN_INTERVAL_MS;
+              ? INCOMING_QUEUE_ACTIVE_DRAIN_INTERVAL_MS
+              : INCOMING_QUEUE_PASSIVE_DRAIN_INTERVAL_MS;
 
-        entry.timer = setTimeout(() => {
-          flushBufferedIncomingMessages(conversationKey);
-        }, Math.max(0, delay));
+        entry.timer = setTimeout(
+          () => {
+            flushBufferedIncomingMessages(conversationKey);
+          },
+          Math.max(0, delay),
+        );
       } else {
         entry.state = "idle";
         pendingIncomingMessages.current.delete(conversationKey);
       }
     },
-    [applyBufferedMessageToState, isConversationCurrentlyActive]
+    [applyBufferedMessageToState, isConversationCurrentlyActive],
   );
 
   const bufferIncomingMessage = useCallback(
     (
       normalizedConversation,
       normalizedMessageWithStatus,
-      otherParticipantId
+      otherParticipantId,
     ) => {
       const bufferKey = buildConversationBufferKey(
         normalizedConversation,
-        otherParticipantId
+        otherParticipantId,
       );
 
       if (!bufferKey) {
         applyBufferedMessageToState(
           normalizedConversation,
-          normalizedMessageWithStatus
+          normalizedMessageWithStatus,
         );
         return;
       }
 
       const isActiveConversation = isConversationCurrentlyActive(
-        normalizedConversation
+        normalizedConversation,
       );
 
       const existingEntry = pendingIncomingMessages.current.get(bufferKey);
@@ -1548,11 +1551,11 @@ export default function MessagesContact() {
         existingEntry.state = existingEntry.state ?? "idle";
         existingEntry.conversation = mergeConversationSnapshot(
           existingEntry.conversation,
-          normalizedConversation
+          normalizedConversation,
         );
         existingEntry.messages.set(
           normalizedMessageWithStatus.id,
-          normalizedMessageWithStatus
+          normalizedMessageWithStatus,
         );
 
         if (isActiveConversation) {
@@ -1602,7 +1605,7 @@ export default function MessagesContact() {
       flushBufferedIncomingMessages,
       applyBufferedMessageToState,
       isConversationCurrentlyActive,
-    ]
+    ],
   );
 
   useEffect(() => {
@@ -1658,13 +1661,13 @@ export default function MessagesContact() {
               ...conv,
               participant: { ...conv.participant, isOnline: false },
             }
-          : conv
+          : conv,
       );
     }
 
     return conversations.map((conv) => {
       const isOnline = onlineUsers.some(
-        (user) => user?.id === conv.participant.id
+        (user) => user?.id === conv.participant.id,
       );
       if (conv.participant.isOnline === isOnline) {
         return conv;
@@ -1684,7 +1687,7 @@ export default function MessagesContact() {
     if (!selectedConversationId) return null;
     return (
       conversationsWithPresence.find(
-        (conv) => conv.id === selectedConversationId
+        (conv) => conv.id === selectedConversationId,
       ) || null
     );
   }, [conversationsWithPresence, selectedConversationId]);
@@ -1711,7 +1714,7 @@ export default function MessagesContact() {
           .toLowerCase()
           .includes(lowered);
         const messageMatch = conv.messages.some((msg) =>
-          (msg.text || "").toLowerCase().includes(lowered)
+          (msg.text || "").toLowerCase().includes(lowered),
         );
 
         return nameMatch || lastMessageMatch || messageMatch;
@@ -1729,12 +1732,12 @@ export default function MessagesContact() {
 
       const normalizedConversation = normalizeConversation(
         payload.conversation,
-        user?.id ?? null
+        user?.id ?? null,
       );
       let normalizedMessage = normalizeMessage(
         payload.message,
         normalizedConversation.participant?.name ?? "",
-        user?.id ?? null
+        user?.id ?? null,
       );
 
       const isActiveConversation =
@@ -1774,7 +1777,7 @@ export default function MessagesContact() {
         bufferIncomingMessage(
           normalizedConversation,
           normalizedMessageWithStatus,
-          otherParticipantId
+          otherParticipantId,
         );
       } else {
         setConversations((prev) => {
@@ -1788,14 +1791,14 @@ export default function MessagesContact() {
             matchFound = true;
 
             const messageExists = conv.messages.some(
-              (msg) => msg.id === normalizedMessage.id
+              (msg) => msg.id === normalizedMessage.id,
             );
 
             const messages = messageExists
               ? conv.messages.map((msg) =>
                   msg.id === normalizedMessage.id
                     ? normalizedMessageWithStatus
-                    : msg
+                    : msg,
                 )
               : [...conv.messages, normalizedMessageWithStatus];
 
@@ -1816,8 +1819,8 @@ export default function MessagesContact() {
               unreadCount: isActiveConversation
                 ? 0
                 : messageExists
-                ? conv.unreadCount
-                : (conv.unreadCount ?? 0) + 1,
+                  ? conv.unreadCount
+                  : (conv.unreadCount ?? 0) + 1,
             };
           });
 
@@ -1856,7 +1859,7 @@ export default function MessagesContact() {
       user?.id,
       scheduleConversationRefresh,
       bufferIncomingMessage,
-    ]
+    ],
   );
 
   // Subscribe to realtime chat events
@@ -1869,7 +1872,7 @@ export default function MessagesContact() {
 
     if (!echoInstance) {
       console.warn(
-        "Echo instance is not available, cannot subscribe to chat events"
+        "Echo instance is not available, cannot subscribe to chat events",
       );
       return;
     }
@@ -1912,7 +1915,7 @@ export default function MessagesContact() {
   const displayedNames = visibleOnlineNames.slice(0, maxNamesToShow);
   const hiddenCount = Math.max(
     visibleOnlineNames.length - displayedNames.length,
-    0
+    0,
   );
 
   let presenceContainerClass = "border-gray-200 bg-gray-50";
@@ -2029,7 +2032,7 @@ export default function MessagesContact() {
 
           const normalizedParticipant = normalizePerson(
             fallbackParticipant,
-            fallbackParticipant.name ?? ""
+            fallbackParticipant.name ?? "",
           );
 
           const newConversation = {
@@ -2040,7 +2043,7 @@ export default function MessagesContact() {
               Array.isArray(conversation.participants) &&
               conversation.participants.length
                 ? conversation.participants.map((person) =>
-                    normalizePerson(person)
+                    normalizePerson(person),
                   )
                 : [normalizedParticipant],
             messages: [optimisticMessage],
@@ -2076,7 +2079,7 @@ export default function MessagesContact() {
             isRead: true,
           },
           user.name,
-          user.id
+          user.id,
         );
 
         setConversations((prev) =>
@@ -2099,7 +2102,7 @@ export default function MessagesContact() {
                 Array.isArray(payload.participants) &&
                 payload.participants.length
                   ? payload.participants.map((person) =>
-                      normalizePerson(person)
+                      normalizePerson(person),
                     )
                   : conv.participants;
 
@@ -2114,7 +2117,7 @@ export default function MessagesContact() {
                       sendError: null,
                       isOwn: true,
                     }
-                  : msg
+                  : msg,
               );
 
               return {
@@ -2127,8 +2130,8 @@ export default function MessagesContact() {
                 lastMessageTime: normalizedMessage.timestamp,
                 messages,
               };
-            })
-          )
+            }),
+          ),
         );
 
         if (payload.conversationId) {
@@ -2152,13 +2155,13 @@ export default function MessagesContact() {
         if (payload.autoReply?.message && payload.autoReply?.conversation) {
           const autoConversation = normalizeConversation(
             payload.autoReply.conversation,
-            user?.id ?? null
+            user?.id ?? null,
           );
 
           const autoMessage = normalizeMessage(
             payload.autoReply.message,
             payload.autoReply.message.sender ?? "",
-            user?.id ?? null
+            user?.id ?? null,
           );
 
           setConversations((prev) => {
@@ -2172,7 +2175,7 @@ export default function MessagesContact() {
               found = true;
 
               const messageExists = conv.messages.some(
-                (msg) => msg.id === autoMessage.id
+                (msg) => msg.id === autoMessage.id,
               );
 
               if (messageExists) {
@@ -2243,16 +2246,16 @@ export default function MessagesContact() {
                         error?.message ??
                         "Failed to send message",
                     }
-                  : msg
+                  : msg,
               ),
             };
-          })
+          }),
         );
 
         throw error;
       }
     },
-    [user]
+    [user],
   );
 
   const triggerEmergencyConversation = useCallback(
@@ -2281,7 +2284,7 @@ export default function MessagesContact() {
       if (!realtimeResult?.ok) {
         console.warn(
           "Realtime connection not ready for emergency alert",
-          realtimeResult
+          realtimeResult,
         );
       }
 
@@ -2434,7 +2437,7 @@ export default function MessagesContact() {
         // If incident exists, check it's not resolved/cancelled
         if (!conv.incidentStatus) return false;
         return !["resolved", "cancelled"].includes(
-          conv.incidentStatus.toLowerCase()
+          conv.incidentStatus.toLowerCase(),
         );
       };
 
@@ -2445,7 +2448,7 @@ export default function MessagesContact() {
         (conv) =>
           conv.category === "Emergency" &&
           conv.activeIncidentId &&
-          isConversationActiveForEmergency(conv)
+          isConversationActiveForEmergency(conv),
       );
 
       // Fallback: find any non-archived responder conversation without resolved incidents
@@ -2453,7 +2456,7 @@ export default function MessagesContact() {
         (conv) =>
           typeof conv.participant?.role === "string" &&
           conv.participant.role.toLowerCase() === "responder" &&
-          isConversationActiveForEmergency(conv)
+          isConversationActiveForEmergency(conv),
       );
 
       const presenceResponder = onlineUsers.find((candidate) => {
@@ -2461,17 +2464,17 @@ export default function MessagesContact() {
           typeof candidate?.role === "string"
             ? candidate.role
             : typeof candidate?.user_info?.role === "string"
-            ? candidate.user_info.role
-            : typeof candidate?.user?.role === "string"
-            ? candidate.user.role
-            : null;
+              ? candidate.user_info.role
+              : typeof candidate?.user?.role === "string"
+                ? candidate.user.role
+                : null;
         return roleValue?.toLowerCase() === "responder";
       });
 
       let targetConversation = null;
       if (options.conversationId) {
         targetConversation = conversationsWithPresence.find(
-          (conv) => conv.id === options.conversationId
+          (conv) => conv.id === options.conversationId,
         );
       }
 
@@ -2494,7 +2497,7 @@ export default function MessagesContact() {
               presenceResponder.user_id ??
               presenceResponder.userId ??
               presenceResponder.user?.id ??
-              presenceResponder.user_info?.id
+              presenceResponder.user_info?.id,
           )
         : null;
       const sanitizedPresenceResponderId = Number.isFinite(presenceResponderId)
@@ -2544,7 +2547,7 @@ export default function MessagesContact() {
               presenceResponder?.user?.profile_image ??
               presenceResponder?.user_info?.profile_image,
           },
-          responderName
+          responderName,
         );
 
       const responderParticipant = { ...participant, id: receiverId };
@@ -2556,7 +2559,7 @@ export default function MessagesContact() {
           role: user.role,
           profile_image: user.profile_image,
         },
-        user.name
+        user.name,
       );
 
       // If reusing an existing conversation that had old (resolved) incidents,
@@ -2574,8 +2577,8 @@ export default function MessagesContact() {
         };
         setConversations((prev) =>
           prev.map((conv) =>
-            conv.id === targetConversation.id ? updatedConversation : conv
-          )
+            conv.id === targetConversation.id ? updatedConversation : conv,
+          ),
         );
         targetConversation = updatedConversation;
       }
@@ -2648,7 +2651,7 @@ export default function MessagesContact() {
       setActiveTab,
       setSelectedConversationId,
       setEmergencyAction,
-    ]
+    ],
   );
 
   // Handlers for navigation
@@ -2706,12 +2709,16 @@ export default function MessagesContact() {
     const match = conversationsWithPresence.find((conv) => {
       const convIncident =
         conv.activeIncidentId ?? conv.incidentId ?? conv.incident_id;
-      if (convIncident && String(convIncident) === String(openChat.incidentId)) {
+      if (
+        convIncident &&
+        String(convIncident) === String(openChat.incidentId)
+      ) {
         return true;
       }
       if (
         openChat.conversationId &&
-        String(conv.id ?? conv.conversationId) === String(openChat.conversationId)
+        String(conv.id ?? conv.conversationId) ===
+          String(openChat.conversationId)
       ) {
         return true;
       }
@@ -2725,7 +2732,7 @@ export default function MessagesContact() {
       selectedConversationSnapshotRef.current = match;
       const bufferKey = buildConversationBufferKey(
         match,
-        match?.participant?.id ?? null
+        match?.participant?.id ?? null,
       );
       if (bufferKey) flushBufferedIncomingMessages(bufferKey);
       setSelectedConversationId(match.id);
@@ -2763,7 +2770,7 @@ export default function MessagesContact() {
 
     const bufferKey = buildConversationBufferKey(
       conversation,
-      conversation?.participant?.id ?? null
+      conversation?.participant?.id ?? null,
     );
 
     if (bufferKey) {
@@ -2786,8 +2793,8 @@ export default function MessagesContact() {
                   isRead: true,
                 })),
               }
-            : conv
-        )
+            : conv,
+        ),
       );
     }
   };
@@ -2830,7 +2837,7 @@ export default function MessagesContact() {
 
   const totalUnread = conversationsWithPresence.reduce(
     (sum, conv) => sum + conv.unreadCount,
-    0
+    0,
   );
 
   return (
@@ -2862,8 +2869,8 @@ export default function MessagesContact() {
                   emergencyAction.status === "error"
                     ? "border-red-200 bg-red-50 text-red-700"
                     : emergencyAction.status === "loading"
-                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                    : "border-green-200 bg-green-50 text-green-700"
+                      ? "border-amber-200 bg-amber-50 text-amber-700"
+                      : "border-green-200 bg-green-50 text-green-700"
                 }`}
               >
                 {emergencyAction.status === "loading" ? (
@@ -2883,16 +2890,16 @@ export default function MessagesContact() {
                     {emergencyAction.status === "loading"
                       ? "Dispatching emergency alert..."
                       : emergencyAction.status === "success"
-                      ? "Emergency alert sent"
-                      : "Emergency alert failed"}
+                        ? "Emergency alert sent"
+                        : "Emergency alert failed"}
                   </p>
                   <p className="text-xs leading-snug">
                     {emergencyAction.message ||
                       (emergencyAction.status === "loading"
                         ? "Contacting responders with your emergency details."
                         : emergencyAction.status === "success"
-                        ? "A responder has been notified and will follow up shortly."
-                        : "Unable to notify responders automatically. Please try again or call your local emergency hotline.")}
+                          ? "A responder has been notified and will follow up shortly."
+                          : "Unable to notify responders automatically. Please try again or call your local emergency hotline.")}
                   </p>
                 </div>
               </div>
@@ -2963,49 +2970,47 @@ export default function MessagesContact() {
                 </div>
 
                 <div className="shrink-0 flex gap-2 mb-3 flex-wrap">
-                  {["All", "Medical", "Billing"].map(
-                    (category) => {
-                      const count =
-                        category === "All"
-                          ? conversationsWithPresence.length
-                          : conversationsWithPresence.filter(
-                              (c) => c.category === category
-                            ).length;
-                      const isEmergency = category === "Emergency";
-                      const emergencyUnread = isEmergency
-                        ? conversationsWithPresence
-                            .filter((c) => c.category === "Emergency")
-                            .reduce((sum, c) => sum + c.unreadCount, 0)
-                        : 0;
+                  {["All", "Medical", "Billing"].map((category) => {
+                    const count =
+                      category === "All"
+                        ? conversationsWithPresence.length
+                        : conversationsWithPresence.filter(
+                            (c) => c.category === category,
+                          ).length;
+                    const isEmergency = category === "Emergency";
+                    const emergencyUnread = isEmergency
+                      ? conversationsWithPresence
+                          .filter((c) => c.category === "Emergency")
+                          .reduce((sum, c) => sum + c.unreadCount, 0)
+                      : 0;
 
-                      return (
-                        <button
-                          key={category}
-                          onClick={() => setCategoryFilter(category)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
-                            categoryFilter === category
-                              ? isEmergency
-                                ? "bg-red-600 text-white"
-                                : "bg-primary text-white"
-                              : isEmergency
+                    return (
+                      <button
+                        key={category}
+                        onClick={() => setCategoryFilter(category)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                          categoryFilter === category
+                            ? isEmergency
+                              ? "bg-red-600 text-white"
+                              : "bg-primary text-white"
+                            : isEmergency
                               ? "bg-red-50 text-red-700 hover:bg-red-100 border border-red-300"
                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {isEmergency && (
-                            <AlertCircle
-                              size={14}
-                              className={
-                                emergencyUnread > 0 ? "animate-pulse" : ""
-                              }
-                            />
-                          )}
-                          {category}
-                          {count > 0 && ` (${count})`}
-                        </button>
-                      );
-                    }
-                  )}
+                        }`}
+                      >
+                        {isEmergency && (
+                          <AlertCircle
+                            size={14}
+                            className={
+                              emergencyUnread > 0 ? "animate-pulse" : ""
+                            }
+                          />
+                        )}
+                        {category}
+                        {count > 0 && ` (${count})`}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <div className="shrink-0 relative mb-3">

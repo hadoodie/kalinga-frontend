@@ -9,11 +9,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  AlertTriangle,
-  Loader2,
-  Navigation2,
-} from "lucide-react";
+import { AlertTriangle, Loader2, Navigation2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { NavbarB } from "../components/Navbar_2";
 import PatientSidebar from "../components/patients/Sidebar";
@@ -222,7 +218,7 @@ export const RescueTracker = () => {
       // If transporting, destination is Hospital. Otherwise, it's the Patient.
       if (
         ["transporting", "hospital_transfer", "resolved"].includes(
-          rescueData.incident.status
+          rescueData.incident.status,
         ) &&
         rescueData.hospital?.coordinates
       ) {
@@ -241,7 +237,7 @@ export const RescueTracker = () => {
       });
 
       const response = await fetch(
-        `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${respLng},${respLat};${destLng},${destLat}?${params}`
+        `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${respLng},${respLat};${destLng},${destLat}?${params}`,
       );
 
       if (!response.ok) return;
@@ -301,7 +297,7 @@ export const RescueTracker = () => {
                       status: payload.responder.status,
                     },
                   }
-                : prev
+                : prev,
             );
           }
         }
@@ -350,7 +346,7 @@ export const RescueTracker = () => {
 
   // Derived values
   const isTransporting = ["transporting", "hospital_transfer"].includes(
-    rescueData?.incident?.status
+    rescueData?.incident?.status,
   );
 
   // Feature 3: When "En Route to Hospital", the patient is WITH the responder.

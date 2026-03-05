@@ -5,7 +5,6 @@ import { Footer } from "../components/Footer";
 import PatientDash from "../components/patients/Dashboard";
 import EmergencyFab from "../components/patients/EmergencyFab";
 
-
 export const PatientDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
 
