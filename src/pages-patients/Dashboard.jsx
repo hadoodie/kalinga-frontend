@@ -17,7 +17,7 @@ export const PatientDashboard = () => {
       {/* Main content wrapper */}
       <div
         className={`flex flex-col flex-1 transition-all duration-300 ${
-          collapsed ? "ml-16" : "ml-64"
+          collapsed ? "ml-0 lg:ml-20" : "ml-0 lg:ml-64"
         }`}
       >
         {/* Navbar*/}

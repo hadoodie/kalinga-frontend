@@ -2695,6 +2695,8 @@ export default function MessagesContact() {
     const openChat = location.state?.openIncidentChat;
     if (!openChat?.incidentId) return;
 
+    setCategoryFilter("All");
+
     // Prevent duplicate triggers for the same incident
     const triggerKey = `incident:${openChat.incidentId}`;
     if (lastEmergencyTriggerRef.current === triggerKey) return;
@@ -2733,9 +2735,7 @@ export default function MessagesContact() {
     // Clear state so it doesn't re-trigger
     navigate(location.pathname, {
       replace: true,
-      state: location.state?.filterCategory
-        ? { filterCategory: location.state.filterCategory }
-        : null,
+      state: null,
     });
   }, [location, navigate, conversationsWithPresence]);
 
@@ -2963,7 +2963,7 @@ export default function MessagesContact() {
                 </div>
 
                 <div className="shrink-0 flex gap-2 mb-3 flex-wrap">
-                  {["All", "Emergency", "Medical", "Billing"].map(
+                  {["All", "Medical", "Billing"].map(
                     (category) => {
                       const count =
                         category === "All"

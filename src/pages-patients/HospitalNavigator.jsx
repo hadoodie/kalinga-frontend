@@ -22,7 +22,7 @@ export const PatientHospitalNavigator = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-wide text-emerald-600">
-                  Patient Navigation
+                  collapsed ? "ml-0 lg:ml-20" : "ml-0 lg:ml-64"
                 </p>
                 <h1 className="text-2xl font-semibold text-slate-900">
                   Hospital Navigator

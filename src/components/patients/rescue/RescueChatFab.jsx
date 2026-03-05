@@ -8,40 +8,63 @@ import { useState, useCallback } from "react";
 import { MessageCircle, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import responseModeService from "../../../services/responseMode";
+import api from "../../../services/api";
 
 export default function RescueChatFab({ incidentId }) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
+  const resolveIncidentId = useCallback(async () => {
+    if (incidentId) return incidentId;
+
+    try {
+      const res = await api.get("/rescue/active");
+      if (res.data?.has_active_rescue) {
+        return res.data?.data?.incident?.id ?? null;
+      }
+    } catch {
+      // no-op, handled by fallback in openChat
+    }
+
+    return null;
+  }, [incidentId]);
+
   const openChat = useCallback(async () => {
-    if (!incidentId || loading) return;
+    if (loading) return;
     setLoading(true);
 
     try {
-      // Fetch the specific conversation for this incident
-      const conversation = await responseModeService.getConversation(incidentId);
+      const resolvedIncidentId = await resolveIncidentId();
+      if (!resolvedIncidentId) {
+        return;
+      }
+
+      let conversationId = null;
+      try {
+        const conversation = await responseModeService.getConversation(
+          resolvedIncidentId
+        );
+        conversationId = conversation?.id ?? conversation?.conversationId ?? null;
+      } catch (error) {
+        console.error("Failed to fetch conversation for incident:", error);
+      }
 
       // Navigate to messages with the incident context so the Messages
       // component can auto-select the correct conversation thread.
       navigate("/patient/messages", {
         state: {
-          filterCategory: "Emergency",
           openIncidentChat: {
-            incidentId,
-            conversationId: conversation?.id ?? conversation?.conversationId ?? null,
+            incidentId: resolvedIncidentId,
+            conversationId,
           },
         },
       });
     } catch (err) {
       console.error("Failed to open rescue chat:", err);
-      // Fallback — open messages with emergency filter only
-      navigate("/patient/messages", {
-        state: { filterCategory: "Emergency" },
-      });
     } finally {
       setLoading(false);
     }
-  }, [incidentId, loading, navigate]);
+  }, [loading, navigate, resolveIncidentId]);
 
   return (
     <button

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { AlertCircle } from "lucide-react";
 import { EmergencyPopup } from "../emergency-sos/PopUp";
 import { useToast } from "@/hooks/use-toast";
@@ -25,35 +25,69 @@ export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) 
 
   // --- Active-rescue detection (auto-switch to Chat FAB) ---
   const [detectedIncidentId, setDetectedIncidentId] = useState(null);
-  const checkedRef = useRef(false);
+  const [pendingEmergencyAt, setPendingEmergencyAt] = useState(() => {
+    if (typeof window === "undefined") return null;
+    const raw = window.sessionStorage.getItem("pendingEmergencyAt");
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+  });
+
+  const persistPendingEmergency = useCallback((timestamp) => {
+    setPendingEmergencyAt(timestamp);
+    if (typeof window !== "undefined") {
+      if (timestamp) {
+        window.sessionStorage.setItem("pendingEmergencyAt", String(timestamp));
+      } else {
+        window.sessionStorage.removeItem("pendingEmergencyAt");
+      }
+    }
+  }, []);
+
+  const syncActiveIncident = useCallback(async () => {
+    if (propIncidentId) {
+      setDetectedIncidentId(propIncidentId);
+      persistPendingEmergency(null);
+      return;
+    }
+
+    try {
+      const res = await api.get("/rescue/active");
+      if (res.data?.has_active_rescue) {
+        setDetectedIncidentId(res.data?.data?.incident?.id ?? null);
+        persistPendingEmergency(null);
+      } else {
+        setDetectedIncidentId(null);
+      }
+    } catch {
+      // Silently ignore — keep existing UI state
+    }
+  }, [propIncidentId, persistPendingEmergency]);
 
   useEffect(() => {
-    // If the parent already told us, skip the API call
-    if (propIncidentId) return;
-    // Only check once per mount
-    if (checkedRef.current) return;
-    checkedRef.current = true;
+    syncActiveIncident();
 
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await api.get("/rescue/active");
-        if (!cancelled && res.data?.has_active_rescue) {
-          setDetectedIncidentId(
-            res.data.data?.incident?.id ?? null
-          );
-        }
-      } catch {
-        // Silently ignore — fall back to default SOS button
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [propIncidentId]);
+    const intervalId = window.setInterval(syncActiveIncident, 10000);
+    const onFocus = () => syncActiveIncident();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [syncActiveIncident]);
 
   const activeIncidentId = propIncidentId ?? detectedIncidentId;
+  const hasPendingEmergency = useMemo(() => {
+    if (!pendingEmergencyAt) return false;
+    // Show Chat for up to 10 minutes after reporting while incident assignment syncs.
+    return Date.now() - pendingEmergencyAt < 10 * 60 * 1000;
+  }, [pendingEmergencyAt]);
 
-  // If there is an active rescue, render the Chat FAB instead
-  if (activeIncidentId) {
+  // Lifecycle rule:
+  // State 1 (no active/pending incident): SOS button
+  // State 2 (active incident reported): Chat button
+  if (activeIncidentId || hasPendingEmergency) {
     return <RescueChatFab incidentId={activeIncidentId} />;
   }
 
@@ -86,6 +120,8 @@ export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) 
   const handleEmergencySend = async () => {
     setShowPopup(false);
     const triggeredAt = new Date().toISOString();
+    persistPendingEmergency(Date.now());
+
     let locationPayload = { location: null, error: null };
     try {
       locationPayload = await resolveLocation();
@@ -98,7 +134,6 @@ export default function EmergencyFab({ activeIncidentId: propIncidentId } = {}) 
     }
     navigate("/patient/messages", {
       state: {
-        filterCategory: "Emergency",
         startEmergencyChat: {
           triggeredAt,
           ...(locationPayload.location ? { location: locationPayload.location } : {}),
