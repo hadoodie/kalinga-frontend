@@ -57,10 +57,11 @@ class ResourceController extends Controller
         // Search
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'ILIKE', "%{$search}%")
-                  ->orWhere('sku', 'ILIKE', "%{$search}%")
-                  ->orWhere('barcode', 'ILIKE', "%{$search}%");
+            $lowerSearch = strtolower($search);
+            $query->where(function($q) use ($lowerSearch) {
+                $q->whereRaw('LOWER(name) LIKE ?', ["%{$lowerSearch}%"])
+                  ->orWhereRaw('LOWER(sku) LIKE ?', ["%{$lowerSearch}%"])
+                  ->orWhereRaw('LOWER(barcode) LIKE ?', ["%{$lowerSearch}%"]);
             });
         }
 
