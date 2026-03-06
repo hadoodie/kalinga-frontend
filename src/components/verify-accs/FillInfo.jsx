@@ -132,26 +132,12 @@ export default function FillInfo() {
       // Add ID information
       submitData.append("id_type", selectedID);
       
-      // --- TRACKING THE FILES ---
-      console.log("1. Checking files in React state:");
-      console.log("Front File:", frontFile);
-      console.log("Back File:", backFile);
-
       // Append the front of the ID image
       submitData.append("id_image", frontFile); 
       
       if (backFile) {
         // Append the back of the ID image
         submitData.append("back_image", backFile); 
-        console.log("2. Successfully appended back_image to FormData!");
-      } else {
-        console.warn("2. WARNING: backFile is missing in FillInfo!");
-      }
-
-      // Check everything inside the payload before sending
-      console.log("3. Final Payload Data:");
-      for (let pair of submitData.entries()) {
-        console.log(pair[0], pair[1]);
       }
 
       // Submit to backend

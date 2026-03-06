@@ -1,11 +1,15 @@
 import sys
+import os
 import cv2
 import pytesseract
 import json
 import re
 import numpy as np
 
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+# Check for custom Tesseract path via Environment Variable (Cross-platform safe)
+tesseract_cmd = os.getenv("TESSERACT_CMD")
+if tesseract_cmd:
+    pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
 
 if len(sys.argv) < 2:
     print(json.dumps({"error": "No image path provided"}))
@@ -27,7 +31,7 @@ try:
     
     # Increase contrast to make text stand out against the blue background
     alpha = 1.5 # Contrast
-    beta = -20   # Brightness (Darken slightly to make text heavier)
+    beta = -20  # Brightness (Darken slightly to make text heavier)
     adjusted = cv2.convertScaleAbs(gray, alpha=alpha, beta=beta)
     
     # 3. Extract Text (PSM 6 is best for uniform blocks like IDs)

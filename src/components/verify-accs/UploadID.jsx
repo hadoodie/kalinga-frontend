@@ -18,8 +18,8 @@ const RGB_MAX = 255;
 const RGB_MIN = 0;
 
 // Thresholding: Forces high contrast for better OCR reading
-const WHITE_THRESHOLD = 180; // Pixels brighter than this become pure white
-const BLACK_THRESHOLD = 100; // Pixels darker than this become pure black
+const WHITE_THRESHOLD = 180; 
+const BLACK_THRESHOLD = 100; 
 
 // File Upload Constraints
 const MAX_FILE_SIZE_MB = 10;
@@ -55,6 +55,18 @@ export default function UploadID() {
   const [scanStatus, setScanStatus] = useState("");
   const [extractedText, setExtractedText] = useState("");
 
+  useEffect(() => {
+    return () => {
+      if (frontPreview) URL.revokeObjectURL(frontPreview);
+    };
+  }, [frontPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (backPreview) URL.revokeObjectURL(backPreview);
+    };
+  }, [backPreview]);
+
   // Handle file selection 
   const handleFileChange = (e, type) => {
     const uploadedFile = e.target.files[0];
@@ -67,7 +79,7 @@ export default function UploadID() {
         return;
       }
 
-      // 2. Validate File Size (Must be under 10MB to match backend)
+      // 2. Validate File Size (Enforce max size to prevent crashes)
       if (uploadedFile.size > MAX_FILE_SIZE_BYTES) {
         alert(`File is too large. Please upload an image smaller than ${MAX_FILE_SIZE_MB}MB.`);
         e.target.value = ""; // Clear the input
@@ -100,10 +112,19 @@ export default function UploadID() {
 
   // ENHANCED IMAGE PRE-PROCESSING 
   const preprocessImage = (imageFile) => {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const img = new Image();
-      img.src = URL.createObjectURL(imageFile);
+      const objectUrl = URL.createObjectURL(imageFile);
+      
+      // ERROR HANDLER: Prevents the infinite scanner hang
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl); // Clean up memory
+        reject(new Error("Failed to load or decode the image for processing."));
+      };
+
       img.onload = () => {
+        URL.revokeObjectURL(objectUrl); // Clean up memory immediately once loaded
+
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         
@@ -146,25 +167,27 @@ export default function UploadID() {
         ctx.putImageData(imageData, 0, 0);
         resolve(canvas.toDataURL('image/jpeg', 0.95));
       };
+
+      img.src = objectUrl; // Trigger the load AFTER defining handlers
     });
   };
 
-  const cleanName = (text) => {
-    if (!text) return "";
-    const cleaned = text
-      .replace(/\|/g, 'I')
-      .replace(/\[/g, 'L')
-      .replace(/1/g, 'I')
-      .replace(/0/g, 'O')
-      .replace(/LT\b/g, '') 
-      .replace(/\bPHL\b/g, '') 
-      .replace(/s-/g, '') 
-      .replace(/[0-9]/g, ''); 
+  //const cleanName = (text) => {
+    //if (!text) return "";
+    //const cleaned = text
+      //.replace(/\|/g, 'I')
+      //.replace(/\[/g, 'L')
+      //.replace(/1/g, 'I')
+      //.replace(/0/g, 'O')
+      //.replace(/LT\b/g, '') 
+      //.replace(/\bPHL\b/g, '') 
+      //.replace(/s-/g, '') 
+      //.replace(/[0-9]/g, ''); 
       
-    const strictName = cleaned.replace(/[^A-Z\s.]/g, '').trim();
-    if (strictName.length < 2) return "";
-    return strictName;
-  };
+    //const strictName = cleaned.replace(/[^A-Z\s.]/g, '').trim();
+    //if (strictName.length < 2) return "";
+    //return strictName;
+  //};
 
   const handleScanAndNext = async (e) => {
     e.preventDefault();
@@ -590,7 +613,7 @@ export default function UploadID() {
           </div>
         </div>
 
-        {/* Debug: Show extracted text */}
+        {/* Show extracted text */}
         {extractedText && (
           <details className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-300 text-xs">
             <summary className="font-bold text-yellow-800 cursor-pointer mb-2">

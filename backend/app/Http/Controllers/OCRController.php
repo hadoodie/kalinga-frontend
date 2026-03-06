@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
+use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class OCRController extends Controller
@@ -31,27 +32,32 @@ class OCRController extends Controller
 
             $file = $fullPath;
 
-            $possiblePaths = [
-                base_path('.venv/Scripts/python.exe'),
-                base_path('venv/Scripts/python.exe'),
-                'python', 
-                'py' 
-            ];
+            // 1. Use Symfony's ExecutableFinder to safely locate python in the system PATH
+            $finder = new ExecutableFinder();
+            $pythonPath = $finder->find('python3') ?? $finder->find('python') ?? $finder->find('py');
 
-            $pythonPath = null;
-            foreach ($possiblePaths as $p) {
-                if ((str_contains($p, '/') || str_contains($p, '\\')) && file_exists($p)) {
-                    $pythonPath = $p;
-                    break;
-                }
-                if (!str_contains($p, '/') && !str_contains($p, '\\')) {
-                     $pythonPath = $p; 
-                     break;
+            // 2. Fallback for local virtual environments (Windows & Linux supported)
+            if (!$pythonPath) {
+                $localPaths = [
+                    base_path('.venv/Scripts/python.exe'), // Windows
+                    base_path('.venv/bin/python'),         // Linux/Mac
+                    base_path('venv/Scripts/python.exe'),  // Windows
+                    base_path('venv/bin/python'),          // Linux/Mac
+                ];
+                
+                foreach ($localPaths as $p) {
+                    if (file_exists($p)) {
+                        $pythonPath = $p;
+                        break;
+                    }
                 }
             }
 
             if (!$pythonPath) {
-                return response()->json(['error' => 'Config Error', 'details' => 'Python not found'], 500);
+                return response()->json([
+                    'error' => 'Config Error', 
+                    'details' => 'Python interpreter not found. Please ensure Python is installed and accessible.'
+                ], 500);
             }
 
             $scriptPath = base_path('python_scripts/ocr_parser.py');

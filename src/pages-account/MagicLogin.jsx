@@ -18,9 +18,12 @@ export const MagicLogin = () => {
       const role = searchParams.get("role");
 
       if (!token) {
-        navigate("/login");
+        navigate("/login", { replace: true });
         return;
       }
+
+      // Immediately strip the token from the browser's address bar to prevent visual leaks
+      window.history.replaceState({}, document.title, window.location.pathname);
 
       try {
         // 1. Immediately save the token
@@ -38,17 +41,17 @@ export const MagicLogin = () => {
         // 5. Sync session globally using your AuthContext helper
         setSession(userData, token);
 
-        // 6. Redirect based on role
+        // 6. Redirect based on role using { replace: true } to overwrite browser history
         if (role === "admin") {
-          navigate("/admin/dashboard");
+          navigate("/admin/dashboard", { replace: true });
         } else if (role === "patient") {
-          navigate("/patient/dashboard");
+          navigate("/patient/dashboard", { replace: true });
         } else if (role === "responder") {
-          navigate("/responder/dashboard");
+          navigate("/responder/dashboard", { replace: true });
         } else if (role === "logistics") {
-          navigate("/logistics/dashboard");
+          navigate("/logistics/dashboard", { replace: true });
         } else {
-          navigate("/");
+          navigate("/", { replace: true });
         }
 
       } catch (error) {
@@ -64,7 +67,7 @@ export const MagicLogin = () => {
           description: "This login link has expired or is invalid. Please log in manually.",
         });
         
-        navigate("/login");
+        navigate("/login", { replace: true });
       }
     };
 

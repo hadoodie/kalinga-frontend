@@ -275,7 +275,7 @@ Route::middleware(['throttle:60,1'])->group(function () {
 // Secure Image Serving (Requires Valid Signature)
 Route::get('/secure-document', [\App\Http\Controllers\VerificationController::class, 'showDocument'])
     ->middleware('signed')
-    ->name('secure.document');;
+    ->name('secure.document');
 
 // Protected routes (require authentication + rate limiting)
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {

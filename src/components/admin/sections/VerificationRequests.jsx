@@ -1,14 +1,7 @@
 import { useState, useEffect } from "react";
 import { Check, X, Eye, Loader2, FileCheck, Mail } from "lucide-react";
 import api from "@/services/api";
-import { resolveApiBaseUrl } from "@/config/runtime";
 import { useToast } from "@/hooks/use-toast";
-
-const getImageUrl = (path) => {
-  if (!path) return null;
-  const baseURL = resolveApiBaseUrl();
-  return `${baseURL}/storage/${path}`;
-};
 
 export const VerificationRequests = () => {
   const [requests, setRequests] = useState([]);
