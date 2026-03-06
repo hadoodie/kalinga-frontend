@@ -30,13 +30,21 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('appointments', function (Blueprint $table) {
-            $table->dropColumn([
-                'hospital', 
-                'appointment_date', 
-                'status', 
-                'provider_name', 
-                'provider_specialty'
-            ]);
+            if (Schema::hasColumn('appointments', 'hospital')) {
+                $table->dropColumn('hospital');
+            }
+            if (Schema::hasColumn('appointments', 'appointment_date')) {
+                $table->dropColumn('appointment_date');
+            }
+            if (Schema::hasColumn('appointments', 'status')) {
+                $table->dropColumn('status');
+            }
+            if (Schema::hasColumn('appointments', 'provider_name')) {
+                $table->dropColumn('provider_name');
+            }
+            if (Schema::hasColumn('appointments', 'provider_specialty')) {
+                $table->dropColumn('provider_specialty');
+            }
         });
     }
 };
