@@ -22,14 +22,23 @@ import { useActiveRescue } from "../../hooks/useActiveRescue";
 // Ensure this path is correct based on your project structure
 import { EmergencyPopup } from "/src/components/emergency-sos/PopUp";
 
-export default function PatientSidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+export default function PatientSidebar({
+  collapsed: controlledCollapsed,
+  setCollapsed: setControlledCollapsed,
+}) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showEmergencyPopup, setShowEmergencyPopup] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
   const { toast } = useToast();
+
+  const collapsed =
+    typeof controlledCollapsed === "boolean"
+      ? controlledCollapsed
+      : internalCollapsed;
+  const setCollapsed = setControlledCollapsed ?? setInternalCollapsed;
 
   // Check for active rescue to show tracking link
   const { hasActiveRescue } = useActiveRescue({
@@ -42,7 +51,7 @@ export default function PatientSidebar() {
     if (stored !== null) {
       setCollapsed(JSON.parse(stored));
     }
-  }, []);
+  }, [setCollapsed]);
 
   useEffect(() => {
     localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
@@ -120,10 +129,10 @@ export default function PatientSidebar() {
         title: "Logged Out",
         description: "You have been successfully logged out.",
       });
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
-      navigate("/login");
+      navigate("/");
     } finally {
       setMobileOpen(false);
     }
@@ -151,7 +160,7 @@ export default function PatientSidebar() {
               error?.message ||
               "Unable to access location automatically. Please share it manually if prompted.",
           }),
-        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
       );
     });
 
@@ -274,8 +283,8 @@ export default function PatientSidebar() {
                     item.highlight
                       ? "bg-orange-500/30 border border-orange-400/50 animate-pulse hover:bg-orange-500/40"
                       : isActive(item.path)
-                      ? "bg-white/20 font-bold"
-                      : "hover:bg-white/10"
+                        ? "bg-white/20 font-bold"
+                        : "hover:bg-white/10"
                   }
                 `}
                 onClick={() => handleNavigation(item)}
@@ -389,8 +398,8 @@ export default function PatientSidebar() {
                     item.highlight
                       ? "bg-orange-500/30 border border-orange-400/50 font-semibold"
                       : isActive(item.path)
-                      ? "bg-white/20 font-bold"
-                      : "hover:bg-white/10"
+                        ? "bg-white/20 font-bold"
+                        : "hover:bg-white/10"
                   }`}
                   onClick={() => handleNavigation(item)}
                 >

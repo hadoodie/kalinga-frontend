@@ -41,7 +41,7 @@ api.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
+  },
 );
 
 // Helper to clear auth state and notify listeners when session expires
@@ -90,18 +90,15 @@ api.interceptors.response.use(
       forceLogout();
 
       if (isAuthEndpoint) {
-        // Redirect back to login so the user can authenticate again
-        if (
-          typeof window !== "undefined" &&
-          !window.location.pathname.includes("/login")
-        ) {
-          window.location.href = "/login";
+        // Route to home on forced logout to keep sign-out behavior consistent
+        if (typeof window !== "undefined" && window.location.pathname !== "/") {
+          window.location.href = "/";
         }
       }
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

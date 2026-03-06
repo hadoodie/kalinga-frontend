@@ -41,7 +41,7 @@ export default function Settings() {
         location: "Quezon City, Philippines",
         lastActive: "Yesterday",
       },
-    ])
+    ]),
   );
 
   // Contacts
@@ -59,7 +59,7 @@ export default function Settings() {
         relation: "Barangay Official",
         phone: "0918-222-3333",
       },
-    ])
+    ]),
   );
   const [editingContact, setEditingContact] = useState(null);
   const [newContact, setNewContact] = useState({
@@ -75,10 +75,10 @@ export default function Settings() {
       sms: false,
       email: false,
       urgentOnly: false,
-    })
+    }),
   );
   const [location, setLocation] = useState(
-    loadData("location", { address: "", gps: false, evacuation: false })
+    loadData("location", { address: "", gps: false, evacuation: false }),
   );
   const [household, setHousehold] = useState(
     loadData("household", {
@@ -88,14 +88,14 @@ export default function Settings() {
       pwd: false,
       medical: "",
       pets: "",
-    })
+    }),
   );
   const [sharing, setSharing] = useState(
     loadData("sharing", {
       responders: false,
       community: false,
       retention: "Keep for 30 days",
-    })
+    }),
   );
 
   // Persist settings
@@ -114,7 +114,7 @@ export default function Settings() {
         description: "You have been logged out from all devices.",
       });
       setDevices([]);
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
       toast({
@@ -138,7 +138,7 @@ export default function Settings() {
 
   const handleEditContact = (id, field, value) => {
     setContacts(
-      contacts.map((c) => (c.id === id ? { ...c, [field]: value } : c))
+      contacts.map((c) => (c.id === id ? { ...c, [field]: value } : c)),
     );
   };
 
@@ -312,7 +312,7 @@ export default function Settings() {
                         />{" "}
                         {type}
                       </label>
-                    )
+                    ),
                   )}
                 </div>
               </div>

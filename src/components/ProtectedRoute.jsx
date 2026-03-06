@@ -41,8 +41,8 @@ export const ProtectedRoute = ({
   }
 
   if (!isAuthenticated) {
-    // Redirect to login but save the attempted location
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    // Send signed-out users to home instead of login
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   // Check if user has required role

@@ -75,11 +75,11 @@ export default function LogisticSidebar() {
         title: "Logged Out",
         description: "You have been successfully logged out.",
       });
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
       // Navigate anyway
-      navigate("/login");
+      navigate("/");
     } finally {
       setMobileOpen(false);
     }

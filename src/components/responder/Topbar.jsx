@@ -33,7 +33,7 @@ export default function ResponderTopbar({
   const activeAssignment = Array.isArray(incidents)
     ? incidents.find((inc) => {
         const isAssigned = inc.assignments?.some(
-          (a) => (a.responder_id || a.responder?.id) === user?.id
+          (a) => (a.responder_id || a.responder?.id) === user?.id,
         );
         const isActive = !["resolved", "cancelled"].includes(inc.status);
         return isAssigned && isActive;
@@ -42,12 +42,12 @@ export default function ResponderTopbar({
 
   const { address: activeAddress } = useReverseGeocode(
     activeAssignment?.latitude,
-    activeAssignment?.longitude
+    activeAssignment?.longitude,
   );
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate("/");
   };
 
   useEffect(() => {

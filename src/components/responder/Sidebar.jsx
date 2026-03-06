@@ -35,7 +35,7 @@ export default function ResponderSidebar() {
 
   const activeAssignment = incidents.find((inc) => {
     const isAssigned = inc.assignments?.some(
-      (a) => (a.responder_id || a.responder?.id) === user?.id
+      (a) => (a.responder_id || a.responder?.id) === user?.id,
     );
     const isActive = !["resolved", "cancelled"].includes(inc.status);
     return isAssigned && isActive;
@@ -43,7 +43,7 @@ export default function ResponderSidebar() {
 
   const { address: activeAddress } = useReverseGeocode(
     activeAssignment?.latitude,
-    activeAssignment?.longitude
+    activeAssignment?.longitude,
   );
 
   useEffect(() => {
@@ -131,10 +131,10 @@ export default function ResponderSidebar() {
         title: "Logged Out",
         description: "You have been successfully logged out.",
       });
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
-      navigate("/login");
+      navigate("/");
     } finally {
       setMobileOpen(false);
     }
@@ -220,8 +220,8 @@ export default function ResponderSidebar() {
                 ? "bg-red-800 text-white font-bold text-base py-3 my-2 border-t border-b border-red-700"
                 : "bg-red-700 text-white font-bold text-base py-3 my-2 border-t border-b border-red-600"
               : active
-              ? "bg-white/20 font-bold"
-              : "hover:bg-white/10";
+                ? "bg-white/20 font-bold"
+                : "hover:bg-white/10";
 
             return (
               <li key={idx} className="group relative">
@@ -385,8 +385,8 @@ export default function ResponderSidebar() {
                   ? "bg-red-800 text-white font-bold text-base py-3 my-2 border-t border-b border-red-700"
                   : "bg-red-700 text-white font-bold text-base py-3 my-2 border-t border-b border-red-600"
                 : active
-                ? "bg-white/20 font-bold"
-                : "hover:bg-white/10";
+                  ? "bg-white/20 font-bold"
+                  : "hover:bg-white/10";
 
               return (
                 <div

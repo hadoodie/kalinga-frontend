@@ -251,11 +251,11 @@ export const AdminPortal = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Logout failed:", error);
       // Force navigation even if logout API fails
-      navigate("/login");
+      navigate("/");
     }
   };
 
