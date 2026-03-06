@@ -1,11 +1,19 @@
 import { useState, useRef, useEffect } from "react";
-import { HashLink } from "react-router-hash-link";
-import { Search, Bell, UserCircle, AlertCircle, MapPin } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import {
+  Search,
+  Bell,
+  UserCircle,
+  AlertCircle,
+  MapPin,
+  FlaskConical,
+  X,
+} from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/kalinga-logo.png";
 import { useAuth } from "../../context/AuthContext";
 import { useIncidents } from "../../context/IncidentContext";
 import { useReverseGeocode } from "../../hooks/useReverseGeocode";
+import { useResponderDevMenu } from "../../context/ResponderDevMenuContext";
 
 export default function ResponderTopbar({
   notifications = [
@@ -25,10 +33,24 @@ export default function ResponderTopbar({
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const profileRef = useRef(null);
   const notifRef = useRef(null);
+  const logoTapTimesRef = useRef([]);
+  const logoNavigateTimeoutRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const userName = user?.name || "Responder";
   const userRole = user?.role ? capitalizeFirstLetter(user.role) : "Responder";
   const userPic = user?.profilePicture || "https://i.pravatar.cc/100";
+  const isResponseModeRoute = location.pathname.startsWith(
+    "/responder/response-mode/",
+  );
+  const {
+    showDevMenu,
+    setShowDevMenu,
+    showResponseModeTestPanel,
+    setShowResponseModeTestPanel,
+    enableResponderSimulation,
+    setEnableResponderSimulation,
+  } = useResponderDevMenu();
 
   const activeAssignment = Array.isArray(incidents)
     ? incidents.find((inc) => {
@@ -65,14 +87,49 @@ export default function ResponderTopbar({
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (logoNavigateTimeoutRef.current) {
+        clearTimeout(logoNavigateTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleLogoTap = (event) => {
+    event.preventDefault();
+    const now = Date.now();
+    const recent = logoTapTimesRef.current.filter((time) => now - time <= 2000);
+    recent.push(now);
+    logoTapTimesRef.current = recent;
+
+    if (recent.length >= 5) {
+      if (logoNavigateTimeoutRef.current) {
+        clearTimeout(logoNavigateTimeoutRef.current);
+      }
+      logoTapTimesRef.current = [];
+      setShowDevMenu((prev) => !prev);
+      return;
+    }
+
+    if (logoNavigateTimeoutRef.current) {
+      clearTimeout(logoNavigateTimeoutRef.current);
+    }
+
+    logoNavigateTimeoutRef.current = setTimeout(() => {
+      navigate("/responder/dashboard");
+      logoTapTimesRef.current = [];
+    }, 320);
+  };
+
   return (
     <div className="flex flex-col bg-white p-3 shadow-md relative">
       {/* === Top Row === */}
       <div className="flex flex-wrap justify-between items-center gap-3">
         {/* Logo */}
-        <HashLink
-          smooth
-          to="/responder/dashboard"
+        <button
+          type="button"
+          onClick={handleLogoTap}
+          aria-label="Kalinga logo"
           className="flex items-center space-x-2 text-xl font-bold text-primary"
         >
           <img src={logo} alt="Kalinga Logo" className="h-10 w-auto" />
@@ -81,7 +138,7 @@ export default function ResponderTopbar({
               KALINGA
             </span>
           </span>
-        </HashLink>
+        </button>
 
         {/* === Right Side === */}
         <div className="flex items-center gap-3 sm:gap-5 w-full sm:w-auto justify-between sm:justify-end">
@@ -261,6 +318,80 @@ export default function ResponderTopbar({
             </div>
             <span className="text-xs font-semibold text-red-700">Open</span>
           </button>
+        </div>
+      )}
+
+      {showDevMenu && (
+        <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-black/45 p-4">
+          <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  Hidden Tools
+                </p>
+                <h2 className="text-lg font-black text-gray-900">
+                  Responder Dev Menu
+                </h2>
+                <p className="mt-1 text-sm text-gray-600">
+                  Test-only controls are intentionally hidden from the mission
+                  console.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDevMenu(false)}
+                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                aria-label="Close responder dev menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setShowResponseModeTestPanel((previous) => !previous)
+                }
+                className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                  showResponseModeTestPanel
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span className="flex items-center gap-2 font-semibold">
+                  <FlaskConical className="h-4 w-4" />
+                  Test Panel (Response Mode)
+                </span>
+                <span className="text-xs font-bold uppercase tracking-wide">
+                  {showResponseModeTestPanel ? "On" : "Off"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setEnableResponderSimulation((previous) => !previous)
+                }
+                className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition ${
+                  enableResponderSimulation
+                    ? "border-blue-300 bg-blue-50 text-blue-900"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span className="font-semibold">Simulate responder</span>
+                <span className="text-xs font-bold uppercase tracking-wide">
+                  {enableResponderSimulation ? "On" : "Off"}
+                </span>
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+              {isResponseModeRoute
+                ? "You are in Response Mode. Toggle tools above to reveal the hidden Test screen and simulator controls."
+                : "Open a Response Mode incident to use Test and simulation tools."}
+            </div>
+          </div>
         </div>
       )}
     </div>

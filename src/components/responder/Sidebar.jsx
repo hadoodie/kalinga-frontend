@@ -23,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIncidents } from "../../context/IncidentContext";
 import { useReverseGeocode } from "../../hooks/useReverseGeocode";
 
-export default function ResponderSidebar() {
+export default function ResponderSidebar({ hideTopbar = false }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(false);
@@ -365,7 +365,9 @@ export default function ResponderSidebar() {
       </aside>
 
       {/* Mobile Hamburger + Dropdown */}
-      <div className="lg:hidden fixed top-4 right-4 z-50">
+      <div
+        className={`lg:hidden fixed top-4 right-4 z-50 ${hideTopbar ? "hidden" : ""}`}
+      >
         <button
           onClick={() => setMobileOpen((prev) => !prev)}
           className="p-2 rounded-md bg-green-900 text-white"

@@ -98,8 +98,8 @@ const getInstructionText = (step) => {
       return modifier === "left"
         ? "You have arrived, destination on left"
         : modifier === "right"
-        ? "You have arrived, destination on right"
-        : "You have arrived at your destination";
+          ? "You have arrived, destination on right"
+          : "You have arrived at your destination";
     case "turn":
       return `Turn ${modifier} onto ${roadName}`;
     case "new name":
@@ -209,6 +209,19 @@ export default function TurnByTurnNavigation({
   // Fetch route from OSRM
   const fetchRoute = useCallback(async () => {
     if (!currentPosition || !destination) return;
+    const [cLat, cLng] = currentPosition;
+    const [dLat, dLng] = destination;
+    if (
+      typeof cLat !== "number" ||
+      isNaN(cLat) ||
+      typeof cLng !== "number" ||
+      isNaN(cLng) ||
+      typeof dLat !== "number" ||
+      isNaN(dLat) ||
+      typeof dLng !== "number" ||
+      isNaN(dLng)
+    )
+      return;
 
     setLoading(true);
     setError(null);
@@ -222,7 +235,7 @@ export default function TurnByTurnNavigation({
       });
 
       const response = await fetch(
-        `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${currentPosition[1]},${currentPosition[0]};${destination[1]},${destination[0]}?${params}`
+        `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${currentPosition[1]},${currentPosition[0]};${destination[1]},${destination[0]}?${params}`,
       );
 
       if (!response.ok) {
@@ -289,7 +302,7 @@ export default function TurnByTurnNavigation({
         currentPosition[0],
         currentPosition[1],
         routeCoords[i][0],
-        routeCoords[i][1]
+        routeCoords[i][1],
       );
       if (dist < minDistance) {
         minDistance = dist;
@@ -322,7 +335,7 @@ export default function TurnByTurnNavigation({
           currentPosition[0],
           currentPosition[1],
           step.coordinates[0],
-          step.coordinates[1]
+          step.coordinates[1],
         );
         if (dist < minDistance) {
           minDistance = dist;
@@ -337,7 +350,7 @@ export default function TurnByTurnNavigation({
         currentPosition[0],
         currentPosition[1],
         steps[closestStepIndex].coordinates[0],
-        steps[closestStepIndex].coordinates[1]
+        steps[closestStepIndex].coordinates[1],
       );
       setDistanceToNextManeuver(distToManeuver);
 
@@ -383,7 +396,7 @@ export default function TurnByTurnNavigation({
         distanceToNextManeuver &&
         distanceToNextManeuver <= d &&
         distanceToNextManeuver > d - 20 &&
-        lastSpokenRef.current !== `${currentStepIndex}-${d}`
+        lastSpokenRef.current !== `${currentStepIndex}-${d}`,
     );
 
     if (shouldAnnounce && "speechSynthesis" in window) {
@@ -405,7 +418,7 @@ export default function TurnByTurnNavigation({
       window.speechSynthesis.speak(utterance);
 
       lastSpokenRef.current = `${currentStepIndex}-${announceDistances.find(
-        (d) => distanceToNextManeuver <= d
+        (d) => distanceToNextManeuver <= d,
       )}`;
     }
   }, [distanceToNextManeuver, currentStepIndex, steps, voiceEnabled, isActive]);
@@ -462,17 +475,28 @@ export default function TurnByTurnNavigation({
   return (
     <>
       {/* Top Instruction Card */}
-      <div className="fixed top-[72px] inset-x-4 z-[1000] pointer-events-auto">
+      <div className="fixed top-0 md:top-[72px] inset-x-4 z-[1200] pointer-events-auto">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
           <div
             className={`px-4 py-4 ${
               isRerouting
                 ? "bg-orange-500"
                 : currentStep?.maneuverType === "arrive"
-                ? "bg-green-600"
-                : "bg-blue-600"
+                  ? "bg-green-600"
+                  : "bg-blue-600"
             } text-white`}
           >
+            <div className="mb-3 flex items-start justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/25"
+                aria-label="Exit navigation"
+                title="Exit navigation"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
             {isRerouting ? (
               <div className="flex items-center gap-3">
                 <RotateCcw className="h-8 w-8 animate-spin" />
@@ -518,8 +542,8 @@ export default function TurnByTurnNavigation({
         </div>
       </div>
 
-      {/* Bottom Stats Card */}
-      <div className="fixed bottom-4 inset-x-4 z-[1000] pointer-events-auto">
+      {/* Bottom Stats Card — hidden on mobile since data is in the mobile bottom sheet */}
+      <div className="hidden md:block fixed bottom-4 inset-x-4 z-[1000] pointer-events-auto">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
           {/* Footer stats */}
           <div className="px-5 py-4 flex items-center justify-between">
@@ -612,7 +636,7 @@ export default function TurnByTurnNavigation({
               {steps.map((step, index) => {
                 const Icon = getManeuverIcon(
                   step.maneuverType,
-                  step.maneuverModifier
+                  step.maneuverModifier,
                 );
                 const isCurrent = index === currentStepIndex;
                 const isPast = index < currentStepIndex;
@@ -624,8 +648,8 @@ export default function TurnByTurnNavigation({
                       isCurrent
                         ? "bg-blue-50"
                         : isPast
-                        ? "bg-gray-50 opacity-60"
-                        : ""
+                          ? "bg-gray-50 opacity-60"
+                          : ""
                     }`}
                   >
                     <div
@@ -633,8 +657,8 @@ export default function TurnByTurnNavigation({
                         isCurrent
                           ? "bg-blue-600 text-white"
                           : isPast
-                          ? "bg-gray-300 text-gray-600"
-                          : "bg-gray-100 text-gray-700"
+                            ? "bg-gray-300 text-gray-600"
+                            : "bg-gray-100 text-gray-700"
                       }`}
                     >
                       <Icon className="h-5 w-5" />
