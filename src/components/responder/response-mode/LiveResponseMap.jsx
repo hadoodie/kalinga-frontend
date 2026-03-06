@@ -1571,7 +1571,7 @@ export default function LiveResponseMap({
 
   return (
     <section
-      className={`flex h-full min-h-[520px] rounded-2xl border border-gray-200 bg-white ${containerClassName} flex-col overflow-hidden shadow-sm`}
+      className={`flex h-full min-h-0 rounded-2xl border border-gray-200 bg-white ${containerClassName} flex-col overflow-hidden shadow-sm`}
     >
       {showHeader && (
         <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
@@ -1638,6 +1638,7 @@ export default function LiveResponseMap({
           zoom={13}
           minZoom={5}
           maxZoom={18}
+          zoomControl={false}
           className="h-full w-full"
         >
           <TileLayer
@@ -2172,7 +2173,7 @@ export default function LiveResponseMap({
           safeNavigationDestination && (
             <button
               onClick={() => setNavigationEnabled(true)}
-              className="absolute bottom-[55px] left-1/2 -translate-x-1/2 z-[1120] flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95"
+              className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-[1120] flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95"
             >
               <Navigation2 className="h-5 w-5" />
               Start Navigation
@@ -2180,7 +2181,7 @@ export default function LiveResponseMap({
           )}
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 text-xs text-gray-600">
+      <footer className="hidden md:flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 text-xs text-gray-600">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
           <span>

@@ -475,10 +475,10 @@ export default function TurnByTurnNavigation({
   return (
     <>
       {/* Top Instruction Card */}
-      <div className="fixed top-0 md:top-[72px] inset-x-4 z-[1200] pointer-events-auto">
+      <div className="fixed inset-x-4 top-[calc(env(safe-area-inset-top,0px)+40px)] md:top-[72px] z-[1200] pointer-events-auto">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
           <div
-            className={`px-4 py-4 ${
+            className={`px-4 py-4 md:px-5 md:py-5 ${
               isRerouting
                 ? "bg-orange-500"
                 : currentStep?.maneuverType === "arrive"
@@ -486,56 +486,97 @@ export default function TurnByTurnNavigation({
                   : "bg-blue-600"
             } text-white`}
           >
-            <div className="mb-3 flex items-start justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/25"
-                aria-label="Exit navigation"
-                title="Exit navigation"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
             {isRerouting ? (
-              <div className="flex items-center gap-3">
-                <RotateCcw className="h-8 w-8 animate-spin" />
-                <div>
-                  <p className="text-lg font-bold">Rerouting...</p>
-                  <p className="text-sm opacity-90">Finding new route</p>
+              <div className="flex items-start gap-3">
+                <div className="flex flex-1 items-center gap-3 pr-2">
+                  <RotateCcw className="h-8 w-8 animate-spin flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-lg font-bold leading-tight">
+                      Rerouting...
+                    </p>
+                    <p className="text-sm leading-5 opacity-90">
+                      Finding new route
+                    </p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-0.5 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/25"
+                  aria-label="Exit navigation"
+                  title="Exit navigation"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             ) : loading ? (
-              <div className="flex items-center gap-3">
-                <Navigation2 className="h-8 w-8 animate-pulse" />
-                <div>
-                  <p className="text-lg font-bold">Calculating route...</p>
-                  <p className="text-sm opacity-90">Please wait</p>
+              <div className="flex items-start gap-3">
+                <div className="flex flex-1 items-center gap-3 pr-2">
+                  <Navigation2 className="h-8 w-8 animate-pulse flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-lg font-bold leading-tight">
+                      Calculating route...
+                    </p>
+                    <p className="text-sm leading-5 opacity-90">Please wait</p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-0.5 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/25"
+                  aria-label="Exit navigation"
+                  title="Exit navigation"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             ) : error ? (
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="h-8 w-8" />
-                <div>
-                  <p className="text-lg font-bold">Route Error</p>
-                  <p className="text-sm opacity-90">{error}</p>
+              <div className="flex items-start gap-3">
+                <div className="flex flex-1 items-center gap-3 pr-2">
+                  <AlertTriangle className="h-8 w-8 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-lg font-bold leading-tight">
+                      Route Error
+                    </p>
+                    <p className="text-sm leading-5 opacity-90">{error}</p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-0.5 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/25"
+                  aria-label="Exit navigation"
+                  title="Exit navigation"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             ) : currentStep ? (
-              <div className="flex items-center gap-4">
-                <div className="flex-shrink-0 w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                  <CurrentIcon className="h-8 w-8" />
+              <div className="flex items-start gap-3">
+                <div className="flex flex-1 items-center gap-4 pr-2">
+                  <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-white/20">
+                    <CurrentIcon className="h-8 w-8" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-3xl font-black leading-[1.1] tracking-tight">
+                      {distanceToNextManeuver !== null
+                        ? formatDistance(distanceToNextManeuver)
+                        : "--"}
+                    </p>
+                    <p className="truncate text-lg font-medium leading-6 opacity-95">
+                      {currentStep.instruction}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-3xl font-black tracking-tight leading-none mb-1">
-                    {distanceToNextManeuver !== null
-                      ? formatDistance(distanceToNextManeuver)
-                      : "--"}
-                  </p>
-                  <p className="text-lg font-medium opacity-95 truncate leading-tight">
-                    {currentStep.instruction}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="mt-0.5 inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/25"
+                  aria-label="Exit navigation"
+                  title="Exit navigation"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
             ) : null}
           </div>
