@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { X, ScanLine, Loader2, Camera, Upload } from "lucide-react";
-import Tesseract from 'tesseract.js';
 
 // IMAGE PROCESSING CONSTANTS
 
@@ -172,23 +171,6 @@ export default function UploadID() {
     });
   };
 
-  //const cleanName = (text) => {
-    //if (!text) return "";
-    //const cleaned = text
-      //.replace(/\|/g, 'I')
-      //.replace(/\[/g, 'L')
-      //.replace(/1/g, 'I')
-      //.replace(/0/g, 'O')
-      //.replace(/LT\b/g, '') 
-      //.replace(/\bPHL\b/g, '') 
-      //.replace(/s-/g, '') 
-      //.replace(/[0-9]/g, ''); 
-      
-    //const strictName = cleaned.replace(/[^A-Z\s.]/g, '').trim();
-    //if (strictName.length < 2) return "";
-    //return strictName;
-  //};
-
   const handleScanAndNext = async (e) => {
     e.preventDefault();
     if (!frontFile || !backFile) {
@@ -203,6 +185,12 @@ export default function UploadID() {
 
     try {
       const cleanImageURL = await preprocessImage(frontFile);
+      
+      // Lazy Load Tesseract to dramatically reduce initial bundle size
+      setScanStatus("Loading OCR Engine...");
+      const tesseractModule = await import('tesseract.js');
+      const Tesseract = tesseractModule.default || tesseractModule;
+
       setScanStatus("Scanning ID...");
       
       const result = await Tesseract.recognize(

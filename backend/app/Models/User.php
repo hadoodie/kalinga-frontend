@@ -49,7 +49,6 @@ class User extends Authenticatable
         'admitted',  
         'emergencyContactName',  
         'emergencyContactPhone',  
-        'uuid', // Added from booted() method context
     ];
 
     /**

@@ -210,6 +210,11 @@ class VerificationController extends Controller
 
         $path = $request->query('path');
         
+        // SECURITY FIX: Prevent Directory Traversal
+        if (str_contains($path, '..') || !str_starts_with($path, 'verification-docs/')) {
+            abort(403, 'Invalid file path requested.');
+        }
+        
         // Fetch it from the private 'local' disk
         if (!Storage::disk('local')->exists($path)) {
             abort(404, 'Document not found.');

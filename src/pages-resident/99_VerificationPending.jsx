@@ -67,7 +67,6 @@ export default function VerificationPending() {
     if (statusInfo.actionRoute) {
       navigate(statusInfo.actionRoute);
     } else {
-      // SMOOTH UPDATE LOGIC:
       setLoading(true);
       try {
         // 1. Call the backend to get fresh user data
@@ -75,6 +74,9 @@ export default function VerificationPending() {
 
         // 2. Update the global Auth Context
         setUser(response.data);
+        
+        // --- FIX: Persist the updated user to localStorage so it doesn't revert on refresh ---
+        localStorage.setItem("user", JSON.stringify(response.data));
 
         // 3. Show feedback based on the new status
         if (response.data.verification_status === 'verified') {
