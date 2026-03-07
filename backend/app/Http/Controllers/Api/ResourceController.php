@@ -66,8 +66,13 @@ class ResourceController extends Controller
         }
 
         // Sort
+        $allowedSortColumns = ['name', 'category', 'status', 'expiry_date'];
         $sortBy = $request->get('sort_by', 'name');
-        $sortOrder = $request->get('sort_order', 'asc');
+        if (!in_array($sortBy, $allowedSortColumns, true)) {
+            $sortBy = 'name';
+        }
+        $sortOrder = strtolower($request->get('sort_order', 'asc'));
+        $sortOrder = $sortOrder === 'desc' ? 'desc' : 'asc';
         $query->orderBy($sortBy, $sortOrder);
 
         // Fetch Data: Check if pagination is disabled
