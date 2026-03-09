@@ -33,29 +33,35 @@ export const preloadCriticalData = async (options = {}) => {
   preloadPromise = (async () => {
     const startTime = performance.now();
 
-    try {
-      // Always preload hospitals (used by all roles)
-      hospitalService.preload();
-
-      // Preload based on user role
-      if (userRole === "responder" || userRole === "admin") {
-        // Responders and admins need incidents and blockades
-        preloadIncidents({ include_resolved: true });
-        blockadeService.preload();
+    const safePreload = (name, fn) => {
+      try {
+        fn();
+      } catch (err) {
+        console.warn(`[Preloader] ${name} preload failed:`, err.message);
       }
+    };
 
-      if (userRole === "patient" || userRole === "responder") {
-        // Users who chat need conversations preloaded
-        chatService.preloadConversations();
-      }
+    // Always preload hospitals (used by all roles)
+    safePreload("hospitals", () => hospitalService.preload());
 
-      const elapsed = performance.now() - startTime;
-      console.debug(
-        `[Preloader] Initiated cache preload in ${elapsed.toFixed(1)}ms`
+    // Preload based on user role
+    if (userRole === "responder" || userRole === "admin") {
+      // Responders and admins need incidents and blockades
+      safePreload("incidents", () =>
+        preloadIncidents({ include_resolved: true })
       );
-    } catch (error) {
-      console.warn("[Preloader] Some preloads failed:", error.message);
+      safePreload("blockades", () => blockadeService.preload());
     }
+
+    if (userRole === "patient" || userRole === "responder") {
+      // Users who chat need conversations preloaded
+      safePreload("conversations", () => chatService.preloadConversations());
+    }
+
+    const elapsed = performance.now() - startTime;
+    console.debug(
+      `[Preloader] Initiated cache preload in ${elapsed.toFixed(1)}ms`
+    );
   })();
 
   return preloadPromise;

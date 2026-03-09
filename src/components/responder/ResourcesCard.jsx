@@ -1,70 +1,74 @@
-import React from "react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import React, { useEffect, useState } from "react";
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import nodeApi from "../../services/nodeApi";
 import "../../styles/personnel-style.css";
 
-const COLORS = ["#1E2A78", "#C0392B", "#145A32", "#F1C40F"]; 
-
-// ✅ Data for all centers combined
-const allCentersData = [
-  { name: "Water", value: 5000 },
-  { name: "Food", value: 2500 },
-  { name: "Medicines", value: 800 },
-  { name: "Clothes", value: 500 },
-];
-
-// ✅ Data for individual centers
-const centers = [
-  {
-    name: "Center 1",
-    data: [
-      { name: "Water", value: 1600 },
-      { name: "Food", value: 800 },
-      { name: "Medicines", value: 260 },
-      { name: "Clothes", value: 150 },
-    ],
-  },
-  {
-    name: "Center 2",
-    data: [
-      { name: "Water", value: 1400 },
-      { name: "Food", value: 900 },
-      { name: "Medicines", value: 280 },
-      { name: "Clothes", value: 120 },
-    ],
-  },
-  {
-    name: "Center 3",
-    data: [
-      { name: "Water", value: 2000 },
-      { name: "Food", value: 800 },
-      { name: "Medicines", value: 260 },
-      { name: "Clothes", value: 230 },
-    ],
-  },
-];
+const COLORS = ["#1E2A78", "#C0392B", "#145A32", "#F1C40F"];
+const TYPE_LABELS = { water: "Water", food: "Food", medicine: "Medicines", clothes: "Clothes" };
 
 const ResourcesCard = () => {
+  const [allCentersData, setAllCentersData] = useState([]);
+  const [centers, setCenters] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    nodeApi
+      .get("/resources/summary")
+      .then(({ data }) => {
+        const rows = data.data || [];
+
+        // Aggregate totals per resource type across all centers
+        const totals = {};
+        rows.forEach(({ type, quantity }) => {
+          totals[type] = (totals[type] || 0) + Number(quantity);
+        });
+        setAllCentersData(
+          Object.entries(totals).map(([type, value]) => ({
+            name: TYPE_LABELS[type] || type,
+            value,
+          }))
+        );
+
+        // Group by center name for per-center pie charts
+        const byCenter = {};
+        rows.forEach(({ type, quantity, center }) => {
+          const name = center?.name || "Unknown Center";
+          if (!byCenter[name]) byCenter[name] = [];
+          byCenter[name].push({ name: TYPE_LABELS[type] || type, value: Number(quantity) });
+        });
+        setCenters(Object.entries(byCenter).map(([name, data]) => ({ name, data })));
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="card resources-card">
+        <h3 className="card-title">Resources</h3>
+        <p style={{ padding: "1rem" }}>Loading…</p>
+      </div>
+    );
+  }
+
   return (
     <div className="card resources-card">
       <h3 className="card-title">Resources</h3>
 
-      {/* ✅ Main Row (Legend + Donut + Centers 1-3) */}
       <div className="resources-main-row">
-
         {/* Legend */}
         <div className="resources-legend">
           <h4>All Centers</h4>
           <ul>
-            <li><span className="legend-box water"></span> Water - 5000 bottles</li>
-            <li><span className="legend-box food"></span> Food - 2500 packs</li>
-            <li><span className="legend-box medicine"></span> Medicines - 800 kits</li>
-            <li><span className="legend-box clothes"></span> Clothes - 500 packs</li>
+            {allCentersData.map((item, i) => (
+              <li key={i}>
+                <span
+                  className="legend-box"
+                  style={{ background: COLORS[i % COLORS.length] }}
+                ></span>
+                {item.name} — {item.value.toLocaleString()}
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -81,8 +85,8 @@ const ResourcesCard = () => {
                 paddingAngle={3}
                 dataKey="value"
               >
-                {allCentersData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index]} />
+                {allCentersData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip />
@@ -105,8 +109,8 @@ const ResourcesCard = () => {
                     dataKey="value"
                     labelLine={false}
                   >
-                    {center.data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index]} />
+                    {center.data.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip />
