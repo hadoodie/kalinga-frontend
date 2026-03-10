@@ -127,9 +127,9 @@ export default function UploadID() {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         
-        // Scale up for better OCR
-        const scaleFactor = TARGET_IMAGE_WIDTH / img.width;
-        const width = TARGET_IMAGE_WIDTH;
+        // Only downscale images wider than TARGET_IMAGE_WIDTH; preserve original size for smaller images to avoid wasting memory and CPU
+        const width = Math.min(img.width, TARGET_IMAGE_WIDTH);
+        const scaleFactor = width / img.width;
         const height = img.height * scaleFactor;
 
         canvas.width = width;
@@ -601,8 +601,8 @@ export default function UploadID() {
           </div>
         </div>
 
-        {/* Show extracted text */}
-        {extractedText && (
+        {/* Show extracted text - development only to avoid exposing sensitive personal data */}
+        {import.meta.env.DEV && extractedText && (
           <details className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-300 text-xs">
             <summary className="font-bold text-yellow-800 cursor-pointer mb-2">
               ⚠️ OCR Debug Info - Check Text

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 
 class OCRController extends Controller
 {
@@ -63,7 +64,18 @@ class OCRController extends Controller
             $scriptPath = base_path('python_scripts/ocr_parser.py');
             
             $process = new Process([$pythonPath, $scriptPath, $fullPath]);
-            $process->run();
+            $process->setTimeout(60);
+            $process->setIdleTimeout(30);
+
+            try {
+                $process->run();
+            } catch (ProcessTimedOutException $e) {
+                @unlink($fullPath);
+                return response()->json([
+                    'error' => 'Timeout Error',
+                    'details' => 'The OCR process timed out. Please try again with a smaller or clearer image.',
+                ], 504);
+            }
 
             if (!$process->isSuccessful()) {
                 @unlink($fullPath);

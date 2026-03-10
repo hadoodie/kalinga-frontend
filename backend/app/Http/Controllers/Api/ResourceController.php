@@ -13,11 +13,6 @@ class ResourceController extends Controller
     public function index(Request $request)
     {
         $query = Resource::with('hospital')
-            ->when($request->hospital_id, fn($q) => $q->where('hospital_id', $request->hospital_id))
-            ->when($request->category, fn($q) => $q->where('category', $request->category))
-            ->when($request->search, fn($q, $term) => $q->where('name', 'like', "%{$term}%"))
-            ->when($request->low_stock, fn($q) => $q->lowStock())
-            ->when($request->critical, fn($q) => $q->where('is_critical', true))
             ->when($request->expiring_soon, fn($q) => $q->expiringSoon(30));
 
         // Filter by facility (alternative parameter name)
