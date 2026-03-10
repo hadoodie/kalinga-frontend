@@ -4,11 +4,15 @@ import Footer from "../components/responder/Footer";
 import nodeApi from "../services/nodeApi";
 import "../styles/incident-logs.css";
 
-const SEVERITY_ICONS = {
-  critical: "🚨",
-  high: "⚠️",
-  medium: "🔶",
-  low: "🔵",
+const STATUS_ICONS = {
+  reported: "🔵",
+  acknowledged: "🔶",
+  en_route: "⚠️",
+  on_scene: "🚨",
+  transporting: "🚑",
+  hospital_transfer: "🏥",
+  resolved: "✅",
+  cancelled: "❌",
 };
 
 const IncidentLogs = () => {
@@ -37,10 +41,10 @@ const IncidentLogs = () => {
   const filteredLogs =
     selectedHospital === "All"
       ? incidents
-      : incidents.filter(
-          (inc) =>
-            inc.hospital?.name === selectedHospital ||
-            inc.location === selectedHospital
+      : incidents.filter((inc) =>
+          inc.location
+            ?.toLowerCase()
+            .includes(selectedHospital.toLowerCase())
         );
 
   return (
@@ -77,21 +81,25 @@ const IncidentLogs = () => {
                 <div
                   key={inc.id}
                   className="incident-card"
-                  data-severity={inc.severity}
+                  data-status={inc.status}
                 >
                   <div className="card-content">
                     <div className="incident-header">
-                      <h3>{inc.hospital?.name || inc.location || "Unknown"}</h3>
+                      <h3>{inc.location || "Unknown location"}</h3>
                       <span className="incident-icon">
-                        {SEVERITY_ICONS[inc.severity] || "📋"}
+                        {STATUS_ICONS[inc.status] || "📋"}
                       </span>
                     </div>
                     <p className="incident-type">{inc.type}</p>
                     <p className="incident-status">
                       Status:{" "}
-                      <span className={`status-${inc.severity}`}>{inc.status}</span>
+                      <span className={`status-badge status-${inc.status?.replace(/_/g, "-")}`}>
+                        {inc.status}
+                      </span>
                     </p>
-                    <p className="text-xs">{inc.title}</p>
+                    {inc.reporter_name && (
+                      <p className="text-xs">Reporter: {inc.reporter_name}</p>
+                    )}
                     <p className="text-xs">
                       Time: {new Date(inc.created_at).toLocaleString()}
                     </p>

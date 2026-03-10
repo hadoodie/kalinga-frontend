@@ -1,9 +1,57 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
 
 /**
- * Verifies the JWT bearer token on every protected request.
- * Attaches `req.user` (JWT payload) and `req.dbUser` (DB user record).
+ * Validate a Laravel Sanctum personal-access token.
+ * Token format: "{id}|{plaintext}"
+ * The DB stores SHA-256(plaintext) in personal_access_tokens.token.
+ * Returns the tokenable_id (user id) on success, null on failure.
+ */
+const validateSanctumToken = async (rawToken) => {
+  const pipeIdx = rawToken.indexOf('|');
+  if (pipeIdx === -1) return null;
+
+  const tokenId = rawToken.substring(0, pipeIdx);
+  const plaintext = rawToken.substring(pipeIdx + 1);
+
+  if (!tokenId || !plaintext) return null;
+
+  const hash = crypto.createHash('sha256').update(plaintext).digest('hex');
+
+  const { rows } = await pool.query(
+    `SELECT tokenable_id FROM personal_access_tokens
+     WHERE id = $1 AND token = $2
+     LIMIT 1`,
+    [tokenId, hash]
+  );
+
+  return rows[0]?.tokenable_id ?? null;
+};
+
+/**
+ * Resolve a Bearer token to a userId.
+ * Tries JWT first; if the token contains "|" falls back to Sanctum validation.
+ */
+const resolveToken = async (token) => {
+  // Sanctum tokens always contain a pipe separator
+  if (token.includes('|')) {
+    const userId = await validateSanctumToken(token);
+    return userId ? { sub: userId } : null;
+  }
+
+  // Otherwise treat as JWT
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded;            // { sub, email, role, iat, exp, … }
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Verifies the Bearer token (JWT or Sanctum) on every protected request.
+ * Attaches `req.user` (token payload) and `req.dbUser` (DB user record).
  */
 const authenticate = async (req, res, next) => {
   try {
@@ -17,15 +65,10 @@ const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.split(' ')[1];
+    const decoded = await resolveToken(token);
 
-    let decoded;
-    try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET);
-    } catch (err) {
-      if (err.name === 'TokenExpiredError') {
-        return res.status(401).json({ success: false, message: 'Token expired.' });
-      }
-      return res.status(401).json({ success: false, message: 'Invalid token.' });
+    if (!decoded || !decoded.sub) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired token.' });
     }
 
     // Load user from DB to ensure account still exists
@@ -59,16 +102,18 @@ const optionalAuth = async (req, res, next) => {
 
   try {
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = await resolveToken(token);
 
-    const { rows } = await pool.query(
-      'SELECT id, email, role, name FROM users WHERE id = $1 LIMIT 1',
-      [decoded.sub]
-    );
+    if (decoded?.sub) {
+      const { rows } = await pool.query(
+        'SELECT id, email, role, name FROM users WHERE id = $1 LIMIT 1',
+        [decoded.sub]
+      );
 
-    if (rows[0]) {
-      req.user = decoded;
-      req.dbUser = rows[0];
+      if (rows[0]) {
+        req.user = decoded;
+        req.dbUser = rows[0];
+      }
     }
   } catch {
     // Silently ignore invalid tokens for optional auth

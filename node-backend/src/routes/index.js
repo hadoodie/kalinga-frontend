@@ -14,6 +14,8 @@ import activityRouter from './activity.js';
 import trainingRouter from './training.js';
 import settingsRouter from './settings.js';
 import accountRouter from './account.js';
+import qrRouter from './qr.js';
+import logsRouter from './logs.js';
 
 const router = Router();
 
@@ -32,5 +34,7 @@ router.use('/activity', activityRouter);
 router.use('/training', trainingRouter);
 router.use('/settings', settingsRouter);
 router.use('/account', accountRouter);
+router.use('/qr', qrRouter);
+router.use('/logs', logsRouter);
 
 export default router;

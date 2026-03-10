@@ -8,26 +8,32 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables');
+  console.warn(
+    '[supabaseClient] SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set — Supabase features will be unavailable.'
+  );
 }
 
 // Admin client with service role key — bypasses RLS; use only server-side
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-  db: { schema: 'public' },
-});
+const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
+  ? createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      db: { schema: 'public' },
+    })
+  : null;
 
 // Public client with anon key — respects RLS
-const supabase = createClient(supabaseUrl, supabaseAnonKey || supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-  db: { schema: 'public' },
-});
+const supabase = (supabaseUrl && (supabaseAnonKey || supabaseServiceKey))
+  ? createClient(supabaseUrl, supabaseAnonKey || supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+      db: { schema: 'public' },
+    })
+  : null;
 
 export { supabase, supabaseAdmin };
 export default supabaseAdmin;

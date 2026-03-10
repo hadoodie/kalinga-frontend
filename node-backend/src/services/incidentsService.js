@@ -1,7 +1,7 @@
 import pool from '../config/db.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
 
-// Actual status CHECK values in the incidents table
+// Status values used in the live DB
 const VALID_STATUSES = [
   'reported', 'acknowledged', 'en_route', 'on_scene',
   'transporting', 'hospital_transfer', 'resolved', 'cancelled',
@@ -49,12 +49,13 @@ const getAll = async (query = {}) => {
   const dataParams = [...params, limit, from];
   const { rows } = await pool.query(
     `SELECT i.id, i.type, i.status, i.description, i.location, i.latlng,
-            i.user_id, i.assigned_responder_id, i.created_at, i.updated_at,
+            i.user_id, i.assigned_responder_id, i.responders_required,
+            i.created_at, i.updated_at,
             u.name AS reporter_name, u.role AS reporter_role,
-            r.full_name AS assigned_responder_name
+            ua.name AS assigned_responder_name
      FROM incidents i
      LEFT JOIN users u ON u.id = i.user_id
-     LEFT JOIN responders r ON r.id = i.assigned_responder_id
+     LEFT JOIN users ua ON ua.id = i.assigned_responder_id
      ${where}
      ORDER BY i.${col} ${dir}
      LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
@@ -67,10 +68,10 @@ const getAll = async (query = {}) => {
 const getById = async (id) => {
   const { rows } = await pool.query(
     `SELECT i.*, u.name AS reporter_name, u.role AS reporter_role,
-            u.phone AS reporter_phone, r.full_name AS assigned_responder_name
+            u.phone AS reporter_phone, ua.name AS assigned_responder_name
      FROM incidents i
      LEFT JOIN users u ON u.id = i.user_id
-     LEFT JOIN responders r ON r.id = i.assigned_responder_id
+     LEFT JOIN users ua ON ua.id = i.assigned_responder_id
      WHERE i.id = $1`,
     [id]
   );
@@ -84,7 +85,7 @@ const create = async (payload, userId) => {
      VALUES ($1, $2, $3, $4, $5, 'reported')
      RETURNING *`,
     [
-      payload.type,
+      payload.type || 'general',
       payload.location || null,
       payload.latlng || null,
       payload.description || null,
