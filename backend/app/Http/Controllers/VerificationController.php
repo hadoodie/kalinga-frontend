@@ -209,12 +209,7 @@ class VerificationController extends Controller
         }
 
         $path = $request->query('path');
-
-        // Validate that $path is a non-empty string before further checks
-        if (!is_string($path) || trim($path) === '') {
-            abort(400, 'Missing or invalid path parameter.');
-        }
-
+        
         // SECURITY FIX: Prevent Directory Traversal
         if (str_contains($path, '..') || !str_starts_with($path, 'verification-docs/')) {
             abort(403, 'Invalid file path requested.');
