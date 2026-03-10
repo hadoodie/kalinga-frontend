@@ -111,7 +111,12 @@ return [
             'search_path' => 'public',
             'sslmode' => env('CLOUD_DB_SSLMODE', 'require'),
             'options' => [
-                PDO::ATTR_EMULATE_PREPARES => true,
+                // Supabase's connection pooler (PgBouncer in transaction mode) does not support
+                // server-side prepared statements. Setting ATTR_EMULATE_PREPARES=true forces PDO
+                // to emulate prepared statements client-side, which is required when routing
+                // through the pooler. Disable this (set CLOUD_DB_EMULATE_PREPARES=false) if
+                // connecting directly to Postgres without a pooler, to restore native prepare semantics.
+                PDO::ATTR_EMULATE_PREPARES => env('CLOUD_DB_EMULATE_PREPARES', true),
             ],
         ],
 
