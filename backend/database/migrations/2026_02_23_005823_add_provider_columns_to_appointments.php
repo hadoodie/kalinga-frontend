@@ -8,20 +8,34 @@ return new class extends Migration
 {
     public function up(): void
     {
-         Schema::table('appointments', function (Blueprint $table) {
-            // Add these columns to store the provider and location details
-            $table->string('provider_name')->nullable();
-            $table->string('provider_specialty')->nullable();
-            $table->string('location')->nullable();
-            $table->text('instructions')->nullable();
+        Schema::table('appointments', function (Blueprint $table) {
+            if (!Schema::hasColumn('appointments', 'provider_name')) {
+                $table->string('provider_name')->nullable();
+            }
+            if (!Schema::hasColumn('appointments', 'provider_specialty')) {
+                $table->string('provider_specialty')->nullable();
+            }
+            if (!Schema::hasColumn('appointments', 'location')) {
+                $table->string('location')->nullable();
+            }
+            if (!Schema::hasColumn('appointments', 'instructions')) {
+                $table->text('instructions')->nullable();
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('appointments', function (Blueprint $table) {
-            // This allows you to "undo" the migration if needed
-            $table->dropColumn(['provider_name', 'provider_specialty', 'location', 'instructions']);
+            $columnsToDrop = [];
+            foreach (['provider_name', 'provider_specialty', 'location', 'instructions'] as $column) {
+                if (Schema::hasColumn('appointments', $column)) {
+                    $columnsToDrop[] = $column;
+                }
+            }
+            if (!empty($columnsToDrop)) {
+                $table->dropColumn($columnsToDrop);
+            }
         });
     }
 };

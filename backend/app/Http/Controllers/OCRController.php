@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\ExecutableFinder;
@@ -80,10 +81,14 @@ class OCRController extends Controller
             if (!$process->isSuccessful()) {
                 @unlink($fullPath);
                 
+                Log::error('OCR process failed', [
+                    'stderr' => $process->getErrorOutput(),
+                    'stdout' => $process->getOutput(),
+                ]);
+
                 return response()->json([
-                    'error' => 'Python Error',
-                    'details' => $process->getErrorOutput(),
-                    'output' => $process->getOutput() 
+                    'error' => 'OCR Processing Error',
+                    'details' => 'The OCR process failed. Please try again with a clearer image.',
                 ], 500);
             }
 
@@ -93,10 +98,10 @@ class OCRController extends Controller
             
             $json = json_decode($output);
             if (json_last_error() !== JSON_ERROR_NONE) {
-                 return response()->json([
-                    'error' => 'JSON Error',
-                    'details' => 'Python script did not return valid JSON',
-                    'raw_output' => $output
+                Log::error('OCR JSON parse error', ['raw_output' => $output]);
+                return response()->json([
+                    'error' => 'Processing Error',
+                    'details' => 'Failed to process the OCR result. Please try again.',
                 ], 500);
             }
 
@@ -105,9 +110,10 @@ class OCRController extends Controller
         } catch (\Exception $e) {
             if ($file && file_exists($file)) @unlink($file);
 
+            Log::error('OCR server error', ['message' => $e->getMessage()]);
             return response()->json([
                 'error' => 'Server Error',
-                'details' => $e->getMessage()
+                'details' => 'An unexpected error occurred. Please try again.',
             ], 500);
         }
     }
