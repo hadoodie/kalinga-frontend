@@ -178,7 +178,7 @@ export default function UploadID() {
       return;
     }
 
-    console.log("Submitting with ID Type:", currentIDType);
+    if (import.meta.env.DEV) console.log("Submitting with ID Type:", currentIDType);
 
     setIsScanning(true);
     setScanStatus("Enhancing image clarity...");
@@ -206,11 +206,11 @@ export default function UploadID() {
 
       const text = result.data.text;
       setExtractedText(text); 
-      console.log("Raw Text:", text);
+      if (import.meta.env.DEV) console.log("Raw Text:", text);
 
       setScanStatus("Extracting details...");
       const extractedData = parseIDText(text, currentIDType); 
-      console.log("Extracted Data:", extractedData);
+      if (import.meta.env.DEV) console.log("Extracted Data:", extractedData);
 
       navigate("/fill-info", { 
         state: { 
@@ -238,7 +238,7 @@ export default function UploadID() {
 
   // SPECIALIZED PHILIPPINE NATIONAL ID PARSER 
   const parsePhilippineNationalID = (text, lines) => {
-    console.log("=== USING PHILIPPINE NATIONAL ID PARSER ===");
+    if (import.meta.env.DEV) console.log("=== USING PHILIPPINE NATIONAL ID PARSER ===");
     
     const data = {
       idNumber: "",
@@ -367,7 +367,7 @@ export default function UploadID() {
 
   // DRIVER'S LICENSE PARSER
   const parseDriversLicense = (text, lines) => {
-    console.log("=== USING DRIVER'S LICENSE PARSER ===");
+    if (import.meta.env.DEV) console.log("=== USING DRIVER'S LICENSE PARSER ===");
     const data = { idNumber: "", firstName: "", lastName: "", middleName: "", birthYear: "", birthMonth: "", birthDay: "", address: "" };
 
     const licensePattern = /\b([A-Z][0-9]{2}[-\s]?[0-9]{2}[-\s]?[0-9]{6})\b/;
@@ -400,7 +400,7 @@ export default function UploadID() {
 
   // PASSPORT PARSER
   const parsePassport = (text, lines) => {
-    console.log("=== USING PASSPORT PARSER ===");
+    if (import.meta.env.DEV) console.log("=== USING PASSPORT PARSER ===");
     const data = { idNumber: "", firstName: "", lastName: "", middleName: "", birthYear: "", birthMonth: "", birthDay: "", address: "" };
     
     // MRZ Strategy (Most Reliable)

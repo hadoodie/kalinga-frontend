@@ -38,6 +38,7 @@ export const VerificationRequests = () => {
   }, []);
 
   const handleApprove = async () => {
+    if (!selectedReq) return;
     setProcessing(true);
     try {
       await api.post(`/admin/verifications/${selectedReq.id}/approve`);
@@ -49,7 +50,7 @@ export const VerificationRequests = () => {
 
       toast({
         title: "User Verified",
-        description: "The user has been approved and notified via email.",
+        description: "The user has been approved. An email notification will be sent if email delivery is configured.",
         className: "bg-green-50 border-green-200 text-green-800", 
       });
 
@@ -72,6 +73,7 @@ export const VerificationRequests = () => {
 
   const submitRejection = async () => {
     if (!rejectionReason.trim()) return;
+    if (!selectedReq) return;
 
     setProcessing(true);
     try {
