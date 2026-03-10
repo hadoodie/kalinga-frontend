@@ -601,8 +601,8 @@ export default function UploadID() {
           </div>
         </div>
 
-        {/* Show extracted text */}
-        {extractedText && (
+        {/* Show extracted text - development only to avoid exposing sensitive personal data */}
+        {import.meta.env.DEV && extractedText && (
           <details className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-300 text-xs">
             <summary className="font-bold text-yellow-800 cursor-pointer mb-2">
               ⚠️ OCR Debug Info - Check Text
