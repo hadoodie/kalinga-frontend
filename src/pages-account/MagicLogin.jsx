@@ -15,7 +15,6 @@ export const MagicLogin = () => {
   useEffect(() => {
     const processLogin = async () => {
       const token = searchParams.get("token");
-      const role = searchParams.get("role");
 
       if (!token) {
         navigate("/login", { replace: true });
@@ -41,14 +40,15 @@ export const MagicLogin = () => {
         // 5. Sync session globally using your AuthContext helper
         setSession(userData, token);
 
-        // 6. Redirect based on role using { replace: true } to overwrite browser history
-        if (role === "admin") {
+        // 6. Redirect based on the authenticated user's role (not the query param)
+        const userRole = userData?.role;
+        if (userRole === "admin") {
           navigate("/admin/dashboard", { replace: true });
-        } else if (role === "patient") {
+        } else if (userRole === "patient") {
           navigate("/patient/dashboard", { replace: true });
-        } else if (role === "responder") {
+        } else if (userRole === "responder") {
           navigate("/responder/dashboard", { replace: true });
-        } else if (role === "logistics") {
+        } else if (userRole === "logistics") {
           navigate("/logistics/dashboard", { replace: true });
         } else {
           navigate("/", { replace: true });
