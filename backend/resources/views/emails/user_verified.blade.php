@@ -13,7 +13,7 @@
         <p>You now have full access to the Kalinga Patient Portal. You can book appointments, view your records, and request assistance.</p>
         
         <div style="text-align: center; margin: 30px 0;">
-            <a href="{{ config('app.frontend_url', 'http://localhost:4000') }}/magic-login?token={{ $token }}&role={{ $user->role }}" style="background-color: #166534; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
+            <a href="{{ config('app.frontend_url', 'http://localhost:4000') }}/magic-login?token={{ urlencode($token) }}&role={{ urlencode($user->role) }}" style="background-color: #166534; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
                 Go to Dashboard
             </a>
         </div>
