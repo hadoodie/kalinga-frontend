@@ -1,13 +1,21 @@
 import React, { useEffect, useState } from "react";
 import "../../styles/weather-card.css";
 
-const API_KEY = "b92dd4a2d36476f40d39c0b8e8114a62";
+const API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
-const WeatherCard = ({ city }) => {
+const WeatherCard = ({ city = "Manila" }) => {
   const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchWeather = async () => {
+      if (!API_KEY) {
+        console.error("VITE_OPENWEATHER_API_KEY is not set.");
+        setError(true);
+        setLoading(false);
+        return;
+      }
       try {
         const response = await fetch(
           `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric`
@@ -16,13 +24,18 @@ const WeatherCard = ({ city }) => {
 
         if (response.ok) {
           setWeather(data);
+          setError(false);
         } else {
           console.error("API error:", data);
           setWeather(null);
+          setError(true);
         }
-      } catch (error) {
-        console.error("Error fetching weather:", error);
+      } catch (err) {
+        console.error("Error fetching weather:", err);
         setWeather(null);
+        setError(true);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -31,7 +44,16 @@ const WeatherCard = ({ city }) => {
     return () => clearInterval(interval);
   }, [city]);
 
-  if (!weather) {
+  if (loading) {
+    return (
+      <div className="card weather">
+        <h3>Weather</h3>
+        <p>Loading weather…</p>
+      </div>
+    );
+  }
+
+  if (error || !weather) {
     return (
       <div className="card weather">
         <h3>Weather</h3>

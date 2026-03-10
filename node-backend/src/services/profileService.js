@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 
 const getProfile = async (userId) => {
   const { rows } = await pool.query(
-    `SELECT u.id, u.email, u.name, u.role, u.phone, u.profile_picture_url,
+    `SELECT u.id, u.email, u.name, u.role, u.phone, u.profile_image,
             u.verification_status, u.created_at,
             r.id AS responder_id, r.responder_code, r.full_name AS responder_name, r.status AS responder_status
      FROM users u
@@ -35,7 +35,7 @@ const updateProfile = async (userId, payload) => {
 
   const { rows } = await pool.query(
     `UPDATE users SET ${fields.join(', ')} WHERE id = $${params.length}
-     RETURNING id, email, name, role, phone, profile_picture_url`,
+     RETURNING id, email, name, role, phone, profile_image`,
     params
   );
   if (!rows[0]) throw Object.assign(new Error('User not found'), { statusCode: 404 });
@@ -44,9 +44,9 @@ const updateProfile = async (userId, payload) => {
 
 const updateAvatar = async (userId, avatarUrl) => {
   const { rows } = await pool.query(
-    `UPDATE users SET profile_picture_url = $1, updated_at = NOW()
+    `UPDATE users SET profile_image = $1, updated_at = NOW()
      WHERE id = $2
-     RETURNING id, profile_picture_url`,
+     RETURNING id, profile_image`,
     [avatarUrl, userId]
   );
   if (!rows[0]) throw Object.assign(new Error('User not found'), { statusCode: 404 });

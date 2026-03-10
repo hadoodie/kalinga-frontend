@@ -21,19 +21,31 @@ import {
   FaUserClock,
   FaVolumeUp,
 } from "react-icons/fa";
-import api from "../services/api";
+import nodeApi from "../services/nodeApi";
 
 function DutyStatusModal({ onClose }) {
   const [dutyStatus, setDutyStatus] = useState("on-duty");
+  const [responderId, setResponderId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const mapApiStatusToUi = (status) => {
+    if (status === "On Duty" || status === "Available") return "on-duty";
+    return "off-duty";
+  };
+
+  const mapUiStatusToApi = (status) => {
+    if (status === "on-duty") return "On Duty";
+    return "Off Duty";
+  };
 
   useEffect(() => {
     const fetchDutyStatus = async () => {
       try {
-        // const response = await api.get("/duty-status");
-        // setDutyStatus(response.data.status);
-        // Simulated data
-        setDutyStatus("on-duty");
+        const response = await nodeApi.get("/profile");
+        const profile = response?.data?.data;
+
+        setResponderId(profile?.responder_id ?? null);
+        setDutyStatus(mapApiStatusToUi(profile?.responder_status));
       } catch (error) {
         console.error("Error fetching duty status:", error);
       }
@@ -42,10 +54,17 @@ function DutyStatusModal({ onClose }) {
   }, []);
 
   const handleSave = async () => {
+    if (!responderId) {
+      alert("Responder record not found. Please contact support.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // await api.post("/duty-status", { status: dutyStatus });
-      alert(`Duty status changed to ${dutyStatus.toUpperCase()} (Simulated)`);
+      await nodeApi.put(`/responders/${responderId}`, {
+        status: mapUiStatusToApi(dutyStatus),
+      });
+      alert(`Duty status changed to ${dutyStatus.toUpperCase()}`);
       onClose();
     } catch (error) {
       console.error("Error updating duty status:", error);
