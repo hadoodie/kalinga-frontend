@@ -127,9 +127,9 @@ export default function UploadID() {
         const canvas = canvasRef.current;
         const ctx = canvas.getContext('2d');
         
-        // Scale up for better OCR
-        const scaleFactor = TARGET_IMAGE_WIDTH / img.width;
-        const width = TARGET_IMAGE_WIDTH;
+        // Only downscale images wider than TARGET_IMAGE_WIDTH; preserve original size for smaller images to avoid wasting memory and CPU
+        const width = Math.min(img.width, TARGET_IMAGE_WIDTH);
+        const scaleFactor = width / img.width;
         const height = img.height * scaleFactor;
 
         canvas.width = width;
