@@ -11,23 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        if (!Schema::hasTable('appointments')) {
-            Schema::create('appointments', function (Blueprint $table) {
-                $table->id();
-                
-                $table->foreignId('user_id')->constrained()->onDelete('cascade');
-                
-                $table->string('patient_name')->nullable();
-                $table->string('hospital')->nullable();  
-                $table->string('service')->nullable();   
-                $table->text('complaint')->nullable();  
-                
-                $table->dateTime('appointment_date')->nullable();
-                $table->string('status')->default('pending');
-                
-                $table->timestamps();
-            });
-        }
+        Schema::create('appointments', function (Blueprint $table) {
+            $table->id();
+            
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            
+            $table->string('patient_name')->nullable();
+            $table->string('hospital')->nullable();  
+            $table->string('service')->nullable();   
+            $table->text('complaint')->nullable();  
+            
+            $table->dateTime('appointment_date')->nullable();
+            $table->string('status')->default('pending');
+            
+            $table->timestamps();
+        });
     }
 
     /**
