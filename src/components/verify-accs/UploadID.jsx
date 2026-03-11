@@ -436,7 +436,7 @@ export default function UploadID() {
     if (dateMatch) {
       const [, day, monthAbbr, year] = dateMatch;
       const dateObj = new Date(`${monthAbbr} ${day}, ${year}`);
-      if (!isNaN(dateObj) && parseInt(year) >= 1900 && parseInt(year) <= 2020) {
+      if (!isNaN(dateObj) && parseInt(year) >= 1900 && parseInt(year) <= new Date().getFullYear()) {
         data.birthYear = year;
         data.birthMonth = dateObj.toLocaleString('default', { month: 'long' });
         data.birthDay = day.padStart(2, '0');
