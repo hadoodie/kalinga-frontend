@@ -228,6 +228,16 @@ class VerificationController extends Controller
             abort(404, 'Document not found.');
         }
 
-        return response()->file(Storage::disk('local')->path($path));
+        $filePath = Storage::disk('local')->path($path);
+
+        // Serve the file as a download with a safe, non-sniffable content type
+        return response()->download(
+            $filePath,
+            basename($filePath),
+            [
+                'Content-Type' => 'application/octet-stream',
+                'X-Content-Type-Options' => 'nosniff',
+            ]
+        );
     }
 }
