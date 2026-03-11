@@ -317,7 +317,7 @@ export default function UploadID() {
           const dateObj = new Date(`${month} ${day}, ${year}`);
           if (!isNaN(dateObj)) {
             data.birthYear = year;
-            data.birthMonth = dateObj.toLocaleString('default', { month: 'long' });
+            data.birthMonth = dateObj.toLocaleString('en-US', { month: 'long' });
             data.birthDay = day;
             break;
           }
