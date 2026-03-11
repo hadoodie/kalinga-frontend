@@ -80,7 +80,10 @@ class ResourceController extends Controller
         }
 
         // Transform the fetched resources
-        $transformed = $resources->map(function ($resource) {
+        $items = ($resources instanceof \Illuminate\Pagination\LengthAwarePaginator)
+            ? $resources->getCollection()
+            : $resources;
+        $transformed = $items->map(function ($resource) {
             return [
                 'id'              => $resource->id,
                 'name'            => $resource->name,

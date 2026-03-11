@@ -214,7 +214,8 @@ export const VerificationRequests = () => {
                         alt="Front ID"
                         className="max-h-full max-w-full object-contain"
                         onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Available";
+                          e.target.onerror = null;
+                          e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' font-family='sans-serif' font-size='14' fill='%239ca3af' text-anchor='middle' dominant-baseline='middle'%3EImage Not Available%3C/text%3E%3C/svg%3E";
                         }}
                       />
                     ) : (
@@ -230,7 +231,8 @@ export const VerificationRequests = () => {
                         alt="Back ID"
                         className="max-h-full max-w-full object-contain"
                         onError={(e) => {
-                          e.target.src = "https://via.placeholder.com/400x300?text=Image+Not+Available";
+                          e.target.onerror = null;
+                          e.target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='300' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f3f4f6'/%3E%3Ctext x='50%25' y='50%25' font-family='sans-serif' font-size='14' fill='%239ca3af' text-anchor='middle' dominant-baseline='middle'%3EImage Not Available%3C/text%3E%3C/svg%3E";
                         }}
                       />
                     ) : (
