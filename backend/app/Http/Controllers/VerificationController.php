@@ -231,12 +231,15 @@ class VerificationController extends Controller
 
         $filePath = Storage::disk('local')->path($path);
 
-        // Serve the file as a download with a safe, non-sniffable content type
-        return response()->download(
+        // Determine the file's mime type, defaulting to a safe binary type if unknown
+        $mimeType = Storage::disk('local')->mimeType($path) ?? 'application/octet-stream';
+
+        // Serve the file inline with the correct mime type and a non-sniffable content type
+        return response()->file(
             $filePath,
-            basename($filePath),
             [
-                'Content-Type' => 'application/octet-stream',
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"',
                 'X-Content-Type-Options' => 'nosniff',
             ]
         );
