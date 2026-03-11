@@ -104,7 +104,8 @@ class VerificationController extends Controller
             // Clean up any already-stored files to prevent orphaned verification documents
             if ($frontPath) Storage::disk('local')->delete($frontPath);
             if ($backPath) Storage::disk('local')->delete($backPath);
-            return response()->json(['message' => 'Upload failed: ' . $e->getMessage()], 500);
+            Log::error('Verification upload failed', ['exception' => $e]);
+            return response()->json(['message' => 'Upload failed. Please try again later.'], 500);
         }
     }
 
