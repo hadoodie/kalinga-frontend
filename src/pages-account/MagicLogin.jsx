@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -11,8 +11,12 @@ export const MagicLogin = () => {
   const navigate = useNavigate();
   const { setSession } = useAuth();
   const { toast } = useToast(); 
+  const hasRun = useRef(false);
 
   useEffect(() => {
+    if (hasRun.current) return;
+    hasRun.current = true;
+
     const processLogin = async () => {
       const token = searchParams.get("token");
 

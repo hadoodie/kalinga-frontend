@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import authService from "../services/authService";
 import { getCsrfCookie } from "../services/api";
 import { cleanupAuthStorage } from "../utils/storage";
@@ -195,13 +195,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const setSession = (userData, authToken) => {
+  const setSession = useCallback((userData, authToken) => {
     setUser(userData);
     setToken(authToken);
     localStorage.setItem("token", authToken);
     localStorage.setItem("user", JSON.stringify(userData));
     preloadCriticalData({ userRole: userData.role });
-  };
+  }, []);
 
   const value = {
     user,
