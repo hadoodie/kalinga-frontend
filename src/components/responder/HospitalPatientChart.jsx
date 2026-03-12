@@ -10,11 +10,18 @@ const HospitalPatientChart = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    nodeApi
-      .get("/hospitals/patient-distribution")
-      .then(({ data: res }) => setData(res.data || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const fetchDistribution = async () => {
+      try {
+        // Primary: Node backend
+        const { data: res } = await nodeApi.get("/hospitals/patient-distribution");
+        setData(res.data || []);
+      } catch (err) {
+        console.error("Failed to fetch patient distribution", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDistribution();
   }, []);
 
   return (

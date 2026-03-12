@@ -8,35 +8,28 @@ const TriageCard = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
-  const fetchTriage = () => {
-    Promise.all([
-      nodeApi.get("/hospitals"),
-      nodeApi.get("/triage/stats"),
-    ])
-      .then(([hospitalsRes, statsRes]) => {
-        const hospitals = hospitalsRes.data?.data || [];
-        const agg = statsRes.data?.data || {};
-        const count = Math.max(hospitals.length, 1);
+  const fetchTriage = async () => {
+    try {
+      const { data } = await nodeApi.get("/triage/stats");
+      const stats = data?.data || [];
 
-        const per = (n) => Math.round((n || 0) / count);
-
-        setTriageData(
-          hospitals.slice(0, 10).map((h) => ({
-            hospital: h.name,
-            low:      per(agg.low),
-            medium:   per(agg.medium),
-            high:     per(agg.high),
-            veryHigh: per(agg.very_high),
-            critical: per(agg.critical),
-          }))
-        );
-        setFetchError(null);
-      })
-      .catch((err) => {
-        console.error(err);
-        setFetchError("Failed to load triage data.");
-      })
-      .finally(() => setLoading(false));
+      setTriageData(
+        stats.map((h) => ({
+          hospital: h.hospital_name,
+          low:      h.low || 0,
+          medium:   h.medium || 0,
+          high:     h.high || 0,
+          veryHigh: h.very_high || 0,
+          critical: h.critical || 0,
+        }))
+      );
+      setFetchError(null);
+    } catch (err) {
+      console.error("Failed to fetch triage data", err);
+      setFetchError("Failed to load triage data.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {

@@ -38,4 +38,18 @@ const changePassword = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-export default { getProfile, updateProfile, uploadAvatar, changePassword };
+const getDevices = async (req, res, next) => {
+  try {
+    const data = await profileService.getDevices(req.dbUser.id);
+    return response.success(res, data);
+  } catch (err) { next(err); }
+};
+
+const removeDevice = async (req, res, next) => {
+  try {
+    await profileService.removeDevice(req.dbUser.id, req.params.deviceId);
+    return response.success(res, null, 'Device logged out');
+  } catch (err) { next(err); }
+};
+
+export default { getProfile, updateProfile, uploadAvatar, changePassword, getDevices, removeDevice };

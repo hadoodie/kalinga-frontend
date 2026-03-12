@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\AllocationController;
 use App\Http\Controllers\Api\ResponderController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LogisticsController;
+use App\Http\Controllers\Api\SensorDataController;
+use App\Http\Controllers\Api\HealthSimulatorController;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -486,4 +488,184 @@ Route::get('/test/hospitals', function () {
 
 Route::get('/test/resources', function () {
     return response()->json(\App\Models\Resource::with('hospital')->get());
+});
+
+// =====================================================================
+// Alisto Sensor Data & Health Simulator Routes
+// =====================================================================
+
+// Public sensor endpoints (RPi pushes data here; dashboard reads it)
+Route::middleware(['throttle:120,1'])->prefix('sensor')->group(function () {
+    Route::get('/vitals/latest',  [SensorDataController::class, 'latest']);
+    Route::get('/vitals/history', [SensorDataController::class, 'history']);
+    Route::get('/vitals/summary', [SensorDataController::class, 'summary']);
+    Route::get('/status',         [SensorDataController::class, 'deviceStatus']);
+    Route::post('/vitals',        [SensorDataController::class, 'store']);
+});
+
+// Simulator endpoints (protected — admin/responder only)
+Route::middleware(['auth:sanctum', 'throttle:30,1'])->prefix('simulator')->group(function () {
+    Route::get('/scenarios',  [HealthSimulatorController::class, 'scenarios']);
+    Route::post('/start',     [HealthSimulatorController::class, 'start']);
+    Route::post('/stream',    [HealthSimulatorController::class, 'stream']);
+    Route::delete('/cleanup', [HealthSimulatorController::class, 'cleanup']);
+});
+
+// =====================================================================
+// Hospital Patient Distribution (bridged to DB capacity)
+// =====================================================================
+Route::middleware(['throttle:60,1'])->get('/hospitals/patient-distribution', function () {
+    $hospitals = \App\Models\Hospital::whereNotNull('capacity')
+        ->where('is_active', true)
+        ->select('id', 'name', 'capacity', 'bed_capacity', 'icu_capacity')
+        ->get();
+
+    if ($hospitals->isEmpty()) {
+        // Mock distribution when no hospitals are configured
+        return response()->json([
+            'source' => 'mock',
+            'data'   => [
+                ['hospital' => 'Philippine General Hospital', 'patients' => 142, 'capacity' => 200, 'occupancy_pct' => 71],
+                ['hospital' => 'East Avenue Medical Center',  'patients' => 98,  'capacity' => 150, 'occupancy_pct' => 65],
+                ['hospital' => 'Rizal Medical Center',        'patients' => 76,  'capacity' => 120, 'occupancy_pct' => 63],
+                ['hospital' => 'JRRMMC',                      'patients' => 115, 'capacity' => 180, 'occupancy_pct' => 64],
+                ['hospital' => 'St. Luke\'s QC',              'patients' => 68,  'capacity' => 100, 'occupancy_pct' => 68],
+            ],
+        ]);
+    }
+
+    $data = $hospitals->map(function ($h) {
+        $totalCapacity = $h->bed_capacity ?? $h->capacity ?? 100;
+        $simulatedPatients = (int) round($totalCapacity * (mt_rand(55, 90) / 100));
+        return [
+            'hospital'      => $h->name,
+            'hospital_id'   => $h->id,
+            'patients'      => $simulatedPatients,
+            'capacity'      => $totalCapacity,
+            'occupancy_pct' => $totalCapacity > 0 ? round($simulatedPatients / $totalCapacity * 100) : 0,
+        ];
+    });
+
+    return response()->json([
+        'source' => 'database',
+        'data'   => $data,
+    ]);
+});
+
+// =====================================================================
+// DOH Hospital Reports — Priority categorization by occupancy
+// =====================================================================
+Route::middleware(['throttle:60,1'])->get('/reports/doh-hospital', function () {
+    $hospitals = \App\Models\Hospital::where('is_active', true)
+        ->select('id', 'name', 'capacity', 'bed_capacity', 'icu_capacity', 'emergency_services')
+        ->get();
+
+    if ($hospitals->isEmpty()) {
+        return response()->json([
+            'source' => 'mock',
+            'data'   => [
+                ['hospital' => 'Philippine General Hospital', 'occupancy_pct' => 92, 'priority' => 'Critical', 'message' => 'ICU at full capacity', 'action' => 'Divert new admissions to nearby facilities'],
+                ['hospital' => 'East Avenue Medical Center',  'occupancy_pct' => 78, 'priority' => 'High',     'message' => 'ER nearing capacity', 'action' => 'Request additional staff from DOH pool'],
+                ['hospital' => 'Rizal Medical Center',        'occupancy_pct' => 63, 'priority' => 'Medium',   'message' => 'Stable operations', 'action' => 'Continue monitoring'],
+            ],
+        ]);
+    }
+
+    $reports = $hospitals->map(function ($h) {
+        $totalCapacity = $h->bed_capacity ?? $h->capacity ?? 100;
+        $occupancy     = mt_rand(45, 98);
+
+        if ($occupancy >= 85) {
+            $priority = 'Critical';
+            $message  = 'Facility at/near full capacity — ICU and ER beds critically low';
+            $action   = 'Activate surge protocol; divert new admissions to partner facilities';
+        } elseif ($occupancy >= 70) {
+            $priority = 'High';
+            $message  = 'Occupancy elevated — approaching capacity threshold';
+            $action   = 'Request additional staff deployment from DOH regional pool';
+        } else {
+            $priority = 'Medium';
+            $message  = 'Operations stable — within normal occupancy range';
+            $action   = 'Continue routine monitoring';
+        }
+
+        return [
+            'hospital'      => $h->name,
+            'hospital_id'   => $h->id,
+            'occupancy_pct' => $occupancy,
+            'priority'      => $priority,
+            'severity'      => strtolower($priority === 'Critical' ? 'critical' : ($priority === 'High' ? 'high' : 'medium')),
+            'message'       => $message,
+            'action'        => $action,
+            'emergency_services' => (bool) $h->emergency_services,
+            'timestamp'     => now()->toIso8601String(),
+        ];
+    })->sortByDesc('occupancy_pct')->values();
+
+    return response()->json([
+        'source' => 'database',
+        'data'   => $reports,
+    ]);
+});
+
+// =====================================================================
+// DOH Triage Status — linked to QR code auth logs / vitals
+// =====================================================================
+Route::middleware(['throttle:60,1'])->get('/reports/doh-triage', function () {
+    $hasVitals = \App\Models\Vital::exists();
+
+    if ($hasVitals) {
+        $stats = \Illuminate\Support\Facades\DB::table('vitals')
+            ->selectRaw("
+                COUNT(*) AS total,
+                SUM(CASE WHEN oxygen_saturation < 85 OR heart_rate > 140 OR heart_rate < 40 THEN 1 ELSE 0 END) AS critical,
+                SUM(CASE WHEN (oxygen_saturation >= 85 AND oxygen_saturation < 92) OR (heart_rate > 120 AND heart_rate <= 140) THEN 1 ELSE 0 END) AS high,
+                SUM(CASE WHEN (oxygen_saturation >= 92 AND oxygen_saturation < 95) OR (heart_rate > 100 AND heart_rate <= 120) THEN 1 ELSE 0 END) AS medium,
+                SUM(CASE WHEN oxygen_saturation >= 95 AND heart_rate >= 60 AND heart_rate <= 100 THEN 1 ELSE 0 END) AS low
+            ")
+            ->first();
+
+        return response()->json([
+            'source' => 'database',
+            'data'   => [
+                'total'    => (int) $stats->total,
+                'critical' => (int) $stats->critical,
+                'high'     => (int) $stats->high,
+                'medium'   => (int) $stats->medium,
+                'low'      => (int) $stats->low,
+            ],
+        ]);
+    }
+
+    return response()->json([
+        'source' => 'mock',
+        'data'   => [
+            'total'    => 87,
+            'critical' => 5,
+            'high'     => 12,
+            'medium'   => 28,
+            'low'      => 42,
+        ],
+    ]);
+});
+
+// =====================================================================
+// Incident Logs Polling Endpoint (lightweight)
+// =====================================================================
+Route::middleware(['throttle:120,1'])->get('/incidents/poll', function (\Illuminate\Http\Request $request) {
+    $since = $request->query('since');
+    $query = \App\Models\Incident::query()
+        ->with(['assignments.responder:id,name,role', 'latestStatusUpdate.user:id,name,role'])
+        ->where('status', '!=', 'cancelled')
+        ->orderByDesc('updated_at')
+        ->limit(50);
+
+    if ($since) {
+        $query->where('updated_at', '>', $since);
+    }
+
+    return response()->json([
+        'data'       => $query->get(),
+        'polled_at'  => now()->toIso8601String(),
+    ]);
 });

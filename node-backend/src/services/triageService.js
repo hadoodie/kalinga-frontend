@@ -111,23 +111,33 @@ const updateTriageCase = async (id, payload) => {
 };
 
 const getTriageStats = async () => {
-  const { rows } = await pool.query('SELECT triage_level, status FROM triage_cases');
-
-  const stats = (rows || []).reduce(
-    (acc, t) => {
-      acc.total++;
-      const lvl = t.triage_level?.toLowerCase();
-      if (lvl === 'low') acc.low++;
-      else if (lvl === 'medium') acc.medium++;
-      else if (lvl === 'high') acc.high++;
-      else if (lvl === 'very_high') acc.very_high++;
-      else if (lvl === 'critical') acc.critical++;
-      return acc;
-    },
-    { total: 0, low: 0, medium: 0, high: 0, very_high: 0, critical: 0 }
+  const { rows } = await pool.query(
+    `SELECT h.id AS hospital_id, h.name AS hospital_name,
+            tc.triage_level, COUNT(*)::int AS count
+     FROM triage_cases tc
+     JOIN hospitals h ON h.id = tc.hospital_id
+     WHERE tc.status = 'active'
+     GROUP BY h.id, h.name, tc.triage_level
+     ORDER BY h.name, tc.triage_level`
   );
 
-  return stats;
+  // Pivot rows into per-hospital objects
+  const map = new Map();
+  for (const r of rows) {
+    if (!map.has(r.hospital_id)) {
+      map.set(r.hospital_id, {
+        hospital_id: r.hospital_id,
+        hospital_name: r.hospital_name,
+        low: 0, medium: 0, high: 0, very_high: 0, critical: 0, total: 0,
+      });
+    }
+    const entry = map.get(r.hospital_id);
+    const lvl = r.triage_level?.toLowerCase();
+    if (entry[lvl] !== undefined) entry[lvl] = r.count;
+    entry.total += r.count;
+  }
+
+  return [...map.values()];
 };
 
 const getTriageByHospitalId = async (id) => {

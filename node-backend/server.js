@@ -23,12 +23,22 @@ app.use(
   })
 );
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 min
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+  // Development: 2 000 req/window (approx. one per second) so normal usage never triggers 429.
+  // Production: respect the env var or fall back to 100.
+  max: isDev ? 2000 : (parseInt(process.env.RATE_LIMIT_MAX) || 100),
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests. Please try again later.' },
+  // Skip the limiter entirely for local development traffic.
+  skip: (req) => {
+    if (!isDev) return false;
+    const ip = req.ip || req.connection?.remoteAddress || '';
+    return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+  },
 });
 
 app.use('/api', limiter);

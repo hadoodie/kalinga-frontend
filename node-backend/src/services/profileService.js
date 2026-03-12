@@ -60,10 +60,12 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   );
   if (!rows[0]) throw Object.assign(new Error('User not found'), { statusCode: 404 });
 
-  const valid = await bcrypt.compare(currentPassword, rows[0].password);
+  // Normalize any bcrypt variant ($2y$ from Laravel, $2a$ from older libs) to $2b$
+  const normalizedHash = rows[0].password.replace(/^\$2[ay]\$/, '$2b$');
+  const valid = await bcrypt.compare(currentPassword, normalizedHash);
   if (!valid) throw Object.assign(new Error('Current password is incorrect'), { statusCode: 400 });
 
-  const hash = await bcrypt.hash(newPassword, 12);
+  const hash = await bcrypt.hash(newPassword, 10);
   await pool.query(
     'UPDATE users SET password = $1, updated_at = NOW() WHERE id = $2',
     [hash, userId]
@@ -71,4 +73,22 @@ const changePassword = async (userId, currentPassword, newPassword) => {
   return true;
 };
 
-export default { getProfile, updateProfile, updateAvatar, changePassword };
+const getDevices = async (userId) => {
+  const { rows } = await pool.query(
+    `SELECT id, device_name, device_type, location, ip_address, last_active, is_current_device
+     FROM active_devices WHERE user_id = $1 ORDER BY last_active DESC`,
+    [userId]
+  );
+  return rows;
+};
+
+const removeDevice = async (userId, deviceId) => {
+  const { rowCount } = await pool.query(
+    `DELETE FROM active_devices WHERE id = $1 AND user_id = $2 AND is_current_device = false`,
+    [deviceId, userId]
+  );
+  if (rowCount === 0) throw Object.assign(new Error('Device not found or is current device'), { statusCode: 400 });
+  return true;
+};
+
+export default { getProfile, updateProfile, updateAvatar, changePassword, getDevices, removeDevice };
