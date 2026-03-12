@@ -1,3 +1,6 @@
 flask>=3.0.0
 python-dotenv>=1.0.0
 requests>=2.31.0
+# RPi 5 sensor libraries (install on Pi only, optional on dev machines)
+# adafruit-circuitpython-max30102>=1.0.0  # Heart Rate + SpO2 sensor
+# adafruit-circuitpython-mlx90614>=1.0.0  # IR temperature sensor

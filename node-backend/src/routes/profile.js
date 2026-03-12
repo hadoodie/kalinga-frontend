@@ -31,4 +31,10 @@ router.post('/avatar', upload.single('avatar'), profileController.uploadAvatar);
 // PUT  /api/profile/password
 router.put('/password', profileController.changePassword);
 
+// GET  /api/profile/devices
+router.get('/devices', profileController.getDevices);
+
+// DELETE /api/profile/devices/:deviceId
+router.delete('/devices/:deviceId', profileController.removeDevice);
+
 export default router;

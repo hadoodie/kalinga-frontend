@@ -1,5 +1,10 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import authService from "../services/authService";
+
+
+import { getCsrfCookie } from "../services/api";
+import nodeApi from "../services/nodeApi";
+
 import { cleanupAuthStorage } from "../utils/storage";
 import { preloadCriticalData, resetPreloader } from "../lib/dataPreloader";
 import { clearCache, clearPersistedCache } from "../lib/apiCache";
@@ -150,6 +155,9 @@ export const AuthProvider = ({ children }) => {
 
       // Preload critical data right after successful login
       preloadCriticalData({ userRole: data.user.role });
+
+      // Record this device/browser in active_devices (fire-and-forget)
+      nodeApi.post("/auth/record-device", { location: "Philippines" }).catch(() => {});
 
       return data;
     } catch (error) {

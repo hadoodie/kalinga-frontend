@@ -104,6 +104,24 @@ const update = async (id, payload) => {
   return rows[0];
 };
 
+const updateStatusByUserId = async (userId, status) => {
+  // Fetch user info for the INSERT branch of the UPSERT
+  const { rows: users } = await pool.query(
+    `SELECT id, name, phone FROM users WHERE id = $1`, [userId]
+  );
+  if (!users[0]) throw Object.assign(new Error('User not found'), { statusCode: 404 });
+  const user = users[0];
+
+  const { rows } = await pool.query(
+    `INSERT INTO responders (user_id, full_name, contact_number, responder_code, handling_capabilities, status, created_by)
+     VALUES ($1::bigint, $2, COALESCE($3, 'N/A'), 'RSP-' || LPAD($1::text, 3, '0'), '[]'::jsonb, $4, $1::bigint)
+     ON CONFLICT (user_id) DO UPDATE SET status = EXCLUDED.status, updated_at = NOW()
+     RETURNING *`,
+    [userId, user.name, user.phone, status]
+  );
+  return rows[0];
+};
+
 const getStats = async () => {
   const { rows } = await pool.query('SELECT status FROM responders');
 
@@ -121,4 +139,4 @@ const getStats = async () => {
   return stats;
 };
 
-export default { getAll, getActive, getById, create, update, getStats };
+export default { getAll, getActive, getById, create, update, updateStatusByUserId, getStats };

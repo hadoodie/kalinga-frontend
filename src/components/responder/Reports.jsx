@@ -29,17 +29,22 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    nodeApi
-      .get("/reports", { params: { limit: 20 } })
-      .then(({ data }) => {
+    const fetchReports = async () => {
+      try {
+        // Primary: Node backend
+        const { data } = await nodeApi.get("/reports", { params: { limit: 20 } });
         const reports = data.data || [];
         setCapacityAlerts(
           reports.filter((r) => r.type === "capacity" || r.type === "supply" || !r.type)
         );
         setSpecialistAlerts(reports.filter((r) => r.type === "specialist"));
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
+      } catch (err) {
+        console.error("Failed to fetch reports", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchReports();
   }, []);
 
   const toggleSection = (section) =>

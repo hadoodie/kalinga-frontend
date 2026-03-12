@@ -16,6 +16,9 @@ import settingsRouter from './settings.js';
 import accountRouter from './account.js';
 import qrRouter from './qr.js';
 import logsRouter from './logs.js';
+import dashboardRouter from './dashboard.js';
+import authRouter from './auth.js';
+import usersRouter from './users.js';
 
 const router = Router();
 
@@ -36,5 +39,8 @@ router.use('/settings', settingsRouter);
 router.use('/account', accountRouter);
 router.use('/qr', qrRouter);
 router.use('/logs', logsRouter);
+router.use('/dashboard', dashboardRouter);
+router.use('/auth', authRouter);
+router.use('/users', usersRouter);
 
 export default router;

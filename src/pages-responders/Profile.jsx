@@ -90,7 +90,7 @@ const mapTrainingStatus = (status, progressPercent) => {
 
 function ProfileDisplay({ data, onEdit, qrToken, qrLoading }) {
   // Use server-issued token; fall back to responder code if token unavailable
-  const qrValue = qrToken || (data.id ? `responder:${data.id}` : data.email || "unknown");
+  const qrValue = qrToken || null;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 pt-16 relative">
@@ -126,7 +126,7 @@ function ProfileDisplay({ data, onEdit, qrToken, qrLoading }) {
           <div className="p-2 bg-white border border-gray-300 rounded-lg shadow">
             {qrLoading ? (
               <div className="w-[120px] h-[120px] flex items-center justify-center text-xs text-gray-400">Loading...</div>
-            ) : (
+            ) : qrValue ? (
               <QRCodeCanvas
                 value={qrValue}
                 size={120}
@@ -135,6 +135,8 @@ function ProfileDisplay({ data, onEdit, qrToken, qrLoading }) {
                 level="H"
                 includeMargin={false}
               />
+            ) : (
+              <div className="w-[120px] h-[120px] flex items-center justify-center text-xs text-red-400 text-center p-2">QR unavailable</div>
             )}
           </div>
           <p className="text-xs text-gray-500 mt-2">Scan to responder record</p>

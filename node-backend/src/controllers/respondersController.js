@@ -44,4 +44,13 @@ const update = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-export default { getAll, getActive, getStats, getById, create, update };
+const updateStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!status) return response.error(res, 'Status is required', 400);
+    const data = await respondersService.updateStatusByUserId(req.params.id, status);
+    return response.success(res, data, 'Duty status updated');
+  } catch (err) { next(err); }
+};
+
+export default { getAll, getActive, getStats, getById, create, update, updateStatus };

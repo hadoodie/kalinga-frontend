@@ -20,6 +20,9 @@ router.get('/:id', optionalAuth, respondersController.getById);
 // POST /api/responders          — admin only
 router.post('/', authenticate, requireRole(['admin', 'doh_officer']), respondersController.create);
 
+// PUT  /api/responders/:id/status — update duty status by user_id
+router.put('/:id/status', authenticate, respondersController.updateStatus);
+
 // PUT  /api/responders/:id      — admin or self
 router.put('/:id', authenticate, respondersController.update);
 
