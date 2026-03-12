@@ -4,8 +4,13 @@
 /public/hot
 /public/storage
 /storage/*.key
+/storage/app/public/*
 /storage/pail
 /vendor
+
+# Debug/test files
+/check-verifications.php
+/test-api.php
 .env
 .env.backup
 .env.production

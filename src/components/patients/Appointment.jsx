@@ -94,9 +94,7 @@ const DetailItem = ({ icon: Icon, label, value, isLink = false }) => (
   </div>
 );
 
-// --- Updated AppointmentDetail (No longer contains the modal) ---
 const AppointmentDetail = ({ appointment, onRequestCancel, onReschedule, onBack }) => {
-  
   return (
     <div className="space-y-6 h-full flex flex-col relative">
       {/* Mobile Back Button */}
@@ -133,7 +131,6 @@ const AppointmentDetail = ({ appointment, onRequestCancel, onReschedule, onBack 
         <div className="pt-4 border-t mt-auto">
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={() => onReschedule(appointment)} className={`flex-1 w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold rounded-xl transition ${COLORS.secondary}`}>Reschedule</button>
-            {/* Calls the parent function to open the global modal */}
             <button onClick={onRequestCancel} className={`flex-1 w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold rounded-xl transition text-white ${COLORS.danger}`}>Cancel Appointment</button>
           </div>
         </div>
@@ -141,8 +138,6 @@ const AppointmentDetail = ({ appointment, onRequestCancel, onReschedule, onBack 
     </div>
   );
 };
-
-// --- Booking Flow Steps ---
 
 const StepTerms = ({ formData, updateForm }) => (
   <div className="space-y-6">
@@ -394,7 +389,6 @@ const BookingFlow = ({ onClose, onSuccess }) => {
     if (step === 2 && (!formData.hospital || !formData.serviceType)) return alert("Please select Hospital and Service.");
     if (step === 3 && (!formData.date || !formData.time)) return alert("Please select Date and Time.");
     
-    // If we are at the Summary step (Step 5), submitting moves us to Step 6 (Receipt)
     if (step === 5) {
         if (!formData.captchaToken) {
             return alert("Please complete the reCAPTCHA verification.");
@@ -402,32 +396,29 @@ const BookingFlow = ({ onClose, onSuccess }) => {
 
         setIsSubmitting(true);
         try {
-            // Construct Payload for Backend
             const payload = {
                 hospital: formData.hospital,
                 service: formData.serviceType,
-                appointment_at: `${formData.date} ${formData.time}`, // Combine Date & Time
+                appointment_date: `${formData.date} ${formData.time}`,
                 complaint: formData.complaint,
                 patient_name: `${formData.firstName} ${formData.lastName}`,
                 contact_email: formData.email,
                 contact_phone: formData.contactNo,
-                location: "Main Building", // Defaulting for now
-                instructions: "Please arrive 30 mins early.", // Defaulting
-                status: "upcoming", // CRITICAL: Explicitly set status to upcoming
+                location: "Main Building", 
+                instructions: "Please arrive 30 mins early.", 
+                status: "upcoming", 
                 provider_name: "Assigned Physician", 
                 provider_specialty: "General",
                 recaptcha_token: formData.captchaToken
             };
 
-            // Capture the response
             const response = await api.post('/book-appointment', payload);
             
-            // CRITICAL: Call onSuccess immediately with the response data
             if (onSuccess) {
                 onSuccess(response.data);
             }
 
-            setStep(prev => prev + 1); // Move to Receipt
+            setStep(prev => prev + 1); 
         } catch (error) {
             console.error("Booking Error:", error);
             alert("Failed to book appointment. " + (error.response?.data?.message || "Please check your inputs."));
@@ -491,8 +482,6 @@ export default function Appointments() {
   const [activeTab, setActiveTab] = useState(TABS.UPCOMING);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  
-  // NEW: State for the global Cancel Modal (outside the sidebar)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
 
   const [appointments, setAppointments] = useState([]);
@@ -505,10 +494,9 @@ export default function Appointments() {
     try {
       const response = await api.get('/appointments');
       
-      // Map Laravel snake_case to Frontend Format
       const formattedData = response.data.map(app => {
-          const appDate = new Date(app.appointment_at);
-          // Capitalize status correctly for tab matching
+          const appDate = new Date(app.appointment_date || app.appointment_at);
+          
           const rawStatus = app.status || 'upcoming';
           const formattedStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
 
@@ -527,12 +515,9 @@ export default function Appointments() {
           };
       });
 
-      // SORT: Ensure nearest upcoming dates are at the top
       formattedData.sort((a, b) => a.date - b.date);
-
       setAppointments(formattedData);
       
-      // IMPORTANT: Return data for use in handlers
       return formattedData;
     } catch (err) {
       console.error(err);
@@ -551,27 +536,22 @@ export default function Appointments() {
     (app) => app.status === activeTab
   );
 
-  // UPDATED: Function to handle actual cancellation
   const confirmCancel = async () => {
     if (!selectedAppointment) return;
     
     try {
         await api.delete(`/appointments/${selectedAppointment.id}`);
         alert("Appointment has been cancelled.");
-        setIsCancelModalOpen(false); // Close modal
-        setSelectedAppointment(null); // Clear selection
-        fetchAppointments(); // Refresh list
+        setIsCancelModalOpen(false); 
+        setSelectedAppointment(null); 
+        fetchAppointments(); 
     } catch (err) {
         alert("Failed to cancel appointment.");
     }
   };
 
-  // NEW HANDLER: Automatically selects the newly booked appointment
   const handleBookingSuccess = async (newAppointmentRaw) => {
-    // 1. Refresh list and get valid data
     const allAppointments = await fetchAppointments();
-    
-    // 2. Find the new item in the list
     if (newAppointmentRaw && newAppointmentRaw.id) {
         const newItem = allAppointments.find(app => app.id === newAppointmentRaw.id);
         if (newItem) {
@@ -600,9 +580,7 @@ export default function Appointments() {
 
       <div className="flex flex-col lg:flex-row gap-8 relative">
         <section className="lg:w-7/12 flex-grow space-y-6">
-          {/* Tabs and Request Button Container */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-4 border-b border-gray-200 pb-0 gap-4 sm:gap-0">
-             {/* Tabs - Updated Style */}
              <div className="flex space-x-6 w-full sm:w-auto">
                 <button 
                   onClick={() => setActiveTab(TABS.UPCOMING)} 
@@ -630,7 +608,6 @@ export default function Appointments() {
                 </button>
              </div>
 
-             {/* Moved Request Button */}
              <button onClick={() => setIsBookingModalOpen(true)} className={`w-full sm:w-auto flex items-center justify-center gap-2 px-5 py-3 sm:py-2 mb-2 font-bold rounded-xl text-white shadow-md hover:shadow-lg transform hover:-translate-y-1 transition-all ${COLORS.primary} text-sm`}>
                 <CalendarPlus size={16} /> Book Appointment
              </button>
@@ -658,9 +635,6 @@ export default function Appointments() {
           </div>
         </section>
 
-        {/* RESPONSIVE DETAILS PANEL */}
-        {/* On Mobile: Full screen fixed overlay when selected */}
-        {/* On Desktop: Standard sidebar column */}
         <aside className={`
             fixed inset-0 z-40 bg-white overflow-y-auto transition-transform duration-300 ease-in-out p-4
             lg:relative lg:inset-auto lg:z-auto lg:bg-transparent lg:overflow-visible lg:p-0 lg:w-5/12 lg:block lg:transform-none lg:transition-none
@@ -670,11 +644,10 @@ export default function Appointments() {
             {selectedAppointment ? (
               <AppointmentDetail 
                 appointment={selectedAppointment} 
-                // NEW: Pass function to trigger the global modal
                 onRequestCancel={() => setIsCancelModalOpen(true)}
                 onReschedule={handleReschedule} 
                 onAddToCalendar={handleAddToCalendar}
-                onBack={() => setSelectedAppointment(null)} // Only shows on mobile
+                onBack={() => setSelectedAppointment(null)} 
               />
             ) : (
               <div className="flex flex-col items-center justify-center h-full min-h-[450px] text-center p-8 opacity-60">
@@ -689,12 +662,10 @@ export default function Appointments() {
         </aside>
       </div>
       
-      {/* Booking Modal */}
       <Modal isOpen={isBookingModalOpen} onClose={() => setIsBookingModalOpen(false)} title="Patient Appointment System">
         <BookingFlow onClose={() => setIsBookingModalOpen(false)} onSuccess={handleBookingSuccess} />
       </Modal>
 
-      {/* NEW LOCATION: Cancel Confirmation Modal (Global Level) */}
       <Modal isOpen={isCancelModalOpen} onClose={() => setIsCancelModalOpen(false)} title="Cancel Appointment?">
          {selectedAppointment && (
             <div className="flex flex-col items-center gap-6 p-4">

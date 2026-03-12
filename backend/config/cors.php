@@ -21,6 +21,7 @@ return [
         'sanctum/*',
         'broadcasting/auth',
         'broadcasting/*',
+        'storage/*',
     ],
 
     'allowed_methods' => ['*'],

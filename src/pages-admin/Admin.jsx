@@ -13,6 +13,7 @@ import {
   Truck,
   UserCheck,
   Users,
+  FileCheck,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { DashboardSection } from "@/components/admin/sections/DashboardSection";
@@ -27,6 +28,7 @@ import { LogisticsOverview } from "@/components/admin/sections/LogisticsOverview
 import { ResponderOverview } from "@/components/admin/sections/ResponderOverview";
 import { PatientOverview } from "@/components/admin/sections/PatientOverview";
 import { HospitalSafetyIndexSection } from "@/components/admin/sections/HospitalSafetyIndex";
+import { VerificationRequests } from "@/components/admin/sections/VerificationRequests";
 import { useAuth } from "@/context/AuthContext";
 
 const adminSections = [
@@ -37,6 +39,13 @@ const adminSections = [
       "High-level operational picture and response posture overview.",
     icon: LayoutDashboard,
     component: DashboardSection,
+  },
+  {
+    id: "verifications",
+    title: "Verification Requests",
+    description: "Review and approve pending identity verifications.",
+    icon: FileCheck, 
+    component: VerificationRequests,
   },
   {
     id: "users",
