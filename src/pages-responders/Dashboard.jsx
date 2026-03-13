@@ -8,7 +8,7 @@ import MapCard from "../components/responder/MapCard";
 import ResourcesCard from "../components/responder/ResourcesCard";
 import TriageCard from "../components/responder/TriageCard";
 import Footer from "../components/responder/Footer";
-import EmergencyNotifications from "../components/responder/EmergencyNotifications";
+import "../styles/personnel-style.css";
 
 const Dashboard = () => {
   const [selectedCity, setSelectedCity] = useState("Metro Manila (All)");
@@ -22,29 +22,21 @@ const Dashboard = () => {
         onCityChange={setSelectedCity}
         onHospitalChange={setSelectedHospital}
       />
-
       <Cards />
 
-      <div className="mt-6">
-        <EmergencyNotifications />
+      {/* Reports + Map Grid */}
+      <div className="cards-grid">
+        <Reports />
+        <MapCard />
       </div>
 
-      <div className="cards-grid mt-4">
-        <Reports selectedHospital={selectedHospital} />
-        <MapCard
-          selectedCity={selectedCity}
-          selectedHospital={selectedHospital}
-        />
-      </div>
+      {/* Triage Card */}
+      <TriageCard />
 
-      <div className="mt-4">
-        <TriageCard selectedHospital={selectedHospital} />
-      </div>
+      {/* Resources Card */}
+      <ResourcesCard />
 
-      <div className="mt-4">
-        <ResourcesCard />
-      </div>
-
+      {/* Footer */}
       <Footer />
     </Layout>
   );

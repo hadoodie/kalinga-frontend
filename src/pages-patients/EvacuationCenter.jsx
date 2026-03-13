@@ -2,6 +2,7 @@ import EvacCenter from "../components/dashboard/Evacuation";
 import PatientSidebar from "../components/patients/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 export const EvacuationCenter = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,7 @@ export const EvacuationCenter = () => {
           <EvacCenter />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

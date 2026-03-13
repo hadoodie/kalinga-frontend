@@ -3,6 +3,7 @@ import { ChatReport } from "../components/emergency-sos/Chat";
 import { NavbarB } from "../components/Navbar_2";
 import PatientSidebar from "../components/patients/Sidebar";
 import ChatSidebar from "../components/emergency-sos/ChatSidebar";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 export const EmergencyChat = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -40,6 +41,7 @@ export const EmergencyChat = () => {
           </div>
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

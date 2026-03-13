@@ -21,7 +21,7 @@ return [
     /*
     |--------------------------------------------------------------------------
     | Database Connections
-    |--------------------------------------------------------------------------
+    |-----------------------------------------------------------------------
     |
     | Below are all of the database connections defined for your application.
     | An example configuration is provided for each database system which
@@ -110,6 +110,14 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('CLOUD_DB_SSLMODE', 'require'),
+            'options' => [
+                // Supabase's connection pooler (PgBouncer in transaction mode) does not support
+                // server-side prepared statements. Setting ATTR_EMULATE_PREPARES=true forces PDO
+                // to emulate prepared statements client-side, which is required when routing
+                // through the pooler. Disable this (set CLOUD_DB_EMULATE_PREPARES=false) if
+                // connecting directly to Postgres without a pooler, to restore native prepare semantics.
+                PDO::ATTR_EMULATE_PREPARES => env('CLOUD_DB_EMULATE_PREPARES', true),
+            ],
         ],
 
         // Local Database Connection (Backup)
@@ -117,9 +125,9 @@ return [
             'driver' => 'pgsql',
             'host' => env('LOCAL_DB_HOST', '127.0.0.1'),
             'port' => env('LOCAL_DB_PORT', '5432'),
-            'database' => env('LOCAL_DB_DATABASE', 'kalinga_db'),
+            'database' => env('LOCAL_DB_DATABASE', 'pangdemo4_db'),
             'username' => env('LOCAL_DB_USERNAME', 'postgres'),
-            'password' => env('LOCAL_DB_PASSWORD', 'kalingadatabase'),
+            'password' => env('LOCAL_DB_PASSWORD', 'kalingatatagdb'),
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,

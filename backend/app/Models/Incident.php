@@ -13,6 +13,8 @@ class Incident extends Model
     public const STATUS_ACKNOWLEDGED = 'acknowledged';
     public const STATUS_EN_ROUTE = 'en_route';
     public const STATUS_ON_SCENE = 'on_scene';
+    public const STATUS_TRANSPORTING = 'transporting';
+    public const STATUS_HOSPITAL_TRANSFER = 'hospital_transfer';
     public const STATUS_NEEDS_SUPPORT = 'needs_support';
     public const STATUS_RESOLVED = 'resolved';
     public const STATUS_CANCELLED = 'cancelled';
@@ -27,6 +29,8 @@ class Incident extends Model
             self::STATUS_ACKNOWLEDGED,
             self::STATUS_EN_ROUTE,
             self::STATUS_ON_SCENE,
+            self::STATUS_TRANSPORTING,
+            self::STATUS_HOSPITAL_TRANSFER,
             self::STATUS_NEEDS_SUPPORT,
             self::STATUS_RESOLVED,
             self::STATUS_CANCELLED,

@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, Loader2, Send } from "lucide-react";
 
 const MessageBubble = ({ message, currentUserId }) => {
   const isOwn =
@@ -50,7 +50,27 @@ export default function ConversationPanel({
   loading,
   onBack,
   currentUserId,
+  onSend,
+  sending = false,
+  error,
 }) {
+  const [draft, setDraft] = useState("");
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  const handleSubmit = (e) => {
+    e?.preventDefault();
+    const trimmed = draft.trim();
+    if (!trimmed || typeof onSend !== "function") return;
+    onSend(trimmed);
+    setDraft("");
+  };
+
   if (loading) {
     return (
       <section className="bg-white border border-gray-200 rounded-2xl p-8 flex items-center justify-center h-full min-h-[400px]">
@@ -104,7 +124,41 @@ export default function ConversationPanel({
             Awaiting first message…
           </p>
         )}
+        <div ref={messagesEndRef} />
       </div>
+
+      <form
+        onSubmit={handleSubmit}
+        className="border-t border-gray-100 px-4 py-3 bg-white space-y-2"
+      >
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+            {error}
+          </div>
+        )}
+        <div className="flex items-end gap-2">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            rows={2}
+            placeholder="Send an update…"
+            disabled={sending}
+          />
+          <button
+            type="submit"
+            disabled={sending || !draft.trim()}
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-white shadow hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-primary/50"
+          >
+            {sending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">Send</span>
+          </button>
+        </div>
+      </form>
     </section>
   );
 }

@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
   Bell,
   ChevronDown,
   ClipboardList,
+  Map,
   Menu,
   Moon,
   RefreshCcw,
@@ -20,6 +21,41 @@ import {
 } from "lucide-react";
 import logo from "@/assets/kalinga-logo.png";
 import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/datetime";
+import adminService from "@/services/adminService";
+
+const COMMAND_SYNC_INTERVAL_MS = 10 * 1000;
+const QUICK_ACTION_SYNC_INTERVAL_MS = 10 * 1000;
+
+const timeWindowToMs = {
+  "3h": 3 * 60 * 60 * 1000,
+  "6h": 6 * 60 * 60 * 1000,
+  "12h": 12 * 60 * 60 * 1000,
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+};
+
+const incidentPriorityScore = (incident) => {
+  const priority = (
+    incident.priority ||
+    incident.severity ||
+    incident.status ||
+    ""
+  ).toLowerCase();
+  if (priority.includes("critical") || priority.includes("severe")) return 4;
+  if (priority.includes("high") || priority.includes("en_route")) return 3;
+  if (priority.includes("moderate") || priority.includes("ack")) return 2;
+  return 1;
+};
+
+const getIncidentLocation = (incident) =>
+  incident.barangay ||
+  incident.address ||
+  incident.location?.address ||
+  incident.location?.barangay ||
+  incident.city ||
+  incident.region ||
+  "reported area";
 
 export const AdminLayout = ({
   sections,
@@ -39,7 +75,7 @@ export const AdminLayout = ({
   supportCard,
   timeWindowLabel = "Time window",
   autoRefreshLabel = "Auto-refresh",
-  autoRefreshHint = "Every 60 seconds",
+  autoRefreshHint = "Every 10 seconds",
   consoleBadgeLabel = "Current View",
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -50,7 +86,19 @@ export const AdminLayout = ({
   });
   const [timeRange, setTimeRange] = useState("6h");
   const [isAutoRefresh, setIsAutoRefresh] = useState(true);
+  const [alertHighlight, setAlertHighlight] = useState(null);
+  const [alertStatus, setAlertStatus] = useState("idle");
+  const [alertError, setAlertError] = useState(null);
+  const [lastSynced, setLastSynced] = useState(null);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [quickActionMetrics, setQuickActionMetrics] = useState({
+    incidents: null,
+    resources: null,
+    notificationCount: null,
+  });
+  const [quickActionStatus, setQuickActionStatus] = useState("idle");
+  const [quickActionError, setQuickActionError] = useState(null);
+  const [quickActionSyncedAt, setQuickActionSyncedAt] = useState(null);
   const profileMenuRef = useRef(null);
   const profileButtonRef = useRef(null);
 
@@ -70,19 +118,49 @@ export const AdminLayout = ({
 
   const defaultQuickActions = [
     {
+      id: "log-incident",
       label: "Log incident",
       description: "Capture a new field report or escalation",
       icon: AlertTriangle,
+      route: "incidents",
+      metric: (metrics) =>
+        metrics?.incidents
+          ? {
+              label: "Active incidents",
+              value: metrics.incidents.active ?? metrics.incidents.total ?? 0,
+            }
+          : null,
     },
     {
+      id: "resource-board",
       label: "Resource board",
       description: "Review deployments & staging",
       icon: ClipboardList,
+      route: "resources",
+      metric: (metrics) =>
+        metrics?.resources
+          ? {
+              label: "Critical stock",
+              value: metrics.resources.critical ?? 0,
+              helper: `${metrics.resources.lowStock ?? 0} low stock / ${
+                metrics.resources.expiring ?? 0
+              } expiring soon`,
+            }
+          : null,
     },
     {
+      id: "broadcast-advisory",
       label: "Broadcast advisory",
       description: "Push updates across channels",
       icon: Send,
+      route: "broadcast",
+      metric: (metrics) =>
+        typeof metrics?.notificationCount === "number"
+          ? {
+              label: "Advisories",
+              value: metrics.notificationCount,
+            }
+          : null,
     },
   ];
 
@@ -98,7 +176,159 @@ export const AdminLayout = ({
     { value: "logout", label: "Sign out", icon: LogOut, tone: "text-rose-500" },
   ];
 
-  const quickActionItems = quickActionsProp ?? defaultQuickActions;
+  const quickActionItems = useMemo(
+    () =>
+      (quickActionsProp ?? defaultQuickActions).map((action) => ({
+        ...action,
+        metric: action.metric?.(quickActionMetrics),
+      })),
+    [quickActionsProp, quickActionMetrics]
+  );
+
+  const fetchCommandAlert = useCallback(
+    async (windowValue = timeRange) => {
+      setAlertStatus((prev) => (prev === "success" ? "refreshing" : "loading"));
+      try {
+        const incidents = await adminService.getIncidents({
+          include_resolved: false,
+        });
+        const limitMs = timeWindowToMs[windowValue] ?? timeWindowToMs["6h"];
+        const now = Date.now();
+        const filtered = (incidents || []).filter((incident) => {
+          const timestamp = new Date(
+            incident.updated_at || incident.created_at || Date.now()
+          ).getTime();
+          if (Number.isNaN(timestamp)) return true;
+          return now - timestamp <= limitMs;
+        });
+        const sorted = filtered.sort((a, b) => {
+          const severityDiff = incidentPriorityScore(b) - incidentPriorityScore(a);
+          if (severityDiff !== 0) return severityDiff;
+          const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
+          const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
+          return bTime - aTime;
+        });
+        setAlertHighlight(sorted[0] || null);
+        setAlertStatus("success");
+        setAlertError(null);
+        setLastSynced(new Date());
+      } catch (error) {
+        console.error("Failed to sync command alerts", error);
+        setAlertError("Unable to sync command alerts. Showing last known state.");
+        setAlertStatus("error");
+      }
+    },
+    [timeRange]
+  );
+
+  const fetchQuickActionMetrics = useCallback(async () => {
+    setQuickActionStatus((prev) => (prev === "success" ? "refreshing" : "loading"));
+    try {
+      const [incidentStats, resourceStats, notifications] = await Promise.all([
+        adminService.getIncidentStats().catch(() => null),
+        adminService.getResourceStats().catch(() => null),
+        adminService.getNotifications().catch(() => []),
+      ]);
+
+      const notificationCount = Array.isArray(notifications)
+        ? notifications.length
+        : Array.isArray(notifications?.data)
+        ? notifications.data.length
+        : Number(notifications?.meta?.total ?? 0);
+
+      setQuickActionMetrics({
+        incidents: incidentStats,
+        resources: resourceStats,
+        notificationCount: Number.isFinite(notificationCount)
+          ? notificationCount
+          : 0,
+      });
+      setQuickActionStatus("success");
+      setQuickActionError(null);
+      setQuickActionSyncedAt(new Date());
+    } catch (error) {
+      console.error("Failed to sync quick action metrics", error);
+      setQuickActionStatus("error");
+      setQuickActionError("Unable to sync quick action metrics.");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCommandAlert(timeRange);
+  }, [fetchCommandAlert, timeRange]);
+
+  useEffect(() => {
+    if (!isAutoRefresh) return undefined;
+    const id = setInterval(
+      () => fetchCommandAlert(timeRange),
+      COMMAND_SYNC_INTERVAL_MS
+    );
+    return () => clearInterval(id);
+  }, [fetchCommandAlert, isAutoRefresh, timeRange]);
+
+  useEffect(() => {
+    fetchQuickActionMetrics();
+    const id = setInterval(
+      () => fetchQuickActionMetrics(),
+      QUICK_ACTION_SYNC_INTERVAL_MS
+    );
+    return () => clearInterval(id);
+  }, [fetchQuickActionMetrics]);
+
+  const heroStatusLabel = useMemo(() => {
+    if (alertStatus === "loading") return "Syncing alerts…";
+    if (alertStatus === "refreshing") return "Refreshing feed…";
+    if (alertStatus === "error") return alertError || "Using cached alerts";
+    if (lastSynced) {
+      return `Updated ${formatRelativeTime(lastSynced, { short: true })}`;
+    }
+    return "Monitoring telemetry";
+  }, [alertError, alertStatus, lastSynced]);
+
+  const quickActionStatusLabel = useMemo(() => {
+    if (quickActionStatus === "loading") return "Syncing live shortcuts…";
+    if (quickActionStatus === "refreshing") return "Refreshing metrics…";
+    if (quickActionStatus === "error") return quickActionError || "Metrics unavailable";
+    if (quickActionSyncedAt) {
+      return `Updated ${formatRelativeTime(quickActionSyncedAt, { short: true })}`;
+    }
+    return "Awaiting telemetry";
+  }, [quickActionError, quickActionStatus, quickActionSyncedAt]);
+
+  const heroTitle = alertHighlight
+    ? `${alertHighlight.type || "Incident"} in ${getIncidentLocation(alertHighlight)}.`
+    : "No critical alerts in the selected window.";
+
+  const heroSubtitle = alertHighlight && !alertError
+    ? `Status ${(alertHighlight.status || alertHighlight.priority || "reported")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (char) => char.toUpperCase())} • Updated ${formatRelativeTime(
+        alertHighlight.updated_at || alertHighlight.created_at || new Date()
+      )}`
+    : alertError || "System will surface the next telemetry event automatically.";
+
+  const autoRefreshStatus = heroStatusLabel || autoRefreshHint;
+
+  const handleQuickAction = useCallback(
+    async (action) => {
+      if (!action) return;
+
+      if (typeof action.onClick === "function") {
+        await action.onClick({
+          metrics: quickActionMetrics,
+          refetch: fetchQuickActionMetrics,
+        });
+        return;
+      }
+
+      if (action.route) {
+        onSectionChange?.(action.route);
+        setIsSidebarOpen(false);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    },
+    [fetchQuickActionMetrics, onSectionChange, quickActionMetrics]
+  );
 
   // Apply theme to document element on mount and when it changes
   useEffect(() => {
@@ -400,22 +630,29 @@ export const AdminLayout = ({
                       </span>
                       <div>
                         <p className="text-xs uppercase tracking-[0.2em] text-primary/70">
-                          Critical Alert
+                          {alertHighlight ? "Critical Alert" : "Command Status"}
                         </p>
                         <p className="mt-1 text-base font-semibold text-primary">
-                          River telemetry indicates surging levels in Barangays
-                          San Roque & Centro.
+                          {heroTitle}
                         </p>
-                        <p className="mt-1 text-xs text-primary/70">
-                          Water rise projected to reach threshold in 32 minutes.
-                          Evacuation triggers prepped.
-                        </p>
+                        <p className="mt-1 text-xs text-primary/70">{heroSubtitle}</p>
                       </div>
                     </div>
-                    <button className="inline-flex items-center gap-2 rounded-full border border-primary/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary">
-                      View playbook
-                      <RefreshCcw className="h-4 w-4" />
-                    </button>
+                    <div className="flex flex-col items-start gap-2 text-xs text-primary/70 lg:items-end">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 px-3 py-1">
+                        <RefreshCcw className="h-3.5 w-3.5" /> {heroStatusLabel}
+                      </span>
+                      <button
+                        onClick={() => {
+                          onSectionChange?.("incidents");
+                          setIsSidebarOpen(false);
+                        }}
+                        className="inline-flex items-center gap-2 rounded-full border border-primary/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary"
+                      >
+                        {alertHighlight ? "View incident log" : "Review incidents"}
+                        <Map className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -429,7 +666,10 @@ export const AdminLayout = ({
                     {timeRanges.map((range) => (
                       <button
                         key={range.value}
-                        onClick={() => setTimeRange(range.value)}
+                        onClick={() => {
+                          setTimeRange(range.value);
+                          fetchCommandAlert(range.value);
+                        }}
                         className={cn(
                           "rounded-full border px-3 py-1.5 text-xs font-medium transition",
                           timeRange === range.value
@@ -459,33 +699,81 @@ export const AdminLayout = ({
                     {isAutoRefresh ? "Enabled" : "Paused"}
                   </button>
                   <span className="text-xs text-foreground/50">
-                    {autoRefreshHint}
+                    {autoRefreshStatus}
                   </span>
                 </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {quickActionItems.map((action) => {
-                  const Icon = action.icon;
-                  return (
-                    <button
-                      key={action.label}
-                      className="group flex h-full flex-col items-start gap-3 rounded-3xl border border-border/60 bg-background/60 p-5 text-left transition hover:border-primary/40 hover:bg-primary/5"
-                    >
-                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition group-hover:scale-105">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">
-                          {action.label}
-                        </p>
-                        <p className="mt-1 text-xs text-foreground/60">
-                          {action.description}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
+              <div className="space-y-3">
+                <div className="flex flex-col gap-2 text-xs text-foreground/60 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold uppercase tracking-[0.2em] text-foreground/50">
+                      Command shortcuts
+                    </p>
+                    <p className="text-foreground/60">{quickActionStatusLabel}</p>
+                  </div>
+                  <button
+                    onClick={fetchQuickActionMetrics}
+                    className="inline-flex items-center gap-2 rounded-full border border-border/60 px-3 py-1.5 font-semibold text-foreground/70 transition hover:border-primary/40 hover:text-primary"
+                    disabled={quickActionStatus === "loading"}
+                  >
+                    <RefreshCcw
+                      className={cn(
+                        "h-3.5 w-3.5",
+                        quickActionStatus === "loading" && "animate-spin"
+                      )}
+                    />
+                    Sync data
+                  </button>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  {quickActionItems.map((action) => {
+                    const Icon = action.icon;
+                    return (
+                      <button
+                        key={action.id || action.label}
+                        type="button"
+                        onClick={() => handleQuickAction(action)}
+                        className="group flex h-full flex-col items-start gap-3 rounded-3xl border border-border/60 bg-background/60 p-5 text-left transition hover:border-primary/40 hover:bg-primary/5"
+                      >
+                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition group-hover:scale-105">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-foreground">
+                            {action.label}
+                          </p>
+                          <p className="text-xs text-foreground/60">
+                            {action.description}
+                          </p>
+                          {action.metric ? (
+                            <p className="text-xs text-foreground/70">
+                              {action.metric.label}:
+                              <span className="ml-1 font-semibold text-foreground">
+                                {action.metric.value}
+                              </span>
+                              {action.metric.helper && (
+                                <span className="ml-1 text-foreground/50">
+                                  ({action.metric.helper})
+                                </span>
+                              )}
+                            </p>
+                          ) : quickActionStatus === "error" ? (
+                            <p className="text-xs text-rose-500">
+                              {quickActionError}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-foreground/50">
+                              {quickActionStatus === "loading"
+                                ? "Syncing metrics…"
+                                : "Awaiting live data"}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 

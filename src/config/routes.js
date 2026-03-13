@@ -8,12 +8,14 @@ export const ROUTES = {
   PRIVACY_POLICY: "/privacy-policy",
   TERMS_AND_CONDITIONS: "/terms-and-conditions",
   FAQS: "/faqs",
+  MAGIC_LOGIN: "/magic-login",
 
   // Account creation flow
   VERIFY_ID: "/verify-id",
   UPLOAD_ID: "/upload-id",
   FILL_INFO: "/fill-info",
   VERIFICATION_PENDING: "/verification-pending",
+
 
   // Patient routes
   PATIENT: {
@@ -30,6 +32,7 @@ export const ROUTES = {
     NOTIFICATIONS: "/patient/notifications",
     SETTINGS: "/patient/settings",
     PROFILE: "/patient/profile",
+    RESCUE_TRACKER: "/patient/rescue-tracker",
   },
 
   // Admin routes
@@ -42,17 +45,27 @@ export const ROUTES = {
   RESPONDER: {
     ROOT: "/responder",
     DASHBOARD: "/responder/dashboard",
-    DASHBOARD_V2: "/responder/dashboard-v2",
+    EMERGENCY_CONSOLE: "/responder/emergency-console",
     RESPONSE_MODE: "/responder/response-mode/:incidentId",
     INCIDENT_LOGS: "/responder/incident-logs",
     EMERGENCY_SOS: "/responder/emergency-sos",
     TRIAGE_SYSTEM: "/responder/triage-system",
     ONLINE_TRAINING: "/responder/online-training",
-    MODULES: "/responder/modules",
-    MODULE_DETAILS: "/responder/modules/:id",
+    MODULES: "responder/modules",
+    MODULE_DETAILS: "/modules/:id",
     MODULE_INFO: "/modules/:id/info/:topicSlug",
     MODULE_LESSON: "/modules/:id/lesson/:lessonSlug",
     MODULE_ASSESSMENT: "/modules/:id/assessment/:type",
+    MODULE_ACTIVITY: "/modules/:id/activity/:slug",
+    MODULE_1: "/modules/:id/module-1",
+    LESSON_1: "/modules/:id/lesson-1",
+    LESSON_2: "/modules/:id/lesson-2",
+    LESSON_3: "/modules/:id/lesson-3",
+    MODULE_2: "/modules/:id/module-2",
+    LESSON_4: "/modules/:id/lesson-4",
+    LESSON_5: "/modules/:id/lesson-5",
+    LESSON_6: "/modules/:id/lesson-6",
+    LESSON_7: "/modules/:id/lesson-7",
     CERTIFICATIONS: "/responder/certifications",
     GRADES: "/responder/grades",
     SETTINGS: "/responder/settings",
@@ -67,10 +80,11 @@ export const ROUTES = {
     ASSET_REGISTRY: "/logistics/asset-registry",
     SUPPLY_TRACKING: "/logistics/supply-tracking",
     REQUESTED_ALLOCATION: "/logistics/requested-allocation",
+    HOSPITAL_SAFETY_INDEX: "/logistics/hospital-safety-index",
     SETTINGS: "/logistics/settings",
     NOTIFICATIONS: "/logistics/notifications",
     LIVE_MAP: "/logistics/live-map",
-    PROFILE: '/logistics/profile',
+    PROFILE: "/logistics/profile",
   },
 };
 

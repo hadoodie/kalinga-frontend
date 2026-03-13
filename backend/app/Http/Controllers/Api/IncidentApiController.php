@@ -14,6 +14,7 @@ use App\Models\IncidentResponderAssignment;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\HospitalCapabilityService;
+use App\Services\SmartRoutingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -21,8 +22,10 @@ use Illuminate\Support\Collection;
 
 class IncidentApiController extends Controller
 {
-    public function __construct(private HospitalCapabilityService $hospitalCapabilityService)
-    {
+    public function __construct(
+        private HospitalCapabilityService $hospitalCapabilityService,
+        private SmartRoutingService $smartRoutingService
+    ) {
     }
 
     public function index(Request $request)
@@ -119,7 +122,8 @@ class IncidentApiController extends Controller
         $messages = $this->fetchConversationMessages(
             $patient->id,
             $responder->id,
-            $conversation?->id
+            $conversation?->id,
+            $incident->id
         );
 
         $payload = $this->formatConversationPayload(
@@ -214,6 +218,98 @@ class IncidentApiController extends Controller
             'data' => $recommendations,
             'meta' => [
                 'incident_has_coordinates' => $incidentLat !== null && $incidentLng !== null,
+            ],
+        ]);
+    }
+
+    /**
+     * Get AI-powered smart responder recommendations for an incident.
+     * Uses multiple factors: proximity, workload, experience, and response time history.
+     */
+    public function smartResponderRecommendations(Request $request, Incident $incident)
+    {
+        [$incidentLat, $incidentLng] = $this->extractCoordinates($incident->latlng);
+
+        // Fallback to metadata if latlng is not set
+        if ($incidentLat === null || $incidentLng === null) {
+            $metadata = is_array($incident->metadata) ? $incident->metadata : [];
+            $incidentLat = $this->resolveCoordinateFromMetadata($metadata['lat'] ?? $metadata['latitude'] ?? null);
+            $incidentLng = $this->resolveCoordinateFromMetadata($metadata['lng'] ?? $metadata['lon'] ?? $metadata['longitude'] ?? null);
+        }
+
+        $limit = max(1, (int) $request->query('limit', 5));
+
+        $recommendations = $this->smartRoutingService->getSmartRecommendations(
+            $incident,
+            $incidentLat,
+            $incidentLng,
+            $limit
+        );
+
+        return response()->json($recommendations);
+    }
+
+    /**
+     * Auto-assign the best available responder to an incident using AI routing.
+     */
+    public function smartAutoAssign(Request $request, Incident $incident)
+    {
+        $request->validate([
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Check if incident already has required responders
+        $activeAssignmentCount = $incident->assignments()
+            ->whereNotIn('status', [
+                IncidentResponderAssignment::STATUS_COMPLETED,
+                IncidentResponderAssignment::STATUS_CANCELLED,
+            ])->count();
+
+        if ($incident->responders_required > 0 && $activeAssignmentCount >= $incident->responders_required) {
+            return response()->json([
+                'message' => 'Incident already has the required number of responders.',
+            ], 409);
+        }
+
+        // Get the best responder recommendation
+        $bestResponder = $this->smartRoutingService->autoAssignBestResponder($incident);
+
+        if (!$bestResponder) {
+            return response()->json([
+                'message' => 'No available responders found.',
+                'ai_analysis' => null,
+            ], 404);
+        }
+
+        // Assign the recommended responder
+        $assignment = DB::transaction(function () use ($incident, $bestResponder, $request) {
+            $assignment = $incident->assignToResponder($bestResponder['responder_id']);
+
+            if ($incident->status === Incident::STATUS_REPORTED) {
+                $incident->statusUpdates()->create([
+                    'user_id' => $request->user()->id,
+                    'status' => Incident::STATUS_ACKNOWLEDGED,
+                    'notes' => $request->input('notes') ?? 'AI-assisted auto-assignment',
+                ]);
+            }
+
+            return $assignment;
+        });
+
+        $incident->load([
+            'assignments.responder:id,name,email,role,phone',
+            'statusUpdates.user:id,name,role',
+            'latestStatusUpdate.user:id,name,role',
+        ]);
+
+        broadcast(new IncidentUpdated($incident))->toOthers();
+
+        return response()->json([
+            'incident' => (new IncidentResource($incident))->resolve(),
+            'assignment' => new IncidentAssignmentResource($assignment),
+            'ai_recommendation' => [
+                'responder' => $bestResponder,
+                'reasoning' => $bestResponder['ai_reasoning'] ?? 'Based on proximity, workload, and experience scores.',
             ],
         ]);
     }
@@ -532,9 +628,22 @@ class IncidentApiController extends Controller
     }
 
     /**
+     * Fetch messages strictly scoped to an incident.
+     *
+     * IMPORTANT: This method enforces incident-scoped message isolation.
+     * When an incident_id is provided, ONLY messages belonging to that incident
+     * are returned. This prevents archived/closed incident messages from leaking
+     * into new conversations between the same patient/responder pair.
+     *
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
-    private function fetchConversationMessages(int $userA, int $userB, ?int $conversationId = null, int $limit = 200): Collection
+    private function fetchConversationMessages(
+        int $userA,
+        int $userB,
+        ?int $conversationId = null,
+        ?int $incidentId = null,
+        int $limit = 200
+    ): Collection
     {
         $query = Message::query()
             ->with([
@@ -544,19 +653,42 @@ class IncidentApiController extends Controller
             ->whereNull('group_id')
             ->orderByDesc('created_at');
 
-        $query->where(function ($builder) use ($userA, $userB, $conversationId) {
-            if ($conversationId) {
-                $builder->where('conversation_id', $conversationId);
-            }
-
-            $builder->orWhere(function ($inner) use ($userA, $userB) {
-                $inner->where(function ($q) use ($userA, $userB) {
-                    $q->where('sender_id', $userA)->where('receiver_id', $userB);
-                })->orWhere(function ($q) use ($userA, $userB) {
-                    $q->where('sender_id', $userB)->where('receiver_id', $userA);
+        // STRICT INCIDENT SCOPING: Always prioritize incident_id filtering.
+        // This ensures that each incident's conversation is completely isolated.
+        if ($incidentId) {
+            // Only return messages for this specific incident - no fallbacks
+            $query->where('incident_id', $incidentId);
+        } elseif ($conversationId) {
+            // Filter by conversation but exclude messages from archived/resolved incidents
+            $query->where('conversation_id', $conversationId)
+                ->where(function ($q) {
+                    $q->whereNull('incident_id')
+                        ->orWhereHas('incident', function ($incidentQuery) {
+                            $incidentQuery->whereNotIn('status', [
+                                Incident::STATUS_RESOLVED,
+                                Incident::STATUS_CANCELLED,
+                            ]);
+                        });
                 });
+        } else {
+            // Legacy fallback: filter by user pair but exclude archived incident messages
+            $query->where(function ($builder) use ($userA, $userB) {
+                $builder->where(function ($inner) use ($userA, $userB) {
+                    $inner->where('sender_id', $userA)->where('receiver_id', $userB);
+                })->orWhere(function ($inner) use ($userA, $userB) {
+                    $inner->where('sender_id', $userB)->where('receiver_id', $userA);
+                });
+            })
+            ->where(function ($q) {
+                $q->whereNull('incident_id')
+                    ->orWhereHas('incident', function ($incidentQuery) {
+                        $incidentQuery->whereNotIn('status', [
+                            Incident::STATUS_RESOLVED,
+                            Incident::STATUS_CANCELLED,
+                        ]);
+                    });
             });
-        });
+        }
 
         return $query
             ->limit($limit)
@@ -574,8 +706,10 @@ class IncidentApiController extends Controller
                     'receiverId' => $message->receiver_id,
                     'sender' => $message->sender?->name,
                     'sender_name' => $message->sender?->name,
+                    'senderRole' => $message->sender?->role,
                     'timestamp' => $timestamp,
                     'createdAt' => $timestamp,
+                    'incidentId' => $message->incident_id,
                 ];
             });
     }
@@ -675,7 +809,8 @@ class IncidentApiController extends Controller
     {
         return match ($status) {
             Incident::STATUS_EN_ROUTE => IncidentResponderAssignment::STATUS_EN_ROUTE,
-            Incident::STATUS_ON_SCENE, Incident::STATUS_NEEDS_SUPPORT => IncidentResponderAssignment::STATUS_ON_SCENE,
+            Incident::STATUS_TRANSPORTING => IncidentResponderAssignment::STATUS_EN_ROUTE,
+            Incident::STATUS_HOSPITAL_TRANSFER, Incident::STATUS_ON_SCENE, Incident::STATUS_NEEDS_SUPPORT => IncidentResponderAssignment::STATUS_ON_SCENE,
             Incident::STATUS_RESOLVED => IncidentResponderAssignment::STATUS_COMPLETED,
             Incident::STATUS_CANCELLED => IncidentResponderAssignment::STATUS_CANCELLED,
             default => IncidentResponderAssignment::STATUS_ASSIGNED,

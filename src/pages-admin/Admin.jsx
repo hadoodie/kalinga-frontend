@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
+  Activity,
   GraduationCap,
+  Heart,
   LayoutDashboard,
   Map,
   Megaphone,
   Package,
   Server,
   Shield,
+  Truck,
+  UserCheck,
   Users,
+  FileCheck,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { DashboardSection } from "@/components/admin/sections/DashboardSection";
@@ -19,6 +24,11 @@ import { TrainingSection } from "@/components/admin/sections/TrainingSection";
 import { ConnectivityMonitoring } from "@/components/admin/sections/ConnectivityMonitoring";
 import { MonitoringSecurity } from "@/components/admin/sections/MonitoringSecurity";
 import { BroadcastControl } from "@/components/admin/sections/BroadcastControl";
+import { LogisticsOverview } from "@/components/admin/sections/LogisticsOverview";
+import { ResponderOverview } from "@/components/admin/sections/ResponderOverview";
+import { PatientOverview } from "@/components/admin/sections/PatientOverview";
+import { HospitalSafetyIndexSection } from "@/components/admin/sections/HospitalSafetyIndex";
+import { VerificationRequests } from "@/components/admin/sections/VerificationRequests";
 import { useAuth } from "@/context/AuthContext";
 
 const adminSections = [
@@ -31,12 +41,35 @@ const adminSections = [
     component: DashboardSection,
   },
   {
+    id: "verifications",
+    title: "Verification Requests",
+    description: "Review and approve pending identity verifications.",
+    icon: FileCheck, 
+    component: VerificationRequests,
+  },
+  {
     id: "users",
     title: "User & Role Management",
     description:
       "Provision operators, manage access tiers, and coordinate agency collaboration.",
     icon: Users,
     component: UserRoleManagement,
+  },
+  {
+    id: "responders",
+    title: "Responder Overview",
+    description:
+      "Monitor responder availability, assignments, and deployment status across all teams.",
+    icon: UserCheck,
+    component: ResponderOverview,
+  },
+  {
+    id: "patients",
+    title: "Patient Overview",
+    description:
+      "Track registered patients, active emergencies, and health metrics across the system.",
+    icon: Heart,
+    component: PatientOverview,
   },
   {
     id: "incidents",
@@ -53,6 +86,22 @@ const adminSections = [
       "Track logistics pipelines, staging capacity, and resupply cadence.",
     icon: Package,
     component: ResourceManagement,
+  },
+  {
+    id: "hospital-safety",
+    title: "Hospital Safety Index",
+    description:
+      "WHO / DOH-aligned compliance, resilience, and resource telemetry per hospital.",
+    icon: Activity,
+    component: HospitalSafetyIndexSection,
+  },
+  {
+    id: "logistics",
+    title: "Logistics Overview",
+    description:
+      "Monitor supply chain, allocation requests, and shipment tracking.",
+    icon: Truck,
+    component: LogisticsOverview,
   },
   {
     id: "training",
@@ -91,6 +140,7 @@ export const AdminPortal = () => {
   const [activeSection, setActiveSection] = useState(adminSections[0].id);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Helper function to get user initials
   const getInitials = (name) => {
@@ -123,6 +173,16 @@ export const AdminPortal = () => {
       adminSections[0];
     return target.component;
   }, [activeSection]);
+
+  useEffect(() => {
+    if (!location.state?.adminSection) return;
+    const sectionId = location.state.adminSection;
+    const target = adminSections.find((section) => section.id === sectionId);
+    if (target) {
+      setActiveSection(target.id);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location, navigate]);
 
   // Show loading state while checking authentication
   if (!user) {

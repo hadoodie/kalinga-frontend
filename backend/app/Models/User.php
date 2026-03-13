@@ -10,7 +10,8 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Appointment;
 use App\Models\Notification;
-use App\Models\AllocationRequest; // <-- ADDED THIS IMPORT
+use App\Models\AllocationRequest; 
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
@@ -28,6 +29,7 @@ class User extends Authenticatable
         'password',
         'role',
         'phone',
+        'uuid',
         'profile_image',
         'address',
         'barangay',
@@ -73,9 +75,20 @@ class User extends Authenticatable
         ];
     }
 
+    // Relationships
     public function groups()
     {
         return $this->belongsToMany(Group::class, 'group_users');
+    }
+
+    public function hospitals()
+    {
+        return $this->belongsToMany(Hospital::class, 'hospital_user');
+    }
+
+    public function responder()
+    {
+        return $this->hasOne(Responder::class, 'user_id');
     }
 
     /**
@@ -110,5 +123,17 @@ class User extends Authenticatable
     public function incidentStatusUpdates(): HasMany
     {
         return $this->hasMany(IncidentStatusUpdate::class);
+    }
+
+    /**
+     * Boot the model and generate uuid for new users.
+     */
+    protected static function booted()
+    {
+        static::creating(function ($user) {
+            if (empty($user->uuid)) {
+                $user->uuid = (string) Str::uuid();
+            }
+        });
     }
 }

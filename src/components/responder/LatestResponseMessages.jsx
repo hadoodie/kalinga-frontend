@@ -121,8 +121,15 @@ const LatestResponseMessages = ({ incident, refreshKey, currentUserId }) => {
         : [];
 
       if (selectedConversation.participant?.id) {
+        // Pass activeIncidentId to ensure we only fetch messages for the active incident.
+        // This enforces incident-scoped messaging and prevents archived incident
+        // messages from appearing in new conversations.
         const history = await chatService.getMessages(
-          selectedConversation.participant.id
+          selectedConversation.participant.id,
+          {
+            incidentId: selectedConversation.activeIncidentId,
+            conversationId: selectedConversation.conversationId,
+          }
         );
         historyMessages = Array.isArray(history)
           ? history.map((msg) =>

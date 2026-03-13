@@ -12,6 +12,9 @@ import {
 import resourceService from "../../services/resourceService";
 import hospitalService from "../../services/hospitalService";
 import CalendarView from "./ResourceMngmt/CalendarView";
+import RequestsView from "./ResourceMngmt/RequestsView";
+import RequestSupply from "./RequestSupply"; 
+
 
 // --- Configuration & Helpers ---
 
@@ -79,9 +82,12 @@ export default function ResourceMngmt() {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [hospitalId, setHospitalId] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editResource, setEditResource] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [selectedResourceForRequest, setSelectedResourceForRequest] = useState(null);
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockResource, setStockResource] = useState(null);
   const [stockAdjustment, setStockAdjustment] = useState('');
@@ -96,8 +102,8 @@ export default function ResourceMngmt() {
   });
   const [adding, setAdding] = useState(false);
   
-  // NEW: Calendar tab state
-  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory' or 'calendar'
+  // Tab state - now with three options
+  const [activeTab, setActiveTab] = useState('inventory'); // 'inventory', 'requests', or 'calendar'
 
   const getCategoriesForFacility = (facilityName) => {
     return categoriesByFacility[facilityName] || DEFAULT_CATEGORIES;
@@ -127,11 +133,12 @@ export default function ResourceMngmt() {
         setCategoriesByFacility(newCategoriesMap);
 
         if (facilitiesData.length > 0) {
-          const firstHospital = facilitiesData[0].name;
-          setFacility(firstHospital);
+          const firstHospital = facilitiesData[0];
+          setFacility(firstHospital.name);
+          setHospitalId(firstHospital.id);
           
           const firstCategories = categoriesByFacility[firstHospital] || DEFAULT_CATEGORIES;
-+         setCategories(firstCategories);
+          setCategories(firstCategories);
           setNewResource(prev => ({ ...prev, location: firstHospital }));
         }
       } catch (err) {
@@ -244,7 +251,7 @@ export default function ResourceMngmt() {
     try {
       await resourceService.create({
         ...newResource,
-        location: newResource.location || facility, 
+        hospital_id: facilities.find(f => f.name === (newResource.location || facility))?.id,
         quantity: newResource.quantity === "" ? 0 : Number(newResource.quantity),
       });
 
@@ -313,6 +320,7 @@ export default function ResourceMngmt() {
         quantity: adjustmentValue,
         type: "add",
         reason: "Manual stock addition",
+        hospital_id: facilities.find(f => f.name === stockResource.facility)?.id
       });
             
       setShowStockModal(false);
@@ -399,8 +407,26 @@ export default function ResourceMngmt() {
     // You can implement detailed event modal here if needed
   };
 
+  // PHASE 1: Open Request Supply Modal with prefilled resource
+const openRequestSupplyModal = (item) => {
+  const hospital = facilities.find(f => f.name === item.facility);
+  setSelectedResourceForRequest({
+    resource: {
+      id: item.id,
+      name: item.resource,
+      currentStock: item.remaining,
+      unit: item.unit,
+    },
+    hospital: {
+      id: hospital?.id,
+      name: hospital?.name || item.facility,
+    },
+  });
+  setShowRequestModal(true);
+};
+
   return (
-    <div className="flex flex-col min-h-screen gap-5 p-4 md:p-8 bg-background">
+    <div className="flex flex-col min-h-screen gap-6 p-4 md:p-8 bg-background">
       {/* Header and Title */}
       <header className="flex flex-wrap justify-between items-center gap-4 p-4 bg-white rounded-xl shadow-lg">
         <h1 className="text-3xl md:text-4xl font-extrabold text-primary">
@@ -448,33 +474,49 @@ export default function ResourceMngmt() {
       {!loading && !error && (
         <>
           {/* Tab Navigation */}
-          <div className="flex border-b border-gray-200 bg-none mt-0 rounded-lg ">
+          <div className="flex border-b border-gray-200 bg-white rounded-lg p-1">
+                      
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`flex items-center gap-2 px-3 py-3 font-medium text-sm border-b-2 ${
+              className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
                 activeTab === 'inventory'
-                  ? 'border-yellow-500 text-yellow-500'
+                  ? 'border-yellow-500 text-yellow-600 bg-yellow-50 rounded'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <div className="h-4 w-4" />
+              <div className="align-left h-4 w-4" />
               Inventory Management
             </button>
-            <button
-              onClick={() => setActiveTab('calendar')}
-              className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 ${
-                activeTab === 'calendar'
-                  ? 'border-yellow-500 text-yellow-500'
+
+  <button
+              onClick={() => setActiveTab('requests')}
+              className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'requests'
+                  ? 'border-yellow-500 text-yellow-600 bg-yellow-50 rounded'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              <div className="h-4 w-4" />
+              
+              Request
+            </button>
+
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`flex items-center gap-2 px-6 py-3 font-medium text-sm border-b-2 transition-colors ${
+                activeTab === 'calendar'
+                  ? 'border-yellow-500 text-yellow-600 bg-yellow-50 rounded'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <div className="align-left h-4 w-4" />
               History Calendar
             </button>
+            
           </div>
+          
 
           {/* Tab Content */}
-          {activeTab === 'inventory' ? (
+          {activeTab === 'inventory' && (
             <>
               {/* Overview/Metrics Section */}
               <div
@@ -482,6 +524,9 @@ export default function ResourceMngmt() {
                   seeAll ? "hidden" : "block"
                 }`}
               >
+                <h2 className="text-2xl font-bold text-gray-800 mb-4">
+                  Overview
+                </h2>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <StatCard
                     title="Remaining Items"
@@ -686,6 +731,12 @@ export default function ResourceMngmt() {
                                 Add
                               </button>
                               <button
+                                onClick={() => openRequestSupplyModal(item)}
+                                className="px-4 py-2 bg-yellow-500 text-white font-bold rounded-lg hover:bg-yellow-600 text-sm shadow-sm"
+                              >
+                                Request Supply
+                              </button>
+                              <button
                                 className="px-3 py-1 rounded-lg text-gray-800 font-semibold  hover:bg-gray-200 text-xs font-semibold"
                                 onClick={() => handleEditResource(item)}
                                 title="Edit"
@@ -811,8 +862,19 @@ export default function ResourceMngmt() {
                 </div>
               </div>
             </>
-          ) : (
-            // Calendar View
+          )}
+
+          {activeTab === 'requests' && hospitalId && (
+            <RequestsView facility={facility} hospitalId={hospitalId} />
+          )}
+          {activeTab === 'requests' && !hospitalId && (
+            <div className="p-6 text-gray-500">Loading hospital context...</div>
+          )}
+
+
+
+          {/* Calendar View Tab */}
+          {activeTab === 'calendar' && (
             <CalendarView 
               facility={facility}
               onEventClick={handleCalendarEventClick}
@@ -1002,6 +1064,17 @@ export default function ResourceMngmt() {
           )}
         </>
       )}
+      {/* REQUEST SUPPLY MODAL */}
+{showRequestModal && (
+  <RequestSupply
+    isOpen={showRequestModal}
+    onClose={() => {
+      setShowRequestModal(false);
+      setSelectedResourceForRequest(null);
+    }}
+    initialResource={selectedResourceForRequest}
+  />
+)}
     </div>
   );
 }

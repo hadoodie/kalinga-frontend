@@ -1,10 +1,8 @@
 // src/lib/progressUtils.js
 
-const PROGRESS_KEY = "responder_courseProgress";
-
 export const getCourseProgress = () => {
   try {
-    const data = JSON.parse(localStorage.getItem(PROGRESS_KEY)) || {};
+    const data = JSON.parse(localStorage.getItem("courseProgress")) || {};
     return data;
   } catch (e) {
     console.error("Failed to parse courseProgress:", e);
@@ -22,7 +20,7 @@ export const markLessonComplete = (moduleId, section, lessonSlug) => {
     data[moduleId][section].push(lessonSlug);
   }
 
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(data));
+  localStorage.setItem("courseProgress", JSON.stringify(data));
 };
 
 export const isSectionCompleted = (moduleId, section, totalLessons) => {

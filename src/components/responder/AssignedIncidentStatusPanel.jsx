@@ -202,6 +202,7 @@ const AssignedIncidentStatusPanel = ({
   const [notesDraft, setNotesDraft] = useState({});
   const [respondersDraft, setRespondersDraft] = useState({});
   const [updating, setUpdating] = useState({});
+  const [activeTab, setActiveTab] = useState("ongoing"); // 'ongoing' | 'resolved'
 
   const assignedIncidents = useMemo(() => {
     if (!currentUserId) return [];
@@ -213,6 +214,25 @@ const AssignedIncidentStatusPanel = ({
         : false
     );
   }, [incidents, currentUserId]);
+
+  const ongoingIncidents = useMemo(
+    () =>
+      assignedIncidents.filter(
+        (incident) => !["resolved", "cancelled"].includes(incident.status)
+      ),
+    [assignedIncidents]
+  );
+
+  const resolvedIncidents = useMemo(
+    () =>
+      assignedIncidents.filter((incident) =>
+        ["resolved", "cancelled"].includes(incident.status)
+      ),
+    [assignedIncidents]
+  );
+
+  const displayedIncidents =
+    activeTab === "ongoing" ? ongoingIncidents : resolvedIncidents;
 
   useEffect(() => {
     setSelectedStatus((prev) => {
@@ -295,7 +315,7 @@ const AssignedIncidentStatusPanel = ({
 
   return (
     <section className="flex h-full flex-col rounded-xl border border-gray-200 bg-white shadow-sm">
-      <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-5">
+      <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-primary">
             Your assignments
@@ -313,6 +333,42 @@ const AssignedIncidentStatusPanel = ({
         </button>
       </header>
 
+      {/* Tabs */}
+      <div className="flex border-b border-gray-100">
+        <button
+          type="button"
+          onClick={() => setActiveTab("ongoing")}
+          className={`flex-1 px-4 py-3 text-sm font-semibold transition ${
+            activeTab === "ongoing"
+              ? "border-b-2 border-primary text-primary bg-primary/5"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          Ongoing
+          {ongoingIncidents.length > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">
+              {ongoingIncidents.length}
+            </span>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("resolved")}
+          className={`flex-1 px-4 py-3 text-sm font-semibold transition ${
+            activeTab === "resolved"
+              ? "border-b-2 border-green-600 text-green-600 bg-green-50"
+              : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+          }`}
+        >
+          Resolved
+          {resolvedIncidents.length > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-700">
+              {resolvedIncidents.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       <div className="flex-1 overflow-y-auto px-6 py-5">
         {loading ? (
           <div className="flex h-48 items-center justify-center text-gray-500">
@@ -322,17 +378,23 @@ const AssignedIncidentStatusPanel = ({
           <div className="flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertCircle className="h-5 w-5 flex-shrink-0" /> {error}
           </div>
-        ) : assignedIncidents.length === 0 ? (
+        ) : displayedIncidents.length === 0 ? (
           <div className="flex h-48 flex-col items-center justify-center gap-3 text-center text-gray-500">
             <Users className="h-12 w-12 text-gray-300" />
-            <p className="text-base font-medium">No active assignments</p>
+            <p className="text-base font-medium">
+              {activeTab === "ongoing"
+                ? "No active assignments"
+                : "No resolved incidents"}
+            </p>
             <p className="text-sm text-gray-400">
-              You are not currently assigned to any incidents.
+              {activeTab === "ongoing"
+                ? "You are not currently assigned to any ongoing incidents."
+                : "Resolved and cancelled incidents will appear here."}
             </p>
           </div>
         ) : (
           <div className="space-y-5">
-            {assignedIncidents.map((incident) => {
+            {displayedIncidents.map((incident) => {
               const assignment = incident.assignments?.find(
                 (record) => record?.responder?.id === currentUserId
               );

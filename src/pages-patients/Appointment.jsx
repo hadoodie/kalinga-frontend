@@ -3,6 +3,7 @@ import { useState } from "react";
 import PatientSidebar from "../components/patients/Sidebar";
 import Appointments from "../components/patients/Appointment";
 import { Footer } from "../components/Footer";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 export const PatientAppointment = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -29,6 +30,7 @@ export const PatientAppointment = () => {
           <Footer />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

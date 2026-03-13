@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { HashLink } from "react-router-hash-link";
-import { Search, Bell, UserCircle } from "lucide-react";
+import { Search, Bell, UserCircle, AlertCircle, MapPin } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import logo from "../../assets/kalinga-logo.png";
 import { useAuth } from "../../context/AuthContext";
+import { useIncidents } from "../../context/IncidentContext";
+import { useReverseGeocode } from "../../hooks/useReverseGeocode";
 
 export default function ResponderTopbar({
   notifications = [
@@ -13,6 +15,7 @@ export default function ResponderTopbar({
   ],
 }) {
   const { user, logout } = useAuth();
+  const { incidents } = useIncidents();
   const capitalizeFirstLetter = (str) => {
     if (!str) return str;
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -26,6 +29,21 @@ export default function ResponderTopbar({
   const userName = user?.name || "Responder";
   const userRole = user?.role ? capitalizeFirstLetter(user.role) : "Responder";
   const userPic = user?.profilePicture || "https://i.pravatar.cc/100";
+
+  const activeAssignment = Array.isArray(incidents)
+    ? incidents.find((inc) => {
+        const isAssigned = inc.assignments?.some(
+          (a) => (a.responder_id || a.responder?.id) === user?.id
+        );
+        const isActive = !["resolved", "cancelled"].includes(inc.status);
+        return isAssigned && isActive;
+      })
+    : null;
+
+  const { address: activeAddress } = useReverseGeocode(
+    activeAssignment?.latitude,
+    activeAssignment?.longitude
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -211,6 +229,40 @@ export default function ResponderTopbar({
           </div>
         </div>
       </div>
+
+      {/* Mobile Active Incident Quick Access */}
+      {activeAssignment && (
+        <div className="mt-4 sm:mt-3">
+          <button
+            onClick={() =>
+              navigate(`/responder/response-mode/${activeAssignment.id}`)
+            }
+            className="w-full flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2 sm:py-3 shadow-sm transition hover:bg-red-100"
+          >
+            <div className="flex items-center gap-2 sm:gap-3 text-left">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700">
+                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                <AlertCircle />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold uppercase tracking-wide text-red-700">
+                  Active Incident
+                </span>
+                <span className="text-sm font-semibold text-gray-900 line-clamp-1">
+                  {activeAddress || `Incident #${activeAssignment.id}`}
+                </span>
+                <span className="flex items-center gap-1 text-xs text-gray-600">
+                  <MapPin size={14} />
+                  <span className="line-clamp-1">
+                    {activeAssignment.barangay || "Live response mode"}
+                  </span>
+                </span>
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-red-700">Open</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

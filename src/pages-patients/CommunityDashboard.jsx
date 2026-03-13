@@ -2,6 +2,7 @@ import Dash from "../components/dashboard/Dashboard";
 import PatientSidebar from "../components/patients/Sidebar";
 import { NavbarB } from "../components/Navbar_2";
 import { useState } from "react";
+import EmergencyFab from "../components/patients/EmergencyFab";
 
 export const CommunityDashboard = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,7 @@ export const CommunityDashboard = () => {
           <Dash />
         </main>
       </div>
+      <EmergencyFab />
     </div>
   );
 };

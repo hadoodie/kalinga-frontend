@@ -16,6 +16,8 @@ export default function LocationSimulator({
   isActive = false,
   buttonLabel = "Simulate Location",
   className = "",
+  // position: 'top-right' | 'bottom-center'
+  position = "top-right",
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [lat, setLat] = useState(currentLocation?.lat ?? 14.6);
@@ -111,11 +113,30 @@ export default function LocationSimulator({
     []
   );
 
+  // compute wrapper style for placement
+  const wrapperStyle = {};
+  const wrapperClasses = [
+    "pointer-events-auto fixed z-[9999] flex flex-col gap-2",
+    className,
+  ];
+
+  if (position === "top-right") {
+    wrapperStyle.top = "1rem";
+    wrapperStyle.right = "1rem";
+    wrapperClasses.push("items-end");
+  } else if (position === "bottom-center") {
+    wrapperStyle.bottom = "1rem";
+    wrapperStyle.left = "50%";
+    wrapperStyle.transform = "translateX(-50%)";
+    wrapperClasses.push("items-center");
+  } else if (position === "bottom-right") {
+    wrapperStyle.bottom = "1rem";
+    wrapperStyle.right = "1rem";
+    wrapperClasses.push("items-end");
+  }
+
   return (
-    <div
-      className={`pointer-events-auto fixed z-[9999] flex flex-col items-end gap-2 ${className}`}
-      style={{ top: "1rem", right: "1rem" }}
-    >
+    <div className={wrapperClasses.join(" ")} style={wrapperStyle}>
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}

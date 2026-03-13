@@ -6,7 +6,6 @@ import {
   Edit, Trash2, Download, Archive, Send, MoreVertical,
   Tablet, LayoutGrid, ChevronLeft, ChevronRight, Eye, X
 } from "lucide-react";
-import StatusBadge from "./StatusBadge";
 import { useNavigate } from "react-router-dom";
 
 // Responsive CSS
@@ -124,15 +123,23 @@ export default function AssetTable({ assets, loading, onRefresh, filters = {} })
 
   // Core Functions
 const handleViewDetails = (asset) => {
-  navigate(`/logistics/assets/${asset.id}`);
+  // Navigate by asset key (asset_code or id)
+  const key = getAssetKey(asset);
+  navigate(`/logistics/assets/${key}`);
 };
 
 
 
   // Bulk Operations
-  const toggleSelectAsset = (assetId) => {
+  // Use a stable key for assets (backend sometimes returns different shapes)
+  const getAssetKey = (asset) => asset.id ?? asset.asset_code ?? asset.assetCode ?? asset.name ?? asset.plateNumber;
+
+  const getAssetCodeDisplay = (a) => a?.asset_code ?? a?.assetCode ?? a?.id ?? a?.name ?? a?.plateNumber ?? '—';
+  const getAssetTypeDisplay = (a) => a?.type ?? a?.asset_type ?? a?.name ?? '—';
+
+  const toggleSelectAsset = (assetKey) => {
     const newSelected = new Set(selectedAssets);
-    newSelected.has(assetId) ? newSelected.delete(assetId) : newSelected.add(assetId);
+    newSelected.has(assetKey) ? newSelected.delete(assetKey) : newSelected.add(assetKey);
     setSelectedAssets(newSelected);
   };
 
@@ -177,18 +184,18 @@ const handleViewDetails = (asset) => {
         <div className="flex items-center gap-2">
           {getAssetIcon(asset.category)}
           <div>
-            <h3 className="font-bold text-green-900 text-sm">{asset.id}</h3>
-            <p className="text-gray-600 text-xs">{asset.type}</p>
+            <h3 className="font-bold text-green-900 text-sm">{getAssetCodeDisplay(asset)}</h3>
+            <p className="text-gray-600 text-xs">{getAssetTypeDisplay(asset)}</p>
           </div>
         </div>
         {showCheckboxes && (
           <input
             type="checkbox"
             className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-            checked={selectedAssets.has(asset.id)}
+            checked={selectedAssets.has(getAssetKey(asset))}
             onChange={(e) => {
               e.stopPropagation();
-              toggleSelectAsset(asset.id);
+              toggleSelectAsset(getAssetKey(asset));
             }}
           />
         )}
@@ -201,7 +208,6 @@ const handleViewDetails = (asset) => {
         </div>
         <div className="flex justify-between items-center">
           <span className="text-gray-500">Status:</span>
-          <StatusBadge status={asset.status} />
         </div>
         <div className="flex justify-between items-center">
           <span className="text-gray-500">Location:</span>
@@ -333,7 +339,7 @@ const handleViewDetails = (asset) => {
                           onChange={() =>
                             selectedAssets.size === currentAssets.length
                               ? setSelectedAssets(new Set())
-                              : setSelectedAssets(new Set(currentAssets.map(asset => asset.id)))
+                              : setSelectedAssets(new Set(currentAssets.map(asset => getAssetKey(asset))))
                           }
                         />
                       </th>
@@ -346,9 +352,11 @@ const handleViewDetails = (asset) => {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {currentAssets.map((asset) => (
+                  {currentAssets.map((asset) => {
+                    const aKey = getAssetKey(asset);
+                    return (
                     <tr
-                      key={asset.id}
+                      key={aKey}
                       className="asset-table-row cursor-pointer"
                       onClick={() => !showCheckboxes && handleViewDetails(asset)}
                     >
@@ -357,8 +365,8 @@ const handleViewDetails = (asset) => {
                           <input
                             type="checkbox"
                             className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                            checked={selectedAssets.has(asset.id)}
-                            onChange={() => toggleSelectAsset(asset.id)}
+                            checked={selectedAssets.has(aKey)}
+                            onChange={() => toggleSelectAsset(aKey)}
                           />
                         </td>
                       )}
@@ -366,21 +374,21 @@ const handleViewDetails = (asset) => {
                         <div className="flex items-center justify-center gap-3"> {/* justify-center added */}
                           {getAssetIcon(asset.category)}
                           <div>
-                            <div className="font-semibold text-green-900 text-sm">{asset.id}</div>
-                            <div className="text-gray-600 text-sm">{asset.type}</div>
+                            <div className="font-semibold text-green-900 text-sm">{getAssetCodeDisplay(asset)}</div>
+                            <div className="text-gray-600 text-sm">{getAssetTypeDisplay(asset)}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-4 py-4 text-center text-sm text-gray-900">{asset.category}</td>
                       <td className="px-4 py-4 text-center text-sm text-gray-900">{asset.capacity}</td>
-                      <td className="px-4 py-4 text-center"><StatusBadge status={asset.status} /></td>
                       <td className="px-4 py-4 text-center text-sm text-gray-900">
                         <div className="flex items-center justify-center gap-1"> {/* justify-center added */}
                           <MapPin className="h-3 w-3 text-gray-400" /> {asset.location}
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -393,19 +401,19 @@ const handleViewDetails = (asset) => {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {currentAssets.map((asset) => (
               <div 
-                key={asset.id} 
+                key={getAssetKey(asset)} 
                 className="asset-card bg-white rounded-lg p-4 cursor-pointer"
                 onClick={() => !showCheckboxes && handleViewDetails(asset)}
               >
                 <div className="flex justify-between items-start mb-3">
-                  <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2">
                     {getAssetIcon(asset.category)}
                     <div>
-                      <h3 className="font-bold text-green-900 text-sm">{asset.id}</h3>
-                      <p className="text-gray-600 text-xs">{asset.type}</p>
+                      <h3 className="font-bold text-green-900 text-sm">{getAssetCodeDisplay(asset)}</h3>
+                      <p className="text-gray-600 text-xs">{getAssetTypeDisplay(asset)}</p>
                     </div>
                   </div>
-                  <StatusBadge status={asset.status} />
+                  
                 </div>
                 
                 <div className="space-y-2 text-sm mb-4">
@@ -449,7 +457,7 @@ const handleViewDetails = (asset) => {
       <div className="mobile-cards">
         <div className="space-y-3">
           {currentAssets.map((asset) => (
-            <MobileAssetCard key={asset.id} asset={asset} />
+            <MobileAssetCard key={getAssetKey(asset)} asset={asset} />
           ))}
         </div>
       </div>
