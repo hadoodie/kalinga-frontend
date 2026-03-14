@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Resource;
-use App\Models\Hospital;
 use App\Models\ResourceResilienceConfig;
 
 /**
