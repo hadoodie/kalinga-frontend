@@ -511,14 +511,14 @@ export default function UploadID() {
   };
 
   return (
-    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex items-center justify-center px-4 py-8">
+    <div className="bg-gradient-to-b from-green-900 via-green-600 to-yellow-400 min-h-screen flex flex-col items-center pt-35 px-4 pb-20">
       
       {/* HIDDEN CANVAS FOR PROCESSING */}
       <canvas ref={canvasRef} className="hidden"></canvas>
 
       <div className="w-full max-w-md bg-white shadow-2xl rounded-2xl p-6 sm:p-8">
         {/* Header */}
-        <h2 className="text-2xl font-bold text-center text-gray-800 mb-3">Verify your account</h2>
+        <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">Verify your account</h2>
 
         {/* Progress Indicator */}
         <div className="flex justify-center items-center gap-2 mb-6">
