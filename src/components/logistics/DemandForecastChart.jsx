@@ -112,8 +112,7 @@ const DemandForecastChart = ({ hospitalId = null, resourceId = null }) => {
             Predicted:{" "}
             <span className="font-bold">
               {formatDisplayQuantity(d?.yhat, "units")}
-            </span>{" "}
-            units
+            </span>
           </p>
           <p className="text-gray-500 text-xs">
             Range: {formatDisplayQuantity(d?.yhat_lower, "units")} –{" "}

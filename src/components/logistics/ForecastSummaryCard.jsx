@@ -220,7 +220,7 @@ const ForecastSummaryCard = () => {
                           item.days_until_stockout,
                           "days",
                         )}
-                        d left
+
                       </span>
                     )}
                   </div>

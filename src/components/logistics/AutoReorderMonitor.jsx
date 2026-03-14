@@ -139,7 +139,7 @@ function OrderRow({ order }) {
       : null;
     const daysLeft = riskMeta.days_until_stockout != null
       ? `${riskMeta.days_until_stockout.toFixed(1)}d`
-
+      : null;
   const hospitalName = order.hospital?.name || `Hospital #${order.hospital_id}`;
   const resourceName =
     order.resource?.name ||

@@ -160,7 +160,7 @@ class HospitalSafetyIndexController extends Controller
         $validated['routine_bed_capacity'] = $validated['routine_bed_capacity']
             ?? $hospital->routine_bed_capacity
             ?? $hospital->capacity
-            ?? 0;
+            ?? 1;
 
         $validated['maximum_bed_capacity'] = $validated['maximum_bed_capacity']
             ?? $hospital->maximum_bed_capacity

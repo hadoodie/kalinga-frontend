@@ -78,9 +78,22 @@ return new class extends Migration
         }
 
         Schema::table('appointments', function (Blueprint $table) {
-            if (Schema::hasColumn('appointments', 'patient_name')) {
-                $table->dropColumn('patient_name');
+            $columnsToDrop = [
+                'patient_name',
+                'appointment_at',
+                'location',
+                'contact_phone',
+                'contact_email',
+                'instructions',
+                'status'
+            ];
+
+            foreach ($columnsToDrop as $column) {
+                if (Schema::hasColumn('appointments', $column)) {
+                    $table->dropColumn($column);
+                }
             }
+
             if (Schema::hasColumn('appointments', 'hospital')) {
                 $table->renameColumn('hospital', 'provider_name');
             }

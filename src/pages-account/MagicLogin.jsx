@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import authService from "@/services/authService";
-import api, { getCsrfCookie } from "@/services/api";
+import api from "@/services/api";
 import { useToast } from "@/hooks/use-toast"; 
 
 export const MagicLogin = () => {
@@ -35,8 +35,7 @@ export const MagicLogin = () => {
         // 2. FORCE Axios to use this exact token immediately for the next request
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-        // 3. Ensure we have a fresh CSRF cookie (prevents 419 errors)
-        await getCsrfCookie();
+          // 3. (CSRF disabled per API setup)
 
         // 4. Now fetch the user data
         const userData = await authService.getCurrentUser();
