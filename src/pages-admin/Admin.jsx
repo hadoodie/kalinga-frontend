@@ -31,6 +31,11 @@ const UserRoleManagement = lazy(() =>
     default: m.UserRoleManagement,
   })),
 );
+const VerificationRequests = lazy(() =>
+  import("@/components/admin/sections/VerificationRequests").then((m) => ({
+    default: m.VerificationRequests,
+  })),
+);
 const IncidentHeatMap = lazy(() =>
   import("@/components/admin/sections/IncidentHeatMap").then((m) => ({
     default: m.IncidentHeatMap,
@@ -125,7 +130,7 @@ const adminSections = [
     id: "verifications",
     title: "Verification Requests",
     description: "Review and approve pending identity verifications.",
-    icon: FileCheck, 
+    icon: FileCheck,
     component: VerificationRequests,
   },
   {
