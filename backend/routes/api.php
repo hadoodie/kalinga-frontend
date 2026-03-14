@@ -12,7 +12,8 @@ use App\Http\Controllers\Api\RouteLogController;
 use App\Http\Controllers\Api\ResponderTrackingController;
 use App\Http\Controllers\Api\NLPController;
 use App\Http\Controllers\HospitalSafetyIndexController;
-
+use App\Http\Controllers\VerificationController;
+use App\Http\Controllers\OCRController;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\RequestController;
@@ -78,7 +79,6 @@ Route::middleware(['throttle:10,1'])->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 });
-
 // Public reverse geocode proxy (limits to avoid CORS on Nominatim)
 Route::middleware(['throttle:30,1'])->get('/geocode/reverse', function (Request $request) {
     $validated = $request->validate([
@@ -272,6 +272,11 @@ Route::middleware(['throttle:60,1'])->group(function () {
     Route::get('/resources', [ResourceController::class, 'index']);
 });
 
+// Secure Image Serving (Requires Valid Signature)
+Route::get('/secure-document', [\App\Http\Controllers\VerificationController::class, 'showDocument'])
+    ->middleware('signed')
+    ->name('secure.document');
+
 // Protected routes (require authentication + rate limiting)
 Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Common authenticated routes
@@ -285,12 +290,19 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::post('/route-logs/{routeLog}/deviations', [RouteLogController::class, 'storeDeviation']);
     Route::get('/route-logs', [RouteLogController::class, 'index']);
     Route::post('/book-appointment', [AppointmentController::class, 'store']);
-    
+    Route::post('/parse-id', [OCRController::class, 'processImage']);
+
+    // Identity Verification
+    Route::post('/verify-identity', [VerificationController::class, 'store']);
+  
     // Admin only routes
     Route::middleware(['role:admin'])->group(function () {
         Route::get('/admin/users', [AuthController::class, 'getAllUsers']);
         Route::put('/admin/users/{id}/activate', [AuthController::class, 'activateUser']);
         Route::put('/admin/users/{id}/deactivate', [AuthController::class, 'deactivateUser']);
+        Route::get('/admin/verifications', [VerificationController::class, 'index']);
+        Route::post('/admin/verifications/{id}/approve', [VerificationController::class, 'approve']);
+        Route::post('/admin/verifications/{id}/reject', [VerificationController::class, 'reject']);
         Route::post('/notifications', [NotificationController::class, 'store']);
     });
 

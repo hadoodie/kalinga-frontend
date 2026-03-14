@@ -13,25 +13,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('incidents', function (Blueprint $table) {
+            // SAFETY CHECK: Only add if they don't exist yet
             if (!Schema::hasColumn('incidents', 'responders_required')) {
-                $table->unsignedTinyInteger('responders_required')->default(1)->after('description');
+                $table->unsignedTinyInteger('responders_required')->default(1); 
             }
-
             if (!Schema::hasColumn('incidents', 'metadata')) {
-                $table->json('metadata')->nullable()->after('completed_at');
+                $table->json('metadata')->nullable();
             }
         });
 
-        // Widen the status column so we can support richer responder states
         $driver = Schema::getConnection()->getDriverName();
+        
         if ($driver === 'pgsql') {
-            DB::statement("ALTER TABLE incidents ALTER COLUMN status TYPE VARCHAR(50)");
+            DB::statement("ALTER TABLE incidents ALTER COLUMN status TYPE VARCHAR(50) USING status::text");
             DB::statement("ALTER TABLE incidents ALTER COLUMN status SET DEFAULT 'reported'");
         } elseif ($driver === 'mysql') {
             DB::statement("ALTER TABLE incidents MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'reported'");
         }
 
-        // Normalize any existing records to the new status scheme
         DB::table('incidents')
             ->where('status', 'available')
             ->update(['status' => 'reported']);
@@ -62,20 +61,11 @@ return new class extends Migration
             ->where('status', 'resolved')
             ->update(['status' => 'completed']);
 
-        // Revert status column to the original definition based on driver
-        $driver = Schema::getConnection()->getDriverName();
-        if ($driver === 'pgsql') {
-            // For PostgreSQL, we'd need to recreate the enum type if it was originally an enum
-            // For simplicity, just keep it as varchar since we can't easily revert to enum
-        } elseif ($driver === 'mysql') {
-            DB::statement("ALTER TABLE incidents MODIFY COLUMN status ENUM('available','assigned','completed') NOT NULL DEFAULT 'available'");
-        }
-
         Schema::table('incidents', function (Blueprint $table) {
+            // SAFETY CHECK: Only drop if they actually exist
             if (Schema::hasColumn('incidents', 'metadata')) {
                 $table->dropColumn('metadata');
             }
-
             if (Schema::hasColumn('incidents', 'responders_required')) {
                 $table->dropColumn('responders_required');
             }

@@ -64,5 +64,8 @@ return [
         'timeout'    => (int) env('FORECAST_API_TIMEOUT', 300),
         'enabled'    => (bool) env('FORECAST_ENABLED', true),
     ],
+    'recaptcha' => [
+        'secret' => env('RECAPTCHA_SECRET_KEY'),
+    ],
 
 ];

@@ -524,6 +524,7 @@ const ActiveDeliveriesList = ({ shipments }) => {
           </tbody>
         </table>
       </div>
+      
       <div className="mt-3 text-right">
         <Link
           to="/logistics/supply-tracking"
@@ -536,6 +537,7 @@ const ActiveDeliveriesList = ({ shipments }) => {
   );
 };
 
+// --- UPDATED: ResourceRequestsList (Mobile Responsive) ---
 const ResourceRequestsList = ({ requests }) => (
   <div className="col-span-12 bg-white rounded-2xl shadow-md border p-5">
     <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
@@ -585,6 +587,7 @@ const ResourceRequestsList = ({ requests }) => (
         </tbody>
       </table>
     </div>
+    
     <div className="mt-3 text-right">
       <Link
         to="/logistics/requested-allocation"

@@ -22,6 +22,11 @@ const FillInformation = lazy(() =>
 const VerificationPending = lazy(() =>
   import("../pages-resident/99_VerificationPending")
 );
+const MagicLogin = lazy(() =>
+  import("../pages-account/MagicLogin").then((module) => ({
+    default: module.MagicLogin,
+  }))
+);
 
 export const AccountRoutes = () => (
   <>
@@ -56,6 +61,10 @@ export const AccountRoutes = () => (
           <VerificationPending />
         </ProtectedRoute>
       }
+    />
+    <Route 
+      path={ROUTES.MAGIC_LOGIN}
+      element={<MagicLogin />} 
     />
   </>
 );

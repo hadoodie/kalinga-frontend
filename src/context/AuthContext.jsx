@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import authService from "../services/authService";
 import { cleanupAuthStorage } from "../utils/storage";
 import { preloadCriticalData, resetPreloader } from "../lib/dataPreloader";
@@ -188,6 +188,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const setSession = useCallback((userData, authToken) => {
+    setUser(userData);
+    setToken(authToken);
+    localStorage.setItem("token", authToken);
+    localStorage.setItem("user", JSON.stringify(userData));
+    preloadCriticalData({ userRole: userData.role });
+  }, []);
+
   const value = {
     user,
     setUser,
@@ -196,6 +204,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     register,
+    setSession, 
     isAuthenticated: !!token && !!user,
   };
 

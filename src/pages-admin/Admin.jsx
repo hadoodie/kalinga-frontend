@@ -14,8 +14,22 @@ import {
   Truck,
   UserCheck,
   Users,
+  FileCheck,
 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { DashboardSection } from "@/components/admin/sections/DashboardSection";
+import { UserRoleManagement } from "@/components/admin/sections/UserRoleManagement";
+import { IncidentHeatMap } from "@/components/admin/sections/IncidentHeatMap";
+import { ResourceManagement } from "@/components/admin/sections/ResourceManagement";
+import { TrainingSection } from "@/components/admin/sections/TrainingSection";
+import { ConnectivityMonitoring } from "@/components/admin/sections/ConnectivityMonitoring";
+import { MonitoringSecurity } from "@/components/admin/sections/MonitoringSecurity";
+import { BroadcastControl } from "@/components/admin/sections/BroadcastControl";
+import { LogisticsOverview } from "@/components/admin/sections/LogisticsOverview";
+import { ResponderOverview } from "@/components/admin/sections/ResponderOverview";
+import { PatientOverview } from "@/components/admin/sections/PatientOverview";
+import { HospitalSafetyIndexSection } from "@/components/admin/sections/HospitalSafetyIndex";
+import { VerificationRequests } from "@/components/admin/sections/VerificationRequests";
 import { useAuth } from "@/context/AuthContext";
 
 // Lazy-loaded admin sections — each chunk is split out of the main bundle
@@ -118,6 +132,13 @@ const adminSections = [
     icon: LayoutDashboard,
     component: DashboardSection,
     apiStatus: "live",
+  },
+  {
+    id: "verifications",
+    title: "Verification Requests",
+    description: "Review and approve pending identity verifications.",
+    icon: FileCheck, 
+    component: VerificationRequests,
   },
   {
     id: "users",

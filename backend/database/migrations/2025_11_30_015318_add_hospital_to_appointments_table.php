@@ -9,7 +9,7 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-   public function up()
+    public function up()
     {
         Schema::table('appointments', function (Blueprint $table) {
             if (!Schema::hasColumn('appointments', 'hospital')) {
@@ -20,7 +20,7 @@ return new class extends Migration
 
     public function down()
     {
-     Schema::table('appointments', function (Blueprint $table) {
+        Schema::table('appointments', function (Blueprint $table) {
             if (Schema::hasColumn('appointments', 'hospital')) {
                 $table->dropColumn('hospital');
             }
