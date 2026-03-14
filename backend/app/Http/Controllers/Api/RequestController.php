@@ -257,7 +257,7 @@ public function destroy(Request $requestModel)    {
     public function updateStatus(HttpRequest $httpRequest, Request $requestModel)
     {
         $validated = $httpRequest->validate([
-            'status' => 'required|string|in:approved,rejected,allocated,in_transit,delivered,verified',
+            'status' => 'required|string|in:approved,rejected,allocated,in_transit,delivered,verified,under_review',
             'reason' => 'nullable|string|max:1000',
         ]);
 

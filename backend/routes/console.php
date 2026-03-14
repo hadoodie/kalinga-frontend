@@ -67,7 +67,7 @@ Schedule::command('forecasts:run --mode=production --auto-reorder --narrative')
     ->everyTwoHours()
     ->withoutOverlapping()
     ->when(function () {
-        return env('FORECAST_ENABLED', true);
+        return config('app.forecast_enabled', true);
     })
     ->onSuccess(function () {
         info('Forecast pipeline completed at ' . now());
@@ -81,7 +81,7 @@ Schedule::command('forecasts:monitor --retrain --days=7')
     ->dailyAt('06:00')
     ->withoutOverlapping()
     ->when(function () {
-        return env('FORECAST_ENABLED', true);
+        return config('app.forecast_enabled', true);
     })
     ->onSuccess(function () {
         info('Forecast monitoring completed at ' . now());
@@ -94,7 +94,7 @@ Schedule::command('forecasts:prune')
     ->at('03:00')
     ->withoutOverlapping()
     ->when(function () {
-        return env('FORECAST_ENABLED', true);
+        return config('app.forecast_enabled', true);
     })
     ->onSuccess(function () {
         info('Forecast data pruned at ' . now());

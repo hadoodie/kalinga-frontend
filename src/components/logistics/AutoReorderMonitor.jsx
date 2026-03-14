@@ -159,7 +159,7 @@ function OrderRow({ order }) {
               {order.urgency_level}
             </span>
           </div>
-          <p className="text-xs text-gray-500 ml-5.5 flex items-center gap-2">
+          <p className="text-xs text-gray-500 ml-[22px] flex items-center gap-2">
             <span>{hospitalName}</span>
             <span className="text-gray-300">•</span>
             <span>Qty: {order.quantity}</span>

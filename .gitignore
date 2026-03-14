@@ -60,3 +60,7 @@ forecasting/output/
 
 # Pathfinding source
 pathfinding-source/
+
+# Output and Artifacts
+output/
+backend/count()

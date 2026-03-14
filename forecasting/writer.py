@@ -67,6 +67,16 @@ def write_demand_forecasts(df: pd.DataFrame, engine=None):
     out = pd.DataFrame(records)
 
     with engine.begin() as conn:
+        # Delete forecasts for this exact timeframe and model version to maintain idempotency
+        conn.execute(
+            text("DELETE FROM forecast_demand_hourly WHERE forecast_time >= :min_time AND forecast_time <= :max_time AND model_version = :version"),
+            {
+                "min_time": out["forecast_time"].min(),
+                "max_time": out["forecast_time"].max(),
+                "version": MODEL_VERSION
+            }
+        )
+
         # Delete stale forecasts (older than retention period)
         conn.execute(
             text("DELETE FROM forecast_demand_hourly WHERE generated_at < NOW() - :days * INTERVAL '1 day'"),
@@ -114,6 +124,16 @@ def write_risk_forecasts(df: pd.DataFrame, engine=None):
     out = pd.DataFrame(records)
 
     with engine.begin() as conn:
+        # Delete forecasts for this exact timeframe and model version to maintain idempotency
+        conn.execute(
+            text("DELETE FROM forecast_risk_hourly WHERE forecast_time >= :min_time AND forecast_time <= :max_time AND model_version = :version"),
+            {
+                "min_time": out["forecast_time"].min(),
+                "max_time": out["forecast_time"].max(),
+                "version": MODEL_VERSION
+            }
+        )
+
         conn.execute(
             text("DELETE FROM forecast_risk_hourly WHERE generated_at < NOW() - :days * INTERVAL '1 day'"),
             {"days": FORECAST_RETENTION_DAYS},

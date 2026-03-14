@@ -45,6 +45,10 @@ from forecasting.demo_data import generate_all
 @click.option("--output", default="./output", type=str, help="Output directory for CSV (demo mode)")
 def main(demo, production, horizon, seed, output):
     """Kalinga AI Demand & Risk Forecasting Pipeline."""
+    if demo and production:
+        click.echo("Error: --demo and --production are mutually exclusive.")
+        sys.exit(1)
+
     if not demo and not production:
         click.echo("Please specify --demo or --production mode.")
         click.echo("Run with --help for usage.")
