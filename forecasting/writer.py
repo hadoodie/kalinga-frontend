@@ -37,6 +37,9 @@ def write_demand_forecasts(df: pd.DataFrame, engine=None):
     Write demand forecasts to forecast_demand_hourly table.
     Clears current-run data first to avoid duplicates.
     """
+    if df is None or df.empty:
+        return 0
+
     if engine is None:
         engine = get_engine()
 
@@ -93,6 +96,9 @@ def write_risk_forecasts(df: pd.DataFrame, engine=None):
     Write risk forecasts to forecast_risk_hourly table.
     Clears current-run data first to avoid duplicates.
     """
+    if df is None or df.empty:
+        return 0
+
     if engine is None:
         engine = get_engine()
 

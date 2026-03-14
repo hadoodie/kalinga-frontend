@@ -49,12 +49,16 @@ const DemandForecastChart = ({ hospitalId = null, resourceId = null }) => {
     fetchFilters();
   }, []);
 
-  // Fetch ALL forecast data ONCE (no filters)
+  // Fetch forecast data and filter server-side
   useEffect(() => {
     const fetchForecasts = async () => {
       try {
         setLoading(true);
-        const data = await forecastService.getDemandForecasts({ hours: 48 });
+        const params = { hours: 48 };
+        if (selectedHospital) params.hospital_id = selectedHospital;
+        if (selectedResource) params.resource_id = selectedResource;
+
+        const data = await forecastService.getDemandForecasts(params);
         setAllForecasts(data?.data || data || []);
         setError(null);
       } catch (err) {
@@ -66,23 +70,10 @@ const DemandForecastChart = ({ hospitalId = null, resourceId = null }) => {
       }
     };
     fetchForecasts();
-  }, []);
+  }, [selectedHospital, selectedResource]);
 
-  // Client-side filter by hospital / resource
-  const forecasts = useMemo(() => {
-    let filtered = allForecasts;
-    if (selectedHospital) {
-      filtered = filtered.filter(
-        (f) => String(f.hospital_id) === String(selectedHospital),
-      );
-    }
-    if (selectedResource) {
-      filtered = filtered.filter(
-        (f) => String(f.resource_id) === String(selectedResource),
-      );
-    }
-    return filtered;
-  }, [allForecasts, selectedHospital, selectedResource]);
+  // Use allForecasts directly since filtering is now server-side
+  const forecasts = allForecasts;
 
   // Transform data for the chart — aggregate by hour
   const chartData = useMemo(() => {

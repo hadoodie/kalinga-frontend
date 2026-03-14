@@ -74,6 +74,7 @@ export default function AutoReorderMonitor() {
           </span>
           <button
             onClick={fetchOrders}
+            aria-label="Refresh auto-reorders"
             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
@@ -106,9 +107,12 @@ export default function AutoReorderMonitor() {
           <p className="text-xs text-gray-500">
             Auto-reorders require logistics manager approval before dispatch
           </p>
-          <span className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1">
+            <button 
+              onClick={() => console.log('Navigate to all requests')}
+              className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1 bg-transparent border-none p-0"
+            >
             View all requests <ArrowRight className="w-3 h-3" />
-          </span>
+          </button>
         </div>
       )}
     </div>
@@ -130,12 +134,11 @@ function OrderRow({ order }) {
   };
 
   const riskMeta = order.meta || {};
-  const riskProb = riskMeta.risk_prob
-    ? `${Math.round(riskMeta.risk_prob * 100)}%`
-    : null;
-  const daysLeft = riskMeta.days_until_stockout
-    ? `${riskMeta.days_until_stockout.toFixed(1)}d`
-    : null;
+    const riskProb = riskMeta.risk_prob != null
+      ? `${Math.round(riskMeta.risk_prob * 100)}%`
+      : null;
+    const daysLeft = riskMeta.days_until_stockout != null
+      ? `${riskMeta.days_until_stockout.toFixed(1)}d`
 
   const hospitalName = order.hospital?.name || `Hospital #${order.hospital_id}`;
   const resourceName =
