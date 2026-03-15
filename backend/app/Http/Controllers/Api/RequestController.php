@@ -273,7 +273,7 @@ public function destroy(Request $requestModel)    {
         $currentStatus = $requestModel->status;
         $newStatus     = $validated['status'];
 
-        if (!isset($allowed[$currentStatus]) || !in_array($newStatus, $allowed[$currentStatus])) {
+        if (!isset($allowed[$currentStatus]) || !in_array($newStatus, $allowed[$currentStatus], true)) {
             return response()->json([
                 'error'          => "Cannot transition from '{$currentStatus}' to '{$newStatus}'",
                 'current_status' => $currentStatus,
@@ -284,7 +284,7 @@ public function destroy(Request $requestModel)    {
         return DB::transaction(function () use ($requestModel, $validated, $currentStatus) {
             $requestModel->update([
                 'status'      => $validated['status'],
-                'approved_by' => in_array($validated['status'], ['approved', 'rejected']) ? Auth::id() : $requestModel->approved_by,
+                'approved_by' => in_array($validated['status'], ['approved', 'rejected'], true) ? Auth::id() : $requestModel->approved_by,
                 'approved_at' => $validated['status'] === 'approved' ? now() : $requestModel->approved_at,
             ]);
 

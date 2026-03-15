@@ -17,7 +17,7 @@ import { generateDemoAutoReorders } from "./demoForecastData";
  * Shows auto-created requests from the forecasting pipeline with status,
  * quantities, urgency levels, and timestamps.
  */
-export default function AutoReorderMonitor() {
+export default function AutoReorderMonitor({ onViewAll }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -107,10 +107,10 @@ export default function AutoReorderMonitor() {
           <p className="text-xs text-gray-500">
             Auto-reorders require logistics manager approval before dispatch
           </p>
-            <button 
-              onClick={() => console.log('Navigate to all requests')}
-              className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1 bg-transparent border-none p-0"
-            >
+          <button
+            onClick={onViewAll}
+            className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1 bg-transparent border-none p-0"
+          >
             View all requests <ArrowRight className="w-3 h-3" />
           </button>
         </div>
@@ -134,10 +134,12 @@ function OrderRow({ order }) {
   };
 
   const riskMeta = order.meta || {};
-    const riskProb = riskMeta.risk_prob != null
+  const riskProb =
+    riskMeta.risk_prob != null
       ? `${Math.round(riskMeta.risk_prob * 100)}%`
       : null;
-    const daysLeft = riskMeta.days_until_stockout != null
+  const daysLeft =
+    riskMeta.days_until_stockout != null
       ? `${riskMeta.days_until_stockout.toFixed(1)}d`
       : null;
   const hospitalName = order.hospital?.name || `Hospital #${order.hospital_id}`;

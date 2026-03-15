@@ -7,7 +7,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { AlertTriangle, TrendingUp, Clock, Shield } from "lucide-react";
+import { TrendingUp, Clock, Shield } from "lucide-react";
 import forecastService from "../../services/forecastService";
 import { getDemoSummary } from "./demoForecastData";
 import { formatDisplayQuantity } from "../../utils/formatQuantity";
@@ -220,7 +220,6 @@ const ForecastSummaryCard = () => {
                           item.days_until_stockout,
                           "days",
                         )}
-
                       </span>
                     )}
                   </div>

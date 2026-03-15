@@ -84,14 +84,23 @@ return new class extends Migration
                 'location',
                 'contact_phone',
                 'contact_email',
-                'instructions',
-                'status'
+                'instructions'
             ];
 
             foreach ($columnsToDrop as $column) {
                 if (Schema::hasColumn('appointments', $column)) {
                     $table->dropColumn($column);
                 }
+            }
+
+            if (!Schema::hasColumn('appointments', 'appointment_date')) {
+                $table->timestamp('appointment_date')->nullable();
+            }
+
+            if (Schema::hasColumn('appointments', 'status')) {
+                $table->string('status')->default('scheduled')->change();
+            } else {
+                $table->string('status')->default('scheduled');
             }
 
             if (Schema::hasColumn('appointments', 'hospital')) {
