@@ -14,9 +14,7 @@ export const Weather = () => {
 
       {/* Main content */}
       <div
-        className={`flex flex-col flex-1 transition-all duration-300 ${
-          collapsed ? "wl-16" : "wl-64"
-        }`}
+        className="flex flex-col flex-1 transition-all duration-300 ml-0"
       >
         {/* Navbar */}
         <div className="sticky z-10 bg-background">

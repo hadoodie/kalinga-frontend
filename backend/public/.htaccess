@@ -5,6 +5,11 @@
 
     RewriteEngine On
 
+    # NOTE: Do NOT short-circuit OPTIONS requests here.
+    # Laravel's HandleCors middleware handles preflight properly with 204 + headers.
+    # Short-circuiting here would bypass PHP and lose CORS headers if mod_headers
+    # is not available.
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]

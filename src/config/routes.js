@@ -29,6 +29,7 @@ export const ROUTES = {
     SPECIFY_VEHICLE: "/patient/specify-vehicle",
     WEATHER: "/patient/weather",
     HOSPITAL_MAP: "/patient/hospital-map",
+    HOSPITAL_NAVIGATOR: "/patient/hospital-navigator",
     NOTIFICATIONS: "/patient/notifications",
     SETTINGS: "/patient/settings",
     PROFILE: "/patient/profile",
@@ -85,6 +86,7 @@ export const ROUTES = {
     NOTIFICATIONS: "/logistics/notifications",
     LIVE_MAP: "/logistics/live-map",
     PROFILE: "/logistics/profile",
+    HOSPITAL_FORECAST_DETAIL: "/logistics/forecast/hospital/:hospitalId",
   },
 };
 

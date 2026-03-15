@@ -24,5 +24,18 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Return JSON for API requests instead of HTML error pages
+        $exceptions->shouldRenderJsonWhen(function ($request, \Throwable $e) {
+            return $request->is('api/*') || $request->expectsJson();
+        });
+
+        // Log unexpected exceptions with context
+        $exceptions->reportable(function (\Throwable $e) {
+            if ($e instanceof \Illuminate\Database\QueryException) {
+                \Log::error('Database query failed', [
+                    'message' => $e->getMessage(),
+                    'sql'     => $e->getSql() ?? null,
+                ]);
+            }
+        });
     })->create();

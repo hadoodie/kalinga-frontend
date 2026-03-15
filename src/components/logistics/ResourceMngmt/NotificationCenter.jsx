@@ -1,5 +1,5 @@
 // src/components/logistics/ResourceMngmt/NotificationCenter.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from "react";
 import {
   Bell,
   CheckCircle,
@@ -9,50 +9,28 @@ import {
   AlertTriangle,
   Clock,
   MapPin,
-  X
-} from 'lucide-react';
+  X,
+} from "lucide-react";
 
 const NotificationCenter = () => {
   const [notifications, setNotifications] = useState([]);
   const [showPanel, setShowPanel] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
-  const audioRef = useRef(null);
 
-  useEffect(() => {
-    // Connect to WebSocket for real-time notifications
-    const ws = new WebSocket(`ws://${window.location.host}/ws/notifications`);
-    
-    ws.onmessage = (event) => {
-      const notification = JSON.parse(event.data);
-      handleNewNotification(notification);
-    };
-
-    // Play sound for certain notifications
-    const playSound = () => {
-      if (audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
-      }
-    };
-
-    return () => ws.close();
-  }, []);
+  // Note: Real-time notifications are handled by the useNotifications hook
+  // (Echo/Reverb). This component only renders the notification UI.
+  // No raw WebSocket connection needed here.
 
   const handleNewNotification = (notification) => {
     const newNotification = {
       ...notification,
       id: Date.now(),
       timestamp: new Date(),
-      read: false
+      read: false,
     };
 
-    setNotifications(prev => [newNotification, ...prev.slice(0, 49)]);
-    setUnreadCount(prev => prev + 1);
-
-    // Play sound for important notifications
-    if (notification.type === 'critical' || notification.type === 'match') {
-      playSound();
-    }
+    setNotifications((prev) => [newNotification, ...prev.slice(0, 49)]);
+    setUnreadCount((prev) => prev + 1);
 
     // Auto-dismiss certain notifications
     if (notification.autoDismiss) {
@@ -63,70 +41,70 @@ const NotificationCenter = () => {
   };
 
   const dismissNotification = (id) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnreadCount(0);
   };
 
   const getNotificationConfig = (type) => {
     const configs = {
       match: {
-        bgColor: 'bg-green-50',
-        borderColor: 'border-green-300',
+        bgColor: "bg-green-50",
+        borderColor: "border-green-300",
         icon: <Package className="w-5 h-5 text-green-600" />,
-        textColor: 'text-green-800'
+        textColor: "text-green-800",
       },
       approved: {
-        bgColor: 'bg-green-50',
-        borderColor: 'border-green-300',
+        bgColor: "bg-green-50",
+        borderColor: "border-green-300",
         icon: <CheckCircle className="w-5 h-5 text-green-600" />,
-        textColor: 'text-green-800'
+        textColor: "text-green-800",
       },
       vehicle_assigned: {
-        bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-300',
+        bgColor: "bg-blue-50",
+        borderColor: "border-blue-300",
         icon: <Truck className="w-5 h-5 text-blue-600" />,
-        textColor: 'text-blue-800'
+        textColor: "text-blue-800",
       },
       in_transit: {
-        bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-300',
+        bgColor: "bg-blue-50",
+        borderColor: "border-blue-300",
         icon: <MapPin className="w-5 h-5 text-blue-600" />,
-        textColor: 'text-blue-800'
+        textColor: "text-blue-800",
       },
       arriving: {
-        bgColor: 'bg-purple-50',
-        borderColor: 'border-purple-300',
+        bgColor: "bg-purple-50",
+        borderColor: "border-purple-300",
         icon: <Clock className="w-5 h-5 text-purple-600" />,
-        textColor: 'text-purple-800'
+        textColor: "text-purple-800",
       },
       release_request: {
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-300',
+        bgColor: "bg-red-50",
+        borderColor: "border-red-300",
         icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
-        textColor: 'text-red-800'
+        textColor: "text-red-800",
       },
       delivery_confirmed: {
-        bgColor: 'bg-emerald-50',
-        borderColor: 'border-emerald-300',
+        bgColor: "bg-emerald-50",
+        borderColor: "border-emerald-300",
         icon: <CheckCircle className="w-5 h-5 text-emerald-600" />,
-        textColor: 'text-emerald-800'
-      }
+        textColor: "text-emerald-800",
+      },
     };
     return configs[type] || configs.match;
   };
 
   // Banner notifications (auto-show for critical events)
-  const bannerNotifications = notifications.filter(n => 
-    n.type === 'release_request' || n.type === 'arriving'
-  ).slice(0, 2); // Show max 2 banners
+  const bannerNotifications = notifications
+    .filter((n) => n.type === "release_request" || n.type === "arriving")
+    .slice(0, 2); // Show max 2 banners
 
   return (
     <>
-      <audio ref={audioRef} src="/notification-sound.mp3" preload="auto" />
+      {/* Audio notification removed — file not available */}
 
       {/* Banner Notifications */}
       <div className="fixed top-4 right-4 z-40 space-y-2 w-96">
@@ -171,7 +149,7 @@ const NotificationCenter = () => {
           <Bell className="w-6 h-6" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-              {unreadCount > 9 ? '9+' : unreadCount}
+              {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
         </button>
@@ -219,7 +197,7 @@ const NotificationCenter = () => {
                       <div
                         key={notification.id}
                         className={`p-4 border-b border-gray-200 hover:bg-gray-50 ${
-                          !notification.read ? 'bg-blue-50' : ''
+                          !notification.read ? "bg-blue-50" : ""
                         }`}
                       >
                         <div className="flex items-start gap-3">
@@ -228,13 +206,17 @@ const NotificationCenter = () => {
                           </div>
                           <div className="flex-1">
                             <div className="flex justify-between">
-                              <p className={`font-semibold ${config.textColor}`}>
+                              <p
+                                className={`font-semibold ${config.textColor}`}
+                              >
                                 {notification.title}
                               </p>
                               <span className="text-xs text-gray-500">
-                                {new Date(notification.timestamp).toLocaleTimeString([], {
-                                  hour: '2-digit',
-                                  minute: '2-digit'
+                                {new Date(
+                                  notification.timestamp,
+                                ).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
                                 })}
                               </span>
                             </div>
@@ -244,7 +226,10 @@ const NotificationCenter = () => {
                             {notification.action && (
                               <div className="mt-2">
                                 <button
-                                  onClick={() => window.location.href = notification.action.url}
+                                  onClick={() =>
+                                    (window.location.href =
+                                      notification.action.url)
+                                  }
                                   className="text-sm text-green-600 hover:text-green-800 font-semibold"
                                 >
                                   {notification.action.label} →

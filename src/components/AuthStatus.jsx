@@ -5,6 +5,11 @@ export default function AuthStatus() {
   const { user, isAuthenticated, loading, logout } = useAuth();
   const navigate = useNavigate();
 
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
+
   if (loading) {
     return (
       <div className="p-4 bg-yellow-100 rounded">
@@ -45,7 +50,7 @@ export default function AuthStatus() {
         </p>
       </div>
       <button
-        onClick={logout}
+        onClick={handleLogout}
         className="mt-3 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
         Logout

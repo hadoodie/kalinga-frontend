@@ -21,6 +21,8 @@ use App\Http\Controllers\Api\AllocationController;
 use App\Http\Controllers\Api\ResponderController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LogisticsController;
+use App\Http\Controllers\Api\ForecastController;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
@@ -306,7 +308,21 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
 
     // Admin and Logistics routes
     Route::middleware(['role:admin,logistics'])->group(function () {
-        
+
+        // ── AI Forecasting Routes ────────────────────────────
+        Route::prefix('forecasts')->middleware('throttle:60,1')->group(function () {
+            Route::get('/demand',             [ForecastController::class, 'demand']);
+            Route::get('/risk',               [ForecastController::class, 'risk']);
+            Route::get('/summary',            [ForecastController::class, 'summary']);
+            Route::get('/hospital/{hospital}', [ForecastController::class, 'hospitalDetail']);
+            Route::get('/narrative',          [ForecastController::class, 'narrative']);
+            Route::get('/auto-reorders',      [ForecastController::class, 'autoReorders']);
+            Route::get('/health',             [ForecastController::class, 'health']);
+            Route::get('/history',            [ForecastController::class, 'history']);
+            Route::get('/accuracy',           [ForecastController::class, 'accuracy']);
+            Route::post('/trigger',           [ForecastController::class, 'trigger']);
+        });
+
             Route::get('/requests', [RequestController::class, 'index']);
             Route::post('/requests', [RequestController::class, 'store']);
             Route::get('/requests/{request}', [RequestController::class, 'show']);
@@ -316,6 +332,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
             Route::post('/requests/{request}/submit', [RequestController::class, 'submitDraft']);
             Route::post('/requests/{request}/under-review', [RequestController::class, 'markAsUnderReview'])
                 ->name('requests.under-review');
+            Route::patch('/requests/{request}/status', [RequestController::class, 'updateStatus'])
+                ->name('requests.update-status');
             
             Route::get('/allocations', [AllocationController::class, 'index']);
             Route::post('/allocations', [AllocationController::class, 'store']);
@@ -341,6 +359,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
             Route::get('/allocations/{allocation}/suggest-responder', [AllocationController::class, 'suggestResponder']);
             Route::get('/allocations/{allocation}/available-vehicles', [AllocationController::class, 'availableVehicles']);
             Route::get('/allocations/{allocation}/available-responders', [AllocationController::class, 'availableResponders']);
+
+            Route::get('/supply-tracking', [AllocationController::class, 'getSupplyTracking']);
                 
             Route::get('/responders/available', [ResponderController::class, 'available']);
 
@@ -404,6 +424,10 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
                 Route::get('/resilience-configs', [HospitalSafetyIndexController::class, 'resilienceConfigs']);
                 Route::post('/resilience-configs', [HospitalSafetyIndexController::class, 'storeResilienceConfig']);
             });
+
+            // Resilience config single-resource routes (outside hospital prefix)
+            Route::patch('/resilience-configs/{config}', [HospitalSafetyIndexController::class, 'updateResilienceConfig']);
+            Route::delete('/resilience-configs/{config}', [HospitalSafetyIndexController::class, 'deleteResilienceConfig']);
             
             // Individual resource routes
             Route::get('/assessments/{assessment}', [HospitalSafetyIndexController::class, 'showAssessment']);

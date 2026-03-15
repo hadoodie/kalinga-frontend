@@ -3,14 +3,14 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Loader2 } from "lucide-react";
 import authService from "@/services/authService";
-import api, { getCsrfCookie } from "@/services/api";
-import { useToast } from "@/hooks/use-toast"; 
+import api from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 export const MagicLogin = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setSession } = useAuth();
-  const { toast } = useToast(); 
+  const { toast } = useToast();
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -35,8 +35,7 @@ export const MagicLogin = () => {
         // 2. FORCE Axios to use this exact token immediately for the next request
         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
 
-        // 3. Ensure we have a fresh CSRF cookie (prevents 419 errors)
-        await getCsrfCookie();
+        // 3. (CSRF disabled per API setup)
 
         // 4. Now fetch the user data
         const userData = await authService.getCurrentUser();
@@ -57,20 +56,20 @@ export const MagicLogin = () => {
         } else {
           navigate("/", { replace: true });
         }
-
       } catch (error) {
         console.error("Magic login failed", error);
-        
+
         // Clean up the invalid token so it doesn't break future normal logins
         localStorage.removeItem("token");
-        delete api.defaults.headers.common["Authorization"]; 
-        
+        delete api.defaults.headers.common["Authorization"];
+
         toast({
           variant: "destructive",
           title: "Login Failed",
-          description: "This login link has expired or is invalid. Please log in manually.",
+          description:
+            "This login link has expired or is invalid. Please log in manually.",
         });
-        
+
         navigate("/login", { replace: true });
       }
     };
@@ -82,7 +81,9 @@ export const MagicLogin = () => {
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="flex flex-col items-center space-y-4">
         <Loader2 className="h-10 w-10 animate-spin text-green-700" />
-        <p className="text-lg font-medium text-gray-700">Authenticating your secure link...</p>
+        <p className="text-lg font-medium text-gray-700">
+          Authenticating your secure link...
+        </p>
       </div>
     </div>
   );

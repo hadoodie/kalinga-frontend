@@ -1,4 +1,4 @@
-// src/services/requestService.js 
+// src/services/requestService.js
 import api from "/src/services/api.js";
 
 const requestService = {
@@ -29,7 +29,7 @@ const requestService = {
   // List all requests
   getMyRequests: async (filters = {}) => {
     const response = await api.get("/requests", { params: filters });
-    return response.data;  // full pagination object
+    return response.data; // full pagination object
   },
 
   // Get single request
@@ -43,14 +43,19 @@ const requestService = {
     await api.delete(`/requests/${requestId}`);
   },
 
-    markAsUnderReview: async (requestId) => {
-    try {
-      const response = await axios.post(`/api/requests/${requestId}/under-review`);
-      return response.data;
-    } catch (error) {
-      console.error('Error marking request as under review:', error);
-      throw error;
-    }
+  // Update request status (approve, reject, allocate, etc.)
+  updateStatus: async (requestId, status, reason = null) => {
+    const response = await api.patch(`/requests/${requestId}/status`, {
+      status,
+      reason,
+    });
+    return response.data;
+  },
+
+  // Mark as under review (DOH dispatcher)
+  markAsUnderReview: async (requestId) => {
+    const response = await api.post(`/requests/${requestId}/under-review`);
+    return response.data;
   },
 };
 

@@ -1,11 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  useLayoutEffect,
-  useCallback,
-} from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   MapContainer,
   Marker,
@@ -19,10 +12,9 @@ import {
   Activity,
   AlertTriangle,
   Loader2,
+  MessageSquare,
   Navigation2,
   Stethoscope,
-  Maximize,
-  Minimize,
   Settings,
   Target,
   X,
@@ -115,13 +107,15 @@ const toLatLngTuple = (coordinate) => {
   return [normalizedLat, normalizedLng];
 };
 
+const isValidLatLngTuple = (coordinate) => Boolean(toLatLngTuple(coordinate));
+
 const normalizeBlockade = (blockade) => {
   if (!blockade) return null;
   const lat = normalizeCoordinate(
-    blockade.start_lat ?? blockade.latitude ?? blockade.lat
+    blockade.start_lat ?? blockade.latitude ?? blockade.lat,
   );
   const lng = normalizeCoordinate(
-    blockade.start_lng ?? blockade.longitude ?? blockade.lng
+    blockade.start_lng ?? blockade.longitude ?? blockade.lng,
   );
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -228,7 +222,7 @@ const evaluateRoutesAgainstBlockades = (routes, normalizedBlockades) =>
 
     const analysis = analyzeRouteAgainstBlockades(
       sampleRouteCoordinates(coords),
-      normalizedBlockades
+      normalizedBlockades,
     );
 
     return {
@@ -247,7 +241,7 @@ const selectBestRouteVariant = (routes, normalizedBlockades) => {
 
   const evaluations = evaluateRoutesAgainstBlockades(
     routes,
-    normalizedBlockades
+    normalizedBlockades,
   );
   const original = evaluations[0];
   const blockadesPresent = normalizedBlockades.length > 0;
@@ -263,7 +257,7 @@ const selectBestRouteVariant = (routes, normalizedBlockades) => {
   }
 
   const blockadeFreeRoutes = evaluations.filter(
-    (evaluation) => evaluation.conflicts.length === 0
+    (evaluation) => evaluation.conflicts.length === 0,
   );
 
   if (blockadeFreeRoutes.length) {
@@ -391,7 +385,7 @@ const generateDetourWaypoints = (start, end, blockade) => {
     const backward = offsetPointByBearing(
       blockade,
       offset,
-      normalizeBearing(baseBearing + 180)
+      normalizeBearing(baseBearing + 180),
     );
     candidatePoints.push({
       lat: forward.lat,
@@ -424,7 +418,7 @@ const generateDetourWaypoints = (start, end, blockade) => {
 const snapWaypointToRoad = async (osrmServer, waypoint) => {
   try {
     const response = await fetch(
-      `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`
+      `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`,
     );
     if (!response.ok) {
       return null;
@@ -527,7 +521,7 @@ const tryResolveRouteWithDynamicDetours = async ({
     const routes = await requestOsrmRoute(
       osrmServer,
       [start, snapped, end],
-      paramString
+      paramString,
     );
 
     if (!routes || !routes.length) {
@@ -536,7 +530,7 @@ const tryResolveRouteWithDynamicDetours = async ({
 
     const evaluationEntry = evaluateRoutesAgainstBlockades(
       [routes[0]],
-      normalizedBlockades
+      normalizedBlockades,
     )[0];
 
     if (!evaluationEntry) {
@@ -657,8 +651,8 @@ const deriveRouteAlert = (selection) => {
     const intro = rerouted
       ? "Limited detours available."
       : alternativesAvailable
-      ? "No clear detour available."
-      : "Blockade ahead.";
+        ? "No clear detour available."
+        : "Blockade ahead.";
 
     return {
       type: severity,
@@ -721,10 +715,10 @@ const hospitalIcon = iconFactory("green");
 const getIncidentPosition = (incident) => {
   if (!incident) return null;
   const lat =
-    normalizeCoordinate(incident.latitude) ||
+    normalizeCoordinate(incident.latitude) ??
     normalizeCoordinate(incident.location_lat);
   const lng =
-    normalizeCoordinate(incident.longitude) ||
+    normalizeCoordinate(incident.longitude) ??
     normalizeCoordinate(incident.location_lng);
   if (Number.isFinite(lat) && Number.isFinite(lng)) {
     return [lat, lng];
@@ -763,12 +757,29 @@ const MapFlyTo = ({ target }) => {
 
   useEffect(() => {
     if (!map || !target) return;
-    const [lat, lng] = target;
-    map.flyTo([lat, lng], Math.max(13, map.getZoom()), {
-      duration: 0.8,
-    });
+    const normalizedTarget = toLatLngTuple(target);
+    if (!normalizedTarget) return;
+    try {
+      const [lat, lng] = normalizedTarget;
+      map.flyTo([lat, lng], Math.max(13, map.getZoom()), {
+        duration: 0.8,
+      });
+    } catch (e) {
+      console.warn("MapFlyTo: flyTo failed", e);
+    }
   }, [map, target]);
 
+  return null;
+};
+
+// Sets mapRef.current via useMap() since react-leaflet v5 dropped whenCreated
+const MapRefSetter = ({ mapRef: externalRef }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (map && externalRef) {
+      externalRef.current = map;
+    }
+  }, [map, externalRef]);
   return null;
 };
 
@@ -777,7 +788,14 @@ export default function LiveResponseMap({
   selectedHospital,
   hospitals = [],
   onAutoAssignHospital,
+  onOpenComms,
+  onMapIndicatorChange,
   autoAssignmentEnabled = true,
+  showSimulator = false,
+  showHeader = true,
+  containerClassName = "",
+  onRouteMetaChange,
+  onNavigationStateChange,
 }) {
   const [responderPosition, setResponderPosition] = useState(null);
   const [isSimulatingResponder, setIsSimulatingResponder] = useState(false);
@@ -789,10 +807,12 @@ export default function LiveResponseMap({
   const [routeSelection, setRouteSelection] = useState(null);
   const [routeAlert, setRouteAlert] = useState(null);
   const [navigationEnabled, setNavigationEnabled] = useState(false);
+  useEffect(() => {
+    onNavigationStateChange?.(navigationEnabled);
+  }, [navigationEnabled, onNavigationStateChange]);
   const [responderHeading, setResponderHeading] = useState(null);
   const trackingWatchId = useRef(null);
   const mapRef = useRef(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
   const [showBlockades, setShowBlockades] = useState(true);
   const [showHospitals, setShowHospitals] = useState(true);
@@ -827,19 +847,16 @@ export default function LiveResponseMap({
     enabled:
       !!incident &&
       ["acknowledged", "en_route", "on_scene", "transporting"].includes(
-        incident?.status
+        incident?.status,
       ),
     broadcastInterval: 5000,
   });
 
   // Keep map responder state in sync with the broadcast hook (if it produces a position)
   useEffect(() => {
-    if (
-      broadcastPosition &&
-      Array.isArray(broadcastPosition) &&
-      broadcastPosition.length === 2
-    ) {
-      setResponderPosition([broadcastPosition[0], broadcastPosition[1]]);
+    const normalizedBroadcastPosition = toLatLngTuple(broadcastPosition);
+    if (normalizedBroadcastPosition) {
+      setResponderPosition(normalizedBroadcastPosition);
     }
     if (typeof broadcastHeading !== "undefined" && broadcastHeading !== null) {
       setResponderHeading(broadcastHeading);
@@ -862,24 +879,39 @@ export default function LiveResponseMap({
 
   const normalizedBlockades = useMemo(
     () => blockades.map(normalizeBlockade).filter(Boolean),
-    [blockades]
+    [blockades],
   );
 
   const responderMarkerIcon = useMemo(
     () => buildResponderHeadingIcon(responderHeading),
-    [responderHeading]
+    [responderHeading],
   );
 
   const incidentPosition = useMemo(
     () => getIncidentPosition(incident) || DEFAULT_POSITION,
-    [incident]
+    [incident],
   );
 
   const nearestHospital = hospitals?.[0] ?? null;
 
   const hospitalPosition = useMemo(
     () => getHospitalPosition(selectedHospital ?? nearestHospital),
-    [selectedHospital, nearestHospital]
+    [selectedHospital, nearestHospital],
+  );
+
+  const safeResponderPosition = useMemo(
+    () => toLatLngTuple(responderPosition),
+    [responderPosition],
+  );
+
+  const safeIncidentPosition = useMemo(
+    () => toLatLngTuple(incidentPosition) || DEFAULT_POSITION,
+    [incidentPosition],
+  );
+
+  const safeHospitalPosition = useMemo(
+    () => toLatLngTuple(hospitalPosition),
+    [hospitalPosition],
   );
 
   const hospitalMarkers = useMemo(() => {
@@ -907,12 +939,31 @@ export default function LiveResponseMap({
 
   const visibleHospitalCount = hospitalMarkers.length;
 
+  useEffect(() => {
+    if (typeof onMapIndicatorChange !== "function") {
+      return;
+    }
+
+    onMapIndicatorChange({
+      hospitalsVisible: showHospitals,
+      visibleHospitalCount,
+      blockadesVisible: showBlockades,
+      visibleBlockadeCount: normalizedBlockades.length,
+    });
+  }, [
+    normalizedBlockades.length,
+    onMapIndicatorChange,
+    showBlockades,
+    showHospitals,
+    visibleHospitalCount,
+  ]);
+
   const mode = determineMode(incident?.status);
   const isOnScene = incident?.status === "on_scene";
 
   useEffect(() => {
     const shouldLockHospital = ["on_scene", "transporting"].includes(
-      incident?.status
+      incident?.status,
     );
     if (
       autoAssignmentEnabled &&
@@ -971,7 +1022,10 @@ export default function LiveResponseMap({
     trackingWatchId.current = navigator.geolocation.watchPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        const coords = [latitude, longitude];
+        const coords = toLatLngTuple([latitude, longitude]);
+        if (!coords) {
+          return;
+        }
         liveResponderRef.current = coords;
         if (isSimulatingRef.current) {
           return;
@@ -982,7 +1036,12 @@ export default function LiveResponseMap({
           Array.isArray(broadcastPosition) &&
           broadcastPosition.length === 2
         ) {
-          setResponderPosition([broadcastPosition[0], broadcastPosition[1]]);
+          const normalizedBroadcastPosition = toLatLngTuple(broadcastPosition);
+          if (normalizedBroadcastPosition) {
+            setResponderPosition(normalizedBroadcastPosition);
+            return;
+          }
+          setResponderPosition(coords);
         } else {
           setResponderPosition(coords);
         }
@@ -996,7 +1055,7 @@ export default function LiveResponseMap({
         enableHighAccuracy: true,
         maximumAge: 2000,
         timeout: 15000,
-      }
+      },
     );
 
     return () => {
@@ -1006,47 +1065,32 @@ export default function LiveResponseMap({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // When fullscreen toggles, invalidate map size so Leaflet renders correctly
-  useLayoutEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-    // slight delay to allow DOM to settle when entering fullscreen
-    const t = setTimeout(() => {
-      try {
-        map.invalidateSize();
-      } catch (e) {
-        // ignore
-      }
-    }, 120);
-    return () => clearTimeout(t);
-  }, [isFullscreen]);
-
   const activeStart = useMemo(() => {
     if (mode === "hospital") {
-      if (isOnScene && responderPosition) {
-        return responderPosition;
+      if (isOnScene && safeResponderPosition) {
+        return safeResponderPosition;
       }
-      if (incidentPosition) {
-        return incidentPosition;
+      if (safeIncidentPosition) {
+        return safeIncidentPosition;
       }
     }
-    return responderPosition ?? incidentPosition;
-  }, [incidentPosition, isOnScene, mode, responderPosition]);
+    return safeResponderPosition ?? safeIncidentPosition;
+  }, [isOnScene, mode, safeIncidentPosition, safeResponderPosition]);
 
   const activeDestination = useMemo(() => {
     if (mode === "hospital") {
-      return hospitalPosition ?? incidentPosition;
+      return safeHospitalPosition ?? safeIncidentPosition;
     }
-    return incidentPosition;
-  }, [hospitalPosition, incidentPosition, mode]);
+    return safeIncidentPosition;
+  }, [mode, safeHospitalPosition, safeIncidentPosition]);
 
   const routingKey = useMemo(() => {
     if (!activeStart || !activeDestination) return null;
     const startKey = `${activeStart[0].toFixed(4)},${activeStart[1].toFixed(
-      4
+      4,
     )}`;
     const destKey = `${activeDestination[0].toFixed(
-      4
+      4,
     )},${activeDestination[1].toFixed(4)}`;
     return `${startKey}|${destKey}`;
   }, [activeStart, activeDestination]);
@@ -1079,7 +1123,7 @@ export default function LiveResponseMap({
         const response = await fetch(
           `${
             KALINGA_CONFIG.OSRM_SERVER
-          }/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${params.toString()}`
+          }/route/v1/driving/${startLng},${startLat};${endLng},${endLat}?${params.toString()}`,
         );
 
         if (!response.ok) {
@@ -1089,7 +1133,7 @@ export default function LiveResponseMap({
         const data = await response.json();
         let selection = selectBestRouteVariant(
           data?.routes ?? [],
-          normalizedBlockades
+          normalizedBlockades,
         );
 
         // Try dynamic detour if conflicts exist
@@ -1114,13 +1158,13 @@ export default function LiveResponseMap({
 
         if (!cancelled) {
           if (selection?.selected?.coords?.length) {
-            setRoutePoints(selection.selected.coords);
+            setRoutePoints(selection.selected.coords.filter(Boolean));
           } else {
             const fallback =
-              data?.routes?.[0]?.geometry?.coordinates?.map(([lng, lat]) => [
-                lat,
-                lng,
-              ]) ?? null;
+              data?.routes?.[0]?.geometry?.coordinates
+                ?.map(([lng, lat]) => [lat, lng])
+                ?.map(toLatLngTuple)
+                ?.filter(Boolean) ?? null;
             setRoutePoints(fallback);
           }
 
@@ -1176,41 +1220,92 @@ export default function LiveResponseMap({
     }
   }, [routeSelection, isBroadcasting, broadcast]);
 
+  useEffect(() => {
+    if (!onRouteMetaChange) {
+      return;
+    }
+
+    const selectedRoute = routeSelection?.selected || null;
+    const durationSec =
+      selectedRoute?.route?.duration ||
+      selectedRoute?.duration ||
+      selectedRoute?.route?.legs?.[0]?.duration ||
+      selectedRoute?.legs?.[0]?.duration ||
+      null;
+    const distanceMeters =
+      selectedRoute?.route?.distance ||
+      selectedRoute?.distance ||
+      selectedRoute?.route?.legs?.[0]?.distance ||
+      selectedRoute?.legs?.[0]?.distance ||
+      null;
+
+    onRouteMetaChange({
+      etaMinutes:
+        typeof durationSec === "number"
+          ? Math.max(1, Math.round(durationSec / 60))
+          : null,
+      distanceKm:
+        typeof distanceMeters === "number"
+          ? Number((distanceMeters / 1000).toFixed(2))
+          : null,
+      routeLoading,
+      routeError,
+      status: incident?.status || null,
+      destination:
+        mode === "hospital"
+          ? selectedHospital?.name || null
+          : incident?.location || null,
+    });
+  }, [
+    incident?.location,
+    incident?.status,
+    mode,
+    onRouteMetaChange,
+    routeError,
+    routeLoading,
+    routeSelection,
+    selectedHospital?.name,
+  ]);
+
   const currentCenter = useMemo(() => {
     if (mode === "hospital") {
-      if (isOnScene && responderPosition) {
-        return responderPosition;
+      if (isOnScene && safeResponderPosition) {
+        return safeResponderPosition;
       }
-      if (incidentPosition) {
-        return incidentPosition;
+      if (safeIncidentPosition) {
+        return safeIncidentPosition;
       }
     }
-    if (responderPosition) {
-      return responderPosition;
+    if (safeResponderPosition) {
+      return safeResponderPosition;
     }
-    return incidentPosition;
-  }, [incidentPosition, isOnScene, mode, responderPosition]);
+    return safeIncidentPosition;
+  }, [isOnScene, mode, safeIncidentPosition, safeResponderPosition]);
 
   const handleCenterOnResponder = useCallback(() => {
     if (!mapRef.current) {
       return;
     }
     const target =
-      currentCenter ||
-      responderPosition ||
-      incidentPosition ||
+      toLatLngTuple(currentCenter) ||
+      toLatLngTuple(responderPosition) ||
+      toLatLngTuple(incidentPosition) ||
       DEFAULT_POSITION;
-    const currentZoom = mapRef.current.getZoom?.() ?? 13;
-    mapRef.current.flyTo(target, Math.max(currentZoom, 14), {
-      duration: 0.6,
-    });
+    try {
+      const currentZoom = mapRef.current.getZoom?.() ?? 13;
+      mapRef.current.flyTo(target, Math.max(currentZoom, 14), {
+        duration: 0.6,
+      });
+    } catch (e) {
+      console.warn("handleCenterOnResponder: flyTo failed", e);
+    }
   }, [currentCenter, incidentPosition, responderPosition]);
 
   const openReportModal = useCallback(() => {
     const coords =
-      responderPosition ||
-      incidentPosition ||
-      currentCenter ||
+      toLatLngTuple(responderPosition) ||
+      toLatLngTuple(incidentPosition) ||
+      toLatLngTuple(currentCenter) ||
       DEFAULT_POSITION;
 
     setReportCoords(coords);
@@ -1227,16 +1322,16 @@ export default function LiveResponseMap({
   useEffect(() => {
     const fetchRoadName = async () => {
       const coords =
-        reportCoords ||
-        responderPosition ||
-        incidentPosition ||
-        currentCenter ||
+        toLatLngTuple(reportCoords) ||
+        toLatLngTuple(responderPosition) ||
+        toLatLngTuple(incidentPosition) ||
+        toLatLngTuple(currentCenter) ||
         DEFAULT_POSITION;
 
       try {
         const [lat, lng] = coords;
         const response = await fetch(
-          `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`
+          `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`,
         );
         const data = await response.json();
         const name = data?.waypoints?.[0]?.name;
@@ -1273,10 +1368,10 @@ export default function LiveResponseMap({
     }
 
     const coords =
-      reportCoords ||
-      responderPosition ||
-      incidentPosition ||
-      currentCenter ||
+      toLatLngTuple(reportCoords) ||
+      toLatLngTuple(responderPosition) ||
+      toLatLngTuple(incidentPosition) ||
+      toLatLngTuple(currentCenter) ||
       DEFAULT_POSITION;
 
     const payload = {
@@ -1307,7 +1402,7 @@ export default function LiveResponseMap({
       setReportError(
         err?.response?.data?.message ||
           err?.message ||
-          "Unable to report blockade."
+          "Unable to report blockade.",
       );
     } finally {
       setReportSubmitting(false);
@@ -1338,7 +1433,7 @@ export default function LiveResponseMap({
       const confirmed = window.confirm(
         `Remove ${
           descriptor || "this blockade"
-        }? This helps clear the map for other responders.`
+        }? This helps clear the map for other responders.`,
       );
       if (!confirmed) return;
 
@@ -1357,30 +1452,33 @@ export default function LiveResponseMap({
         alert(
           err?.response?.data?.message ||
             err?.message ||
-            "Unable to remove blockade."
+            "Unable to remove blockade.",
         );
       } finally {
         setRemovingBlockadeId(null);
       }
     },
-    [canManageBlockades, refetchBlockades, removeBlockadeLocal, user?.id]
+    [canManageBlockades, refetchBlockades, removeBlockadeLocal, user?.id],
   );
 
   const handleSimulatedLocationChange = (coords, options = {}) => {
     if (!coords) return;
-    const lat = Number(coords.lat);
-    const lng = Number(coords.lng);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    const next = toLatLngTuple([coords.lat, coords.lng]);
+    if (!next) {
       return;
     }
-    const next = [lat, lng];
+    const [lat, lng] = next;
     setIsSimulatingResponder(true);
     setResponderPosition(next);
 
     if (options.centerMap !== false && mapRef.current) {
-      mapRef.current.flyTo(next, Math.max(13, mapRef.current.getZoom()), {
-        duration: 0.6,
-      });
+      try {
+        mapRef.current.flyTo(next, Math.max(13, mapRef.current.getZoom()), {
+          duration: 0.6,
+        });
+      } catch (e) {
+        console.warn("Simulator: flyTo failed", e);
+      }
     }
 
     // Send simulated location to server so patient Emergency Mode receives the update.
@@ -1429,96 +1527,119 @@ export default function LiveResponseMap({
 
   const handleStopSimulatedLocation = () => {
     setIsSimulatingResponder(false);
-    const fallback = liveResponderRef.current || responderPosition;
+    const fallback =
+      toLatLngTuple(liveResponderRef.current) ||
+      toLatLngTuple(responderPosition);
     if (fallback) {
       setResponderPosition(fallback);
       if (mapRef.current) {
-        mapRef.current.flyTo(fallback, Math.max(13, mapRef.current.getZoom()), {
-          duration: 0.6,
-        });
+        try {
+          mapRef.current.flyTo(
+            fallback,
+            Math.max(13, mapRef.current.getZoom()),
+            { duration: 0.6 },
+          );
+        } catch (e) {
+          console.warn("StopSimulation: flyTo failed", e);
+        }
       }
     }
   };
 
   const effectiveReportCoords = useMemo(
     () =>
-      reportCoords ||
-      responderPosition ||
-      incidentPosition ||
-      currentCenter ||
+      toLatLngTuple(reportCoords) ||
+      safeResponderPosition ||
+      safeIncidentPosition ||
+      toLatLngTuple(currentCenter) ||
       DEFAULT_POSITION,
-    [currentCenter, incidentPosition, reportCoords, responderPosition]
+    [currentCenter, reportCoords, safeIncidentPosition, safeResponderPosition],
   );
+
+  const safeRoutePoints = useMemo(
+    () =>
+      Array.isArray(routePoints)
+        ? routePoints.map(toLatLngTuple).filter(Boolean)
+        : null,
+    [routePoints],
+  );
+
+  const safeNavigationDestination =
+    mode === "hospital" ? safeHospitalPosition : safeIncidentPosition;
+
+  const safeMapCenter = toLatLngTuple(currentCenter) || DEFAULT_POSITION;
 
   return (
     <section
-      className={`flex h-full ${
-        isFullscreen
-          ? "fixed inset-0 z-[1200] rounded-none border-none bg-white"
-          : "min-h-[520px] rounded-2xl border border-gray-200 bg-white"
-      } flex-col overflow-hidden shadow-sm`}
+      className={`flex h-full min-h-0 rounded-2xl border border-gray-200 bg-white ${containerClassName} flex-col overflow-hidden shadow-sm`}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div
-            className={`rounded-xl p-2 ${
-              mode === "hospital" ? "bg-emerald-50" : "bg-blue-50"
-            }`}
-          >
-            {mode === "hospital" ? (
-              <Stethoscope className="h-6 w-6 text-emerald-600" />
-            ) : (
-              <Navigation2 className="h-6 w-6 text-blue-600" />
-            )}
+      {showHeader && (
+        <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div
+              className={`rounded-xl p-2 ${
+                mode === "hospital" ? "bg-emerald-50" : "bg-blue-50"
+              }`}
+            >
+              {mode === "hospital" ? (
+                <Stethoscope className="h-6 w-6 text-emerald-600" />
+              ) : (
+                <Navigation2 className="h-6 w-6 text-blue-600" />
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                {mode === "hospital"
+                  ? "Driving to Hospital"
+                  : "Driving to Incident"}
+              </p>
+              <h3 className="text-lg font-black text-gray-900">
+                {mode === "hospital"
+                  ? selectedHospital?.name || "Awaiting hospital assignment"
+                  : incident?.location || "Incident Site"}
+              </h3>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-              {mode === "hospital"
-                ? "Driving to Hospital"
-                : "Driving to Incident"}
-            </p>
-            <h3 className="text-lg font-black text-gray-900">
-              {mode === "hospital"
-                ? selectedHospital?.name || "Awaiting hospital assignment"
-                : incident?.location || "Incident Site"}
-            </h3>
+          <div className="text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <span className="block text-[11px] text-gray-400">Status</span>
+            <span className="text-sm text-gray-900">
+              {incident?.status?.replace(/_/g, " ") || "unknown"}
+            </span>
           </div>
-        </div>
-        <div className="text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
-          <span className="block text-[11px] text-gray-400">Status</span>
-          <span className="text-sm text-gray-900">
-            {incident?.status?.replace(/_/g, " ") || "unknown"}
-          </span>
-        </div>
-      </header>
+        </header>
+      )}
 
-      <div className={`relative flex-1 ${isFullscreen ? "" : ""}`}>
-        <LocationSimulator
-          currentLocation={
-            responderPosition
-              ? { lat: responderPosition[0], lng: responderPosition[1] }
-              : incidentPosition
-              ? { lat: incidentPosition[0], lng: incidentPosition[1] }
-              : null
-          }
-          isActive={isSimulatingResponder}
-          onLocationChange={handleSimulatedLocationChange}
-          onStopSimulation={handleStopSimulatedLocation}
-          buttonLabel="Simulate responder"
-          position="bottom-right"
-        />
+      <div className="relative flex-1">
+        {showSimulator && (
+          <LocationSimulator
+            currentLocation={
+              safeResponderPosition
+                ? {
+                    lat: safeResponderPosition[0],
+                    lng: safeResponderPosition[1],
+                  }
+                : safeIncidentPosition
+                  ? {
+                      lat: safeIncidentPosition[0],
+                      lng: safeIncidentPosition[1],
+                    }
+                  : null
+            }
+            isActive={isSimulatingResponder}
+            onLocationChange={handleSimulatedLocationChange}
+            onStopSimulation={handleStopSimulatedLocation}
+            buttonLabel="Simulate responder"
+            position="bottom-right"
+          />
+        )}
         {/* Map (normal or fullscreen) */}
         <MapContainer
-          center={currentCenter}
+          center={safeMapCenter}
           zoom={13}
           minZoom={5}
           maxZoom={18}
-          className={`h-full w-full ${
-            isFullscreen ? "!h-[100vh] !w-screen" : ""
-          }`}
-          whenCreated={(mapInstance) => {
-            mapRef.current = mapInstance;
-          }}
+          zoomControl={false}
+          className="h-full w-full"
         >
           <TileLayer
             url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
@@ -1533,18 +1654,21 @@ export default function LiveResponseMap({
             maxZoom={19}
           />
 
-          {currentCenter && <MapFlyTo target={currentCenter} />}
+          <MapRefSetter mapRef={mapRef} />
+          {isValidLatLngTuple(currentCenter) && (
+            <MapFlyTo target={currentCenter} />
+          )}
 
-          {responderPosition && (
-            <Marker position={responderPosition} icon={responderMarkerIcon}>
+          {safeResponderPosition && (
+            <Marker position={safeResponderPosition} icon={responderMarkerIcon}>
               <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                 Responder location
               </Tooltip>
             </Marker>
           )}
 
-          {incidentPosition && (
-            <Marker position={incidentPosition} icon={incidentIcon}>
+          {safeIncidentPosition && (
+            <Marker position={safeIncidentPosition} icon={incidentIcon}>
               <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                 {incident?.location || "Incident site"}
               </Tooltip>
@@ -1561,12 +1685,14 @@ export default function LiveResponseMap({
               </Marker>
             ))}
 
-          {normalizedBlockades.map(
-            (blockade) =>
-              showBlockades && (
+          {normalizedBlockades.map((blockade) => {
+            const blockadePos = toLatLngTuple([blockade.lat, blockade.lng]);
+            return (
+              showBlockades &&
+              blockadePos && (
                 <Marker
                   key={blockade.id}
-                  position={[blockade.lat, blockade.lng]}
+                  position={blockadePos}
                   icon={getBlockadeIcon(blockade.severity)}
                 >
                   <Tooltip direction="top" offset={[0, -8]} opacity={1}>
@@ -1610,19 +1736,20 @@ export default function LiveResponseMap({
                   </Popup>
                 </Marker>
               )
-          )}
+            );
+          })}
 
-          {routePoints && routePoints.length > 1 && (
+          {safeRoutePoints && safeRoutePoints.length > 1 && (
             <Polyline
-              positions={routePoints}
+              positions={safeRoutePoints}
               color={
                 routeAlert?.type === "danger"
                   ? "#dc2626"
                   : routeAlert?.type === "warning"
-                  ? "#f97316"
-                  : mode === "hospital"
-                  ? "#059669"
-                  : "#2563eb"
+                    ? "#f97316"
+                    : mode === "hospital"
+                      ? "#059669"
+                      : "#2563eb"
               }
               weight={5}
               opacity={0.85}
@@ -1630,12 +1757,8 @@ export default function LiveResponseMap({
           )}
         </MapContainer>
 
-        {/* Quick action floating menu (mobile-first) */}
-        <div
-          className={`absolute right-4 top-6 z-[1100] flex flex-col items-end gap-3 lg:hidden ${
-            navigationEnabled ? "hidden" : ""
-          }`}
-        >
+        {/* Mobile action stack — Settings above Chat, anchored together */}
+        <div className="fixed bottom-[115px] right-4 z-[1120] flex flex-col items-end gap-4 lg:hidden">
           <div
             className={`flex flex-col items-start space-y-2 transition-all duration-300 ${
               actionsOpen
@@ -1719,59 +1842,31 @@ export default function LiveResponseMap({
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActionsOpen((s) => !s)}
-              className={`flex items-center justify-center h-14 w-14 rounded-full shadow-xl border-2 active:scale-95 transition-all ${
-                actionsOpen
-                  ? "bg-blue-600 border-blue-700 rotate-45"
-                  : "bg-white border-gray-200"
+          <button
+            onClick={() => setActionsOpen((s) => !s)}
+            className={`flex items-center justify-center h-14 w-14 rounded-full shadow-xl border-2 active:scale-95 transition-all ${
+              actionsOpen
+                ? "bg-blue-600 border-blue-700 rotate-45"
+                : "bg-white border-gray-200"
+            }`}
+            title="Quick actions"
+          >
+            <Settings
+              className={`h-6 w-6 transition-colors ${
+                actionsOpen ? "text-white" : "text-slate-700"
               }`}
-              title="Quick actions"
-            >
-              <Settings
-                className={`h-6 w-6 transition-colors ${
-                  actionsOpen ? "text-white" : "text-slate-700"
-                }`}
-              />
-            </button>
-            <button
-              onClick={() => setIsFullscreen((f) => !f)}
-              className="flex items-center justify-center h-14 w-14 rounded-full bg-white shadow-xl border-2 border-gray-200 active:scale-95 transition-transform"
-              title={isFullscreen ? "Exit fullscreen" : "Fullscreen map"}
-            >
-              {isFullscreen ? (
-                <Minimize className="h-6 w-6 text-slate-700" />
-              ) : (
-                <Maximize className="h-6 w-6 text-slate-700" />
-              )}
-            </button>
-          </div>
+            />
+          </button>
 
-          {(showHospitals || showBlockades) && (
-            <div className="px-4 py-2 bg-white/95 backdrop-blur-sm rounded-full shadow-md border border-gray-200 text-xs">
-              <div className="flex items-center gap-2">
-                {showHospitals && (
-                  <span className="flex items-center gap-1">
-                    <Stethoscope className="h-3 w-3 text-emerald-600" />
-                    <span className="font-semibold text-emerald-700">
-                      {visibleHospitalCount}
-                    </span>
-                  </span>
-                )}
-                {showHospitals && showBlockades && (
-                  <span className="text-gray-400">•</span>
-                )}
-                {showBlockades && (
-                  <span className="flex items-center gap-1">
-                    <AlertTriangle className="h-3 w-3 text-orange-600" />
-                    <span className="font-semibold text-orange-700">
-                      {normalizedBlockades.length}
-                    </span>
-                  </span>
-                )}
-              </div>
-            </div>
+          {typeof onOpenComms === "function" && (
+            <button
+              type="button"
+              onClick={onOpenComms}
+              className="flex h-14 w-14 items-center justify-center rounded-full border-4 border-white/90 bg-blue-600 text-white shadow-2xl"
+              aria-label="Open comms"
+            >
+              <MessageSquare className="h-7 w-7" />
+            </button>
           )}
         </div>
 
@@ -1833,9 +1928,6 @@ export default function LiveResponseMap({
                     🚧
                   </span>
                   Report blockade
-                  <span className="ml-auto text-[11px] uppercase tracking-wide text-red-500">
-                    new
-                  </span>
                 </button>
               </div>
             )}
@@ -1856,15 +1948,6 @@ export default function LiveResponseMap({
             </button>
           </div>
         </div>
-
-        {/* Fullscreen overlay: when active, expand this section to cover viewport (mobile only) */}
-        {isFullscreen && (
-          <div
-            onClick={() => setIsFullscreen(false)}
-            className="fixed inset-0 z-[1050] bg-black/30 lg:hidden"
-            aria-hidden
-          />
-        )}
 
         {routeLoading && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/40">
@@ -2037,59 +2120,60 @@ export default function LiveResponseMap({
         )}
 
         {/* Turn-by-Turn Navigation Overlay */}
-        {navigationEnabled && responderPosition && (
-          <TurnByTurnNavigation
-            isActive={navigationEnabled}
-            destination={
-              mode === "hospital" ? hospitalPosition : incidentPosition
-            }
-            destinationName={
-              mode === "hospital"
-                ? selectedHospital?.name || "Hospital"
-                : incident?.location || "Incident Site"
-            }
-            currentPosition={responderPosition}
-            heading={responderHeading}
-            onClose={() => setNavigationEnabled(false)}
-            onRouteUpdate={(route) => {
-              // Optionally update the main map's route when navigation fetches a new route
-              if (route?.geometry?.coordinates) {
-                const coords = route.geometry.coordinates.map(([lng, lat]) => [
-                  lat,
-                  lng,
-                ]);
-                setRoutePoints(coords);
+        {navigationEnabled &&
+          safeResponderPosition &&
+          safeNavigationDestination && (
+            <TurnByTurnNavigation
+              isActive={navigationEnabled}
+              destination={safeNavigationDestination}
+              destinationName={
+                mode === "hospital"
+                  ? selectedHospital?.name || "Hospital"
+                  : incident?.location || "Incident Site"
               }
-            }}
-            onLocationBroadcast={(payload) => {
-              // Forward navigation's location/eta/distance updates to the responder broadcast hook
-              try {
-                if (typeof broadcast === "function") {
-                  // TurnByTurnNavigation sends { latitude, longitude, heading, eta_minutes, distance_remaining_km }
-                  broadcast({
-                    latitude: payload.latitude,
-                    longitude: payload.longitude,
-                    heading: payload.heading ?? null,
-                    eta: payload.eta_minutes ?? payload.eta ?? null,
-                    distance:
-                      payload.distance_remaining_km ?? payload.distance ?? null,
-                  });
+              currentPosition={safeResponderPosition}
+              heading={responderHeading}
+              onClose={() => setNavigationEnabled(false)}
+              onRouteUpdate={(route) => {
+                // Optionally update the main map's route when navigation fetches a new route
+                if (route?.geometry?.coordinates) {
+                  const coords = route.geometry.coordinates
+                    .map(([lng, lat]) => toLatLngTuple([lat, lng]))
+                    .filter(Boolean);
+                  setRoutePoints(coords);
                 }
-              } catch (e) {
-                console.warn("Failed to forward navigation broadcast", e);
-              }
-            }}
-            incident={incident}
-          />
-        )}
+              }}
+              onLocationBroadcast={(payload) => {
+                // Forward navigation's location/eta/distance updates to the responder broadcast hook
+                try {
+                  if (typeof broadcast === "function") {
+                    // TurnByTurnNavigation sends { latitude, longitude, heading, eta_minutes, distance_remaining_km }
+                    broadcast({
+                      latitude: payload.latitude,
+                      longitude: payload.longitude,
+                      heading: payload.heading ?? null,
+                      eta: payload.eta_minutes ?? payload.eta ?? null,
+                      distance:
+                        payload.distance_remaining_km ??
+                        payload.distance ??
+                        null,
+                    });
+                  }
+                } catch (e) {
+                  console.warn("Failed to forward navigation broadcast", e);
+                }
+              }}
+              incident={incident}
+            />
+          )}
 
-        {/* Navigation Toggle Button */}
+        {/* Navigation Toggle Button — bottom center, above the bottom sheet */}
         {!navigationEnabled &&
-          responderPosition &&
-          (mode === "hospital" ? hospitalPosition : incidentPosition) && (
+          safeResponderPosition &&
+          safeNavigationDestination && (
             <button
               onClick={() => setNavigationEnabled(true)}
-              className="absolute bottom-20 right-4 z-[1000] flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95"
+              className="absolute bottom-[100px] left-1/2 -translate-x-1/2 z-[1120] flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95"
             >
               <Navigation2 className="h-5 w-5" />
               Start Navigation
@@ -2097,7 +2181,7 @@ export default function LiveResponseMap({
           )}
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 text-xs text-gray-600">
+      <footer className="hidden md:flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4 text-xs text-gray-600">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
           <span>
@@ -2106,8 +2190,8 @@ export default function LiveResponseMap({
                 ? `Routing from incident to ${selectedHospital.name}`
                 : "Select a hospital to plan handoff"
               : responderPosition
-              ? "Live navigation synced with responder position"
-              : "Enable location services for live tracking"}
+                ? "Live navigation synced with responder position"
+                : "Enable location services for live tracking"}
           </span>
         </div>
         <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
@@ -2115,8 +2199,8 @@ export default function LiveResponseMap({
             {blockadesLoading
               ? "Checking road issues…"
               : blockadesError
-              ? "Road issues offline"
-              : `${normalizedBlockades.length} road alerts nearby`}
+                ? "Road issues offline"
+                : `${normalizedBlockades.length} road alerts nearby`}
           </span>
         </div>
         {selectedHospital?.distance_km !== undefined && (

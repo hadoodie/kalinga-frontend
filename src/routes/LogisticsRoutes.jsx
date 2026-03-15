@@ -7,53 +7,59 @@ import { ROUTES, ROLES } from "../config/routes";
 const DashboardLogistics = lazy(() =>
   import("../pages-logistics/Dashboard").then((module) => ({
     default: module.DashboardLogistics,
-  }))
+  })),
 );
 const ResourceManagement = lazy(() =>
   import("../pages-logistics/ResourceManagement").then((module) => ({
     default: module.ResourceManagement,
-  }))
+  })),
 );
 const AssetRegistry = lazy(() =>
   import("../pages-logistics/AssetRegistry").then((module) => ({
     default: module.AssetRegistry,
-  }))
+  })),
 );
 const SupplyTracking = lazy(() =>
   import("../pages-logistics/Supply").then((module) => ({
     default: module.SupplyTracking,
-  }))
+  })),
 );
 const RequestAllocation = lazy(() =>
   import("../pages-logistics/Request").then((module) => ({
     default: module.RequestAllocation,
-  }))
+  })),
 );
 const SettingsLogistics = lazy(() =>
   import("../pages-logistics/Settings").then((module) => ({
     default: module.SettingsLogistics,
-  }))
+  })),
 );
 
 const NotificationsLogistics = lazy(() =>
   import("../pages-logistics/Notifications").then((module) => ({
     default: module.NotificationsLogistics,
-  }))
+  })),
 );
 
 const LiveMapPage = lazy(() =>
   import("../pages-logistics/LiveMapPage").then((module) => ({
     default: module.LiveMapPage,
-  }))
+  })),
 );
 
 const ProfileLogistics = lazy(() =>
   import("../pages-logistics/Profile").then((module) => ({
     default: module.ProfileLogistics,
-  }))
+  })),
 );
 
-const logisticsRoles = [ROLES.LOGISTICS, ROLES.ADMIN];
+const HospitalForecastDetailPage = lazy(() =>
+  import("../pages-logistics/HospitalForecastDetail").then((module) => ({
+    default: module.HospitalForecastDetailPage,
+  })),
+);
+
+const logisticsRoles = [ROLES.LOGISTICS];
 
 export const LogisticsRoutes = () => (
   <>
@@ -144,6 +150,14 @@ export const LogisticsRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={logisticsRoles}>
           <ProfileLogistics />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path={ROUTES.LOGISTICS.HOSPITAL_FORECAST_DETAIL}
+      element={
+        <ProtectedRoute allowedRoles={logisticsRoles}>
+          <HospitalForecastDetailPage />
         </ProtectedRoute>
       }
     />
