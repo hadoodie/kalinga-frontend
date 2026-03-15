@@ -122,7 +122,7 @@ def main(demo, production, horizon, seed, output):
             if demand_model.mode != "rule_based":
                 demand_model.save()
         else:
-            click.echo(f"  Only {n_train} labelled rows — need ≥50 for LightGBM, using {demand_model.mode}")
+            click.echo(f"  Only {n_train} labelled rows - need >=50 for LightGBM, using {demand_model.mode}")
     else:
         click.echo(f"  Using {demand_model.mode} demand model (no training data yet)")
 
@@ -149,7 +149,7 @@ def main(demo, production, horizon, seed, output):
             if risk_model.mode != "rule_based":
                 risk_model.save()
         else:
-            click.echo(f"  Only {n_labelled} labelled rows — need ≥{risk_model.MIN_TRAINING_ROWS}, using {risk_model.mode}")
+            click.echo(f"  Only {n_labelled} labelled rows — need >={risk_model.MIN_TRAINING_ROWS}, using {risk_model.mode}")
     else:
         click.echo(f"  Using {risk_model.mode} risk model (no stockout labels)")
 
@@ -164,7 +164,7 @@ def main(demo, production, horizon, seed, output):
             click.echo(f"    {level}: {count}")
 
     # ── Output ───────────────────────────────────────────────
-    click.echo("\n" + "─" * 60)
+    click.echo("\n" + "-" * 60)
 
     # Prepare output DataFrames
     demand_output = demand_results[[
@@ -214,7 +214,7 @@ def main(demo, production, horizon, seed, output):
         with open(summary_path, "w") as f:
             json.dump(summary, f, indent=2)
 
-        click.echo(f"  📁 Output written to {output}/")
+        click.echo(f"  [Folder] Output written to {output}/")
         click.echo(f"     {demand_path} ({len(demand_output)} rows)")
         click.echo(f"     {risk_path} ({len(risk_output)} rows)")
         click.echo(f"     {summary_path}")
@@ -224,7 +224,7 @@ def main(demo, production, horizon, seed, output):
         from forecasting.writer import write_demand_forecasts, write_risk_forecasts
         n_demand = write_demand_forecasts(demand_output)
         n_risk = write_risk_forecasts(risk_output)
-        click.echo(f"  📊 Written to database: {n_demand} demand + {n_risk} risk forecasts")
+        click.echo(f"  [Stats] Written to database: {n_demand} demand + {n_risk} risk forecasts")
 
     # ── Cleanup old artifacts ────────────────────────────────
     click.echo("\n[cleanup] Removing stale artifacts...")
@@ -232,10 +232,10 @@ def main(demo, production, horizon, seed, output):
         from forecasting.etl.cleanup import cleanup_old_artifacts
         cleanup_old_artifacts()
     except Exception as e:
-        click.echo(f"  ⚠ Artifact cleanup failed ({e}), continuing")
+        click.echo(f"  [Warn] Artifact cleanup failed ({e}), continuing")
 
     elapsed = time.time() - start_time
-    click.echo(f"\n✅ Pipeline complete in {elapsed:.1f}s")
+    click.echo(f"\n[Success] Pipeline complete in {elapsed:.1f}s")
 
 
 if __name__ == "__main__":
