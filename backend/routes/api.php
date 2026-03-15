@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\Api\HospitalController;
 use App\Http\Controllers\Api\RequestController;
 use App\Http\Controllers\Api\AllocationController;
+use App\Http\Controllers\Api\LogisticsStatusController;
 use App\Http\Controllers\Api\ResponderController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LogisticsController;
@@ -513,6 +514,9 @@ Route::get('/health', function () {
         'timestamp' => now()->toIso8601String(),
     ]);
 });
+
+// Logistics Unified Tracking Event
+Route::patch('/logistics/requests/{id}/status', [LogisticsStatusController::class, 'updateStatus']);
 
 // Test routes (public)
 Route::get('/test/hospitals', function () {

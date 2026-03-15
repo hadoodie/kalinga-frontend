@@ -1,5 +1,6 @@
 // src/components/logistics/ResourceMngmt/RequestsView.jsx
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSessionAllocationsStore } from "../../../stores/sessionAllocationsStore";
 import {
   List,
   RefreshCw,
@@ -516,7 +517,7 @@ const PendingDeliveryConfirmation = ({ requests, onConfirmDelivery }) => {
 };
 
 const RequestsView = ({ facility, hospitalId }) => {
-  const [requests, setRequests] = useState([]);
+  const { requests, setRequests, listenToLogistics } = useSessionAllocationsStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedRequest, setSelectedRequest] = useState(null);
@@ -574,9 +575,10 @@ const RequestsView = ({ facility, hospitalId }) => {
     }
   }, [hospitalId, facility]);
 
-  useEffect(() => {
+    useEffect(() => {
     if (hospitalId) fetchRequests();
-  }, [hospitalId, fetchRequests]);
+    listenToLogistics();
+  }, [hospitalId, fetchRequests, listenToLogistics]);
 
   const handleSubmitDraft = async (id) => {
     try {
@@ -1306,3 +1308,5 @@ const RequestsView = ({ facility, hospitalId }) => {
 };
 
 export default RequestsView;
+
+

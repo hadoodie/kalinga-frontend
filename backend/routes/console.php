@@ -99,3 +99,11 @@ Schedule::command('forecasts:prune')
     ->onSuccess(function () {
         info('Forecast data pruned at ' . now());
     });
+
+// Logistics Auto-Verify (Fallback to prevent Dead Ends in Delivered)
+Schedule::command('logistics:auto-verify')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onSuccess(function () {
+        info('Logistics auto-verify routine executed at ' . now());
+    });
