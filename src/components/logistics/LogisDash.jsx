@@ -20,6 +20,7 @@ import {
   Building,
   Users,
   BrainCircuit,
+  Maximize2,
 } from "lucide-react";
 import { evacMapImg } from "@images";
 import { Link, useNavigate } from "react-router-dom";
@@ -467,8 +468,17 @@ const LiveMap = ({ shipments, assets }) => {
           {idle} Available Vehicles
         </span>
       </h2>
-      <div className="flex-1 relative rounded-xl overflow-hidden z-0 border border-gray-200">
+      <div className="flex-1 relative rounded-xl overflow-hidden z-0 border border-gray-200 group">
         <LiveTrackingMap allShipments={shipments} />
+        {/* Overlay Button */}
+        <div className="absolute inset-0 bg-slate-900/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-[400] pointer-events-none">
+          <Link 
+            to="/logistics/live-map"
+            className="bg-white text-slate-800 font-bold px-5 py-2.5 rounded-full shadow-lg pointer-events-auto flex items-center hover:bg-slate-50 transition-all hover:scale-105"
+          >
+            <Maximize2 className="h-4 w-4 mr-2" /> View Full Screen Map
+          </Link>
+        </div>
       </div>
     </div>
   );
