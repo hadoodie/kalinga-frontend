@@ -20,16 +20,25 @@ import {
   Building,
   Users,
   BrainCircuit,
+  Maximize2,
 } from "lucide-react";
 import { evacMapImg } from "@images";
 import { Link, useNavigate } from "react-router-dom";
 import resourceService from "../../services/resourceService";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
 import api from "../../services/api";
 import { formatDistanceToNow } from "date-fns";
 import { useAuth } from "../../context/AuthContext";
 import { useSupplyTracking } from "../../hooks/useSupplyTracking";
 import useForecastPrefetch from "../../hooks/useForecastPrefetch";
+import LiveTrackingMap from "./LiveTrackingMap";
 
 // Import Hospital Dashboard
 import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
@@ -155,7 +164,7 @@ const NotificationWidget = () => {
             <p className="text-xs text-gray-600">
               {notif.description || notif.message}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm font-medium text-slate-600 mt-1">
               {notif.created_at
                 ? formatDistanceToNow(new Date(notif.created_at), {
                     addSuffix: true,
@@ -183,12 +192,15 @@ const getUrgencyColor = (urgency) => {
 const getStatusColor = (status) => {
   switch (status) {
     case "Delayed":
-      return "text-red-600 bg-red-50";
+      return "text-red-700 bg-red-100";
     case "In Transit":
     case "En Route":
-      return "text-green-600 bg-green-50";
+      return "text-blue-700 bg-blue-100";
+    case "Delivered":
+    case "Available":
+      return "text-green-700 bg-green-100";
     default:
-      return "text-gray-600 bg-gray-50";
+      return "text-slate-600 bg-slate-100";
   }
 };
 
@@ -202,16 +214,16 @@ const formatETA = (isoTime) => {
 };
 
 // --- CHART COMPONENT ---
-const FacilityPieChart = ({ data }) => {
-  const COLORS = [
-    "#34D399",
-    "#1c2414",
-    "#394e2c",
-    "#FBBF24",
-    "#f0d003",
-    "#fae526",
-  ];
+const PIE_COLORS = [
+  "#34D399",
+  "#1c2414",
+  "#394e2c",
+  "#FBBF24",
+  "#f0d003",
+  "#fae526",
+];
 
+const FacilityPieChart = ({ data }) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
@@ -249,14 +261,17 @@ const FacilityPieChart = ({ data }) => {
           data={facilityResourceData}
           cx="50%"
           cy="50%"
-          innerRadius={35}
-          outerRadius={60}
+          innerRadius={45}
+          outerRadius={75}
           dataKey="value"
           labelLine={false}
-          paddingAngle={3}
+          paddingAngle={4}
         >
           {facilityResourceData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell
+              key={`cell-${index}`}
+              fill={PIE_COLORS[index % PIE_COLORS.length]}
+            />
           ))}
         </Pie>
         <Tooltip content={renderTooltip} />
@@ -280,34 +295,72 @@ const OverallStatusCard = ({ inventory, facilities }) => {
         <h3 className="text-xl font-bold mb-4 border-b border-gray-100 pb-3 flex justify-center items-center">
           Resource Overview
         </h3>
-        <div className="flex flex-col md:flex-row gap-1 flex-1">
-          <div className="w-full md:w-1/2 flex flex-col justify-start items-start">
-            <p className="text-5xl font-extrabold mb-4">{totalRemaining}</p>
-            <div className="space-y-1 text-15px">
-              <p className="font-medium text-gray-600 flex items-center">
-                <Home className="h-4 w-4 mr-1 text-gray-500" /> {facilityCount}{" "}
-                Facilities
+        <div className="flex flex-col flex-1 w-full h-full justify-between gap-4">
+          {/* Top row: Metrics + Chart (Wraps on very small screens) */}
+          <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-4 w-full">
+            {/* Key Metrics */}
+            <div className="flex flex-col justify-center shrink-0 min-w-[140px]">
+              <p className="text-5xl font-extrabold text-gray-900 leading-none">
+                {totalRemaining}
               </p>
-              <p className="font-medium text-gray-600 flex items-center">
-                <Briefcase className="h-4 w-4 mr-1 text-gray-500" />{" "}
-                {itemCategories} Categories
+              <p className="text-[11px] md:text-xs text-gray-500 uppercase font-bold tracking-wider mt-2 mb-4">
+                Total Inventory
               </p>
-              <p className="font-medium text-red-600 flex items-center">
-                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" />{" "}
-                {criticalCount} Critical
-              </p>
+
+              <div className="space-y-3 text-sm">
+                <p className="font-medium text-gray-600 flex items-center">
+                  <span className="w-6 flex shrink-0 justify-start">
+                    <Home className="h-4 w-4 text-gray-400" />
+                  </span>
+                  <span className="truncate">{facilityCount} Facilities</span>
+                </p>
+                <p className="font-medium text-gray-600 flex items-center">
+                  <span className="w-6 flex shrink-0 justify-start">
+                    <Briefcase className="h-4 w-4 text-gray-400" />
+                  </span>
+                  <span className="truncate">{itemCategories} Categories</span>
+                </p>
+                <p className="font-semibold text-red-600 flex items-center bg-red-50 py-1 px-2 rounded-lg -ml-2 w-max">
+                  <span className="w-6 flex shrink-0 justify-start">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                  </span>
+                  <span>{criticalCount} Critical Alerts</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Pie Chart */}
+            <div className="w-full sm:w-auto flex-1 flex justify-center items-center min-w-[140px] h-[160px] md:h-[180px] relative">
+              {facilities && facilities.length > 0 ? (
+                <FacilityPieChart data={facilities} />
+              ) : (
+                <p className="text-gray-400 text-sm">No facility data</p>
+              )}
             </div>
           </div>
 
-          <div className="w-full md:w-1/2 flex flex-col justify-center items-center">
-            {facilities && facilities.length > 0 ? (
-              <>
-                <FacilityPieChart data={facilities} />
-                {/* Legend removed */}
-              </>
-            ) : (
-              <p className="text-gray-400">No facility data</p>
-            )}
+          {/* Bottom: Custom Legend Container */}
+          <div className="w-full bg-slate-50/70 rounded-xl p-3 md:p-4 border border-slate-100 flex flex-col space-y-3 mt-auto">
+            {facilities && facilities.length > 0
+              ? facilities.map((fac, idx) => (
+                  <div key={idx} className="flex items-start gap-3 w-full">
+                    <div
+                      className="w-3.5 h-3.5 rounded shrink-0 mt-[2px] shadow-sm ring-1 ring-black/5"
+                      style={{
+                        backgroundColor: PIE_COLORS[idx % PIE_COLORS.length],
+                      }}
+                    ></div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p
+                        className="text-[13px] md:text-sm text-gray-700 font-medium leading-tight m-0 p-0 line-clamp-2"
+                        title={fac.name}
+                      >
+                        {fac.name}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              : null}
           </div>
         </div>
       </div>
@@ -336,16 +389,16 @@ const AssetStatusCard = ({ assets }) => {
             </span>
           </div>
 
-          <p className="text-15px font-semibold mt-1 text-green-600 flex items-center">
-            <ChartColumnStacked className="h-4 w-4 mr-1 text-green-600" />{" "}
+          <p className="text-15px font-semibold mt-1 text-green-700 flex items-center">
+            <CheckCircle className="h-4 w-4 mr-1 text-green-700" /> {idle}{" "}
+            Available Assets
+          </p>
+          <p className="text-15px font-semibold text-slate-700 flex items-center">
+            <ChartColumnStacked className="h-4 w-4 mr-1 text-slate-500" />{" "}
             {inUse} Active Assets
           </p>
-          <p className="text-15px font-semibold text-gray-700 flex items-center">
-            <ShieldQuestionMark className="h-4 w-4 mr-1 text-gray-500" /> {idle}{" "}
-            Assets Unassigned
-          </p>
-          <p className="text-15px font-semibold text-gray-700 flex items-center">
-            <Wrench className="h-4 w-4 mr-1 text-gray-500" /> {repair} Vehicles
+          <p className="text-15px font-semibold text-slate-700 flex items-center">
+            <Wrench className="h-4 w-4 mr-1 text-slate-500" /> {repair} Vehicles
             Under Repair
           </p>
         </div>
@@ -434,22 +487,37 @@ const PendingRequestsCard = ({ requests }) => {
   );
 };
 
-const LiveMap = () => (
-  <div className="bg-white rounded-2xl shadow-md border p-5 flex flex-col h-full">
-    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
-      <MapPin className="h-5 w-5 mr-2 text-green-800" /> Live Tracking Map
-    </h2>
-    <div className="flex-1 relative rounded-xl overflow-hidden">
-      <img src={evacMapImg} alt="Map" className="w-full h-full object-cover" />
-      <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-3 py-1 rounded-full shadow">
-        4 Active Vehicles
+const LiveMap = ({ shipments, assets }) => {
+  const totalAssets = assets?.length || 0;
+  const inUse = assets?.filter((a) => a.status === "In Use").length || 0;
+  const repair = assets?.filter((a) => a.status === "Repair").length || 0;
+  const idle = totalAssets - inUse - repair;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md border p-5 flex flex-col h-full">
+      <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center justify-between">
+        <span className="flex items-center">
+          <MapPin className="h-5 w-5 mr-2 text-slate-700" /> Live Tracking Map
+        </span>
+        <span className="bg-green-100 text-green-800 border border-green-200 text-xs px-3 py-1 rounded-full shadow-sm font-bold">
+          {idle} Available Vehicles
+        </span>
+      </h2>
+      <div className="flex-1 relative rounded-xl overflow-hidden z-0 border border-gray-200 group">
+        <LiveTrackingMap allShipments={shipments} />
+        {/* Overlay Button */}
+        <div className="absolute inset-0 bg-slate-900/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-[400] pointer-events-none">
+          <Link
+            to="/logistics/live-map"
+            className="bg-white text-slate-800 font-bold px-5 py-2.5 rounded-full shadow-lg pointer-events-auto flex items-center hover:bg-slate-50 transition-all hover:scale-105"
+          >
+            <Maximize2 className="h-4 w-4 mr-2" /> View Full Screen Map
+          </Link>
+        </div>
       </div>
-      <Truck className="h-6 w-6 text-green-800 absolute top-[50%] left-[30%]" />
-      <Truck className="h-6 w-6 text-red-800 absolute top-[20%] left-[60%]" />
-      <Truck className="h-6 w-6 text-green-800 absolute bottom-[10%] right-[40%]" />
     </div>
-  </div>
-);
+  );
+};
 
 const NotificationsList = () => {
   const navigate = useNavigate();
@@ -472,7 +540,7 @@ const ActiveDeliveriesList = ({ shipments }) => {
   return (
     <div className="bg-white rounded-2xl shadow-md border p-5">
       <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
-        <Truck className="h-5 w-5 mr-2 text-green-800" />
+        <Truck className="h-5 w-5 mr-2 text-slate-700" />
         Active Deliveries
       </h2>
       <div className="overflow-x-auto">
@@ -489,7 +557,7 @@ const ActiveDeliveriesList = ({ shipments }) => {
           <tbody className="divide-y">
             {shipments && shipments.length > 0 ? (
               shipments.map((s) => (
-                <tr key={s.id} className="hover:bg-green-50">
+                <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-3 py-2 text-center font-semibold">
                     {s.id}
                   </td>
@@ -500,7 +568,10 @@ const ActiveDeliveriesList = ({ shipments }) => {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-center text-gray-600">
-                    {s.contents}
+                    {s.contents?.replace(
+                      /Qty:\s*(\d+(?:\.\d+)?)/g,
+                      (match, p1) => `Qty: ${parseInt(p1, 10)}`,
+                    )}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <span
@@ -524,13 +595,13 @@ const ActiveDeliveriesList = ({ shipments }) => {
           </tbody>
         </table>
       </div>
-      
+
       <div className="mt-3 text-right">
         <Link
           to="/logistics/supply-tracking"
-          className="text-sm text-green-600 font-semibold hover:text-green-700 flex items-center justify-end"
+          className="text-sm text-slate-600 font-semibold hover:text-slate-800 flex items-center justify-end transition-colors"
         >
-          View All Shipments <ArrowRight className="ml-1 h-4 w-4" />
+          View All Deliveries <ArrowRight className="ml-1 h-4 w-4" />
         </Link>
       </div>
     </div>
@@ -541,7 +612,7 @@ const ActiveDeliveriesList = ({ shipments }) => {
 const ResourceRequestsList = ({ requests }) => (
   <div className="col-span-12 bg-white rounded-2xl shadow-md border p-5">
     <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
-      <List className="h-5 w-5 mr-2 text-green-800" /> Pending Resource Requests
+      <List className="h-5 w-5 mr-2 text-slate-700" /> Pending Resource Requests
     </h2>
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -557,10 +628,10 @@ const ResourceRequestsList = ({ requests }) => (
         <tbody className="divide-y">
           {requests && requests.length > 0 ? (
             requests.map((r) => (
-              <tr key={r.id} className="hover:bg-green-50">
+              <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-3 py-2 text-center">{r.id}</td>
                 <td className="px-3 py-2 text-center">{r.location}</td>
-                <td className="px-3 py-2 text-center font-bold text-green-600">
+                <td className="px-3 py-2 text-center font-bold text-slate-700">
                   {r.items}
                 </td>
                 <td className="px-3 py-2 text-center">
@@ -587,11 +658,11 @@ const ResourceRequestsList = ({ requests }) => (
         </tbody>
       </table>
     </div>
-    
+
     <div className="mt-3 text-right">
       <Link
         to="/logistics/requested-allocation"
-        className="text-sm text-green-600 font-semibold hover:text-green-700 flex items-center justify-end"
+        className="text-sm text-slate-600 font-semibold hover:text-slate-800 flex items-center justify-end transition-colors"
       >
         View Full Allocation <ArrowRight className="ml-1 h-4 w-4" />
       </Link>
@@ -844,7 +915,7 @@ const LogisDash = () => {
             <div className="text-sm text-gray-500">{error}</div>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition"
             >
               Retry
             </button>
@@ -891,7 +962,7 @@ const LogisDash = () => {
         <section className="grid grid-cols-12 gap-6 mb-6">
           {/* Left Side: Live Map (8 columns) */}
           <div className="col-span-12 lg:col-span-8 h-[600px]">
-            <LiveMap />
+            <LiveMap shipments={shipments} assets={assets} />
           </div>
 
           <div className="col-span-12 lg:col-span-4 h-[600px]">

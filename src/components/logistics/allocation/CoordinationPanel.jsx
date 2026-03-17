@@ -33,11 +33,12 @@ import {
   DollarSign,
   Zap,
   TrendingUp,
-  Package
+  Package,
+  Archive,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import allocationService from '@/services/allocationService';
-import MatchSuggestions from './MatchSuggestions';
+import allocationService from "@/services/allocationService";
+import MatchSuggestions from "./MatchSuggestions";
 
 // ==================== TOAST NOTIFICATION SYSTEM ====================
 const ToastContext = React.createContext();
@@ -49,13 +50,13 @@ const ToastProvider = ({ children }) => {
     const id = Date.now();
     const newToast = { ...toast, id };
     setToasts((prev) => [...prev, newToast]);
-    
+
     if (!toast.persist) {
       setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== id));
       }, 5000);
     }
-    
+
     return id;
   }, []);
 
@@ -75,31 +76,43 @@ const ToastProvider = ({ children }) => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: 100 }}
               className={`flex items-center justify-between p-4 rounded-lg shadow-lg border ${
-                toast.variant === 'destructive' 
-                  ? 'bg-red-50 border-red-300 text-red-800' 
-                  : toast.variant === 'warning'
-                  ? 'bg-amber-50 border-amber-300 text-amber-800'
-                  : toast.variant === 'info'
-                  ? 'bg-blue-50 border-blue-300 text-blue-800'
-                  : 'bg-green-50 border-green-300 text-green-800'
+                toast.variant === "destructive"
+                  ? "bg-red-50 border-red-300 text-red-800"
+                  : toast.variant === "warning"
+                    ? "bg-amber-50 border-amber-300 text-amber-800"
+                    : toast.variant === "info"
+                      ? "bg-blue-50 border-blue-300 text-blue-800"
+                      : "bg-green-50 border-green-300 text-green-800"
               } min-w-[300px] max-w-[400px]`}
             >
               <div className="flex items-start gap-3">
-                <div className={`mt-0.5 rounded-full p-1 ${
-                  toast.variant === 'destructive' ? 'bg-red-100' 
-                  : toast.variant === 'warning' ? 'bg-amber-100'
-                  : toast.variant === 'info' ? 'bg-blue-100'
-                  : 'bg-green-100'
-                }`}>
-                  {toast.variant === 'destructive' ? <AlertCircle size={16} className="text-red-600" /> 
-                   : toast.variant === 'warning' ? <AlertCircle size={16} className="text-amber-600" />
-                   : toast.variant === 'info' ? <Bell size={16} className="text-blue-600" />
-                   : <Check size={16} className="text-green-600" />}
+                <div
+                  className={`mt-0.5 rounded-full p-1 ${
+                    toast.variant === "destructive"
+                      ? "bg-red-100"
+                      : toast.variant === "warning"
+                        ? "bg-amber-100"
+                        : toast.variant === "info"
+                          ? "bg-blue-100"
+                          : "bg-green-100"
+                  }`}
+                >
+                  {toast.variant === "destructive" ? (
+                    <AlertCircle size={16} className="text-red-600" />
+                  ) : toast.variant === "warning" ? (
+                    <AlertCircle size={16} className="text-amber-600" />
+                  ) : toast.variant === "info" ? (
+                    <Bell size={16} className="text-blue-600" />
+                  ) : (
+                    <Check size={16} className="text-green-600" />
+                  )}
                 </div>
                 <div className="flex-1">
                   <h4 className="font-semibold">{toast.title}</h4>
                   {toast.description && (
-                    <p className="text-sm opacity-90 mt-1">{toast.description}</p>
+                    <p className="text-sm opacity-90 mt-1">
+                      {toast.description}
+                    </p>
                   )}
                   {toast.action && (
                     <button
@@ -131,31 +144,45 @@ const ToastProvider = ({ children }) => {
 const useToast = () => {
   const context = React.useContext(ToastContext);
   if (!context) {
-    throw new Error('useToast must be used within ToastProvider');
+    throw new Error("useToast must be used within ToastProvider");
   }
   return context;
 };
 
 // ==================== UI COMPONENTS ====================
-const Button = ({ children, onClick, disabled, variant = "default", size = "default", className = "", ...props }) => {
-  const base = "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-green-500 disabled:pointer-events-none disabled:opacity-50 active:scale-95";
-  
+const Button = ({
+  children,
+  onClick,
+  disabled,
+  variant = "default",
+  size = "default",
+  className = "",
+  ...props
+}) => {
+  const base =
+    "inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-green-500 disabled:pointer-events-none disabled:opacity-50 active:scale-95";
+
   const variants = {
-    default: "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md hover:from-green-700 hover:to-emerald-700 hover:shadow-lg",
-    outline: "border-2 border-green-300 bg-white text-green-800 hover:bg-green-50 hover:border-green-400",
-    destructive: "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md hover:from-red-700 hover:to-red-800",
-    secondary: "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 shadow-sm hover:from-gray-300 hover:to-gray-400",
-    success: "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md hover:from-green-600 hover:to-emerald-600",
-    ghost: "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+    default:
+      "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md hover:from-green-700 hover:to-emerald-700 hover:shadow-lg",
+    outline:
+      "border-2 border-green-300 bg-white text-green-800 hover:bg-green-50 hover:border-green-400",
+    destructive:
+      "bg-gradient-to-r from-red-600 to-red-700 text-white shadow-md hover:from-red-700 hover:to-red-800",
+    secondary:
+      "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-800 shadow-sm hover:from-gray-300 hover:to-gray-400",
+    success:
+      "bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-md hover:from-green-600 hover:to-emerald-600",
+    ghost: "text-gray-700 hover:bg-gray-100 hover:text-gray-900",
   };
-  
+
   const sizes = {
     default: "h-10 px-6 py-2 text-sm",
     sm: "h-9 px-4 py-1.5 text-sm rounded-md",
     lg: "h-12 px-8 py-3 text-base rounded-xl",
-    icon: "h-10 w-10 rounded-full"
+    icon: "h-10 w-10 rounded-full",
   };
-  
+
   return (
     <motion.button
       whileHover={{ scale: disabled ? 1 : 1.02 }}
@@ -170,18 +197,29 @@ const Button = ({ children, onClick, disabled, variant = "default", size = "defa
   );
 };
 
-const Badge = ({ children, variant = "secondary", className = "", icon: Icon }) => {
+const Badge = ({
+  children,
+  variant = "secondary",
+  className = "",
+  icon: Icon,
+}) => {
   const variants = {
     secondary: "bg-gray-100 text-gray-700 border border-gray-300",
-    destructive: "bg-gradient-to-r from-red-100 to-red-50 text-red-800 border border-red-300",
-    success: "bg-gradient-to-r from-green-100 to-emerald-50 text-green-800 border border-green-300",
-    warning: "bg-gradient-to-r from-amber-100 to-yellow-50 text-amber-800 border border-amber-300",
+    destructive:
+      "bg-gradient-to-r from-red-100 to-red-50 text-red-800 border border-red-300",
+    success:
+      "bg-gradient-to-r from-green-100 to-emerald-50 text-green-800 border border-green-300",
+    warning:
+      "bg-gradient-to-r from-amber-100 to-yellow-50 text-amber-800 border border-amber-300",
     info: "bg-gradient-to-r from-blue-100 to-blue-50 text-blue-800 border border-blue-300",
-    purple: "bg-gradient-to-r from-purple-100 to-purple-50 text-purple-800 border border-purple-300"
+    purple:
+      "bg-gradient-to-r from-purple-100 to-purple-50 text-purple-800 border border-purple-300",
   };
-  
+
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${variants[variant]} ${className}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ${variants[variant]} ${className}`}
+    >
       {Icon && <Icon size={12} />}
       {children}
     </span>
@@ -189,17 +227,19 @@ const Badge = ({ children, variant = "secondary", className = "", icon: Icon }) 
 };
 
 const Card = ({ children, className = "", hoverable = true }) => (
-  <motion.div 
+  <motion.div
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
-    className={`rounded-xl border-2 bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-green-300 ${hoverable ? 'hover:border-green-400' : ''} ${className}`}
+    className={`rounded-xl border-2 bg-white shadow-lg hover:shadow-xl transition-all duration-200 border-green-300 ${hoverable ? "hover:border-green-400" : ""} ${className}`}
   >
     {children}
   </motion.div>
 );
 
 const CardHeader = ({ children, className = "" }) => (
-  <div className={`flex flex-col space-y-1.5 p-6 border-b-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-xl ${className}`}>
+  <div
+    className={`flex flex-col space-y-1.5 p-6 border-b-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 rounded-t-xl ${className}`}
+  >
     {children}
   </div>
 );
@@ -211,9 +251,7 @@ const CardTitle = ({ children }) => (
 );
 
 const CardContent = ({ children, className = "" }) => (
-  <div className={`p-6 ${className}`}>
-    {children}
-  </div>
+  <div className={`p-6 ${className}`}>{children}</div>
 );
 
 const InfoChip = ({ icon: Icon, label, value, color = "green" }) => {
@@ -222,11 +260,13 @@ const InfoChip = ({ icon: Icon, label, value, color = "green" }) => {
     blue: "text-blue-700 bg-blue-50 border-blue-200",
     amber: "text-amber-700 bg-amber-50 border-amber-200",
     purple: "text-purple-700 bg-purple-50 border-purple-200",
-    gray: "text-gray-700 bg-gray-50 border-gray-200"
+    gray: "text-gray-700 bg-gray-50 border-gray-200",
   };
-  
+
   return (
-    <div className={`flex items-center gap-2 rounded-lg border-2 px-3 py-2 ${colors[color]}`}>
+    <div
+      className={`flex items-center gap-2 rounded-lg border-2 px-3 py-2 ${colors[color]}`}
+    >
       {Icon && <Icon size={16} />}
       <div>
         <div className="text-xs font-medium opacity-80">{label}</div>
@@ -236,15 +276,22 @@ const InfoChip = ({ icon: Icon, label, value, color = "green" }) => {
   );
 };
 
-const Modal = ({ isOpen, onClose, title, children, size = "lg", showClose = true }) => {
+const Modal = ({
+  isOpen,
+  onClose,
+  title,
+  children,
+  size = "lg",
+  showClose = true,
+}) => {
   if (!isOpen) return null;
-  
+
   const sizeClasses = {
     sm: "max-w-md",
-    md: "max-w-2xl", 
+    md: "max-w-2xl",
     lg: "max-w-3xl",
     xl: "max-w-6xl",
-    full: "max-w-[95vw]"
+    full: "max-w-[95vw]",
   };
 
   return (
@@ -289,26 +336,37 @@ const Modal = ({ isOpen, onClose, title, children, size = "lg", showClose = true
 const StatisticsDashboard = ({ requests }) => {
   const stats = useMemo(() => {
     const total = requests.length;
-    const critical = requests.filter(r => r.urgency_level === 'Critical').length;
-    const high = requests.filter(r => r.urgency_level === 'High').length;
-    const medium = requests.filter(r => r.urgency_level === 'Medium').length;
-    const low = requests.filter(r => r.urgency_level === 'Low').length;
-    
-    const pending = requests.filter(r => r.status === 'pending').length;
-    const approved = requests.filter(r => r.status === 'approved').length;
-    
-    const uniqueHospitals = new Set(requests.map(r => r.hospital_id)).size;
-    const uniqueResources = new Set(requests.map(r => r.resource_name)).size;
-    
-    const totalQuantity = requests.reduce((sum, r) => sum + (parseInt(r.quantity) || 0), 0);
-    
+    const critical = requests.filter(
+      (r) => r.urgency_level === "Critical",
+    ).length;
+    const high = requests.filter((r) => r.urgency_level === "High").length;
+    const medium = requests.filter((r) => r.urgency_level === "Medium").length;
+    const low = requests.filter((r) => r.urgency_level === "Low").length;
+
+    const pending = requests.filter((r) => r.status === "pending").length;
+    const approved = requests.filter((r) => r.status === "approved").length;
+
+    const uniqueHospitals = new Set(requests.map((r) => r.hospital_id)).size;
+    const uniqueResources = new Set(requests.map((r) => r.resource_name)).size;
+
+    const totalQuantity = requests.reduce(
+      (sum, r) => sum + (parseInt(r.quantity) || 0),
+      0,
+    );
+
     return {
-      total, critical, high, medium, low,
-      pending, approved,
-      uniqueHospitals, uniqueResources,
+      total,
+      critical,
+      high,
+      medium,
+      low,
+      pending,
+      approved,
+      uniqueHospitals,
+      uniqueResources,
       totalQuantity,
-      criticalPercentage: total ? ((critical / total) * 100).toFixed(1) : '0',
-      pendingPercentage: total ? ((pending / total) * 100).toFixed(1) : '0'
+      criticalPercentage: total ? ((critical / total) * 100).toFixed(1) : "0",
+      pendingPercentage: total ? ((pending / total) * 100).toFixed(1) : "0",
     };
   }, [requests]);
 
@@ -327,32 +385,32 @@ const StatisticsDashboard = ({ requests }) => {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <InfoChip 
-            icon={AlertCircle} 
-            label="Critical" 
+          <InfoChip
+            icon={AlertCircle}
+            label="Critical"
             value={`${stats.critical} (${stats.criticalPercentage}%)`}
             color="destructive"
           />
-          <InfoChip 
-            icon={Zap} 
-            label="High Urgency" 
+          <InfoChip
+            icon={Zap}
+            label="High Urgency"
             value={stats.high}
             color="warning"
           />
-          <InfoChip 
-            icon={Clock} 
-            label="Pending" 
+          <InfoChip
+            icon={Clock}
+            label="Pending"
             value={`${stats.pending} (${stats.pendingPercentage}%)`}
             color="amber"
           />
-          <InfoChip 
-            icon={Building2} 
-            label="Hospitals" 
+          <InfoChip
+            icon={Building2}
+            label="Hospitals"
             value={stats.uniqueHospitals}
             color="blue"
           />
         </div>
-        
+
         <div className="space-y-3">
           <div>
             <div className="flex justify-between text-sm text-gray-700 mb-1">
@@ -361,22 +419,24 @@ const StatisticsDashboard = ({ requests }) => {
             </div>
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div className="h-full flex">
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${(stats.critical / stats.total) * 100}%` }}
+                  animate={{
+                    width: `${(stats.critical / stats.total) * 100}%`,
+                  }}
                   className="bg-red-500"
                 />
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(stats.high / stats.total) * 100}%` }}
                   className="bg-amber-500"
                 />
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(stats.medium / stats.total) * 100}%` }}
                   className="bg-blue-500"
                 />
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${(stats.low / stats.total) * 100}%` }}
                   className="bg-green-500"
@@ -390,11 +450,15 @@ const StatisticsDashboard = ({ requests }) => {
               <span>Low: {stats.low}</span>
             </div>
           </div>
-          
+
           <div className="pt-4 border-t border-green-200">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-green-800">Total Quantity Requested</span>
-              <span className="text-xl font-bold text-green-900">{stats.totalQuantity.toLocaleString()}</span>
+              <span className="text-sm font-medium text-green-800">
+                Total Quantity Requested
+              </span>
+              <span className="text-xl font-bold text-green-900">
+                {stats.totalQuantity.toLocaleString()}
+              </span>
             </div>
             <div className="text-xs text-gray-600">
               Across {stats.uniqueResources} different resource types
@@ -407,36 +471,29 @@ const StatisticsDashboard = ({ requests }) => {
 };
 
 // ==================== DROPDOWN MENU ====================
-const DropdownMenu = ({ 
-  trigger, 
-  items, 
-  align = "end", 
-  className = "" 
-}) => {
+const DropdownMenu = ({ trigger, items, align = "end", className = "" }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest('.dropdown-menu')) {
+      if (!event.target.closest(".dropdown-menu")) {
         setIsOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const alignmentClasses = {
     start: "left-0",
-    end: "right-0"
+    end: "right-0",
   };
 
   return (
     <div className={`relative dropdown-menu ${className}`}>
-      <div onClick={() => setIsOpen(!isOpen)}>
-        {trigger}
-      </div>
-      
+      <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
+
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -455,11 +512,11 @@ const DropdownMenu = ({
                   setIsOpen(false);
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors ${
-                  item.variant === "destructive" 
-                    ? "text-red-700 hover:bg-red-50" 
+                  item.variant === "destructive"
+                    ? "text-red-700 hover:bg-red-50"
                     : item.variant === "default"
-                    ? "text-green-700 hover:bg-green-50 font-semibold"
-                    : "text-gray-700 hover:bg-gray-50"
+                      ? "text-green-700 hover:bg-green-50 font-semibold"
+                      : "text-gray-700 hover:bg-gray-50"
                 } ${item.highlight ? "bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500" : ""}`}
               >
                 <item.icon size={18} className="flex-shrink-0" />
@@ -485,26 +542,28 @@ const LoadingSkeleton = () => (
 );
 
 // ==================== CONFIRMATION DIALOG ====================
-const ConfirmationDialog = ({ 
-  isOpen, 
-  onClose, 
-  onConfirm, 
-  title, 
+const ConfirmationDialog = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  title,
   message,
   confirmText = "Confirm",
   cancelText = "Cancel",
-  variant = "default"
+  variant = "default",
 }) => {
   if (!isOpen) return null;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="sm">
       <div className="space-y-4">
-        <div className={`p-4 rounded-xl border-2 ${
-          variant === 'destructive' 
-            ? 'bg-red-50 border-red-300' 
-            : 'bg-green-50 border-green-300'
-        }`}>
+        <div
+          className={`p-4 rounded-xl border-2 ${
+            variant === "destructive"
+              ? "bg-red-50 border-red-300"
+              : "bg-green-50 border-green-300"
+          }`}
+        >
           <h3 className="font-bold text-lg text-gray-900 mb-2">{title}</h3>
           <p className="text-gray-700">{message}</p>
         </div>
@@ -512,8 +571,8 @@ const ConfirmationDialog = ({
           <Button variant="outline" onClick={onClose}>
             {cancelText}
           </Button>
-          <Button 
-            variant={variant === 'destructive' ? 'destructive' : 'default'} 
+          <Button
+            variant={variant === "destructive" ? "destructive" : "default"}
             onClick={onConfirm}
           >
             {confirmText}
@@ -553,32 +612,35 @@ const CoordinationPanel = () => {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  const fetchPending = useCallback(async (showLoading = true) => {
-    if (showLoading) setLoading(true);
-    try {
-      const response = await allocationService.getPendingRequests();
-      const data = response.data?.data || response.data || [];
-      setRequests(data);
-      
-      addToast({
-        title: "Data refreshed",
-        description: `Loaded ${data.length} pending requests`,
-        variant: "success"
-      });
-    } catch (err) {
-      addToast({
-        title: "Failed to load requests",
-        description: "Please check your connection and try again",
-        variant: "destructive",
-        action: {
-          label: "Retry",
-          onClick: () => fetchPending()
-        }
-      });
-    } finally {
-      if (showLoading) setLoading(false);
-    }
-  }, [addToast]);
+  const fetchPending = useCallback(
+    async (showLoading = true) => {
+      if (showLoading) setLoading(true);
+      try {
+        const response = await allocationService.getPendingRequests();
+        const data = response.data?.data || response.data || [];
+        setRequests(data);
+
+        addToast({
+          title: "Data refreshed",
+          description: `Loaded ${data.length} pending requests`,
+          variant: "success",
+        });
+      } catch (err) {
+        addToast({
+          title: "Failed to load requests",
+          description: "Please check your connection and try again",
+          variant: "destructive",
+          action: {
+            label: "Retry",
+            onClick: () => fetchPending(),
+          },
+        });
+      } finally {
+        if (showLoading) setLoading(false);
+      }
+    },
+    [addToast],
+  );
 
   useEffect(() => {
     fetchPending();
@@ -587,29 +649,34 @@ const CoordinationPanel = () => {
   // Filter requests
   useEffect(() => {
     let result = requests;
-    
+
     if (debouncedSearchTerm) {
-      result = result.filter(req => 
-        req.resource_name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        req.hospital?.name?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        req.hospital_id?.toString().includes(debouncedSearchTerm)
+      result = result.filter(
+        (req) =>
+          req.resource_name
+            ?.toLowerCase()
+            .includes(debouncedSearchTerm.toLowerCase()) ||
+          req.hospital?.name
+            ?.toLowerCase()
+            .includes(debouncedSearchTerm.toLowerCase()) ||
+          req.hospital_id?.toString().includes(debouncedSearchTerm),
       );
     }
-    
+
     if (urgencyFilter !== "all") {
-      result = result.filter(req => req.urgency_level === urgencyFilter);
+      result = result.filter((req) => req.urgency_level === urgencyFilter);
     }
-    
+
     if (statusFilter !== "all") {
-      result = result.filter(req => req.status === statusFilter);
+      result = result.filter((req) => req.status === statusFilter);
     }
-    
+
     setFilteredRequests(result);
   }, [requests, debouncedSearchTerm, urgencyFilter, statusFilter]);
 
   const toggleSelection = useCallback((id) => {
-    setSelectedRequests((prev) => 
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    setSelectedRequests((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   }, []);
 
@@ -617,65 +684,66 @@ const CoordinationPanel = () => {
     if (selectedRequests.length === filteredRequests.length) {
       setSelectedRequests([]);
     } else {
-      setSelectedRequests(filteredRequests.map(req => req.id));
+      setSelectedRequests(filteredRequests.map((req) => req.id));
     }
   }, [filteredRequests, selectedRequests.length]);
 
   const handleBulkCreate = async () => {
     if (selectedRequests.length === 0) return;
-    
+
     setBulkProgress({
       total: selectedRequests.length,
       completed: 0,
-      current: null
+      current: null,
     });
-    
+
     const success = [];
     const failed = [];
-    
+
     for (const requestId of selectedRequests) {
-      const request = requests.find(r => r.id === requestId);
-      setBulkProgress(prev => ({
+      const request = requests.find((r) => r.id === requestId);
+      setBulkProgress((prev) => ({
         ...prev,
-        current: request?.resource_name
+        current: request?.resource_name,
       }));
-      
+
       try {
         // Simulate API call - replace with actual bulkCreate
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
         success.push(requestId);
-        
+
         addToast({
           title: "Allocation created",
           description: `${request?.resource_name} - ${request?.hospital?.name}`,
-          variant: "success"
+          variant: "success",
         });
       } catch (err) {
         failed.push(requestId);
-        
+
         addToast({
           title: "Allocation failed",
           description: `${request?.resource_name} - ${request?.hospital?.name}`,
-          variant: "destructive"
+          variant: "destructive",
         });
       }
-      
-      setBulkProgress(prev => ({
+
+      setBulkProgress((prev) => ({
         ...prev,
-        completed: prev.completed + 1
+        completed: prev.completed + 1,
       }));
     }
-    
+
     setBulkProgress(null);
     setSelectedRequests([]);
     setShowCheckboxes(false);
     fetchPending(false);
-    
+
     addToast({
       title: "Bulk operation completed",
       description: `${success.length} succeeded, ${failed.length} failed`,
-      variant: success.length === selectedRequests.length ? "success" : "warning",
-      persist: true
+      variant:
+        success.length === selectedRequests.length ? "success" : "warning",
+      persist: true,
     });
   };
 
@@ -694,26 +762,48 @@ const CoordinationPanel = () => {
       case "escalate":
         handleEscalate(request.id);
         break;
+      case "archive":
+        handleArchive(request);
+        break;
       default:
         break;
     }
   }, []);
 
+  const handleArchive = async (request) => {
+    try {
+      await allocationService.updateLogisticsStatus(request.id, "archived");
+      addToast({
+        title: "Request Archived",
+        description: `Request ${request.id} has been successfully archived.`,
+        variant: "success",
+      });
+      // Optionally re-fetch or clear from local state
+      fetchPending(false);
+    } catch {
+      addToast({
+        title: "Archiving Failed",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleNotify = async (hospitalId, hospitalName) => {
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       addToast({
         title: "Notification sent",
         description: `Hospital: ${hospitalName || hospitalId}`,
-        variant: "success"
+        variant: "success",
       });
     } catch {
       addToast({
         title: "Notification failed",
         description: "Please try again",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -721,19 +811,19 @@ const CoordinationPanel = () => {
   const handleEscalate = async (requestId) => {
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       addToast({
         title: "Request escalated",
         description: "Sent to central buffer for immediate attention",
         variant: "warning",
-        persist: true
+        persist: true,
       });
     } catch {
       addToast({
         title: "Escalation failed",
         description: "Please try again",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
@@ -743,84 +833,108 @@ const CoordinationPanel = () => {
       await navigator.clipboard.writeText(text);
       addToast({
         title: "Copied to clipboard",
-        variant: "success"
+        variant: "success",
       });
     } catch (err) {
       addToast({
         title: "Copy failed",
-        variant: "destructive"
+        variant: "destructive",
       });
     }
   };
 
   const handleExportData = () => {
-    const data = filteredRequests.map(req => ({
+    const data = filteredRequests.map((req) => ({
       Hospital: req.hospital?.name,
       Resource: req.resource_name,
       Quantity: req.quantity,
       Urgency: req.urgency_level,
       Status: req.status,
-      'Hospital ID': req.hospital_id,
-      'Request ID': req.id
+      "Hospital ID": req.hospital_id,
+      "Request ID": req.id,
     }));
-    
+
     const csv = [
-      Object.keys(data[0] || {}).join(','),
-      ...data.map(row => Object.values(row).join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
+      Object.keys(data[0] || {}).join(","),
+      ...data.map((row) => Object.values(row).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `allocations-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `allocations-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
-    
+
     addToast({
       title: "Data exported",
       description: `${filteredRequests.length} records downloaded`,
-      variant: "success"
+      variant: "success",
     });
   };
 
-  const getActionItems = useCallback((request) => [
-    {
-      label: "View Request Details",
-      icon: Eye,
-      variant: "outline",
-      onClick: () => handleAction("view", request)
+  const getActionItems = useCallback(
+    (request) => {
+      const isTerminal = ["verified", "failed", "rejected"].includes(
+        request.status,
+      );
+      const actions = [
+        {
+          label: "View Request Details",
+          icon: Eye,
+          variant: "outline",
+          onClick: () => handleAction("view", request),
+        },
+      ];
+
+      if (!isTerminal) {
+        actions.push({
+          label: "Auto-Rank & Match Sources",
+          icon: ListChecks,
+          variant: "default",
+          onClick: () => handleAction("match", request),
+          highlight: true,
+        });
+        actions.push({
+          label: "Send Notification",
+          icon: Bell,
+          variant: "outline",
+          onClick: () => handleAction("notify", request),
+        });
+      }
+
+      actions.push({
+        label: "Copy Request ID",
+        icon: Clipboard,
+        variant: "outline",
+        onClick: () => handleCopyToClipboard(request.id),
+      });
+
+      if (!isTerminal) {
+        actions.push({
+          label: "Escalate to Central Buffer",
+          icon: ShieldAlert,
+          variant: "destructive",
+          onClick: () => handleAction("escalate", request),
+        });
+      } else {
+        actions.push({
+          label: "Confirm & Archive",
+          icon: Archive,
+          variant: "outline",
+          onClick: () => handleAction("archive", request),
+        });
+      }
+
+      return actions;
     },
-    {
-      label: "Auto-Rank & Match Sources",
-      icon: ListChecks,
-      variant: "default",
-      onClick: () => handleAction("match", request),
-      highlight: true
-    },
-    {
-      label: "Send Notification",
-      icon: Bell,
-      variant: "outline",
-      onClick: () => handleAction("notify", request)
-    },
-    {
-      label: "Copy Request ID",
-      icon: Clipboard,
-      variant: "outline",
-      onClick: () => handleCopyToClipboard(request.id)
-    },
-    {
-      label: "Escalate to Central Buffer",
-      icon: ShieldAlert,
-      variant: "destructive",
-      onClick: () => handleAction("escalate", request)
-    }
-  ], [handleAction, handleCopyToClipboard]);
+    [handleAction, handleCopyToClipboard],
+  );
 
   // Card view component
   const RequestCard = ({ request }) => {
     const actionItems = getActionItems(request);
-    
+
     return (
       <Card className="hover:shadow-xl transition-all duration-200">
         <CardContent className="p-5">
@@ -838,70 +952,95 @@ const CoordinationPanel = () => {
                 <Building2 className="h-5 w-5 text-green-800" />
               </div>
               <div>
-                <div className="font-bold text-green-900">{request.hospital?.name || "Unknown Hospital"}</div>
+                <div className="font-bold text-green-900">
+                  {request.hospital?.name || "Unknown Hospital"}
+                </div>
                 <div className="text-xs text-gray-600 flex items-center gap-1">
                   <MapPin size={12} />
                   ID: {request.hospital_id}
                 </div>
               </div>
             </div>
-            <Badge variant={
-              request.urgency_level === "Critical" ? "destructive" : 
-              request.urgency_level === "High" ? "warning" : 
-              request.urgency_level === "Medium" ? "info" : "success"
-            } icon={
-              request.urgency_level === "Critical" ? AlertCircle :
-              request.urgency_level === "High" ? Zap :
-              request.urgency_level === "Medium" ? Clock : Check
-            }>
+            <Badge
+              variant={
+                request.urgency_level === "Critical"
+                  ? "destructive"
+                  : request.urgency_level === "High"
+                    ? "warning"
+                    : request.urgency_level === "Medium"
+                      ? "info"
+                      : "success"
+              }
+              icon={
+                request.urgency_level === "Critical"
+                  ? AlertCircle
+                  : request.urgency_level === "High"
+                    ? Zap
+                    : request.urgency_level === "Medium"
+                      ? Clock
+                      : Check
+              }
+            >
               {request.urgency_level}
             </Badge>
           </div>
-          
+
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <h4 className="font-bold text-lg text-green-900">{request.resource_name}</h4>
+              <h4 className="font-bold text-lg text-green-900">
+                {request.resource_name}
+              </h4>
               <span className="text-xl font-bold text-green-800 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1 rounded-lg">
                 {request.quantity}
               </span>
             </div>
-            
+
             <div className="flex flex-wrap gap-2 mb-4">
-              {request.handling_class === 'ColdChain' && (
-                <Badge variant="info" icon={Thermometer}>Cold Chain</Badge>
+              {request.handling_class === "ColdChain" && (
+                <Badge variant="info" icon={Thermometer}>
+                  Cold Chain
+                </Badge>
               )}
-              {request.handling_class === 'HighValue' && (
-                <Badge variant="purple" icon={DollarSign}>High Value</Badge>
+              {request.handling_class === "HighValue" && (
+                <Badge variant="purple" icon={DollarSign}>
+                  High Value
+                </Badge>
               )}
-              {request.handling_class === 'Narcotics' && (
-                <Badge variant="destructive" icon={Shield}>Narcotics</Badge>
+              {request.handling_class === "Narcotics" && (
+                <Badge variant="destructive" icon={Shield}>
+                  Narcotics
+                </Badge>
               )}
-              <Badge variant="secondary" icon={Clock}>{request.status}</Badge>
+              <Badge variant="secondary" icon={Clock}>
+                {request.status}
+              </Badge>
             </div>
-            
+
             {request.reason && (
               <div className="mb-4">
-                <div className="text-sm font-medium text-gray-700 mb-1">Reason:</div>
+                <div className="text-sm font-medium text-gray-700 mb-1">
+                  Reason:
+                </div>
                 <div className="text-sm text-gray-600 bg-amber-50 border-2 border-amber-200 rounded-lg p-3 italic">
                   "{request.reason}"
                 </div>
               </div>
             )}
           </div>
-          
+
           <div className="grid grid-cols-2 gap-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => handleAction("view", request)}
               className="flex items-center justify-center gap-2"
             >
               <Eye size={16} />
               View
             </Button>
-            <Button 
-              variant="default" 
-              size="sm" 
+            <Button
+              variant="default"
+              size="sm"
               onClick={() => handleAction("match", request)}
               className="flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600"
             >
@@ -917,13 +1056,15 @@ const CoordinationPanel = () => {
   // Table row component with dropdown
   const RequestTableRow = ({ request }) => {
     const actionItems = getActionItems(request);
-    
+
     return (
       <motion.tr
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className={`border-b-2 border-green-100 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 transition-colors duration-200 ${
-          selectedRequests.includes(request.id) ? "bg-gradient-to-r from-green-50 to-emerald-50" : ""
+          selectedRequests.includes(request.id)
+            ? "bg-gradient-to-r from-green-50 to-emerald-50"
+            : ""
         }`}
       >
         <td className="p-4">
@@ -942,13 +1083,19 @@ const CoordinationPanel = () => {
               <Building2 className="h-5 w-5 text-green-800" />
             </div>
             <div>
-              <div className="font-semibold text-green-900">{request.hospital?.name || "Unknown Hospital"}</div>
-              <div className="text-xs text-gray-600">ID: {request.hospital_id}</div>
+              <div className="font-semibold text-green-900">
+                {request.hospital?.name || "Unknown Hospital"}
+              </div>
+              <div className="text-xs text-gray-600">
+                ID: {request.hospital_id}
+              </div>
             </div>
           </div>
         </td>
         <td className="p-4">
-          <div className="font-bold text-green-900">{request.resource_name}</div>
+          <div className="font-bold text-green-900">
+            {request.resource_name}
+          </div>
         </td>
         <td className="p-4">
           <span className="font-bold text-xl text-green-800 bg-gradient-to-r from-green-50 to-emerald-50 px-3 py-1.5 rounded-lg">
@@ -956,19 +1103,30 @@ const CoordinationPanel = () => {
           </span>
         </td>
         <td className="p-4">
-          <Badge variant={
-            request.urgency_level === "Critical" ? "destructive" : 
-            request.urgency_level === "High" ? "warning" : 
-            request.urgency_level === "Medium" ? "info" : "success"
-          }>
+          <Badge
+            variant={
+              request.urgency_level === "Critical"
+                ? "destructive"
+                : request.urgency_level === "High"
+                  ? "warning"
+                  : request.urgency_level === "Medium"
+                    ? "info"
+                    : "success"
+            }
+          >
             {request.urgency_level}
           </Badge>
         </td>
         <td className="p-4">
-          <Badge variant={
-            request.status === "pending" ? "warning" :
-            request.status === "approved" ? "success" : "secondary"
-          }>
+          <Badge
+            variant={
+              request.status === "pending"
+                ? "warning"
+                : request.status === "approved"
+                  ? "success"
+                  : "secondary"
+            }
+          >
             {request.status}
           </Badge>
         </td>
@@ -1002,27 +1160,25 @@ const CoordinationPanel = () => {
             <h1 className="text-3xl font-bold bg-gradient-to-r from-green-800 to-emerald-700 bg-clip-text text-transparent">
               Coordination Center
             </h1>
-            <p className="text-gray-700 mt-2">Manage and coordinate resource allocation requests</p>
+            <p className="text-gray-700 mt-2">
+              Manage and coordinate resource allocation requests
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button 
-              variant="outline" 
-              onClick={fetchPending}
-              className="gap-2"
-            >
-              <RefreshCw className="h-4 w-4" /> 
+            <Button variant="outline" onClick={fetchPending} className="gap-2">
+              <RefreshCw className="h-4 w-4" />
               Refresh
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowStatistics(!showStatistics)}
               className="gap-2"
             >
               <BarChart3 className="h-4 w-4" />
               {showStatistics ? "Hide Stats" : "Show Stats"}
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleExportData}
               className="gap-2"
             >
@@ -1060,7 +1216,7 @@ const CoordinationPanel = () => {
                   />
                 </div>
               </div>
-              
+
               {/* View Mode Toggle */}
               <div className="flex gap-1 border-2 border-gray-300 rounded-xl p-1 bg-white">
                 <Button
@@ -1080,7 +1236,7 @@ const CoordinationPanel = () => {
                   <LayoutGrid className="h-4 w-4" />
                 </Button>
               </div>
-              
+
               {/* Filters */}
               <div className="flex gap-2">
                 <select
@@ -1094,7 +1250,7 @@ const CoordinationPanel = () => {
                   <option value="High">High</option>
                   <option value="Critical">Critical</option>
                 </select>
-                
+
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
@@ -1124,13 +1280,17 @@ const CoordinationPanel = () => {
                   <div className="flex items-center gap-4">
                     <input
                       type="checkbox"
-                      checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
+                      checked={
+                        selectedRequests.length === filteredRequests.length &&
+                        filteredRequests.length > 0
+                      }
                       onChange={toggleSelectAll}
                       className="h-5 w-5 rounded border-2 border-white bg-transparent checked:bg-white focus:ring-white"
                     />
                     <div>
                       <div className="font-bold">
-                        {selectedRequests.length} of {filteredRequests.length} requests selected
+                        {selectedRequests.length} of {filteredRequests.length}{" "}
+                        requests selected
                       </div>
                       <div className="text-sm opacity-90">
                         Select all requests on this page
@@ -1138,48 +1298,52 @@ const CoordinationPanel = () => {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setShowCheckboxes(!showCheckboxes)}
                       className="bg-white text-green-800 hover:bg-green-50"
                     >
-                      {showCheckboxes ? <CheckSquare className="mr-2 h-4 w-4" /> : <Square className="mr-2 h-4 w-4" />}
+                      {showCheckboxes ? (
+                        <CheckSquare className="mr-2 h-4 w-4" />
+                      ) : (
+                        <Square className="mr-2 h-4 w-4" />
+                      )}
                       Select Mode
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setSelectedRequests([])}
                       disabled={selectedRequests.length === 0}
                       className="bg-white text-green-800 hover:bg-green-50"
                     >
                       <X className="mr-2 h-4 w-4" /> Clear
                     </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm" 
+                    <Button
+                      variant="default"
+                      size="sm"
                       onClick={() => setShowCreateModal(true)}
                       disabled={selectedRequests.length === 0}
                       className="bg-white text-green-800 hover:bg-green-100"
                     >
                       <Plus className="mr-2 h-4 w-4" /> Create Allocation
                     </Button>
-                    <Button 
-                      variant="success" 
-                      size="sm" 
+                    <Button
+                      variant="success"
+                      size="sm"
                       onClick={() => {
                         setConfirmDialog({
                           title: "Confirm Bulk Create",
                           message: `Are you sure you want to create allocations for ${selectedRequests.length} selected requests?`,
                           onConfirm: handleBulkCreate,
-                          variant: "default"
+                          variant: "default",
                         });
                       }}
                       disabled={selectedRequests.length === 0}
                       className="bg-gradient-to-r from-white to-green-50 text-green-800 shadow-lg"
                     >
-                      <CheckCircle className="mr-2 h-4 w-4" /> 
+                      <CheckCircle className="mr-2 h-4 w-4" />
                       Bulk Create ({selectedRequests.length})
                     </Button>
                   </div>
@@ -1191,7 +1355,11 @@ const CoordinationPanel = () => {
 
         {/* Bulk Progress Modal */}
         {bulkProgress && (
-          <Modal isOpen={!!bulkProgress} onClose={() => {}} title="Bulk Operation Progress">
+          <Modal
+            isOpen={!!bulkProgress}
+            onClose={() => {}}
+            title="Bulk Operation Progress"
+          >
             <div className="space-y-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-900 mb-2">
@@ -1200,19 +1368,25 @@ const CoordinationPanel = () => {
                 <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: "0%" }}
-                    animate={{ width: `${(bulkProgress.completed / bulkProgress.total) * 100}%` }}
+                    animate={{
+                      width: `${(bulkProgress.completed / bulkProgress.total) * 100}%`,
+                    }}
                     className="h-full bg-gradient-to-r from-green-500 to-emerald-500"
                   />
                 </div>
               </div>
-              
+
               {bulkProgress.current && (
                 <div className="text-center">
-                  <div className="text-sm text-gray-600">Currently processing:</div>
-                  <div className="font-semibold text-green-900">{bulkProgress.current}</div>
+                  <div className="text-sm text-gray-600">
+                    Currently processing:
+                  </div>
+                  <div className="font-semibold text-green-900">
+                    {bulkProgress.current}
+                  </div>
                 </div>
               )}
-              
+
               <div className="text-center text-sm text-gray-500">
                 Please don't close this window...
               </div>
@@ -1234,7 +1408,11 @@ const CoordinationPanel = () => {
                   onClick={() => setShowCheckboxes(!showCheckboxes)}
                   className="bg-white/20 text-white hover:bg-white/30 border-white/30"
                 >
-                  {showCheckboxes ? <CheckSquare className="mr-2 h-4 w-4" /> : <Square className="mr-2 h-4 w-4" />}
+                  {showCheckboxes ? (
+                    <CheckSquare className="mr-2 h-4 w-4" />
+                  ) : (
+                    <Square className="mr-2 h-4 w-4" />
+                  )}
                   Select
                 </Button>
               </div>
@@ -1248,10 +1426,14 @@ const CoordinationPanel = () => {
                 <div className="mx-auto w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mb-4">
                   <Package className="h-8 w-8 text-gray-400" />
                 </div>
-                <p className="text-gray-700 text-lg font-medium mb-2">No requests found</p>
+                <p className="text-gray-700 text-lg font-medium mb-2">
+                  No requests found
+                </p>
                 <p className="text-gray-500">
-                  {searchTerm || urgencyFilter !== "all" || statusFilter !== "all" 
-                    ? "Try adjusting your filters" 
+                  {searchTerm ||
+                  urgencyFilter !== "all" ||
+                  statusFilter !== "all"
+                    ? "Try adjusting your filters"
                     : "All requests have been processed"}
                 </p>
               </div>
@@ -1279,18 +1461,34 @@ const CoordinationPanel = () => {
                         {showCheckboxes && (
                           <input
                             type="checkbox"
-                            checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
+                            checked={
+                              selectedRequests.length ===
+                                filteredRequests.length &&
+                              filteredRequests.length > 0
+                            }
                             onChange={toggleSelectAll}
                             className="h-5 w-5 rounded border-2 border-gray-300 text-green-600 focus:ring-green-500"
                           />
                         )}
                       </th>
-                      <th className="p-4 text-left font-bold text-green-900">Hospital</th>
-                      <th className="p-4 text-left font-bold text-green-900">Resource</th>
-                      <th className="p-4 text-left font-bold text-green-900">Quantity</th>
-                      <th className="p-4 text-left font-bold text-green-900">Urgency</th>
-                      <th className="p-4 text-left font-bold text-green-900">Status</th>
-                      <th className="p-4 text-left font-bold text-green-900">Actions</th>
+                      <th className="p-4 text-left font-bold text-green-900">
+                        Hospital
+                      </th>
+                      <th className="p-4 text-left font-bold text-green-900">
+                        Resource
+                      </th>
+                      <th className="p-4 text-left font-bold text-green-900">
+                        Quantity
+                      </th>
+                      <th className="p-4 text-left font-bold text-green-900">
+                        Urgency
+                      </th>
+                      <th className="p-4 text-left font-bold text-green-900">
+                        Status
+                      </th>
+                      <th className="p-4 text-left font-bold text-green-900">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1307,117 +1505,143 @@ const CoordinationPanel = () => {
         </Card>
 
         {/* View Request Modal */}
-        <Modal 
-          isOpen={!!viewRequest} 
-          onClose={() => setViewRequest(null)} 
+        <Modal
+          isOpen={!!viewRequest}
+          onClose={() => setViewRequest(null)}
           title="Request Details"
           size="lg"
         >
           {viewRequest && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InfoChip 
+                <InfoChip
                   icon={Package}
-                  label="Resource" 
+                  label="Resource"
                   value={viewRequest.resource_name}
                   color="green"
                 />
-                <InfoChip 
+                <InfoChip
                   icon={Building2}
-                  label="Hospital" 
-                  value={viewRequest.hospital?.name || 'Unknown'}
+                  label="Hospital"
+                  value={viewRequest.hospital?.name || "Unknown"}
                   color="blue"
                 />
-                <InfoChip 
+                <InfoChip
                   icon={DollarSign}
-                  label="Quantity" 
+                  label="Quantity"
                   value={viewRequest.quantity}
                   color="amber"
                 />
-                <InfoChip 
+                <InfoChip
                   icon={Zap}
-                  label="Urgency" 
+                  label="Urgency"
                   value={viewRequest.urgency_level}
                   color={
-                    viewRequest.urgency_level === "Critical" ? "destructive" : 
-                    viewRequest.urgency_level === "High" ? "warning" : "info"
+                    viewRequest.urgency_level === "Critical"
+                      ? "destructive"
+                      : viewRequest.urgency_level === "High"
+                        ? "warning"
+                        : "info"
                   }
                 />
-                <InfoChip 
+                <InfoChip
                   icon={Clock}
-                  label="Status" 
+                  label="Status"
                   value={viewRequest.status}
                   color={
-                    viewRequest.status === "pending" ? "warning" :
-                    viewRequest.status === "approved" ? "success" : "gray"
+                    viewRequest.status === "pending"
+                      ? "warning"
+                      : viewRequest.status === "approved"
+                        ? "success"
+                        : "gray"
                   }
                 />
-                <InfoChip 
+                <InfoChip
                   icon={MapPin}
-                  label="Hospital ID" 
+                  label="Hospital ID"
                   value={viewRequest.hospital_id}
                   color="purple"
                 />
               </div>
-              
+
               {viewRequest.reason && (
                 <div>
-                  <h4 className="font-semibold text-green-800 mb-3 text-lg">Request Reason</h4>
+                  <h4 className="font-semibold text-green-800 mb-3 text-lg">
+                    Request Reason
+                  </h4>
                   <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-xl p-5">
-                    <p className="text-amber-900 italic text-lg leading-relaxed">"{viewRequest.reason}"</p>
+                    <p className="text-amber-900 italic text-lg leading-relaxed">
+                      "{viewRequest.reason}"
+                    </p>
                   </div>
                 </div>
               )}
-              
+
               <div className="pt-6 border-t-2 border-green-200">
-                <h4 className="font-semibold text-green-800 mb-4 text-lg">Handling Information</h4>
+                <h4 className="font-semibold text-green-800 mb-4 text-lg">
+                  Handling Information
+                </h4>
                 <div className="flex flex-wrap gap-3">
-                  {viewRequest.handling_class === 'ColdChain' && (
-                    <Badge variant="info" icon={Thermometer} className="px-4 py-2">
+                  {viewRequest.handling_class === "ColdChain" && (
+                    <Badge
+                      variant="info"
+                      icon={Thermometer}
+                      className="px-4 py-2"
+                    >
                       Cold Chain Required
                     </Badge>
                   )}
-                  {viewRequest.handling_class === 'HighValue' && (
+                  {viewRequest.handling_class === "HighValue" && (
                     <Badge variant="purple" icon={Shield} className="px-4 py-2">
                       High Value Security
                     </Badge>
                   )}
-                  {viewRequest.handling_class === 'Narcotics' && (
-                    <Badge variant="destructive" icon={ShieldAlert} className="px-4 py-2">
+                  {viewRequest.handling_class === "Narcotics" && (
+                    <Badge
+                      variant="destructive"
+                      icon={ShieldAlert}
+                      className="px-4 py-2"
+                    >
                       Narcotics Handling
                     </Badge>
                   )}
-                  {!['ColdChain', 'HighValue', 'Narcotics'].includes(viewRequest.handling_class) && (
-                    <Badge variant="secondary" icon={Package} className="px-4 py-2">
+                  {!["ColdChain", "HighValue", "Narcotics"].includes(
+                    viewRequest.handling_class,
+                  ) && (
+                    <Badge
+                      variant="secondary"
+                      icon={Package}
+                      className="px-4 py-2"
+                    >
                       General Handling
                     </Badge>
                   )}
                 </div>
               </div>
-              
+
               <div className="flex gap-3 justify-end pt-6 border-t-2 border-green-200">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => handleAction("notify", viewRequest)}
                   className="gap-2"
                 >
-                  <Bell className="h-4 w-4" /> 
+                  <Bell className="h-4 w-4" />
                   Notify Hospital
                 </Button>
-                <Button 
-                  variant="default" 
+                <Button
+                  variant="default"
                   onClick={() => handleAction("match", viewRequest)}
                   className="gap-2"
                 >
-                  <ListChecks className="h-4 w-4" /> 
+                  <ListChecks className="h-4 w-4" />
                   Auto-Rank & Match
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   onClick={() => handleAction("escalate", viewRequest)}
                   className="gap-2"
                 >
-                  <ShieldAlert className="h-4 w-4" /> 
+                  <ShieldAlert className="h-4 w-4" />
                   Escalate to Buffer
                 </Button>
               </div>
@@ -1426,12 +1650,12 @@ const CoordinationPanel = () => {
         </Modal>
 
         {/* Match Suggestions Modal */}
-        <Modal 
-          isOpen={showMatchModal} 
+        <Modal
+          isOpen={showMatchModal}
           onClose={() => {
             setShowMatchModal(false);
             setSelectedRequestForMatch(null);
-          }} 
+          }}
           title="Auto-Rank & Match Sources"
           size="xl"
         >
@@ -1442,7 +1666,7 @@ const CoordinationPanel = () => {
                 addToast({
                   title: "Allocation created successfully!",
                   description: "Resource allocation has been planned",
-                  variant: "success"
+                  variant: "success",
                 });
                 setShowMatchModal(false);
                 setSelectedRequestForMatch(null);
@@ -1457,23 +1681,32 @@ const CoordinationPanel = () => {
         </Modal>
 
         {/* Create Allocation Modal */}
-        <Modal 
-          isOpen={showCreateModal} 
-          onClose={() => setShowCreateModal(false)} 
+        <Modal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
           title="Create Allocation"
           size="md"
         >
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border-2 border-green-300">
-              <h4 className="font-bold text-green-900 mb-3">You are about to create allocations for:</h4>
+              <h4 className="font-bold text-green-900 mb-3">
+                You are about to create allocations for:
+              </h4>
               <div className="space-y-2">
                 {selectedRequests.slice(0, 5).map((id, index) => {
-                  const request = requests.find(req => req.id === id);
+                  const request = requests.find((req) => req.id === id);
                   return (
-                    <div key={id} className="flex items-center justify-between p-2 bg-white rounded-lg border border-green-200">
+                    <div
+                      key={id}
+                      className="flex items-center justify-between p-2 bg-white rounded-lg border border-green-200"
+                    >
                       <div>
-                        <div className="font-medium text-green-900">{request?.resource_name}</div>
-                        <div className="text-sm text-gray-600">{request?.hospital?.name}</div>
+                        <div className="font-medium text-green-900">
+                          {request?.resource_name}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {request?.hospital?.name}
+                        </div>
                       </div>
                       <Badge variant="success" className="px-3">
                         Qty: {request?.quantity}
@@ -1488,28 +1721,28 @@ const CoordinationPanel = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="flex gap-3 justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setShowCreateModal(false)}
               >
                 Cancel
               </Button>
-              <Button 
-                variant="default" 
+              <Button
+                variant="default"
                 onClick={() => {
                   setShowCreateModal(false);
                   setConfirmDialog({
                     title: "Confirm Allocation Creation",
                     message: `Create allocations for ${selectedRequests.length} selected requests?`,
                     onConfirm: handleBulkCreate,
-                    variant: "default"
+                    variant: "default",
                   });
                 }}
                 className="gap-2"
               >
-                <CheckCircle className="h-4 w-4" /> 
+                <CheckCircle className="h-4 w-4" />
                 Confirm Create
               </Button>
             </div>
