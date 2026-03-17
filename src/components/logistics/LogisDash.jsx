@@ -214,16 +214,16 @@ const formatETA = (isoTime) => {
 };
 
 // --- CHART COMPONENT ---
-const FacilityPieChart = ({ data }) => {
-  const COLORS = [
-    "#34D399",
-    "#1c2414",
-    "#394e2c",
-    "#FBBF24",
-    "#f0d003",
-    "#fae526",
-  ];
+const PIE_COLORS = [
+  "#34D399",
+  "#1c2414",
+  "#394e2c",
+  "#FBBF24",
+  "#f0d003",
+  "#fae526",
+];
 
+const FacilityPieChart = ({ data }) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
@@ -260,7 +260,7 @@ const FacilityPieChart = ({ data }) => {
         <Pie
           data={facilityResourceData}
           cx="50%"
-          cy="45%"
+          cy="50%"
           innerRadius={45}
           outerRadius={75}
           dataKey="value"
@@ -268,16 +268,13 @@ const FacilityPieChart = ({ data }) => {
           paddingAngle={4}
         >
           {facilityResourceData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell
+              key={`cell-${index}`}
+              fill={PIE_COLORS[index % PIE_COLORS.length]}
+            />
           ))}
         </Pie>
         <Tooltip content={renderTooltip} />
-        <Legend
-          layout="horizontal"
-          verticalAlign="bottom"
-          align="center"
-          wrapperStyle={{ fontSize: "11px", paddingTop: "10px" }}
-        />
       </PieChart>
     </ResponsiveContainer>
   );
@@ -298,8 +295,9 @@ const OverallStatusCard = ({ inventory, facilities }) => {
         <h3 className="text-xl font-bold mb-4 border-b border-gray-100 pb-3 flex justify-center items-center">
           Resource Overview
         </h3>
-        <div className="flex flex-col md:flex-row gap-1 flex-1">
-          <div className="w-full md:w-1/2 flex flex-col justify-start items-start">
+        <div className="flex flex-col md:flex-row items-center flex-1 w-full relative">
+          {/* Left: Stats */}
+          <div className="w-full md:w-1/3 flex flex-col justify-center items-start mb-4 md:mb-0">
             <p className="text-5xl font-extrabold mb-4">{totalRemaining}</p>
             <div className="space-y-1 text-15px">
               <p className="font-medium text-gray-600 flex items-center">
@@ -317,12 +315,32 @@ const OverallStatusCard = ({ inventory, facilities }) => {
             </div>
           </div>
 
-          <div className="w-full md:w-1/2 flex flex-col justify-center items-center">
+          {/* Middle: Custom Legend */}
+          <div className="w-full md:w-1/3 flex flex-col justify-center space-y-2 mb-4 md:mb-0">
+            {facilities && facilities.length > 0
+              ? facilities.map((fac, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span
+                      className="w-3 h-3 block rounded-xs shrink-0"
+                      style={{
+                        backgroundColor: PIE_COLORS[idx % PIE_COLORS.length],
+                      }}
+                    ></span>
+                    <span
+                      className="text-sm text-gray-800 line-clamp-1"
+                      title={fac.name}
+                    >
+                      {fac.name}
+                    </span>
+                  </div>
+                ))
+              : null}
+          </div>
+
+          {/* Right: Pie Chart */}
+          <div className="w-full md:w-1/3 flex flex-col justify-center items-center min-h-[140px] relative">
             {facilities && facilities.length > 0 ? (
-              <>
-                <FacilityPieChart data={facilities} />
-                {/* Legend removed */}
-              </>
+              <FacilityPieChart data={facilities} />
             ) : (
               <p className="text-gray-400">No facility data</p>
             )}
@@ -472,7 +490,7 @@ const LiveMap = ({ shipments, assets }) => {
         <LiveTrackingMap allShipments={shipments} />
         {/* Overlay Button */}
         <div className="absolute inset-0 bg-slate-900/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-[400] pointer-events-none">
-          <Link 
+          <Link
             to="/logistics/live-map"
             className="bg-white text-slate-800 font-bold px-5 py-2.5 rounded-full shadow-lg pointer-events-auto flex items-center hover:bg-slate-50 transition-all hover:scale-105"
           >
