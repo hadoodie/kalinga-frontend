@@ -422,8 +422,6 @@ class IncidentApiController extends Controller
             'latestStatusUpdate.user:id,name,role',
         ]);
 
-        $this->syncConversationArchiveState($incident);
-
         broadcast(new IncidentUpdated($incident))->toOthers();
 
         return new IncidentResource($incident);

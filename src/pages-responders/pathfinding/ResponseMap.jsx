@@ -1467,6 +1467,14 @@ export default function ResponseMap({ embedded = false, className = "" }) {
     isAssigned = false,
     enableNavigation = false
   ) => {
+    const latNum = parseFloat(destLat);
+    const lngNum = parseFloat(destLng);
+
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+      console.warn("Invalid coordinates passed to drawRoute:", destLat, destLng);
+      return;
+    }
+
     if (!userLocation || !map || isDrawingRoute) return;
 
     // Set drawing state to prevent concurrent route requests
@@ -1481,14 +1489,14 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       const L = await import("leaflet");
 
       const newDestMarker = L.default
-        .marker([destLat, destLng])
+        .marker([latNum, lngNum])
         .addTo(map)
         .bindPopup("Destination")
         .openPopup();
       setDestMarker(newDestMarker);
 
       // Enhanced OSRM query with step details for navigation
-      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${userLocation.lng},${userLocation.lat};${destLng},${destLat}`;
+      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${userLocation.lng},${userLocation.lat};${lngNum},${latNum}`;
       const baseParamOptions = {
         overview: "full",
         geometries: "geojson",
@@ -1522,7 +1530,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
             osrmServer: KALINGA_CONFIG.OSRM_SERVER,
             baseParamOptions,
             start: { lat: userLocation.lat, lng: userLocation.lng },
-            end: { lat: destLat, lng: destLng },
+            end: { lat: latNum, lng: lngNum },
             normalizedBlockades,
             currentSelection: selection,
           });
@@ -2087,8 +2095,10 @@ export default function ResponseMap({ embedded = false, className = "" }) {
   };
 
   const centerMapOnLocation = (lat, lng) => {
-    if (map && lat && lng) {
-      map.flyTo([lat, lng], 17, {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (map && Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+      map.flyTo([latNum, lngNum], 17, {
         animate: true,
         duration: 1.2,
       });
@@ -2777,7 +2787,10 @@ export default function ResponseMap({ embedded = false, className = "" }) {
                     key={index}
                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
                     onClick={() =>
-                      drawRoute(blockade.latitude, blockade.longitude)
+                      drawRoute(
+                        blockade.latitude ?? blockade.start_lat,
+                        blockade.longitude ?? blockade.start_lng
+                      )
                     }
                   >
                     <div className="font-semibold text-red-600 text-sm">

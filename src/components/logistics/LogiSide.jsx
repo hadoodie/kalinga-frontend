@@ -75,11 +75,11 @@ export default function LogisticSidebar() {
         title: "Logged Out",
         description: "You have been successfully logged out.",
       });
-      navigate("/login");
+      navigate("/");
     } catch (error) {
       console.error("Logout error:", error);
       // Navigate anyway
-      navigate("/login");
+      navigate("/");
     } finally {
       setMobileOpen(false);
     }
@@ -211,7 +211,7 @@ export default function LogisticSidebar() {
             {/* Settings and Logout */}
             <div
               className="flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
-              onClick={() => navigate("/settings")}
+              onClick={() => navigate("/logistics/settings")}
             >
               <Settings size={20} />
               <span>Settings</span>

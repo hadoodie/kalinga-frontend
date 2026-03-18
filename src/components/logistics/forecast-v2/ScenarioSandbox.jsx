@@ -18,10 +18,7 @@ const ScenarioSandbox = memo(function ScenarioSandbox({
       className="rounded-2xl border-2 border-violet-300 bg-gradient-to-br from-violet-50 via-white to-violet-50 p-5 shadow-sm"
     >
       <div className="flex items-center gap-2 mb-4">
-        <FlaskConical
-          className="h-5 w-5 text-violet-600"
-          aria-hidden="true"
-        />
+        <FlaskConical className="h-5 w-5 text-violet-600" aria-hidden="true" />
         <h3 className="text-base font-bold text-violet-900">
           Scenario Sandbox
         </h3>
@@ -47,7 +44,9 @@ const ScenarioSandbox = memo(function ScenarioSandbox({
             max={14}
             step={1}
             value={params.deliveryDelayDays}
-            onChange={(e) => update("deliveryDelayDays", Number(e.target.value))}
+            onChange={(e) =>
+              update("deliveryDelayDays", Number(e.target.value))
+            }
             className="w-full accent-violet-600"
             aria-valuemin={0}
             aria-valuemax={14}
@@ -79,9 +78,7 @@ const ScenarioSandbox = memo(function ScenarioSandbox({
             max={3.0}
             step={0.1}
             value={params.demandMultiplier}
-            onChange={(e) =>
-              update("demandMultiplier", Number(e.target.value))
-            }
+            onChange={(e) => update("demandMultiplier", Number(e.target.value))}
             className="w-full accent-violet-600"
             aria-valuemin={0.5}
             aria-valuemax={3}
@@ -105,9 +102,7 @@ const ScenarioSandbox = memo(function ScenarioSandbox({
           {adjustedStockout != null && adjustedStockout < 999 ? (
             <div>
               <p className="text-xl font-black text-violet-700">
-                {adjustedStockout < 1
-                  ? "< 1"
-                  : adjustedStockout.toFixed(1)}{" "}
+                {adjustedStockout < 1 ? "< 1" : adjustedStockout.toFixed(1)}{" "}
                 days
               </p>
               <p className="text-xs text-violet-500">
@@ -116,9 +111,9 @@ const ScenarioSandbox = memo(function ScenarioSandbox({
                   <span className="text-red-500 font-semibold">
                     {" "}
                     (
-                    {(
-                      (originalStockoutDays || 0) - adjustedStockout
-                    ).toFixed(1)}
+                    {((originalStockoutDays || 0) - adjustedStockout).toFixed(
+                      1,
+                    )}
                     d sooner)
                   </span>
                 )}

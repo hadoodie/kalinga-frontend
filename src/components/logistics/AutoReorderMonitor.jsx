@@ -17,7 +17,7 @@ import { generateDemoAutoReorders } from "./demoForecastData";
  * Shows auto-created requests from the forecasting pipeline with status,
  * quantities, urgency levels, and timestamps.
  */
-export default function AutoReorderMonitor() {
+export default function AutoReorderMonitor({ onViewAll }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -74,6 +74,7 @@ export default function AutoReorderMonitor() {
           </span>
           <button
             onClick={fetchOrders}
+            aria-label="Refresh auto-reorders"
             className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
@@ -106,9 +107,12 @@ export default function AutoReorderMonitor() {
           <p className="text-xs text-gray-500">
             Auto-reorders require logistics manager approval before dispatch
           </p>
-          <span className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1">
+          <button
+            onClick={onViewAll}
+            className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer flex items-center gap-1 bg-transparent border-none p-0"
+          >
             View all requests <ArrowRight className="w-3 h-3" />
-          </span>
+          </button>
         </div>
       )}
     </div>
@@ -130,13 +134,14 @@ function OrderRow({ order }) {
   };
 
   const riskMeta = order.meta || {};
-  const riskProb = riskMeta.risk_prob
-    ? `${Math.round(riskMeta.risk_prob * 100)}%`
-    : null;
-  const daysLeft = riskMeta.days_until_stockout
-    ? `${riskMeta.days_until_stockout.toFixed(1)}d`
-    : null;
-
+  const riskProb =
+    riskMeta.risk_prob != null
+      ? `${Math.round(riskMeta.risk_prob * 100)}%`
+      : null;
+  const daysLeft =
+    riskMeta.days_until_stockout != null
+      ? `${riskMeta.days_until_stockout.toFixed(1)}d`
+      : null;
   const hospitalName = order.hospital?.name || `Hospital #${order.hospital_id}`;
   const resourceName =
     order.resource?.name ||
@@ -159,7 +164,7 @@ function OrderRow({ order }) {
               {order.urgency_level}
             </span>
           </div>
-          <p className="text-xs text-gray-500 ml-5.5 flex items-center gap-2">
+          <p className="text-xs text-gray-500 ml-[22px] flex items-center gap-2">
             <span>{hospitalName}</span>
             <span className="text-gray-300">•</span>
             <span>Qty: {order.quantity}</span>

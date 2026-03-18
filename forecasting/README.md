@@ -31,7 +31,7 @@ forecasting/
 
 ## Feature Columns (20)
 
-`hour_sin`, `hour_cos`, `dow_sin`, `dow_cos`, `is_weekend`, `avg_hourly_consumption`, `avg_hourly_requests`, `stock_ratio`, `current_quantity`, `normal_daily_usage`, `surge_multiplier`, `current_survival_hours`, `is_critical`, `active_incidents`, `active_blockades`, `precipitation_mm`, `temperature_c`, `weather_severity`, `horizon_h`, `hospital_id_enc`
+`hour_sin`, `hour_cos`, `dow_sin`, `dow_cos`, `is_weekend`, `avg_hourly_consumption`, `avg_hourly_requests`, `stock_ratio`, `current_quantity`, `normal_daily_usage`, `surge_multiplier`, `current_survival_hours`, `is_critical`, `active_incidents`, `active_blockades`, `precipitation_mm`, `temperature_2m`, `weather_severity`, `horizon_h`, `hospital_id_enc`
 
 ## Setup
 

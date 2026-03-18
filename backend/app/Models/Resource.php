@@ -28,6 +28,10 @@ class Resource extends Model
         'image_url',
         'is_critical',
         'requires_refrigeration',
+        // ABC/XYZ inventory classification (Epic 1)
+        'abc_class',
+        'xyz_class',
+        'classification_updated_at',
         // NEW: History tracking fields
         'last_stock_movement_date',
         'last_status_change_date',
@@ -42,6 +46,9 @@ class Resource extends Model
         'minimum_stock' => 'decimal:2',
         'is_critical' => 'boolean',
         'requires_refrigeration' => 'boolean',
+        'abc_class' => 'string',
+        'xyz_class' => 'string',
+        'classification_updated_at' => 'datetime',
         'expiry_date' => 'date',
         // NEW: Cast history fields
         'last_stock_movement_date' => 'date',

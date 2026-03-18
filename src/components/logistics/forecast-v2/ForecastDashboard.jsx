@@ -1,7 +1,17 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { BrainCircuit, Loader2, TrendingUp, ShieldAlert, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import {
+  BrainCircuit,
+  Loader2,
+  TrendingUp,
+  ShieldAlert,
+  BarChart3,
+  Repeat,
+} from "lucide-react";
 import forecastService from "../../../services/forecastService";
 import api from "../../../services/api";
+import echo from "../../../services/echo";
+import { ROUTES } from "../../../config/routes";
 import {
   getDemoSummary,
   generateDemoRiskData,
@@ -18,18 +28,41 @@ import ScenarioSandbox from "./ScenarioSandbox";
 import RiskHeatmapV2 from "./RiskHeatmapV2";
 import NarrativeDrawer from "./NarrativeDrawer";
 import ActionSlideOver from "./ActionSlideOver";
+import PipelineHealthBar from "./PipelineHealthBar";
+import AccuracyPanel from "./AccuracyPanel";
+import { formatDisplayQuantity } from "../../../utils/formatQuantity";
+import {
+  consumeCache,
+  invalidateCache,
+} from "../../../services/forecastPrefetchCache";
 
 // ── Loading screen with animated forecast visuals ────────────
 function ForecastLoadingScreen() {
   const steps = [
-    { icon: BrainCircuit, label: "Connecting to forecast engine", color: "text-violet-500" },
-    { icon: TrendingUp, label: "Analyzing demand patterns", color: "text-blue-500" },
-    { icon: ShieldAlert, label: "Evaluating supply risk", color: "text-amber-500" },
+    {
+      icon: BrainCircuit,
+      label: "Connecting to forecast engine",
+      color: "text-violet-500",
+    },
+    {
+      icon: TrendingUp,
+      label: "Analyzing demand patterns",
+      color: "text-blue-500",
+    },
+    {
+      icon: ShieldAlert,
+      label: "Evaluating supply risk",
+      color: "text-amber-500",
+    },
     { icon: BarChart3, label: "Building dashboard", color: "text-emerald-500" },
   ];
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh]" aria-busy="true" aria-label="Loading AI forecast dashboard">
+    <div
+      className="flex items-center justify-center min-h-[60vh]"
+      aria-busy="true"
+      aria-label="Loading AI forecast dashboard"
+    >
       <div className="text-center max-w-sm">
         {/* Animated icon ring */}
         <div className="relative mx-auto mb-8 h-24 w-24">
@@ -42,8 +75,12 @@ function ForecastLoadingScreen() {
           </div>
         </div>
 
-        <h3 className="text-lg font-bold text-slate-800 mb-2">Loading AI Forecast</h3>
-        <p className="text-sm text-slate-400 mb-6">Crunching 48-hour predictions across all facilities</p>
+        <h3 className="text-lg font-bold text-slate-800 mb-2">
+          Loading AI Forecast
+        </h3>
+        <p className="text-sm text-slate-400 mb-6">
+          Crunching 48-hour predictions across all facilities
+        </p>
 
         {/* Step indicators */}
         <div className="space-y-3 text-left">
@@ -51,7 +88,10 @@ function ForecastLoadingScreen() {
             <div
               key={step.label}
               className="flex items-center gap-3 rounded-xl bg-white border border-slate-100 px-4 py-2.5 shadow-sm animate-pulse"
-              style={{ animationDelay: `${i * 200}ms`, animationDuration: "1.5s" }}
+              style={{
+                animationDelay: `${i * 200}ms`,
+                animationDuration: "1.5s",
+              }}
             >
               <step.icon className={`h-4 w-4 shrink-0 ${step.color}`} />
               <span className="text-sm text-slate-600">{step.label}</span>
@@ -82,6 +122,8 @@ function unwrapData(val, fallback = []) {
  * ForecastDashboard — root orchestrator for the v2 forecast UI.
  */
 export default function ForecastDashboard() {
+  const navigate = useNavigate();
+
   // ── Data state ─────────────────────────────────────────────
   const [summary, setSummary] = useState(null);
   const [riskData, setRiskData] = useState([]);
@@ -99,10 +141,40 @@ export default function ForecastDashboard() {
   // ── Action slide-over state ────────────────────────────────
   const [slideOver, setSlideOver] = useState(null);
 
+  // ── Auto-reorders state ────────────────────────────────────
+  const [autoReorders, setAutoReorders] = useState([]);
+  const [reordersLoading, setReordersLoading] = useState(false);
+
   // ── Fetch all data ─────────────────────────────────────────
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
     setFetchError(null);
+
+    // ── Check prefetch cache first ───────────────────────────
+    const cached = consumeCache();
+    if (cached?.summary) {
+      const distObj = cached.summary?.risk_distribution;
+      const hasDistribution =
+        distObj &&
+        !Array.isArray(distObj) &&
+        typeof distObj === "object" &&
+        Object.keys(distObj).length > 0;
+      const hasRealData =
+        cached.summary &&
+        (cached.summary.high_risk_items?.length > 0 || hasDistribution);
+
+      if (hasRealData) {
+        setSummary(cached.summary);
+        setRiskData(unwrapData(cached.riskData, []));
+        setDemandData(unwrapData(cached.demandData, []));
+        setNarrative(cached.narrative);
+        setIsDemo(false);
+        setLastRefresh(new Date());
+        setIsLoading(false);
+        return; // Cache hit — skip network calls
+      }
+    }
+
     try {
       const [summaryRes, riskRes, demandRes, narrativeRes] =
         await Promise.allSettled([
@@ -113,23 +185,37 @@ export default function ForecastDashboard() {
         ]);
 
       // Summary has a different shape: { high_risk_items, risk_distribution, ... }
-      const summaryVal = summaryRes.status === "fulfilled" ? summaryRes.value : null;
+      const summaryVal =
+        summaryRes.status === "fulfilled" ? summaryRes.value : null;
+
+      // Detect whether the API returned actual forecast data.
+      // When the DB is empty the summary endpoint returns risk_distribution
+      // as [] (empty array) and generated_at as null — both are falsy traps.
+      // When forecast data has expired (all forecast_time < NOW()), the API
+      // returns generated_at (non-null) but empty high_risk_items and
+      // distribution — we must NOT treat that as "real data".
+      const distObj = summaryVal?.risk_distribution;
+      const hasDistribution =
+        distObj &&
+        !Array.isArray(distObj) &&
+        typeof distObj === "object" &&
+        Object.keys(distObj).length > 0;
+
       const hasRealData =
         summaryVal &&
-        (summaryVal.high_risk_items?.length > 0 ||
-          summaryVal.risk_distribution ||
-          summaryVal.meta?.generated_at);
+        (summaryVal.high_risk_items?.length > 0 || hasDistribution);
 
       if (hasRealData) {
         setSummary(summaryVal);
-        setRiskData(unwrapData(
-          riskRes.status === "fulfilled" ? riskRes.value : null,
-          [],
-        ));
-        setDemandData(unwrapData(
-          demandRes.status === "fulfilled" ? demandRes.value : null,
-          [],
-        ));
+        setRiskData(
+          unwrapData(riskRes.status === "fulfilled" ? riskRes.value : null, []),
+        );
+        setDemandData(
+          unwrapData(
+            demandRes.status === "fulfilled" ? demandRes.value : null,
+            [],
+          ),
+        );
         setNarrative(
           narrativeRes.status === "fulfilled" ? narrativeRes.value : null,
         );
@@ -143,6 +229,10 @@ export default function ForecastDashboard() {
         setIsDemo(true);
         if (!summaryVal) {
           setFetchError("Could not reach forecast API — showing sample data");
+        } else {
+          setFetchError(
+            "No forecast data in database yet — run the pipeline first, or showing sample data",
+          );
         }
       }
       setLastRefresh(new Date());
@@ -160,9 +250,50 @@ export default function ForecastDashboard() {
     }
   }, []);
 
+  // ── Manual refresh (invalidates cache, then re-fetches) ───
+  const handleManualRefresh = useCallback(() => {
+    invalidateCache();
+    fetchAll();
+  }, [fetchAll]);
+
   useEffect(() => {
     fetchAll();
   }, [fetchAll]);
+
+  // ── Fetch auto-reorders independently ──────────────────────
+  const fetchAutoReorders = useCallback(async () => {
+    setReordersLoading(true);
+    try {
+      const res = await forecastService.getAutoReorders({ hours: 48 });
+      setAutoReorders(res?.data || []);
+    } catch {
+      // Non-critical — silently ignore
+      setAutoReorders([]);
+    } finally {
+      setReordersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAutoReorders();
+  }, [fetchAutoReorders]);
+
+  // ── WebSocket: auto-refresh on new forecast run ────────────
+  useEffect(() => {
+    const channel = echo.channel("logistics");
+    channel.listen(".forecast.generated", (event) => {
+      console.info(
+        "[ForecastDashboard] forecast.generated event received",
+        event,
+      );
+      fetchAll();
+      fetchAutoReorders();
+    });
+    return () => {
+      channel.stopListening(".forecast.generated");
+      echo.leaveChannel("logistics");
+    };
+  }, [fetchAll, fetchAutoReorders]);
 
   // ── Derived: triage items sorted by urgency ────────────────
   const triageItems = useMemo(() => {
@@ -172,9 +303,13 @@ export default function ForecastDashboard() {
         ...item,
         urgencyScore: forecastService.getUrgencyScore(item),
         hospital_name:
-          item.hospital?.name || item.hospital_name || `Hospital ${item.hospital_id}`,
+          item.hospital?.name ||
+          item.hospital_name ||
+          `Hospital ${item.hospital_id}`,
         resource_name:
-          item.resource?.name || item.resource_name || `Resource ${item.resource_id}`,
+          item.resource?.name ||
+          item.resource_name ||
+          `Resource ${item.resource_id}`,
       }))
       .sort((a, b) => b.urgencyScore - a.urgencyScore);
   }, [summary]);
@@ -200,10 +335,18 @@ export default function ForecastDashboard() {
   }, [summary]);
 
   // ── Derived: headline for CommandBar ───────────────────────
-  const criticalCount = useMemo(
-    () => triageItems.filter((i) => i.urgencyScore >= 70).length,
-    [triageItems],
-  );
+  // Use the same risk_distribution data that drives the KPI cards so the
+  // "X items need your attention" count always matches Critical + High.
+  const criticalCount = useMemo(() => {
+    const dist = summary?.risk_distribution;
+    if (dist && typeof dist === "object") {
+      return (Number(dist.critical) || 0) + (Number(dist.high) || 0);
+    }
+    // Fallback: count triage items that are high/critical by risk_level
+    return triageItems.filter(
+      (i) => i.risk_level === "critical" || i.risk_level === "high",
+    ).length;
+  }, [summary, triageItems]);
 
   // ── Derived: total predictions count ────────────────────────
   const totalPredictions = useMemo(() => {
@@ -237,39 +380,75 @@ export default function ForecastDashboard() {
     (item) => setSlideOver({ item, actionType: "transfer" }),
     [],
   );
-  const handleCellClick = useCallback(
-    (cell) => setSlideOver({ item: cell, actionType: "po" }),
+
+  // Stable callbacks for TriagePanel — prevents defeating memo
+  const handleTriageResolve = useCallback((item, type) => {
+    if (type === "purchase_order") setSlideOver({ item, actionType: "po" });
+    else setSlideOver({ item, actionType: "transfer" });
+  }, []);
+  const handleTriageSelect = useCallback(
+    (item) => setSlideOver({ item, actionType: "po" }),
     [],
   );
+  // Stable callback for scenario toggle
+  const handleToggleScenario = useCallback(() => {
+    setDelayDays((prev) => (prev !== 0 ? 0 : prev));
+    setDemandMultiplier((prev) => (prev !== 1 ? 1 : prev));
+  }, []);
 
-  const handleActionSubmit = useCallback(async (payload) => {
-    // POST to create a real Request record in the backend
-    const { item, actionType, quantity, priority, notes } = payload;
-    const urgencyMap = { normal: "Medium", urgent: "High", emergency: "Critical" };
+  const handleCellClick = useCallback(
+    (cell) => {
+      if (cell?.hospital_id) {
+        navigate(
+          ROUTES.LOGISTICS.HOSPITAL_FORECAST_DETAIL.replace(
+            ":hospitalId",
+            cell.hospital_id,
+          ),
+        );
+      } else {
+        // Fallback: open the action slide-over
+        setSlideOver({ item: cell, actionType: "po" });
+      }
+    },
+    [navigate],
+  );
 
-    const requestData = {
-      hospital_id: item.hospital_id,
-      resource_id: item.resource_id,
-      resource_name: item.resource_name || item.resource?.name || "Unknown",
-      quantity: quantity,
-      urgency_level: urgencyMap[priority] || "High",
-      handling_class: "General",
-      reason: `AI Forecast ${actionType === "po" ? "Purchase Order" : "Transfer"}: ${notes || `Risk ${Math.round((item.risk_prob || 0) * 100)}%, ${Math.round(item.days_until_stockout || 0)}d until stockout`}`,
-      status: "pending",
-      meta: {
-        source: actionType === "po" ? "ai_purchase_order" : "ai_transfer_request",
-        risk_prob: item.risk_prob,
-        risk_level: item.risk_level,
-        days_until_stockout: item.days_until_stockout,
-        projected_stock: item.projected_stock,
-        scenario_delay_days: delayDays,
-        demand_multiplier: demandMultiplier,
-      },
-    };
+  const handleActionSubmit = useCallback(
+    async (payload) => {
+      // POST to create a real Request record in the backend
+      const { item, actionType, quantity, priority, notes } = payload;
+      const urgencyMap = {
+        normal: "Medium",
+        urgent: "High",
+        emergency: "Critical",
+      };
 
-    const response = await api.post("/requests", requestData);
-    return response.data;
-  }, [delayDays, demandMultiplier]);
+      const requestData = {
+        hospital_id: item.hospital_id,
+        resource_id: item.resource_id,
+        resource_name: item.resource_name || item.resource?.name || "Unknown",
+        quantity: quantity,
+        urgency_level: urgencyMap[priority] || "High",
+        handling_class: "General",
+        reason: `AI Forecast ${actionType === "po" ? "Purchase Order" : "Transfer"}: ${notes || `Risk ${Math.round((item.risk_prob || 0) * 100)}%, ${Math.round(item.days_until_stockout || 0)}d until stockout`}`,
+        status: "pending",
+        meta: {
+          source:
+            actionType === "po" ? "ai_purchase_order" : "ai_transfer_request",
+          risk_prob: item.risk_prob,
+          risk_level: item.risk_level,
+          days_until_stockout: item.days_until_stockout,
+          projected_stock: item.projected_stock,
+          scenario_delay_days: delayDays,
+          demand_multiplier: demandMultiplier,
+        },
+      };
+
+      const response = await api.post("/requests", requestData);
+      return response.data;
+    },
+    [delayDays, demandMultiplier],
+  );
 
   // ── Render ─────────────────────────────────────────────────
   if (isLoading && !summary) {
@@ -285,14 +464,15 @@ export default function ForecastDashboard() {
         lastUpdated={lastRefresh}
         isDemo={isDemo}
         scenarioMode={scenarioMode}
-        onToggleScenario={() => {
-          if (scenarioMode) {
-            setDelayDays(0);
-            setDemandMultiplier(1);
-          }
-        }}
-        onRefresh={fetchAll}
+        onToggleScenario={handleToggleScenario}
+        onRefresh={handleManualRefresh}
         loading={isLoading}
+      />
+
+      {/* Pipeline Health Bar — always visible so users can trigger the pipeline even in demo/no-data state */}
+      <PipelineHealthBar
+        onRefreshData={handleManualRefresh}
+        forceExpand={isDemo}
       />
 
       {/* API error banner */}
@@ -305,30 +485,49 @@ export default function ForecastDashboard() {
       {/* KPI summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Predictions</p>
-          <p className="text-2xl font-black text-slate-800 mt-1">{totalPredictions.toLocaleString()}</p>
-          <p className="text-xs text-slate-400 mt-0.5">{isDemo ? "sample data" : "live from API"}</p>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+            Total Predictions
+          </p>
+          <p className="text-2xl font-black text-slate-800 mt-1">
+            {totalPredictions.toLocaleString()}
+          </p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {isDemo ? "sample data" : "live from API"}
+          </p>
         </div>
         <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4 shadow-sm">
-          <p className="text-xs font-medium text-red-400 uppercase tracking-wider">Critical + High</p>
+          <p className="text-xs font-medium text-red-400 uppercase tracking-wider">
+            Critical + High
+          </p>
           <p className="text-2xl font-black text-red-600 mt-1">
-            {(Number(riskDistribution.critical) || 0) + (Number(riskDistribution.high) || 0)}
+            {(Number(riskDistribution.critical) || 0) +
+              (Number(riskDistribution.high) || 0)}
           </p>
           <p className="text-xs text-red-400 mt-0.5">need attention</p>
         </div>
         <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm">
-          <p className="text-xs font-medium text-emerald-400 uppercase tracking-wider">Low Risk</p>
-          <p className="text-2xl font-black text-emerald-600 mt-1">{(Number(riskDistribution.low) || 0).toLocaleString()}</p>
+          <p className="text-xs font-medium text-emerald-400 uppercase tracking-wider">
+            Low Risk
+          </p>
+          <p className="text-2xl font-black text-emerald-600 mt-1">
+            {(Number(riskDistribution.low) || 0).toLocaleString()}
+          </p>
           <p className="text-xs text-emerald-400 mt-0.5">within safe levels</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Earliest Stockout</p>
+          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">
+            Earliest Stockout
+          </p>
           <p className="text-2xl font-black text-slate-800 mt-1">
             {originalStockoutDays != null
-              ? `${originalStockoutDays < 1 ? "<1" : originalStockoutDays.toFixed(1)}d`
+              ? `${originalStockoutDays < 1 ? "<1" : formatDisplayQuantity(originalStockoutDays, "days")}d`
               : "Safe"}
           </p>
-          <p className="text-xs text-slate-400 mt-0.5">{originalStockoutDays != null && originalStockoutDays < 3 ? "⚠ imminent" : "no imminent risk"}</p>
+          <p className="text-xs text-slate-400 mt-0.5">
+            {originalStockoutDays != null && originalStockoutDays < 3
+              ? "⚠ imminent"
+              : "no imminent risk"}
+          </p>
         </div>
       </div>
 
@@ -339,19 +538,94 @@ export default function ForecastDashboard() {
             items={triageItems}
             scenarioMode={scenarioMode}
             scenarioParams={scenarioParams}
-            onResolve={(item, type) => {
-              if (type === "purchase_order") handleDraftPO(item);
-              else handleTransfer(item);
-            }}
-            onSelect={(item) =>
-              setSlideOver({ item, actionType: "po" })
-            }
+            onResolve={handleTriageResolve}
+            onSelect={handleTriageSelect}
           />
         </div>
         <div className="lg:col-span-3">
-          <TimelineCanvas demandData={adjustedDemand} scenarioMode={scenarioMode} />
+          <TimelineCanvas
+            demandData={adjustedDemand}
+            scenarioMode={scenarioMode}
+          />
         </div>
       </div>
+
+      {/* Layer 1b: Auto-Reorders — AI-generated POs from the pipeline */}
+      {autoReorders.length > 0 && (
+        <section className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800">
+              <Repeat className="h-4 w-4 text-violet-500" aria-hidden="true" />
+              Auto-Reorders
+              <span className="text-xs font-normal text-slate-400 ml-1">
+                (last 48h)
+              </span>
+            </h3>
+            <span className="text-xs text-slate-400">
+              {autoReorders.length} request
+              {autoReorders.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="overflow-x-auto max-h-52 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-white">
+                <tr className="text-xs text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                  <th className="text-left px-5 py-2.5 font-medium">
+                    Resource
+                  </th>
+                  <th className="text-left px-3 py-2.5 font-medium">
+                    Hospital
+                  </th>
+                  <th className="text-right px-3 py-2.5 font-medium">Qty</th>
+                  <th className="text-left px-3 py-2.5 font-medium">Urgency</th>
+                  <th className="text-left px-5 py-2.5 font-medium">Created</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {autoReorders.slice(0, 20).map((req) => (
+                  <tr
+                    key={req.id}
+                    className="hover:bg-slate-50/60 transition-colors"
+                  >
+                    <td className="px-5 py-2.5 font-medium text-slate-700 truncate max-w-[160px]">
+                      {req.resource?.name ||
+                        req.resource_name ||
+                        `#${req.resource_id}`}
+                    </td>
+                    <td className="px-3 py-2.5 text-slate-500 truncate max-w-[140px]">
+                      {req.hospital?.name || `Hospital #${req.hospital_id}`}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-mono text-slate-600">
+                      {formatDisplayQuantity(req.quantity, "units")}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                          req.urgency_level === "Critical"
+                            ? "bg-red-100 text-red-700"
+                            : req.urgency_level === "High"
+                              ? "bg-orange-100 text-orange-700"
+                              : "bg-amber-100 text-amber-700"
+                        }`}
+                      >
+                        {req.urgency_level}
+                      </span>
+                    </td>
+                    <td className="px-5 py-2.5 text-xs text-slate-400">
+                      {new Date(req.created_at).toLocaleString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Layer 2: Scenario + Risk Heatmap */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -376,6 +650,9 @@ export default function ForecastDashboard() {
         riskDistribution={riskDistribution}
         isLoading={isLoading}
       />
+
+      {/* Layer 4: Accuracy tracking */}
+      {!isDemo && <AccuracyPanel />}
 
       {/* Footer */}
       <footer className="text-center text-xs text-slate-400 pb-4">

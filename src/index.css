@@ -75,6 +75,12 @@
     @apply scroll-smooth;
   }
 
+  @media (max-width: 767.98px) {
+    html {
+      font-size: 80%;
+    }
+  }
+
   body {
     @apply bg-background text-foreground transition-colors duration-300;
     font-feature-settings: "rlig" 1, "calt" 1;

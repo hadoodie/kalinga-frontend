@@ -10,9 +10,7 @@ export const PatientHospitalMap = () => {
     <div className="h-screen flex bg-background text-foreground overflow-hidden">
       <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
       <div
-        className={`flex flex-col flex-1 transition-all duration-300 ${
-          collapsed ? "wl-16" : "wl-64"
-        }`}
+        className="flex flex-col flex-1 transition-all duration-300 ml-0"
       >
         <div className="sticky top-0 z-10 bg-background">
           <NavbarB />

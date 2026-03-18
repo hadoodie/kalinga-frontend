@@ -21,10 +21,10 @@ class ForecastNarrativeService
      *
      * Returns a structured array for the DOH logistics dashboard.
      */
-    public function generateExecutiveSummary(): array
+    public function generateExecutiveSummary(?int $hospitalId = null): array
     {
-        // ── Gather forecast statistics ──────────────────────
-        $stats = $this->gatherForecastStats();
+        // ── Gather forecast statistics ────────────────────
+        $stats = $this->gatherForecastStats($hospitalId);
 
         if ($stats['total_demand'] === 0) {
             return [
@@ -74,21 +74,53 @@ class ForecastNarrativeService
     /**
      * Gather all statistics needed for the narrative.
      */
-    private function gatherForecastStats(): array
+    private function gatherForecastStats(?int $hospitalId = null): array
     {
         // IMPORTANT: Each query needs a fresh scope — Eloquent builders are mutable.
-        $totalDemand = ForecastDemand::latestRun()->count();
-        $totalRisk = ForecastRisk::latestRun()->count();
+        // Count unique (hospital, resource) pairs — not raw hourly rows.
+        // This matches the ForecastController summary() aggregation so numbers
+        // in the narrative are consistent with the top-level dashboard cards.
+        $totalDemand = ForecastDemand::latestRun()
+            ->nextHours(48)
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
+            ->select(DB::raw('COUNT(DISTINCT CONCAT(hospital_id, \'-\', resource_id)) as cnt'))
+            ->value('cnt');
+        $totalRisk = ForecastRisk::latestRun()
+            ->nextHours(48)
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
+            ->select(DB::raw('COUNT(DISTINCT CONCAT(hospital_id, \'-\', resource_id)) as cnt'))
+            ->value('cnt');
 
-        // Risk distribution
-        $riskDist = ForecastRisk::latestRun()
-            ->select('risk_level', DB::raw('COUNT(*) as count'))
-            ->groupBy('risk_level')
+        // Risk distribution — aggregate per (hospital, resource) pair first,
+        // then classify the pair by its worst-case risk_prob.
+        // Only consider future hours (same window as ForecastController::summary)
+        // so the numbers match the dashboard KPI cards exactly.
+        $riskDist = DB::table(
+            DB::raw("(
+                SELECT hospital_id, resource_id,
+                       CASE
+                           WHEN MAX(risk_prob) >= 0.85 THEN 'critical'
+                           WHEN MAX(risk_prob) >= 0.65 THEN 'high'
+                           WHEN MAX(risk_prob) >= 0.35 THEN 'medium'
+                           ELSE 'low'
+                       END as agg_risk_level
+                FROM forecast_risk_hourly
+                WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
+                  AND forecast_time >= NOW()
+                  AND forecast_time <= NOW() + INTERVAL '48 hours'
+                  " . ($hospitalId ? "AND hospital_id = {$hospitalId}" : '') . "
+                GROUP BY hospital_id, resource_id
+            ) as pairs")
+        )
+            ->selectRaw('agg_risk_level as risk_level, COUNT(*) as count')
+            ->groupBy('agg_risk_level')
             ->pluck('count', 'risk_level')
             ->toArray();
 
-        // Top critical items (hospital × resource)
+        // Top critical items (hospital × resource) — future hours only
         $criticalItems = ForecastRisk::latestRun()
+            ->nextHours(48)
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
             ->whereIn('risk_level', ['high', 'critical'])
             ->select([
                 'hospital_id', 'resource_id',
@@ -116,18 +148,46 @@ class ForecastNarrativeService
 
         // Demand by resource category
         $demandByCategory = ForecastDemand::latestRun()
+            ->when($hospitalId, fn ($q) => $q->where('forecast_demand_hourly.hospital_id', $hospitalId))
             ->join('resources', 'forecast_demand_hourly.resource_id', '=', 'resources.id')
             ->select('resources.category', DB::raw('ROUND(AVG(yhat), 2) as avg_demand'))
             ->groupBy('resources.category')
             ->pluck('avg_demand', 'category')
             ->toArray();
 
-        // Hospitals with most risk
-        $riskByHospital = ForecastRisk::latestRun()
-            ->whereIn('risk_level', ['high', 'critical'])
-            ->select('hospital_id', DB::raw('COUNT(*) as risk_count'))
+        // Hospitals with most risk — count unique (hospital, resource) pairs
+        // that are high/critical, not raw hourly rows.
+        // Also compute critical_count + avg severity so we can rank hospitals
+        // meaningfully when they share the same total at-risk count.
+        $riskByHospital = DB::table(
+            DB::raw("(
+                SELECT hospital_id, resource_id,
+                       MAX(risk_prob) as max_risk_prob,
+                       CASE
+                           WHEN MAX(risk_prob) >= 0.85 THEN 'critical'
+                           WHEN MAX(risk_prob) >= 0.65 THEN 'high'
+                           WHEN MAX(risk_prob) >= 0.35 THEN 'medium'
+                           ELSE 'low'
+                       END as agg_risk_level
+                FROM forecast_risk_hourly
+                WHERE generated_at = (SELECT MAX(generated_at) FROM forecast_risk_hourly)
+                  AND forecast_time >= NOW()
+                  AND forecast_time <= NOW() + INTERVAL '48 hours'
+                  " . ($hospitalId ? "AND hospital_id = {$hospitalId}" : '') . "
+                GROUP BY hospital_id, resource_id
+            ) as pairs")
+        )
+            ->whereIn('agg_risk_level', ['high', 'critical'])
+            ->select(
+                'hospital_id',
+                DB::raw('COUNT(*) as risk_count'),
+                DB::raw("SUM(CASE WHEN agg_risk_level = 'critical' THEN 1 ELSE 0 END) as critical_count"),
+                DB::raw('ROUND(AVG(max_risk_prob) * 100, 1) as avg_severity'),
+            )
             ->groupBy('hospital_id')
             ->orderByDesc('risk_count')
+            ->orderByDesc('critical_count')
+            ->orderByDesc('avg_severity')
             ->limit(5)
             ->get()
             ->map(function ($h) {
@@ -135,6 +195,8 @@ class ForecastNarrativeService
                 return [
                     'name' => $hospital?->name ?? "H#{$h->hospital_id}",
                     'risk_count' => $h->risk_count,
+                    'critical_count' => (int) $h->critical_count,
+                    'avg_severity' => (float) $h->avg_severity,
                 ];
             })
             ->toArray();
@@ -225,10 +287,10 @@ PROMPT;
 
         // Overall posture
         if ($crit > 0) {
-            $narrative .= "⚠️ ALERT: {$crit} critical risk predictions detected ({$critPct}% of total). ";
+            $narrative .= "⚠️ ALERT: {$crit} critical risk items detected ({$critPct}% of total). ";
             $narrative .= "Immediate action required for the following items:\n\n";
         } elseif ($high > 0) {
-            $narrative .= "⚡ CAUTION: {$high} high-risk predictions detected ({$highPct}% of total). ";
+            $narrative .= "⚡ CAUTION: {$high} high-risk items detected ({$highPct}% of total). ";
             $narrative .= "Proactive reordering recommended:\n\n";
         } else {
             $narrative .= "✅ All supply levels within acceptable risk thresholds. ";

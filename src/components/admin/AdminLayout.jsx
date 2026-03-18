@@ -77,6 +77,7 @@ export const AdminLayout = ({
   autoRefreshLabel = "Auto-refresh",
   autoRefreshHint = "Every 10 seconds",
   consoleBadgeLabel = "Current View",
+  apiStatusConfig = {},
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -105,7 +106,7 @@ export const AdminLayout = ({
   const activeSection = useMemo(
     () =>
       sections.find((section) => section.id === activeSectionId) ?? sections[0],
-    [sections, activeSectionId]
+    [sections, activeSectionId],
   );
 
   const timeRanges = [
@@ -182,7 +183,7 @@ export const AdminLayout = ({
         ...action,
         metric: action.metric?.(quickActionMetrics),
       })),
-    [quickActionsProp, quickActionMetrics]
+    [quickActionsProp, quickActionMetrics],
   );
 
   const fetchCommandAlert = useCallback(
@@ -196,13 +197,14 @@ export const AdminLayout = ({
         const now = Date.now();
         const filtered = (incidents || []).filter((incident) => {
           const timestamp = new Date(
-            incident.updated_at || incident.created_at || Date.now()
+            incident.updated_at || incident.created_at || Date.now(),
           ).getTime();
           if (Number.isNaN(timestamp)) return true;
           return now - timestamp <= limitMs;
         });
         const sorted = filtered.sort((a, b) => {
-          const severityDiff = incidentPriorityScore(b) - incidentPriorityScore(a);
+          const severityDiff =
+            incidentPriorityScore(b) - incidentPriorityScore(a);
           if (severityDiff !== 0) return severityDiff;
           const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
           const aTime = new Date(a.updated_at || a.created_at || 0).getTime();
@@ -214,15 +216,19 @@ export const AdminLayout = ({
         setLastSynced(new Date());
       } catch (error) {
         console.error("Failed to sync command alerts", error);
-        setAlertError("Unable to sync command alerts. Showing last known state.");
+        setAlertError(
+          "Unable to sync command alerts. Showing last known state.",
+        );
         setAlertStatus("error");
       }
     },
-    [timeRange]
+    [timeRange],
   );
 
   const fetchQuickActionMetrics = useCallback(async () => {
-    setQuickActionStatus((prev) => (prev === "success" ? "refreshing" : "loading"));
+    setQuickActionStatus((prev) =>
+      prev === "success" ? "refreshing" : "loading",
+    );
     try {
       const [incidentStats, resourceStats, notifications] = await Promise.all([
         adminService.getIncidentStats().catch(() => null),
@@ -233,8 +239,8 @@ export const AdminLayout = ({
       const notificationCount = Array.isArray(notifications)
         ? notifications.length
         : Array.isArray(notifications?.data)
-        ? notifications.data.length
-        : Number(notifications?.meta?.total ?? 0);
+          ? notifications.data.length
+          : Number(notifications?.meta?.total ?? 0);
 
       setQuickActionMetrics({
         incidents: incidentStats,
@@ -261,7 +267,7 @@ export const AdminLayout = ({
     if (!isAutoRefresh) return undefined;
     const id = setInterval(
       () => fetchCommandAlert(timeRange),
-      COMMAND_SYNC_INTERVAL_MS
+      COMMAND_SYNC_INTERVAL_MS,
     );
     return () => clearInterval(id);
   }, [fetchCommandAlert, isAutoRefresh, timeRange]);
@@ -270,7 +276,7 @@ export const AdminLayout = ({
     fetchQuickActionMetrics();
     const id = setInterval(
       () => fetchQuickActionMetrics(),
-      QUICK_ACTION_SYNC_INTERVAL_MS
+      QUICK_ACTION_SYNC_INTERVAL_MS,
     );
     return () => clearInterval(id);
   }, [fetchQuickActionMetrics]);
@@ -288,7 +294,8 @@ export const AdminLayout = ({
   const quickActionStatusLabel = useMemo(() => {
     if (quickActionStatus === "loading") return "Syncing live shortcuts…";
     if (quickActionStatus === "refreshing") return "Refreshing metrics…";
-    if (quickActionStatus === "error") return quickActionError || "Metrics unavailable";
+    if (quickActionStatus === "error")
+      return quickActionError || "Metrics unavailable";
     if (quickActionSyncedAt) {
       return `Updated ${formatRelativeTime(quickActionSyncedAt, { short: true })}`;
     }
@@ -299,13 +306,21 @@ export const AdminLayout = ({
     ? `${alertHighlight.type || "Incident"} in ${getIncidentLocation(alertHighlight)}.`
     : "No critical alerts in the selected window.";
 
-  const heroSubtitle = alertHighlight && !alertError
-    ? `Status ${(alertHighlight.status || alertHighlight.priority || "reported")
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (char) => char.toUpperCase())} • Updated ${formatRelativeTime(
-        alertHighlight.updated_at || alertHighlight.created_at || new Date()
-      )}`
-    : alertError || "System will surface the next telemetry event automatically.";
+  const heroSubtitle =
+    alertHighlight && !alertError
+      ? `Status ${(
+          alertHighlight.status ||
+          alertHighlight.priority ||
+          "reported"
+        )
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (char) =>
+            char.toUpperCase(),
+          )} • Updated ${formatRelativeTime(
+          alertHighlight.updated_at || alertHighlight.created_at || new Date(),
+        )}`
+      : alertError ||
+        "System will surface the next telemetry event automatically.";
 
   const autoRefreshStatus = heroStatusLabel || autoRefreshHint;
 
@@ -327,7 +342,7 @@ export const AdminLayout = ({
         window.scrollTo({ top: 0, behavior: "smooth" });
       }
     },
-    [fetchQuickActionMetrics, onSectionChange, quickActionMetrics]
+    [fetchQuickActionMetrics, onSectionChange, quickActionMetrics],
   );
 
   // Apply theme to document element on mount and when it changes
@@ -379,7 +394,7 @@ export const AdminLayout = ({
       case "support":
         window.open(
           "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
-          "_blank"
+          "_blank",
         );
         break;
       case "settings":
@@ -394,6 +409,7 @@ export const AdminLayout = ({
   const renderNavItem = (section) => {
     const Icon = section.icon;
     const isActive = section.id === activeSection.id;
+    const statusCfg = apiStatusConfig[section.apiStatus];
 
     return (
       <button
@@ -405,19 +421,32 @@ export const AdminLayout = ({
         className={cn(
           "group flex w-full items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-left transition-all",
           "hover:border-primary/40 hover:bg-primary/5",
-          isActive && "border-primary/60 bg-primary/10 text-primary"
+          isActive && "border-primary/60 bg-primary/10 text-primary",
         )}
       >
         <span
           className={cn(
             "flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary transition-transform",
-            isActive && "scale-105"
+            isActive && "scale-105",
           )}
         >
           <Icon className="h-5 w-5" />
         </span>
         <span className="space-y-1">
-          <p className="text-sm font-semibold">{section.title}</p>
+          <p className="text-sm font-semibold flex items-center gap-2">
+            {section.title}
+            {statusCfg && (
+              <span
+                className={cn(
+                  "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+                  statusCfg.className,
+                )}
+                title={statusCfg.tooltip}
+              >
+                {statusCfg.label}
+              </span>
+            )}
+          </p>
           {section.description && (
             <p className="text-xs text-foreground/60 leading-relaxed">
               {section.description}
@@ -470,7 +499,7 @@ export const AdminLayout = ({
         <div
           className={cn(
             "fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] border-r border-border/60 bg-background/95 backdrop-blur-lg transition-transform duration-300 lg:hidden",
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
           <div className="flex items-center justify-between border-b border-border/60 px-5 py-4">
@@ -565,7 +594,7 @@ export const AdminLayout = ({
                       <ChevronDown
                         className={cn(
                           "h-4 w-4 text-foreground/50 transition",
-                          isProfileMenuOpen && "rotate-180"
+                          isProfileMenuOpen && "rotate-180",
                         )}
                       />
                     </button>
@@ -597,7 +626,7 @@ export const AdminLayout = ({
                                   "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-primary/10",
                                   option.tone
                                     ? option.tone
-                                    : "text-foreground/80"
+                                    : "text-foreground/80",
                                 )}
                                 role="menuitem"
                               >
@@ -635,7 +664,9 @@ export const AdminLayout = ({
                         <p className="mt-1 text-base font-semibold text-primary">
                           {heroTitle}
                         </p>
-                        <p className="mt-1 text-xs text-primary/70">{heroSubtitle}</p>
+                        <p className="mt-1 text-xs text-primary/70">
+                          {heroSubtitle}
+                        </p>
                       </div>
                     </div>
                     <div className="flex flex-col items-start gap-2 text-xs text-primary/70 lg:items-end">
@@ -649,7 +680,9 @@ export const AdminLayout = ({
                         }}
                         className="inline-flex items-center gap-2 rounded-full border border-primary/40 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition hover:border-primary"
                       >
-                        {alertHighlight ? "View incident log" : "Review incidents"}
+                        {alertHighlight
+                          ? "View incident log"
+                          : "Review incidents"}
                         <Map className="h-4 w-4" />
                       </button>
                     </div>
@@ -674,7 +707,7 @@ export const AdminLayout = ({
                           "rounded-full border px-3 py-1.5 text-xs font-medium transition",
                           timeRange === range.value
                             ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                            : "border-border/60 bg-background/60 text-foreground/70 hover:border-primary/40 hover:text-primary"
+                            : "border-border/60 bg-background/60 text-foreground/70 hover:border-primary/40 hover:text-primary",
                         )}
                       >
                         {range.label}
@@ -692,7 +725,7 @@ export const AdminLayout = ({
                       "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition",
                       isAutoRefresh
                         ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-500"
-                        : "border-border/60 bg-background/60 text-foreground/60 hover:border-primary/40 hover:text-primary"
+                        : "border-border/60 bg-background/60 text-foreground/60 hover:border-primary/40 hover:text-primary",
                     )}
                   >
                     <RefreshCcw className="h-3.5 w-3.5" />
@@ -710,7 +743,9 @@ export const AdminLayout = ({
                     <p className="font-semibold uppercase tracking-[0.2em] text-foreground/50">
                       Command shortcuts
                     </p>
-                    <p className="text-foreground/60">{quickActionStatusLabel}</p>
+                    <p className="text-foreground/60">
+                      {quickActionStatusLabel}
+                    </p>
                   </div>
                   <button
                     onClick={fetchQuickActionMetrics}
@@ -720,7 +755,7 @@ export const AdminLayout = ({
                     <RefreshCcw
                       className={cn(
                         "h-3.5 w-3.5",
-                        quickActionStatus === "loading" && "animate-spin"
+                        quickActionStatus === "loading" && "animate-spin",
                       )}
                     />
                     Sync data

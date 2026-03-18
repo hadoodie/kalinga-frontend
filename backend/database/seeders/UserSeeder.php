@@ -49,7 +49,7 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            // Attach hospital ID 1
+            // Attach logistics_verified to Hospital 1 (Central)
             $logisticsVerified->hospitals()->syncWithoutDetaching([1]);
 
             $hospAdmin = User::updateOrCreate(
@@ -57,15 +57,22 @@ class UserSeeder extends Seeder
                 [
                     'name' => 'Central Hospital Admin',
                     'password' => Hash::make('password123'),
-                    'role' => 'hospital_admin',           // ← pure hospital_admin
+                    'role' => 'hospital_admin',
                     'phone' => '09171234567',
                     'is_active' => true,
                     'verification_status' => 'verified',
                 ]
             );
 
-            // Attach to Hospital 1 (and optionally others)
+            // Attach hospital_admin to Hospital 1
             $hospAdmin->hospitals()->sync([1]);
+
+            // ── Admin gets access to ALL hospitals ──
+            $admin = User::where('email', 'admin@kalinga.com')->first();
+            if ($admin) {
+                $allHospitalIds = \App\Models\Hospital::pluck('id')->toArray();
+                $admin->hospitals()->syncWithoutDetaching($allHospitalIds);
+            }
 
         // Responder User
         User::updateOrCreate(
@@ -179,7 +186,7 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            User::updateOrCreate(
+            $angeloLogistics = User::updateOrCreate(
                 ['email' => 'angelo.hermano.logistics@kalinga.com'],
                 [
                     'name' => 'Angelo Hermano',
@@ -190,6 +197,8 @@ class UserSeeder extends Seeder
                     'verification_status' => 'verified',
                 ]
             );
+            // Attach to Hospital 2 (Emergency Field)
+            $angeloLogistics->hospitals()->syncWithoutDetaching([2]);
 
             User::updateOrCreate(
                 ['email' => 'elisha.borromeo.patient@kalinga.com'],
@@ -206,7 +215,7 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            User::updateOrCreate(
+            $elishaLogistics = User::updateOrCreate(
                 ['email' => 'elisha.borromeo.logistics@kalinga.com'],
                 [
                     'name' => 'Elisha Borromeo',
@@ -217,6 +226,8 @@ class UserSeeder extends Seeder
                     'verification_status' => 'verified',
                 ]
             );
+            // Attach to Hospital 2 (Emergency Field)
+            $elishaLogistics->hospitals()->syncWithoutDetaching([2]);
 
             User::updateOrCreate(
                 ['email' => 'evan.christjohn.camba.patient@kalinga.com'],
@@ -260,7 +271,7 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            User::updateOrCreate(
+            $genryvLogistics = User::updateOrCreate(
                 ['email' => 'genryv.cachero.logistics@kalinga.com'],
                 [
                     'name' => 'Genryv Cachero',
@@ -271,6 +282,8 @@ class UserSeeder extends Seeder
                     'verification_status' => 'verified',
                 ]
             );
+            // Attach to Hospital 3 (St. Luke's)
+            $genryvLogistics->hospitals()->syncWithoutDetaching([3]);
 
             User::updateOrCreate(
                 ['email' => 'jared.posada.patient@kalinga.com'],
@@ -284,7 +297,7 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            User::updateOrCreate(
+            $jaredLogistics = User::updateOrCreate(
                 ['email' => 'jared.posada.logistics@kalinga.com'],
                 [
                     'name' => 'Jared Posada',
@@ -295,6 +308,8 @@ class UserSeeder extends Seeder
                     'verification_status' => 'verified',
                 ]
             );
+            // Attach to Hospital 3 (St. Luke's)
+            $jaredLogistics->hospitals()->syncWithoutDetaching([3]);
 
             User::updateOrCreate(
                 ['email' => 'kayann.nicolette.dimalanta.patient@kalinga.com'],
@@ -338,7 +353,7 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            User::updateOrCreate(
+            $keenanLogistics = User::updateOrCreate(
                 ['email' => 'keenan.claude.mimis.logistics@kalinga.com'],
                 [
                     'name' => 'Keenan Claude Mimis',
@@ -349,6 +364,8 @@ class UserSeeder extends Seeder
                     'verification_status' => 'verified',
                 ]
             );
+            // Attach to Hospital 1 (Central)
+            $keenanLogistics->hospitals()->syncWithoutDetaching([1]);
 
             User::updateOrCreate(
                 ['email' => 'mikha.villaraza.patient@kalinga.com'],

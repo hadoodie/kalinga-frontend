@@ -6,14 +6,45 @@ use App\Http\Controllers\Controller;
 use App\Models\ForecastDemand;
 use App\Models\ForecastRisk;
 use App\Models\Hospital;
-use App\Models\Resource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 class ForecastController extends Controller
 {
+    /**
+     * Resolve the effective hospital_id for the current request.
+     *
+     * Admin users: use the optional query-param (null = all hospitals).
+     * Logistics users: ALWAYS override with their assigned hospital.
+     *
+     * Returns [hospitalId, errorResponse].  When errorResponse is non-null
+     * the caller should return it immediately (e.g. 403).
+     */
+    private function resolveHospitalScope(Request $request): array
+    {
+        $user = $request->user();
+
+        if ($user && $user->role === 'logistics') {
+            $assigned = $user->hospitals()->first();
+
+            if (!$assigned) {
+                return [null, response()->json([
+                    'error'   => 'No hospital assigned to this logistics account.',
+                    'message' => 'Contact an administrator to link your account to a hospital.',
+                ], 403)];
+            }
+
+            // Logistics users CANNOT override — always use their assignment
+            return [$assigned->id, null];
+        }
+
+        // Admin / other roles — honour the optional query param
+        return [$request->input('hospital_id'), null];
+    }
+
     /**
      * GET /api/forecasts/demand
      *
@@ -30,13 +61,17 @@ class ForecastController extends Controller
 
         $hours = $request->integer('hours', 48);
 
+        // ── RBAC: resolve hospital scope ──
+        [$hospitalId, $errorResponse] = $this->resolveHospitalScope($request);
+        if ($errorResponse) return $errorResponse;
+
         $query = ForecastDemand::latestRun()
             ->nextHours($hours)
             ->with(['hospital:id,name,code', 'resource:id,name,category,unit'])
             ->orderBy('forecast_time');
 
-        if ($request->hospital_id) {
-            $query->forHospital($request->hospital_id);
+        if ($hospitalId) {
+            $query->forHospital($hospitalId);
         }
         if ($request->resource_id) {
             $query->forResource($request->resource_id);
@@ -72,13 +107,17 @@ class ForecastController extends Controller
 
         $hours = $request->integer('hours', 48);
 
+        // ── RBAC: resolve hospital scope ──
+        [$hospitalId, $errorResponse] = $this->resolveHospitalScope($request);
+        if ($errorResponse) return $errorResponse;
+
         $query = ForecastRisk::latestRun()
             ->nextHours($hours)
             ->with(['hospital:id,name,code', 'resource:id,name,category,unit'])
             ->orderBy('risk_prob', 'desc');
 
-        if ($request->hospital_id) {
-            $query->forHospital($request->hospital_id);
+        if ($hospitalId) {
+            $query->forHospital($hospitalId);
         }
         if ($request->resource_id) {
             $query->forResource($request->resource_id);
@@ -111,6 +150,10 @@ class ForecastController extends Controller
     {
         $hours = $request->integer('hours', 48);
 
+        // ── RBAC: resolve hospital scope ──
+        [$hospitalId, $errorResponse] = $this->resolveHospitalScope($request);
+        if ($errorResponse) return $errorResponse;
+
         // Resolve the latest run timestamp once to avoid repeated subqueries
         $latestRun = ForecastRisk::max('generated_at');
 
@@ -127,18 +170,41 @@ class ForecastController extends Controller
             ]);
         }
 
-        // High-risk items in the next window
-        $highRisk = ForecastRisk::forRun($latestRun)
-            ->nextHours($hours)
-            ->highRisk()
-            ->with(['hospital:id,name', 'resource:id,name,category'])
-            ->orderBy('risk_prob', 'desc')
+        // High-risk items — aggregate by (hospital, resource) to avoid duplicates.
+        // Take the worst-case stats per pair: MAX risk_prob, MIN days_until_stockout.
+        $highRisk = DB::table('forecast_risk_hourly as fr')
+            ->join('hospitals', 'hospitals.id', '=', 'fr.hospital_id')
+            ->join('resources', 'resources.id', '=', 'fr.resource_id')
+            ->select([
+                'fr.hospital_id',
+                'fr.resource_id',
+                'hospitals.name as hospital_name',
+                'resources.name as resource_name',
+                'resources.category as resource_category',
+                DB::raw('MAX(fr.risk_prob) as risk_prob'),
+                DB::raw('MIN(fr.days_until_stockout) as days_until_stockout'),
+                DB::raw("(CASE
+                    WHEN MAX(fr.risk_prob) >= 0.85 THEN 'critical'
+                    WHEN MAX(fr.risk_prob) >= 0.65 THEN 'high'
+                    WHEN MAX(fr.risk_prob) >= 0.35 THEN 'medium'
+                    ELSE 'low'
+                END) as risk_level"),
+                DB::raw('MAX(fr.forecast_time) as forecast_time'),
+            ])
+            ->where('fr.generated_at', $latestRun)
+            ->where('fr.forecast_time', '>=', now())
+            ->where('fr.forecast_time', '<=', now()->addHours($hours))
+            ->whereIn('fr.risk_level', ['high', 'critical'])
+            ->when($hospitalId, fn ($q) => $q->where('fr.hospital_id', $hospitalId))
+            ->groupBy('fr.hospital_id', 'fr.resource_id', 'hospitals.name', 'resources.name', 'resources.category')
+            ->orderByDesc('risk_prob')
             ->limit(20)
             ->get();
 
         // Aggregate demand by resource
         $demandByResource = ForecastDemand::forRun($latestRun)
             ->nextHours($hours)
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
             ->selectRaw('resource_id, SUM(yhat) as total_demand')
             ->groupBy('resource_id')
             ->orderByDesc('total_demand')
@@ -146,11 +212,37 @@ class ForecastController extends Controller
             ->with('resource:id,name,category,unit')
             ->get();
 
-        // Overall risk distribution
-        $riskDistribution = ForecastRisk::forRun($latestRun)
-            ->nextHours($hours)
-            ->selectRaw("risk_level, COUNT(*) as count")
-            ->groupBy('risk_level')
+        // Overall risk distribution — also aggregated per (hospital, resource) pair
+        // so we count unique items, not hourly row duplicates.
+        $hospitalCondition = $hospitalId ? 'AND fr2.hospital_id = ?' : '';
+        $bindings = [$latestRun];
+        if ($hospitalId) $bindings[] = $hospitalId;
+
+        $riskDistribution = DB::table(
+            DB::raw("(
+                SELECT fr2.hospital_id, fr2.resource_id,
+                       CASE
+                           WHEN MAX(fr2.risk_prob) >= 0.85 THEN 'critical'
+                           WHEN MAX(fr2.risk_prob) >= 0.65 THEN 'high'
+                           WHEN MAX(fr2.risk_prob) >= 0.35 THEN 'medium'
+                           ELSE 'low'
+                       END as agg_risk_level
+                FROM forecast_risk_hourly fr2
+                WHERE fr2.generated_at = ?
+                  AND fr2.forecast_time >= NOW()
+                  AND fr2.forecast_time <= NOW() + INTERVAL '{$hours} hours'
+                  {$hospitalCondition}
+                GROUP BY fr2.hospital_id, fr2.resource_id
+            ) as pairs")
+        );
+
+        foreach ($bindings as $b) {
+            $riskDistribution->addBinding($b, 'select');
+        }
+
+        $riskDistribution = $riskDistribution
+            ->selectRaw('agg_risk_level as risk_level, COUNT(*) as count')
+            ->groupBy('agg_risk_level')
             ->pluck('count', 'risk_level');
 
         return response()->json([
@@ -171,8 +263,20 @@ class ForecastController extends Controller
      */
     public function hospitalDetail(Hospital $hospital, Request $request)
     {
+        // ── RBAC: logistics users may only view their assigned hospital ──
+        $user = $request->user();
+        if ($user && $user->role === 'logistics') {
+            $assignedIds = $user->hospitals()->pluck('hospitals.id')->toArray();
+            if (!in_array($hospital->id, $assignedIds)) {
+                return response()->json([
+                    'error' => 'Access denied. You may only view forecasts for your assigned hospital.',
+                ], 403);
+            }
+        }
+
         $hours = $request->integer('hours', 48);
 
+        // Demand: keep hourly granularity — the frontend needs it for time-series charts.
         $demand = ForecastDemand::latestRun()
             ->forHospital($hospital->id)
             ->nextHours($hours)
@@ -180,21 +284,50 @@ class ForecastController extends Controller
             ->orderBy('forecast_time')
             ->get();
 
-        $risk = ForecastRisk::latestRun()
-            ->forHospital($hospital->id)
-            ->nextHours($hours)
-            ->with('resource:id,name,category,unit')
-            ->orderBy('risk_prob', 'desc')
-            ->get();
+        // Risk: aggregate by resource_id so each resource appears only once.
+        // Take worst-case: MAX(risk_prob), MIN(days_until_stockout).
+        $latestRun = ForecastRisk::max('generated_at');
+        $riskAgg = collect();
+
+        if ($latestRun) {
+            $riskAgg = DB::table('forecast_risk_hourly as fr')
+                ->join('resources', 'resources.id', '=', 'fr.resource_id')
+                ->select([
+                    'fr.resource_id',
+                    'resources.name as resource_name',
+                    'resources.category as resource_category',
+                    'resources.unit as resource_unit',
+                    DB::raw('MAX(fr.risk_prob) as risk_prob'),
+                    DB::raw('MIN(fr.days_until_stockout) as days_until_stockout'),
+                    DB::raw("(CASE
+                        WHEN MAX(fr.risk_prob) >= 0.85 THEN 'critical'
+                        WHEN MAX(fr.risk_prob) >= 0.65 THEN 'high'
+                        WHEN MAX(fr.risk_prob) >= 0.35 THEN 'medium'
+                        ELSE 'low'
+                    END) as risk_level"),
+                    DB::raw('AVG(fr.projected_stock) as projected_stock'),
+                ])
+                ->where('fr.generated_at', $latestRun)
+                ->where('fr.hospital_id', $hospital->id)
+                ->where('fr.forecast_time', '>=', now())
+                ->where('fr.forecast_time', '<=', now()->addHours($hours))
+                ->groupBy('fr.resource_id', 'resources.name', 'resources.category', 'resources.unit')
+                ->orderByDesc('risk_prob')
+                ->get();
+        }
+
+        $criticalCount = $riskAgg->where('risk_level', 'critical')->count();
+        $highCount     = $riskAgg->where('risk_level', 'high')->count();
 
         return response()->json([
             'hospital' => $hospital->only('id', 'name', 'code', 'region'),
             'demand'   => $demand,
-            'risk'     => $risk,
+            'risk'     => $riskAgg,
             'meta'     => [
                 'horizon_hours'   => $hours,
-                'critical_count'  => $risk->where('risk_level', 'critical')->count(),
-                'high_count'      => $risk->where('risk_level', 'high')->count(),
+                'critical_count'  => $criticalCount,
+                'high_count'      => $highCount,
+                'total_resources' => $riskAgg->count(),
             ],
         ]);
     }
@@ -204,11 +337,15 @@ class ForecastController extends Controller
      *
      * AI-generated executive summary of the current forecast.
      */
-    public function narrative()
+    public function narrative(Request $request)
     {
         try {
+            // ── RBAC: resolve hospital scope ──
+            [$hospitalId, $errorResponse] = $this->resolveHospitalScope($request);
+            if ($errorResponse) return $errorResponse;
+
             $service = app(\App\Services\ForecastNarrativeService::class);
-            $result = $service->generateExecutiveSummary();
+            $result = $service->generateExecutiveSummary($hospitalId);
 
             return response()->json([
                 'success'  => $result['success'],
@@ -234,8 +371,13 @@ class ForecastController extends Controller
     {
         $hours = $request->integer('hours', 24);
 
+        // ── RBAC: resolve hospital scope ──
+        [$hospitalId, $errorResponse] = $this->resolveHospitalScope($request);
+        if ($errorResponse) return $errorResponse;
+
         $requests = \App\Models\Request::where('created_at', '>=', now()->subHours($hours))
             ->whereJsonContains('meta->source', 'ai_auto_reorder')
+            ->when($hospitalId, fn ($q) => $q->where('hospital_id', $hospitalId))
             ->with(['hospital:id,name', 'resource:id,name,category'])
             ->orderByDesc('created_at')
             ->get();

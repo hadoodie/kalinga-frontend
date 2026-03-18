@@ -7,9 +7,10 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { AlertTriangle, TrendingUp, Clock, Shield } from "lucide-react";
+import { TrendingUp, Clock, Shield } from "lucide-react";
 import forecastService from "../../services/forecastService";
 import { getDemoSummary } from "./demoForecastData";
+import { formatDisplayQuantity } from "../../utils/formatQuantity";
 
 const RISK_COLORS = {
   low: "#22c55e",
@@ -189,9 +190,9 @@ const ForecastSummaryCard = () => {
 
           {highRiskItems.length > 0 ? (
             <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {highRiskItems.slice(0, 8).map((item, idx) => (
+              {highRiskItems.slice(0, 8).map((item) => (
                 <div
-                  key={idx}
+                  key={`${item.hospital_id}-${item.resource_id}`}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border-l-4"
                   style={{
                     borderColor: RISK_COLORS[item.risk_level] || "#22c55e",
@@ -215,7 +216,10 @@ const ForecastSummaryCard = () => {
                     </span>
                     {item.days_until_stockout < 7 && (
                       <span className="text-xs text-red-600 font-semibold whitespace-nowrap">
-                        {item.days_until_stockout}d left
+                        {formatDisplayQuantity(
+                          item.days_until_stockout,
+                          "days",
+                        )}
                       </span>
                     )}
                   </div>

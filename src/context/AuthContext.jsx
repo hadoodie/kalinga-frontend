@@ -1,6 +1,5 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import authService from "../services/authService";
-import { getCsrfCookie } from "../services/api";
 import { cleanupAuthStorage } from "../utils/storage";
 import { preloadCriticalData, resetPreloader } from "../lib/dataPreloader";
 import { clearCache, clearPersistedCache } from "../lib/apiCache";
@@ -23,9 +22,6 @@ export const AuthProvider = ({ children }) => {
   // Initialize CSRF protection and check authentication on mount
   useEffect(() => {
     const initAuth = async () => {
-      // Get CSRF cookie first for security
-      await getCsrfCookie();
-
       // Clean up any invalid localStorage data first
       cleanupAuthStorage();
 
@@ -146,9 +142,6 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
-      // Ensure CSRF cookie is fresh before login
-      await getCsrfCookie();
-
       const data = await authService.login(credentials);
       setUser(data.user);
       setToken(data.token);
@@ -195,6 +188,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const setSession = useCallback((userData, authToken) => {
+    setUser(userData);
+    setToken(authToken);
+    localStorage.setItem("token", authToken);
+    localStorage.setItem("user", JSON.stringify(userData));
+    preloadCriticalData({ userRole: userData.role });
+  }, []);
+
   const value = {
     user,
     setUser,
@@ -203,6 +204,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     register,
+    setSession, 
     isAuthenticated: !!token && !!user,
   };
 

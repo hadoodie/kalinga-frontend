@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   Package,
 } from "lucide-react";
+import { formatDisplayQuantity } from "../../../utils/formatQuantity";
 
 /**
  * ActionSlideOver
@@ -24,34 +25,71 @@ const ActionSlideOver = memo(function ActionSlideOver({
   const closeRef = useRef(null);
 
   // Calculate recommended quantity based on projected stock gap
-  const projectedStock = Math.max(0, item?.projected_stock ?? item?.current_stock ?? 0);
+  const projectedStock = Math.max(
+    0,
+    item?.projected_stock ?? item?.current_stock ?? 0,
+  );
   const avgDaily = item?.avg_daily_usage ?? item?.daily_demand ?? 5;
-  const daysUntilStockout = item?.days_until_stockout ?? (avgDaily > 0 ? projectedStock / avgDaily : 30);
+  const daysUntilStockout =
+    item?.days_until_stockout ??
+    (avgDaily > 0 ? projectedStock / avgDaily : 30);
   const safetyBuffer = 1.2; // 20% safety margin
-  const recommendedQty = Math.ceil(avgDaily * (14 + scenarioDelayDays) * safetyBuffer);
+  const recommendedQty = Math.ceil(
+    avgDaily * (14 + scenarioDelayDays) * safetyBuffer,
+  );
 
   const [quantity, setQuantity] = useState(recommendedQty);
   const [notes, setNotes] = useState("");
   const [priority, setPriority] = useState(
-    daysUntilStockout <= 3 ? "emergency" : daysUntilStockout <= 7 ? "urgent" : "normal",
+    daysUntilStockout <= 3
+      ? "emergency"
+      : daysUntilStockout <= 7
+        ? "urgent"
+        : "normal",
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Focus trap: focus close button on mount
+  // Focus trap: focus close button on mount + trap Tab cycling within panel
   useEffect(() => {
     closeRef.current?.focus();
 
-    const handleEsc = (e) => {
-      if (e.key === "Escape") onClose();
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose();
+        return;
+      }
+      // Tab trap: cycle focus within the panel
+      if (e.key === "Tab" && panelRef.current) {
+        const focusable = panelRef.current.querySelectorAll(
+          'a[href], button:not([disabled]), textarea, input:not([disabled]), select, [tabindex]:not([tabindex="-1"])',
+        );
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
     };
-    window.addEventListener("keydown", handleEsc);
-    return () => window.removeEventListener("keydown", handleEsc);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  // Lock body scroll
+  // Lock body scroll — save/restore previous value
   useEffect(() => {
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, []);
 
   const handleSubmit = useCallback(
@@ -99,13 +137,20 @@ const ActionSlideOver = memo(function ActionSlideOver({
         className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-white shadow-2xl flex flex-col animate-in slide-in-from-right duration-200"
       >
         {/* Header */}
-        <div className={`flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 bg-${accentColor}-50/50`}>
+        <div
+          className={`flex items-center justify-between gap-3 px-6 py-4 border-b border-slate-100 bg-${accentColor}-50/50`}
+        >
           <div className="flex items-center gap-3 min-w-0">
             <div className={`p-2 rounded-xl bg-${accentColor}-100`}>
-              <Icon className={`h-5 w-5 text-${accentColor}-600`} aria-hidden="true" />
+              <Icon
+                className={`h-5 w-5 text-${accentColor}-600`}
+                aria-hidden="true"
+              />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg font-bold text-slate-800 truncate">{title}</h2>
+              <h2 className="text-lg font-bold text-slate-800 truncate">
+                {title}
+              </h2>
               <p className="text-xs text-slate-500 truncate">
                 {item.resource_name || item._resourceName || "Resource"} —{" "}
                 {item.hospital_name || item._hospitalName || "Facility"}
@@ -135,36 +180,56 @@ const ActionSlideOver = memo(function ActionSlideOver({
             </h3>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                <Package
+                  className="h-4 w-4 text-slate-400"
+                  aria-hidden="true"
+                />
                 <div>
-                  <span className="block text-slate-500 text-xs">Current Stock</span>
+                  <span className="block text-slate-500 text-xs">
+                    Current Stock
+                  </span>
                   <span className="font-semibold text-slate-700">
-                    {projectedStock.toLocaleString()}
+                    {formatDisplayQuantity(projectedStock, "units")}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                <TrendingUp
+                  className="h-4 w-4 text-slate-400"
+                  aria-hidden="true"
+                />
                 <div>
-                  <span className="block text-slate-500 text-xs">Avg Daily Use</span>
+                  <span className="block text-slate-500 text-xs">
+                    Avg Daily Use
+                  </span>
                   <span className="font-semibold text-slate-700">
-                    {avgDaily.toLocaleString()}
+                    {formatDisplayQuantity(avgDaily, "units")}
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-400" aria-hidden="true" />
+                <AlertTriangle
+                  className="h-4 w-4 text-orange-400"
+                  aria-hidden="true"
+                />
                 <div>
-                  <span className="block text-slate-500 text-xs">Days to Stockout</span>
+                  <span className="block text-slate-500 text-xs">
+                    Days to Stockout
+                  </span>
                   <span className="font-semibold text-orange-600">
-                    {Math.round(daysUntilStockout)}d
+                    {formatDisplayQuantity(daysUntilStockout, "days")}d
                   </span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4 text-slate-400" aria-hidden="true" />
+                <ShoppingCart
+                  className="h-4 w-4 text-slate-400"
+                  aria-hidden="true"
+                />
                 <div>
-                  <span className="block text-slate-500 text-xs">Risk Probability</span>
+                  <span className="block text-slate-500 text-xs">
+                    Risk Probability
+                  </span>
                   <span className="font-semibold text-slate-700">
                     {Math.round((item.risk_prob || 0) * 100)}%
                   </span>
@@ -173,7 +238,8 @@ const ActionSlideOver = memo(function ActionSlideOver({
             </div>
             {scenarioDelayDays > 0 && (
               <div className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-1.5 mt-2">
-                ⚠ Scenario mode: +{scenarioDelayDays}d delivery delay factored in
+                ⚠ Scenario mode: +{scenarioDelayDays}d delivery delay factored
+                in
               </div>
             )}
           </div>
@@ -196,7 +262,11 @@ const ActionSlideOver = memo(function ActionSlideOver({
             />
             <p className="text-xs text-slate-400 mt-1">
               AI recommended: <strong>{recommendedQty.toLocaleString()}</strong>{" "}
-              ({Math.ceil(avgDaily * 14)} base + {scenarioDelayDays > 0 ? `${scenarioDelayDays}d delay buffer + ` : ""}20% safety)
+              ({Math.ceil(avgDaily * 14)} base +{" "}
+              {scenarioDelayDays > 0
+                ? `${scenarioDelayDays}d delay buffer + `
+                : ""}
+              20% safety)
             </p>
           </div>
 
@@ -241,7 +311,8 @@ const ActionSlideOver = memo(function ActionSlideOver({
               htmlFor="action-notes"
               className="block text-sm font-medium text-slate-700 mb-1.5"
             >
-              Notes <span className="text-slate-400 font-normal">(optional)</span>
+              Notes{" "}
+              <span className="text-slate-400 font-normal">(optional)</span>
             </label>
             <textarea
               id="action-notes"
@@ -276,8 +347,7 @@ const ActionSlideOver = memo(function ActionSlideOver({
               ? "Submitting…"
               : isPO
                 ? "Submit Purchase Order"
-                : "Submit Transfer Request"
-            }
+                : "Submit Transfer Request"}
           </button>
         </div>
       </div>

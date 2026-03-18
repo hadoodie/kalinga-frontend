@@ -58,6 +58,11 @@ class FeatureRow(BaseModel):
     precipitation_mm: float = 0.0
     wind_speed_kph: float = 10.0
 
+    # Exogenous event flag (Epic 3)
+    is_active_disaster_alert: int = Field(
+        0, description="1 when the hospital is in active disaster mode, 0 otherwise",
+    )
+
     # Horizon
     horizon_h: int = 1
 
@@ -120,9 +125,10 @@ class DemandPrediction(BaseModel):
     resource_id: int
     forecast_time: str
     horizon_h: int
-    yhat: float
-    yhat_lower: float
-    yhat_upper: float
+    yhat: float          # P50 median
+    yhat_lower: float    # P10 (heuristic lower band)
+    yhat_upper: float    # P90 quantile upper bound
+    yhat_p95: float = 0.0  # P95 quantile ceiling for safety-stock sizing
 
 
 class RiskPrediction(BaseModel):
@@ -169,3 +175,128 @@ class HealthResponse(BaseModel):
     risk_mode: str = "not_loaded"
     uptime_seconds: float = 0.0
     timestamp: str = ""
+
+
+# ═══════════════════════════════════════════════════════════════
+# Pipeline trigger schemas (called by Laravel on Render)
+# ═══════════════════════════════════════════════════════════════
+
+class RunPipelineRequest(BaseModel):
+    """Request body for POST /api/v1/run-pipeline."""
+    mode: str = Field("production", description="Run mode: production or demo")
+    horizon: int = Field(48, ge=1, le=168, description="Forecast horizon in hours")
+
+
+class RunPipelineResponse(BaseModel):
+    """Response from the pipeline run."""
+    success: bool = True
+    mode: str = "production"
+    demand_rows: int = 0
+    risk_rows: int = 0
+    high_risk_count: int = 0
+    model_version: str = ""
+    elapsed_s: float = 0.0
+    error: str | None = None
+
+
+# ═══════════════════════════════════════════════════════════════
+# Inventory Classification schemas (Epic 1 & 2)
+# ═══════════════════════════════════════════════════════════════
+
+class ClassificationResult(BaseModel):
+    """ABC/XYZ classification for a single resource."""
+    hospital_id: int
+    resource_id: int
+    abc_class: str = Field(..., description="A, B, or C")
+    xyz_class: str = Field(..., description="X, Y, or Z")
+    abc_xyz_class: str = Field(..., description="Combined class (e.g. AX, BY)")
+    total_volume_90d: float = 0.0
+    abc_rank_pct: float = 1.0
+    cv: float | None = None
+    is_cold_start: bool = False
+    description: str = ""
+
+
+class ClassifyResponse(BaseModel):
+    """Response from the classify endpoint."""
+    success: bool = True
+    items: list[ClassificationResult]
+    total_items: int = 0
+
+
+class SafetyStockResult(BaseModel):
+    """Probabilistic safety stock for a single resource."""
+    hospital_id: int
+    resource_id: int
+    safety_stock: float
+    reorder_point: float
+    avg_daily_demand: float
+    std_daily_demand: float
+    avg_lead_time_days: float
+    std_lead_time_days: float
+    z_score: float
+    service_level: float
+    abc_xyz_class: str | None = None
+
+
+class SafetyStockRequest(BaseModel):
+    """Request body for safety stock calculation."""
+    target_service_level: float = Field(
+        0.95, ge=0.5, le=0.999,
+        description="Target service level (probability of no stockout)",
+    )
+    demand_window_days: int = Field(90, ge=7, le=365)
+
+
+class SafetyStockResponse(BaseModel):
+    """Response from the safety stock endpoint."""
+    success: bool = True
+    service_level: float
+    z_score: float
+    items: list[SafetyStockResult]
+    total_items: int = 0
+
+
+# ═══════════════════════════════════════════════════════════════
+# Anomaly Detection schemas (Epic 4)
+# ═══════════════════════════════════════════════════════════════
+
+class AnomalyCheckRequest(BaseModel):
+    """Request body for the intraday anomaly check endpoint."""
+    hospital_id: int = Field(..., description="Hospital FK")
+    resource_id: int = Field(..., description="Resource FK")
+    actual_consumption: float = Field(
+        ..., ge=0, description="Actual outflow recorded this hour",
+    )
+    expected_consumption: float = Field(
+        0.0, ge=0,
+        description="Forecasted yhat for this hour (auto-fetched if 0)",
+    )
+    historical_std: float = Field(
+        0.0, ge=0,
+        description="σ of hourly consumption (auto-computed if 0)",
+    )
+
+
+class AnomalyResultSchema(BaseModel):
+    """Result of anomaly detection for a single (hospital, resource)."""
+    hospital_id: int
+    resource_id: int
+    hour: str
+    actual_consumption: float
+    expected_consumption: float
+    historical_std: float
+    z_score: float
+    is_anomaly: bool
+    severity: str = Field(..., description="normal | warning | critical")
+    recommend_reforecast: bool
+    details: str = ""
+
+
+class AnomalyCheckResponse(BaseModel):
+    """Response from the anomaly check endpoint."""
+    success: bool = True
+    z_threshold: float
+    anomalies_found: int = 0
+    results: list[AnomalyResultSchema]
+

@@ -67,7 +67,7 @@ Schedule::command('forecasts:run --mode=production --auto-reorder --narrative')
     ->everyTwoHours()
     ->withoutOverlapping()
     ->when(function () {
-        return env('FORECAST_ENABLED', true);
+        return config('app.forecast_enabled', true);
     })
     ->onSuccess(function () {
         info('Forecast pipeline completed at ' . now());
@@ -81,21 +81,29 @@ Schedule::command('forecasts:monitor --retrain --days=7')
     ->dailyAt('06:00')
     ->withoutOverlapping()
     ->when(function () {
-        return env('FORECAST_ENABLED', true);
+        return config('app.forecast_enabled', true);
     })
     ->onSuccess(function () {
         info('Forecast monitoring completed at ' . now());
     });
 
-// Prune old forecast data weekly (keep last 30 days)
-Schedule::command('forecasts:prune --days=30')
+// Prune old forecast data weekly (retention read from FORECAST_RETENTION_DAYS env)
+Schedule::command('forecasts:prune')
     ->weekly()
     ->sundays()
     ->at('03:00')
     ->withoutOverlapping()
     ->when(function () {
-        return env('FORECAST_ENABLED', true);
+        return config('app.forecast_enabled', true);
     })
     ->onSuccess(function () {
         info('Forecast data pruned at ' . now());
+    });
+
+// Logistics Auto-Verify (Fallback to prevent Dead Ends in Delivered)
+Schedule::command('logistics:auto-verify')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onSuccess(function () {
+        info('Logistics auto-verify routine executed at ' . now());
     });

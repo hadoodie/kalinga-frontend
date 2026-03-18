@@ -9,11 +9,7 @@ export const PatientHospitalNavigator = () => {
   return (
     <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <PatientSidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-      <div
-        className={`flex flex-1 flex-col transition-all duration-300 ${
-          collapsed ? "ml-16" : "ml-64"
-        }`}
-      >
+      <div className="flex flex-1 flex-col transition-all duration-300 ml-0">
         <div className="sticky top-0 z-10 bg-background shadow-sm">
           <NavbarB />
         </div>
@@ -22,7 +18,7 @@ export const PatientHospitalNavigator = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-wide text-emerald-600">
-                  Patient Navigation
+                  Nearby Care
                 </p>
                 <h1 className="text-2xl font-semibold text-slate-900">
                   Hospital Navigator

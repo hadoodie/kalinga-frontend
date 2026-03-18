@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Activity,
   AlertOctagon,
@@ -250,8 +256,8 @@ const computeChecklistScores = (answers) => {
 const isChecklistComplete = (answers) =>
   HSI_CHECKLIST.every((module) =>
     module.questions.every((question) =>
-      Boolean(answers?.[module.id]?.[question.id])
-    )
+      Boolean(answers?.[module.id]?.[question.id]),
+    ),
   );
 
 const Badge = ({ children, variant = "default" }) => {
@@ -622,6 +628,9 @@ export const HospitalSafetyIndexSection = () => {
   const [error, setError] = useState(null);
   const [complianceError, setComplianceError] = useState(null);
 
+  // Cache compliance data per hospital to avoid re-fetching on tab switch
+  const complianceCacheRef = useRef(new Map());
+
   const assessmentDetails = hospitalCompliance?.assessment_details ?? null;
 
   const fetchDashboardData = useCallback(async () => {
@@ -652,29 +661,52 @@ export const HospitalSafetyIndexSection = () => {
     }
   }, []);
 
-  const fetchHospitalCompliance = useCallback(async (hospitalId) => {
-    if (!hospitalId) {
-      setHospitalCompliance(null);
-      return;
-    }
-    try {
-      const response = await getHospitalCompliance(hospitalId);
-      const payload = response?.data?.data || response?.data || null;
-      setHospitalCompliance(payload);
-      setComplianceError(null);
-      if (payload?.assessment_details?.general_info?.surge_multiplier) {
-        setSurgeMultiplier(
-          payload.assessment_details.general_info.surge_multiplier
+  const fetchHospitalCompliance = useCallback(
+    async (hospitalId, { force = false } = {}) => {
+      if (!hospitalId) {
+        setHospitalCompliance(null);
+        return;
+      }
+
+      // Return cached data if available (skip network)
+      if (!force && complianceCacheRef.current.has(hospitalId)) {
+        const cached = complianceCacheRef.current.get(hospitalId);
+        setHospitalCompliance(cached);
+        setComplianceError(null);
+        if (cached?.assessment_details?.general_info?.surge_multiplier) {
+          setSurgeMultiplier(
+            cached.assessment_details.general_info.surge_multiplier,
+          );
+        }
+        return;
+      }
+
+      try {
+        const response = await getHospitalCompliance(hospitalId);
+        const payload = response?.data?.data || response?.data || null;
+        setHospitalCompliance(payload);
+        setComplianceError(null);
+
+        // Cache the result
+        if (payload) {
+          complianceCacheRef.current.set(hospitalId, payload);
+        }
+
+        if (payload?.assessment_details?.general_info?.surge_multiplier) {
+          setSurgeMultiplier(
+            payload.assessment_details.general_info.surge_multiplier,
+          );
+        }
+      } catch (err) {
+        console.error("Failed to fetch hospital compliance", err);
+        setHospitalCompliance(null);
+        setComplianceError(
+          "Compliance data unavailable for the selected hospital.",
         );
       }
-    } catch (err) {
-      console.error("Failed to fetch hospital compliance", err);
-      setHospitalCompliance(null);
-      setComplianceError(
-        "Compliance data unavailable for the selected hospital."
-      );
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     let ignore = false;
@@ -708,10 +740,16 @@ export const HospitalSafetyIndexSection = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    // Invalidate cache for the active hospital so we get fresh data
+    if (selectedHospital) {
+      complianceCacheRef.current.delete(selectedHospital);
+    }
     await Promise.all([
       fetchDashboardData(),
       fetchHospitals(),
-      selectedHospital ? fetchHospitalCompliance(selectedHospital) : null,
+      selectedHospital
+        ? fetchHospitalCompliance(selectedHospital, { force: true })
+        : null,
     ]);
     setRefreshing(false);
   };
@@ -721,27 +759,27 @@ export const HospitalSafetyIndexSection = () => {
     return {
       water: computePercent(
         hospitalCompliance?.water?.survival_hours,
-        HSI_CONSTANTS.WATER_MINIMUM_HOURS
+        HSI_CONSTANTS.WATER_MINIMUM_HOURS,
       ),
       fuel: computePercent(
         hospitalCompliance?.fuel?.survival_hours,
-        HSI_CONSTANTS.FUEL_MINIMUM_HOURS
+        HSI_CONSTANTS.FUEL_MINIMUM_HOURS,
       ),
       oxygen: computePercent(
         hospitalCompliance?.oxygen?.survival_hours,
-        HSI_CONSTANTS.OXYGEN_MINIMUM_HOURS
+        HSI_CONSTANTS.OXYGEN_MINIMUM_HOURS,
       ),
     };
   }, [hospitalCompliance]);
 
   const checklistScores = useMemo(
     () => computeChecklistScores(assessmentAnswers),
-    [assessmentAnswers]
+    [assessmentAnswers],
   );
 
   const checklistComplete = useMemo(
     () => isChecklistComplete(assessmentAnswers),
-    [assessmentAnswers]
+    [assessmentAnswers],
   );
 
   const simulateSurvivalHours = (resourceKey) => {
@@ -752,7 +790,7 @@ export const HospitalSafetyIndexSection = () => {
 
   const getVendorForResource = (resourceKey) =>
     assessmentDetails?.vendor_playbooks?.find((vendor) =>
-      vendor.resource ? vendor.resource.toLowerCase() === resourceKey : false
+      vendor.resource ? vendor.resource.toLowerCase() === resourceKey : false,
     );
 
   const handleAutoTrigger = async (resourceKey) => {
@@ -768,12 +806,12 @@ export const HospitalSafetyIndexSection = () => {
         await triggerVendor(vendor.id);
       }
       setLastAutoTrigger(
-        `Auto-triggered ${vendor.name} for ${resourceLabel}. Dispatch notified.`
+        `Auto-triggered ${vendor.name} for ${resourceLabel}. Dispatch notified.`,
       );
     } catch (err) {
       console.error("Failed to trigger vendor", err);
       setLastAutoTrigger(
-        `Unable to trigger ${vendor.name || resourceLabel}. Please try again.`
+        `Unable to trigger ${vendor.name || resourceLabel}. Please try again.`,
       );
     }
   };
@@ -845,7 +883,9 @@ export const HospitalSafetyIndexSection = () => {
         conducted_via: "Admin console checklist",
       });
 
-      await fetchHospitalCompliance(selectedHospital);
+      // Invalidate cache so we fetch fresh compliance after the new assessment
+      complianceCacheRef.current.delete(selectedHospital);
+      await fetchHospitalCompliance(selectedHospital, { force: true });
       setAssessmentFeedback({
         type: "success",
         message: "Assessment saved and compliance metrics refreshed.",
@@ -974,7 +1014,7 @@ export const HospitalSafetyIndexSection = () => {
                     </Badge>
                   </div>
                 </div>
-              )
+              ),
             )}
             {Object.entries(dashboardData.critical_tanks || {}).map(
               ([category, data]) => (
@@ -998,7 +1038,7 @@ export const HospitalSafetyIndexSection = () => {
                     </Badge>
                   </div>
                 </div>
-              )
+              ),
             )}
           </div>
         </section>
@@ -1074,7 +1114,7 @@ export const HospitalSafetyIndexSection = () => {
                         <div className="mt-2 flex items-end gap-3">
                           <span className="text-4xl font-bold text-slate-900">
                             {hospitalCompliance.assessment?.overall_index?.toFixed(
-                              1
+                              1,
                             ) || "N/A"}
                           </span>
                           {hospitalCompliance.assessment?.category && (
@@ -1087,7 +1127,7 @@ export const HospitalSafetyIndexSection = () => {
                           Updated{" "}
                           {hospitalCompliance.assessment?.date
                             ? new Date(
-                                hospitalCompliance.assessment.date
+                                hospitalCompliance.assessment.date,
                               ).toLocaleDateString()
                             : "N/A"}
                         </p>
@@ -1332,7 +1372,7 @@ export const HospitalSafetyIndexSection = () => {
                           <div className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center">
                             <p className="text-2xl font-bold text-slate-900">
                               {formatSurvivalHours(
-                                hospitalCompliance.generator.fuel_reserve_hours
+                                hospitalCompliance.generator.fuel_reserve_hours,
                               )}
                             </p>
                             <p className="text-xs text-slate-500">
@@ -1426,7 +1466,7 @@ export const HospitalSafetyIndexSection = () => {
                           <p className="text-sm text-slate-500">
                             Conducted on{" "}
                             {new Date(
-                              hospitalCompliance.assessment.date
+                              hospitalCompliance.assessment.date,
                             ).toLocaleDateString()}
                           </p>
                           <div className="rounded-2xl border border-slate-100 bg-slate-50 p-6">
@@ -1435,7 +1475,7 @@ export const HospitalSafetyIndexSection = () => {
                             </p>
                             <p className="mt-2 text-4xl font-bold text-slate-900">
                               {hospitalCompliance.assessment.overall_index?.toFixed(
-                                1
+                                1,
                               )}
                             </p>
                             <div className="mt-2">
@@ -1522,8 +1562,8 @@ export const HospitalSafetyIndexSection = () => {
                                       option.color === "emerald"
                                         ? "bg-emerald-500"
                                         : option.color === "amber"
-                                        ? "bg-amber-500"
-                                        : "bg-rose-500"
+                                          ? "bg-amber-500"
+                                          : "bg-rose-500"
                                     }`}
                                   />
                                   <span className="font-semibold">
@@ -1598,7 +1638,7 @@ export const HospitalSafetyIndexSection = () => {
                                                   handleChecklistAnswer(
                                                     module.id,
                                                     question.id,
-                                                    option.value
+                                                    option.value,
                                                   )
                                                 }
                                                 className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-200 ${

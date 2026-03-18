@@ -6,6 +6,7 @@ use App\Events\ForecastGenerated;
 use App\Models\ForecastDemand;
 use App\Models\ForecastRisk;
 use App\Services\AutoReorderService;
+use App\Services\ForecastingClient;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Process;
@@ -49,41 +50,19 @@ class RunForecasts extends Command
 
         $startTime = microtime(true);
 
-        // ── Step 1: Run the Python pipeline ──────────────────
-        $this->info("\n[1/4] Running Python forecast pipeline...");
+        // ── Step 1: Run the forecast pipeline ────────────────
+        // If FORECAST_API_URL is set → call FastAPI over HTTP (Render mode)
+        // Otherwise → run Python as a local subprocess (local dev / Docker)
+        $client = app(ForecastingClient::class);
 
-        $pythonCmd = $this->buildPythonCommand($mode, $horizon);
-
-        if ($dryRun) {
-            $this->warn("  [DRY-RUN] Would execute: {$pythonCmd}");
+        if ($client->isConfigured()) {
+            $ok = $this->runViaHttp($client, $mode, $horizon, $dryRun);
         } else {
-            $projectRoot = base_path() . '/..';
-            $env = [];
+            $ok = $this->runViaSubprocess($mode, $horizon, $dryRun);
+        }
 
-            try {
-                $env['FORECAST_DATABASE_URL'] = $this->buildDatabaseUrl();
-            } catch (\Exception $e) {
-                Log::warning('Could not build FORECAST_DATABASE_URL, Python will use its own .env', [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            $result = Process::path($projectRoot)
-                ->env($env)
-                ->timeout(300)
-                ->run($pythonCmd);
-
-            if (!$result->successful()) {
-                $this->error('  ✗ Python pipeline failed:');
-                $this->error($result->errorOutput());
-                Log::error('Forecast pipeline failed', [
-                    'exit_code' => $result->exitCode(),
-                    'stderr' => $result->errorOutput(),
-                ]);
-                return Command::FAILURE;
-            }
-
-            $this->line($result->output());
+        if (!$ok) {
+            return Command::FAILURE;
         }
 
         // ── Step 2: Verify results ──────────────────────────
@@ -176,6 +155,96 @@ class RunForecasts extends Command
         ]);
 
         return Command::SUCCESS;
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Step 1 strategies: HTTP (Render) vs. Subprocess (local)
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * Call the FastAPI /run-pipeline endpoint over HTTP.
+     * Used when FORECAST_API_URL is set (Render deployment).
+     */
+    private function runViaHttp(ForecastingClient $client, string $mode, int $horizon, bool $dryRun): bool
+    {
+        $this->info("\n[1/4] Running forecast pipeline via FastAPI HTTP...");
+        $this->line("  Target: " . config('services.forecasting.base_url'));
+
+        if ($dryRun) {
+            $this->warn("  [DRY-RUN] Would POST /api/v1/run-pipeline");
+            return true;
+        }
+
+        // Verify health first
+        $health = $client->healthCheck();
+        if (!($health['reachable'] ?? false)) {
+            $this->error('  ✗ FastAPI service is unreachable');
+            $this->error('  Error: ' . ($health['error'] ?? 'Unknown'));
+            return false;
+        }
+        $this->info("  ✓ FastAPI is reachable (models_loaded: " . ($health['models_loaded'] ? 'yes' : 'no') . ")");
+
+        // Trigger the pipeline
+        $result = $client->runPipeline($mode, $horizon);
+
+        if (!($result['success'] ?? false)) {
+            $this->error('  ✗ Remote pipeline failed: ' . ($result['error'] ?? 'Unknown'));
+            Log::error('Remote forecast pipeline failed', $result);
+            return false;
+        }
+
+        $this->info("  ✓ Pipeline complete — " .
+            "demand: {$result['demand_rows']}, " .
+            "risk: {$result['risk_rows']}, " .
+            "elapsed: {$result['elapsed_s']}s"
+        );
+
+        return true;
+    }
+
+    /**
+     * Run the Python pipeline as a local subprocess.
+     * Used when FORECAST_API_URL is NOT set (local dev / Docker Compose).
+     */
+    private function runViaSubprocess(string $mode, int $horizon, bool $dryRun): bool
+    {
+        $this->info("\n[1/4] Running Python forecast pipeline (subprocess)...");
+
+        $pythonCmd = $this->buildPythonCommand($mode, $horizon);
+
+        if ($dryRun) {
+            $this->warn("  [DRY-RUN] Would execute: {$pythonCmd}");
+            return true;
+        }
+
+        $projectRoot = base_path() . '/..';
+        $env = [];
+
+        try {
+            $env['FORECAST_DATABASE_URL'] = $this->buildDatabaseUrl();
+        } catch (\Exception $e) {
+            Log::warning('Could not build FORECAST_DATABASE_URL, Python will use its own .env', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        $result = Process::path($projectRoot)
+            ->env($env)
+            ->timeout(300)
+            ->run($pythonCmd);
+
+        if (!$result->successful()) {
+            $this->error('  ✗ Python pipeline failed:');
+            $this->error($result->errorOutput());
+            Log::error('Forecast pipeline failed', [
+                'exit_code' => $result->exitCode(),
+                'stderr' => $result->errorOutput(),
+            ]);
+            return false;
+        }
+
+        $this->line($result->output());
+        return true;
     }
 
     /**

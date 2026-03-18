@@ -20,13 +20,25 @@ import {
   Building,
   Users,
   BrainCircuit,
+  Maximize2,
 } from "lucide-react";
 import { evacMapImg } from "@images";
 import { Link, useNavigate } from "react-router-dom";
 import resourceService from "../../services/resourceService";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
 import api from "../../services/api";
 import { formatDistanceToNow } from "date-fns";
+import { useAuth } from "../../context/AuthContext";
+import { useSupplyTracking } from "../../hooks/useSupplyTracking";
+import useForecastPrefetch from "../../hooks/useForecastPrefetch";
+import LiveTrackingMap from "./LiveTrackingMap";
 
 // Import Hospital Dashboard
 import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
@@ -34,8 +46,8 @@ import HospitalDashboard from "./ResourceMngmt/HospitalDashboard";
 // Import AI Forecast v2 dashboard
 import ForecastDashboard from "./forecast-v2/ForecastDashboard";
 
-// --- MOCK DATA ---
-const MOCK_RESOURCE_REQUESTS = [
+// --- DEMO FALLBACK DATA (shown with a visible banner when API is unavailable) ---
+const DEMO_RESOURCE_REQUESTS = [
   {
     id: "R-1001",
     location: "Barangay San Jose",
@@ -57,75 +69,9 @@ const MOCK_RESOURCE_REQUESTS = [
     time: "5 hours ago",
     items: 1,
   },
-  {
-    id: "R-1004",
-    location: "Sector 5 Base",
-    urgency: "Critical",
-    time: "1 hour ago",
-    items: 4,
-  },
-  {
-    id: "R-1005",
-    location: "Coastal Village 1",
-    urgency: "Medium",
-    time: "4 hours ago",
-    items: 2,
-  },
-  {
-    id: "R-1006",
-    location: "Alpha Hospital",
-    urgency: "Shipped",
-    time: "4 hours ago",
-    items: 2,
-  },
 ];
 
-const MOCK_INVENTORY_ITEMS = [
-  {
-    resource: "Rice",
-    category: "Food",
-    remaining: 30,
-    unit: "kg",
-    status: "Critical",
-  },
-  {
-    resource: "Canned Goods",
-    category: "Food",
-    remaining: 90,
-    unit: "cans",
-    status: "High",
-  },
-  {
-    resource: "Soap",
-    category: "Hygiene",
-    remaining: 75,
-    unit: "boxes",
-    status: "Moderate",
-  },
-  {
-    resource: "Bottled Water",
-    category: "Water",
-    remaining: 300,
-    unit: "bottles",
-    status: "High",
-  },
-  {
-    resource: "Tents",
-    category: "Shelter",
-    remaining: 15,
-    unit: "units",
-    status: "Critical",
-  },
-  {
-    resource: "Medical Kits",
-    category: "Medical",
-    remaining: 70,
-    unit: "kits",
-    status: "High",
-  },
-];
-
-const MOCK_SHIPMENTS = [
+const DEMO_SHIPMENTS = [
   {
     id: "S-7001",
     route: "Depot A → Field Hospital",
@@ -142,84 +88,22 @@ const MOCK_SHIPMENTS = [
     contents: "Water, Blankets",
     priority: "Critical",
   },
-  {
-    id: "S-7003",
-    route: "Staging Area C → Command Post",
-    eta: "2025-09-29T22:00:00Z",
-    status: "En Route",
-    contents: "Satellite Gear",
-    priority: "Medium",
-  },
-  {
-    id: "S-7004",
-    route: "HQ Depot → Barangay San Jose",
-    eta: "2025-09-29T21:15:00Z",
-    status: "In Transit",
-    contents: "Food Rations",
-    priority: "High",
-  },
 ];
 
-const MOCK_FACILITIES = [
-  { name: "Central Depot A", resources: 120 },
-  { name: "Evac Center 3", resources: 80 },
-  { name: "Field Hospital Beta", resources: 150 },
-  { name: "Sector 5 Base", resources: 60 },
-  { name: "Warehouse B", resources: 90 },
-  { name: "Clinic 1", resources: 100 },
-  { name: "Clinic 2", resources: 120 },
-];
-
-const MOCK_ASSETS = [
+const DEMO_ASSETS = [
   { name: "Truck 1", status: "In Use" },
   { name: "Truck 2", status: "Idle" },
   { name: "Generator 1", status: "In Use" },
-  { name: "Satellite Kit B", status: "Idle" },
-  { name: "Drone 3", status: "In Use" },
-  { name: "Truck 3", status: "Repair" },
 ];
 
-const MOCK_NOTIFICATIONS = [
+const DEMO_NOTIFICATIONS = [
   {
     id: 1,
     title: "Low Stock Alert",
-    message:
-      "Rice inventory at Central Depot A is below minimum threshold (30 kg remaining)",
+    message: "Demo notification — connect API for real data",
     priority: "Critical",
     time: "5 mins ago",
     read: false,
-  },
-  {
-    id: 2,
-    title: "Delayed Shipment",
-    message: "S-7002 to Evac Zone 4 is delayed by 45 minutes",
-    priority: "High",
-    time: "15 mins ago",
-    read: false,
-  },
-  {
-    id: 3,
-    title: "Asset Maintenance Due",
-    message: "Truck 3 scheduled for maintenance check",
-    priority: "Medium",
-    time: "1 hour ago",
-    read: true,
-  },
-  {
-    id: 4,
-    title: "New Resource Request",
-    message: "Critical request from Barangay San Jose - 3 items needed",
-    priority: "Critical",
-    time: "2 hours ago",
-    read: false,
-  },
-  {
-    id: 5,
-    title: "Delivery Completed",
-    message: "S-7001 successfully delivered to Field Hospital",
-    priority: "Low",
-    time: "3 hours ago",
-    read: true,
   },
 ];
 
@@ -242,8 +126,8 @@ const NotificationWidget = () => {
         setNotifications(logisticsNotifs.slice(0, 5));
       } catch (err) {
         console.error("Failed to fetch notifications for widget", err);
-        // Fallback to mock data with type field
-        const mockWithType = MOCK_NOTIFICATIONS.map((n) => ({
+        // Fallback to demo data with type field
+        const mockWithType = DEMO_NOTIFICATIONS.map((n) => ({
           ...n,
           type: "logistics",
         }));
@@ -280,7 +164,7 @@ const NotificationWidget = () => {
             <p className="text-xs text-gray-600">
               {notif.description || notif.message}
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm font-medium text-slate-600 mt-1">
               {notif.created_at
                 ? formatDistanceToNow(new Date(notif.created_at), {
                     addSuffix: true,
@@ -308,12 +192,15 @@ const getUrgencyColor = (urgency) => {
 const getStatusColor = (status) => {
   switch (status) {
     case "Delayed":
-      return "text-red-600 bg-red-50";
+      return "text-red-700 bg-red-100";
     case "In Transit":
     case "En Route":
-      return "text-green-600 bg-green-50";
+      return "text-blue-700 bg-blue-100";
+    case "Delivered":
+    case "Available":
+      return "text-green-700 bg-green-100";
     default:
-      return "text-gray-600 bg-gray-50";
+      return "text-slate-600 bg-slate-100";
   }
 };
 
@@ -327,16 +214,16 @@ const formatETA = (isoTime) => {
 };
 
 // --- CHART COMPONENT ---
-const FacilityPieChart = ({ data }) => {
-  const COLORS = [
-    "#34D399",
-    "#1c2414",
-    "#394e2c",
-    "#FBBF24",
-    "#f0d003",
-    "#fae526",
-  ];
+const PIE_COLORS = [
+  "#34D399",
+  "#1c2414",
+  "#394e2c",
+  "#FBBF24",
+  "#f0d003",
+  "#fae526",
+];
 
+const FacilityPieChart = ({ data }) => {
   if (!data || data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400">
@@ -374,14 +261,17 @@ const FacilityPieChart = ({ data }) => {
           data={facilityResourceData}
           cx="50%"
           cy="50%"
-          innerRadius={35}
-          outerRadius={60}
+          innerRadius={45}
+          outerRadius={75}
           dataKey="value"
           labelLine={false}
-          paddingAngle={3}
+          paddingAngle={4}
         >
           {facilityResourceData.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell
+              key={`cell-${index}`}
+              fill={PIE_COLORS[index % PIE_COLORS.length]}
+            />
           ))}
         </Pie>
         <Tooltip content={renderTooltip} />
@@ -405,34 +295,72 @@ const OverallStatusCard = ({ inventory, facilities }) => {
         <h3 className="text-xl font-bold mb-4 border-b border-gray-100 pb-3 flex justify-center items-center">
           Resource Overview
         </h3>
-        <div className="flex flex-col md:flex-row gap-1 flex-1">
-          <div className="w-full md:w-1/2 flex flex-col justify-start items-start">
-            <p className="text-5xl font-extrabold mb-4">{totalRemaining}</p>
-            <div className="space-y-1 text-15px">
-              <p className="font-medium text-gray-600 flex items-center">
-                <Home className="h-4 w-4 mr-1 text-gray-500" /> {facilityCount}{" "}
-                Facilities
+        <div className="flex flex-col flex-1 w-full h-full justify-between gap-4">
+          {/* Top row: Metrics + Chart (Wraps on very small screens) */}
+          <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-4 w-full">
+            {/* Key Metrics */}
+            <div className="flex flex-col justify-center shrink-0 min-w-[140px]">
+              <p className="text-5xl font-extrabold text-gray-900 leading-none">
+                {totalRemaining}
               </p>
-              <p className="font-medium text-gray-600 flex items-center">
-                <Briefcase className="h-4 w-4 mr-1 text-gray-500" />{" "}
-                {itemCategories} Categories
+              <p className="text-[11px] md:text-xs text-gray-500 uppercase font-bold tracking-wider mt-2 mb-4">
+                Total Inventory
               </p>
-              <p className="font-medium text-red-600 flex items-center">
-                <AlertTriangle className="h-4 w-4 mr-1 text-red-600" />{" "}
-                {criticalCount} Critical
-              </p>
+
+              <div className="space-y-3 text-sm">
+                <p className="font-medium text-gray-600 flex items-center">
+                  <span className="w-6 flex shrink-0 justify-start">
+                    <Home className="h-4 w-4 text-gray-400" />
+                  </span>
+                  <span className="truncate">{facilityCount} Facilities</span>
+                </p>
+                <p className="font-medium text-gray-600 flex items-center">
+                  <span className="w-6 flex shrink-0 justify-start">
+                    <Briefcase className="h-4 w-4 text-gray-400" />
+                  </span>
+                  <span className="truncate">{itemCategories} Categories</span>
+                </p>
+                <p className="font-semibold text-red-600 flex items-center bg-red-50 py-1 px-2 rounded-lg -ml-2 w-max">
+                  <span className="w-6 flex shrink-0 justify-start">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                  </span>
+                  <span>{criticalCount} Critical Alerts</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Pie Chart */}
+            <div className="w-full sm:w-auto flex-1 flex justify-center items-center min-w-[140px] h-[160px] md:h-[180px] relative">
+              {facilities && facilities.length > 0 ? (
+                <FacilityPieChart data={facilities} />
+              ) : (
+                <p className="text-gray-400 text-sm">No facility data</p>
+              )}
             </div>
           </div>
 
-          <div className="w-full md:w-1/2 flex flex-col justify-center items-center">
-            {facilities && facilities.length > 0 ? (
-              <>
-                <FacilityPieChart data={facilities} />
-                {/* Legend removed */}
-              </>
-            ) : (
-              <p className="text-gray-400">No facility data</p>
-            )}
+          {/* Bottom: Custom Legend Container */}
+          <div className="w-full bg-slate-50/70 rounded-xl p-3 md:p-4 border border-slate-100 flex flex-col space-y-3 mt-auto">
+            {facilities && facilities.length > 0
+              ? facilities.map((fac, idx) => (
+                  <div key={idx} className="flex items-start gap-3 w-full">
+                    <div
+                      className="w-3.5 h-3.5 rounded shrink-0 mt-[2px] shadow-sm ring-1 ring-black/5"
+                      style={{
+                        backgroundColor: PIE_COLORS[idx % PIE_COLORS.length],
+                      }}
+                    ></div>
+                    <div className="flex-1 text-left min-w-0">
+                      <p
+                        className="text-[13px] md:text-sm text-gray-700 font-medium leading-tight m-0 p-0 line-clamp-2"
+                        title={fac.name}
+                      >
+                        {fac.name}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              : null}
           </div>
         </div>
       </div>
@@ -461,16 +389,16 @@ const AssetStatusCard = ({ assets }) => {
             </span>
           </div>
 
-          <p className="text-15px font-semibold mt-1 text-green-600 flex items-center">
-            <ChartColumnStacked className="h-4 w-4 mr-1 text-green-600" />{" "}
+          <p className="text-15px font-semibold mt-1 text-green-700 flex items-center">
+            <CheckCircle className="h-4 w-4 mr-1 text-green-700" /> {idle}{" "}
+            Available Assets
+          </p>
+          <p className="text-15px font-semibold text-slate-700 flex items-center">
+            <ChartColumnStacked className="h-4 w-4 mr-1 text-slate-500" />{" "}
             {inUse} Active Assets
           </p>
-          <p className="text-15px font-semibold text-gray-700 flex items-center">
-            <ShieldQuestionMark className="h-4 w-4 mr-1 text-gray-500" /> {idle}{" "}
-            Assets Unassigned
-          </p>
-          <p className="text-15px font-semibold text-gray-700 flex items-center">
-            <Wrench className="h-4 w-4 mr-1 text-gray-500" /> {repair} Vehicles
+          <p className="text-15px font-semibold text-slate-700 flex items-center">
+            <Wrench className="h-4 w-4 mr-1 text-slate-500" /> {repair} Vehicles
             Under Repair
           </p>
         </div>
@@ -559,22 +487,37 @@ const PendingRequestsCard = ({ requests }) => {
   );
 };
 
-const LiveMap = () => (
-  <div className="bg-white rounded-2xl shadow-md border p-5 flex flex-col h-full">
-    <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
-      <MapPin className="h-5 w-5 mr-2 text-green-800" /> Live Tracking Map
-    </h2>
-    <div className="flex-1 relative rounded-xl overflow-hidden">
-      <img src={evacMapImg} alt="Map" className="w-full h-full object-cover" />
-      <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-3 py-1 rounded-full shadow">
-        4 Active Vehicles
+const LiveMap = ({ shipments, assets }) => {
+  const totalAssets = assets?.length || 0;
+  const inUse = assets?.filter((a) => a.status === "In Use").length || 0;
+  const repair = assets?.filter((a) => a.status === "Repair").length || 0;
+  const idle = totalAssets - inUse - repair;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-md border p-5 flex flex-col h-full">
+      <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center justify-between">
+        <span className="flex items-center">
+          <MapPin className="h-5 w-5 mr-2 text-slate-700" /> Live Tracking Map
+        </span>
+        <span className="bg-green-100 text-green-800 border border-green-200 text-xs px-3 py-1 rounded-full shadow-sm font-bold">
+          {idle} Available Vehicles
+        </span>
+      </h2>
+      <div className="flex-1 relative rounded-xl overflow-hidden z-0 border border-gray-200 group">
+        <LiveTrackingMap allShipments={shipments} />
+        {/* Overlay Button */}
+        <div className="absolute inset-0 bg-slate-900/5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-[400] pointer-events-none">
+          <Link
+            to="/logistics/live-map"
+            className="bg-white text-slate-800 font-bold px-5 py-2.5 rounded-full shadow-lg pointer-events-auto flex items-center hover:bg-slate-50 transition-all hover:scale-105"
+          >
+            <Maximize2 className="h-4 w-4 mr-2" /> View Full Screen Map
+          </Link>
+        </div>
       </div>
-      <Truck className="h-6 w-6 text-green-800 absolute top-[50%] left-[30%]" />
-      <Truck className="h-6 w-6 text-red-800 absolute top-[20%] left-[60%]" />
-      <Truck className="h-6 w-6 text-green-800 absolute bottom-[10%] right-[40%]" />
     </div>
-  </div>
-);
+  );
+};
 
 const NotificationsList = () => {
   const navigate = useNavigate();
@@ -597,7 +540,7 @@ const ActiveDeliveriesList = ({ shipments }) => {
   return (
     <div className="bg-white rounded-2xl shadow-md border p-5">
       <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
-        <Truck className="h-5 w-5 mr-2 text-green-800" />
+        <Truck className="h-5 w-5 mr-2 text-slate-700" />
         Active Deliveries
       </h2>
       <div className="overflow-x-auto">
@@ -614,7 +557,7 @@ const ActiveDeliveriesList = ({ shipments }) => {
           <tbody className="divide-y">
             {shipments && shipments.length > 0 ? (
               shipments.map((s) => (
-                <tr key={s.id} className="hover:bg-green-50">
+                <tr key={s.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-3 py-2 text-center font-semibold">
                     {s.id}
                   </td>
@@ -625,7 +568,10 @@ const ActiveDeliveriesList = ({ shipments }) => {
                     </span>
                   </td>
                   <td className="px-3 py-2 text-center text-gray-600">
-                    {s.contents}
+                    {s.contents?.replace(
+                      /Qty:\s*(\d+(?:\.\d+)?)/g,
+                      (match, p1) => `Qty: ${parseInt(p1, 10)}`,
+                    )}
                   </td>
                   <td className="px-3 py-2 text-center">
                     <span
@@ -649,22 +595,24 @@ const ActiveDeliveriesList = ({ shipments }) => {
           </tbody>
         </table>
       </div>
+
       <div className="mt-3 text-right">
         <Link
           to="/logistics/supply-tracking"
-          className="text-sm text-green-600 font-semibold hover:text-green-700 flex items-center justify-end"
+          className="text-sm text-slate-600 font-semibold hover:text-slate-800 flex items-center justify-end transition-colors"
         >
-          View All Shipments <ArrowRight className="ml-1 h-4 w-4" />
+          View All Deliveries <ArrowRight className="ml-1 h-4 w-4" />
         </Link>
       </div>
     </div>
   );
 };
 
+// --- UPDATED: ResourceRequestsList (Mobile Responsive) ---
 const ResourceRequestsList = ({ requests }) => (
   <div className="col-span-12 bg-white rounded-2xl shadow-md border p-5">
     <h2 className="text-xl font-bold text-gray-800 mb-3 flex items-center">
-      <List className="h-5 w-5 mr-2 text-green-800" /> Pending Resource Requests
+      <List className="h-5 w-5 mr-2 text-slate-700" /> Pending Resource Requests
     </h2>
     <div className="overflow-x-auto">
       <table className="min-w-full text-sm">
@@ -680,10 +628,10 @@ const ResourceRequestsList = ({ requests }) => (
         <tbody className="divide-y">
           {requests && requests.length > 0 ? (
             requests.map((r) => (
-              <tr key={r.id} className="hover:bg-green-50">
+              <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-3 py-2 text-center">{r.id}</td>
                 <td className="px-3 py-2 text-center">{r.location}</td>
-                <td className="px-3 py-2 text-center font-bold text-green-600">
+                <td className="px-3 py-2 text-center font-bold text-slate-700">
                   {r.items}
                 </td>
                 <td className="px-3 py-2 text-center">
@@ -710,10 +658,11 @@ const ResourceRequestsList = ({ requests }) => (
         </tbody>
       </table>
     </div>
+
     <div className="mt-3 text-right">
       <Link
         to="/logistics/requested-allocation"
-        className="text-sm text-green-600 font-semibold hover:text-green-700 flex items-center justify-end"
+        className="text-sm text-slate-600 font-semibold hover:text-slate-800 flex items-center justify-end transition-colors"
       >
         View Full Allocation <ArrowRight className="ml-1 h-4 w-4" />
       </Link>
@@ -721,15 +670,15 @@ const ResourceRequestsList = ({ requests }) => (
   </div>
 );
 
-// --- Tab Navigation Component ---
-const TabNavigation = ({ activeTab, setActiveTab }) => {
+// --- Tab Navigation Component (Logistics-only, no national/admin toggle) ---
+const TabNavigation = ({ activeTab, setActiveTab, assignedHospitalName }) => {
   const tabs = [
     {
       id: "logistics",
-      label: "DOH Logistics Dashboard",
+      label: "Logistics Dashboard",
       icon: <Truck className="w-5 h-5" />,
       color: "bg-gradient-to-r from-green-600 to-emerald-700",
-      description: "National Resource Allocation & Tracking",
+      description: "Resource Allocation & Tracking",
     },
     {
       id: "hospital",
@@ -777,26 +726,16 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
         </div>
       </div>
 
-      {/* Role Indicator */}
+      {/* Assigned Hospital Indicator */}
       <div className="mt-4 flex items-center gap-4">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm font-semibold text-green-700">
-            {activeTab === "logistics"
-              ? "DOH Operations Active"
-              : "Hospital Management Active"}
+            Logistics Operations Active
           </span>
         </div>
-        <div
-          className={`px-3 py-1 rounded-full text-sm font-bold ${
-            activeTab === "logistics"
-              ? "bg-green-100 text-green-800 border border-green-300"
-              : "bg-blue-100 text-blue-800 border border-blue-300"
-          }`}
-        >
-          {activeTab === "logistics"
-            ? "National Logistics View"
-            : "Hospital Admin View"}
+        <div className="px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-300">
+          {assignedHospitalName || "Hospital View"}
         </div>
       </div>
     </div>
@@ -805,70 +744,136 @@ const TabNavigation = ({ activeTab, setActiveTab }) => {
 
 // --- MAIN APPLICATION COMPONENT ---
 const LogisDash = () => {
-  const [requests] = useState(MOCK_RESOURCE_REQUESTS);
+  const [requests, setRequests] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [facilities, setFacilities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [shipments] = useState(MOCK_SHIPMENTS);
-  const [assets] = useState(MOCK_ASSETS);
-  const [activeTab, setActiveTab] = useState("logistics"); // 'logistics' or 'hospital'
+  const [assets, setAssets] = useState([]);
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [activeTab, setActiveTab] = useState("logistics");
   const navigate = useNavigate();
+
+  // Prefetch forecast data in the background so ForecastDashboard renders instantly
+  useForecastPrefetch();
+
+  // Prefetch supply tracking data — only poll when logistics tab is active
+  const { shipments: liveShipments } = useSupplyTracking({
+    pollingInterval: 60000,
+    enabled: activeTab === "logistics",
+  });
+  // Fall back to demo data only when explicitly in demo mode AND no live data yet
+  const shipments =
+    liveShipments.length > 0 ? liveShipments : isDemoMode ? DEMO_SHIPMENTS : [];
+
+  // Get the authenticated user and their assigned hospital
+  const { user } = useAuth();
+  const assignedHospital = user?.hospitals?.[0] || null;
+  const assignedHospitalName = assignedHospital?.name || null;
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
+        let usingFallback = false;
 
-        // Fetch all resources
-        const resourcesResponse = await resourceService.getAll();
+        // Fire all three independent API calls in parallel
+        const [resourcesResult, requestsResult, assetsResult] =
+          await Promise.allSettled([
+            resourceService.getAll(),
+            api.get("/requests", {
+              params: { per_page: 10, status: "pending" },
+            }),
+            api.get("/assets", { params: { per_page: 20 } }),
+          ]);
 
-        console.log("Resources Response:", resourcesResponse); // Debug log
+        // ── 1. Resources / Inventory ──
+        if (resourcesResult.status === "fulfilled") {
+          const resourcesResponse = resourcesResult.value;
+          const inventoryData = resourcesResponse.map((item) => ({
+            resource: item.name,
+            category: item.category,
+            remaining: parseFloat(item.quantity || 0),
+            unit: item.unit,
+            status: item.status,
+            facility: item.location,
+          }));
 
-        // Transform the data to match the inventory format
-        const inventoryData = resourcesResponse.map((item) => ({
-          resource: item.name,
-          category: item.category,
-          remaining: parseFloat(item.quantity || 0), // quantity is already the remaining stock
-          unit: item.unit,
-          status: item.status,
-          facility: item.location,
-        }));
+          const facilityMap = {};
+          resourcesResponse.forEach((item) => {
+            const facilityName = item.location || "Unknown";
+            const remaining = parseFloat(item.quantity || 0);
+            if (!facilityMap[facilityName]) {
+              facilityMap[facilityName] = { name: facilityName, resources: 0 };
+            }
+            facilityMap[facilityName].resources += remaining;
+          });
+          const facilitiesData = Object.values(facilityMap).filter(
+            (f) => f.resources > 0,
+          );
+          setInventory(inventoryData);
+          setFacilities(facilitiesData);
+        } else {
+          console.warn(
+            "Resources API unavailable, using demo mode",
+            resourcesResult.reason,
+          );
+          usingFallback = true;
+        }
 
-        setInventory(inventoryData);
+        // ── 2. Requests ──
+        if (requestsResult.status === "fulfilled") {
+          const reqData =
+            requestsResult.value.data?.data || requestsResult.value.data || [];
+          setRequests(
+            reqData.map((r) => ({
+              id: `R-${r.id}`,
+              location: r.resource_name || r.hospital?.name || "Unknown",
+              urgency: r.urgency_level || "Medium",
+              time: r.created_at
+                ? formatDistanceToNow(new Date(r.created_at), {
+                    addSuffix: true,
+                  })
+                : "",
+              items: r.quantity || 1,
+            })),
+          );
+        } else {
+          console.warn(
+            "Requests API unavailable, using demo fallback",
+            requestsResult.reason,
+          );
+          setRequests(DEMO_RESOURCE_REQUESTS);
+          usingFallback = true;
+        }
 
-        // Group resources by actual hospital/facility name
-        const facilityMap = {};
+        // ── 3. Shipments: handled by useSupplyTracking hook above ──
 
-        resourcesResponse.forEach((item) => {
-          const facilityName = item.location || "Unknown";
-          const remaining = parseFloat(item.quantity || 0);
+        // ── 4. Assets ──
+        if (assetsResult.status === "fulfilled") {
+          const assetData =
+            assetsResult.value.data?.data || assetsResult.value.data || [];
+          setAssets(
+            assetData.map((a) => ({
+              name: a.name || a.code || "Unknown",
+              status: a.status || "Idle",
+            })),
+          );
+        } else {
+          console.warn(
+            "Assets API unavailable, using demo fallback",
+            assetsResult.reason,
+          );
+          setAssets(DEMO_ASSETS);
+          usingFallback = true;
+        }
 
-          if (!facilityMap[facilityName]) {
-            facilityMap[facilityName] = {
-              name: facilityName,
-              resources: 0,
-            };
-          }
-
-          facilityMap[facilityName].resources += remaining;
-        });
-
-        // Only include facilities that have resources
-        const facilitiesData = Object.values(facilityMap).filter(
-          (f) => f.resources > 0,
-        );
-        setFacilities(facilitiesData);
-
-        console.log("Inventory Data:", inventoryData); // Debug log
-        console.log("Facilities Data:", facilitiesData); // Debug log
+        setIsDemoMode(usingFallback);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
         setError(error.message);
-        // Fallback to mock data on error
-        setInventory(MOCK_INVENTORY_ITEMS);
-        setFacilities(MOCK_FACILITIES);
+        setIsDemoMode(true);
       } finally {
         setLoading(false);
       }
@@ -910,7 +915,7 @@ const LogisDash = () => {
             <div className="text-sm text-gray-500">{error}</div>
             <button
               onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="mt-4 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition"
             >
               Retry
             </button>
@@ -921,6 +926,16 @@ const LogisDash = () => {
 
     return (
       <>
+        {/* Demo Mode Banner */}
+        {isDemoMode && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-yellow-300 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <span>
+              <strong>Demo Mode:</strong> Some data shown is sample data because
+              one or more API endpoints are unavailable.
+            </span>
+          </div>
+        )}
         {/* ROW 1: Top Cards */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <div className="md:col-span-1 lg:col-span-1 h-full">
@@ -947,7 +962,7 @@ const LogisDash = () => {
         <section className="grid grid-cols-12 gap-6 mb-6">
           {/* Left Side: Live Map (8 columns) */}
           <div className="col-span-12 lg:col-span-8 h-[600px]">
-            <LiveMap />
+            <LiveMap shipments={shipments} assets={assets} />
           </div>
 
           <div className="col-span-12 lg:col-span-4 h-[600px]">
@@ -975,7 +990,11 @@ const LogisDash = () => {
   return (
     <div className="min-h-screen bg-gray-100 font-sans p-4 md:p-8">
       {/* Tab Navigation */}
-      <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
+      <TabNavigation
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        assignedHospitalName={assignedHospitalName}
+      />
 
       {/* Main Content */}
       {renderContent()}

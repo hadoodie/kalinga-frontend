@@ -1334,6 +1334,14 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     isAutoRecalculation = false,
     originOverride = null
   ) {
+    const latNum = parseFloat(destLat);
+    const lngNum = parseFloat(destLng);
+
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+      console.warn("Invalid coordinates passed to drawRoute:", destLat, destLng);
+      return;
+    }
+
     const originLocation = originOverride || userLocation;
 
     if (!originLocation || !map || isDrawingRoute) return;
@@ -1345,7 +1353,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       setIsRecalculatingRoute(true);
     }
 
-    setDestination({ lat: destLat, lng: destLng });
+    setDestination({ lat: latNum, lng: lngNum });
 
     // Set drawing state to prevent concurrent route requests
     setIsDrawingRoute(true);
@@ -1358,7 +1366,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       const L = await import("leaflet");
 
       const newDestMarker = L.default
-        .marker([destLat, destLng])
+        .marker([latNum, lngNum])
         .addTo(map)
         .bindPopup("Hospital Destination")
         .openPopup();
@@ -1377,7 +1385,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       const blockades = await blockadeResponse.json();
 
       // Enhanced OSRM query with step details for navigation
-      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${originLocation.lng},${originLocation.lat};${destLng},${destLat}`;
+      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${originLocation.lng},${originLocation.lat};${lngNum},${latNum}`;
       const params = enableNavigation
         ? "?overview=full&geometries=geojson&steps=true&annotations=true"
         : "?overview=full&geometries=geojson";
@@ -2062,8 +2070,10 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   };
 
   const centerMapOnLocation = (lat, lng) => {
-    if (map && lat && lng) {
-      map.flyTo([lat, lng], 17, {
+    const latNum = parseFloat(lat);
+    const lngNum = parseFloat(lng);
+    if (map && Number.isFinite(latNum) && Number.isFinite(lngNum)) {
+      map.flyTo([latNum, lngNum], 17, {
         animate: true,
         duration: 1.2,
       });
@@ -2751,7 +2761,10 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                     key={index}
                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
                     onClick={() =>
-                      drawRoute(blockade.latitude, blockade.longitude)
+                      drawRoute(
+                        blockade.latitude ?? blockade.start_lat,
+                        blockade.longitude ?? blockade.start_lng
+                      )
                     }
                   >
                     <div className="font-semibold text-red-600 text-sm">

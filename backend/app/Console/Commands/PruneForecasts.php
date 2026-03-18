@@ -10,14 +10,14 @@ use Illuminate\Support\Facades\Log;
 class PruneForecasts extends Command
 {
     protected $signature = 'forecasts:prune
-                            {--days=30 : Delete forecasts older than this many days}
+                            {--days= : Delete forecasts older than this many days (default: FORECAST_RETENTION_DAYS env)}
                             {--dry-run : Preview what would be deleted without actually deleting}';
 
     protected $description = 'Prune old forecast data to keep the database lean';
 
     public function handle(): int
     {
-        $days   = (int) $this->option('days');
+        $days   = (int) ($this->option('days') ?? env('FORECAST_RETENTION_DAYS', 30));
         $dryRun = $this->option('dry-run');
         $cutoff = now()->subDays($days);
 

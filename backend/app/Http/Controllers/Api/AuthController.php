@@ -92,8 +92,11 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        // Return the user object directly, not nested
-        return response()->json($request->user());
+        // Eager-load assigned hospitals so the frontend can display them
+        $user = $request->user();
+        $user->load('hospitals:id,name,code');
+
+        return response()->json($user);
     }
 
     /**

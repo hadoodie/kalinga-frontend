@@ -55,10 +55,11 @@ const forecastService = {
   /**
    * Fetch the forecast summary dashboard data.
    * Returns: { high_risk_items, demand_by_resource, risk_distribution, generated_at }
+   * @param {Object} params - { hospital_id }
    */
-  getSummary: async () => {
+  getSummary: async (params = {}) => {
     try {
-      const response = await api.get("/forecasts/summary");
+      const response = await api.get("/forecasts/summary", { params });
       return response.data;
     } catch (error) {
       console.error("Error fetching forecast summary:", error);
@@ -71,10 +72,16 @@ const forecastService = {
   /**
    * Fetch forecast detail for a specific hospital.
    * @param {number} hospitalId
+   * @param {Object} [options]
+   * @param {number} [options.horizon] - Forecast horizon in hours (24/48/72)
    */
-  getHospitalDetail: async (hospitalId) => {
+  getHospitalDetail: async (hospitalId, { horizon } = {}) => {
     try {
-      const response = await api.get(`/forecasts/hospital/${hospitalId}`);
+      const params = {};
+      if (horizon) params.horizon = horizon;
+      const response = await api.get(`/forecasts/hospital/${hospitalId}`, {
+        params,
+      });
       return response.data;
     } catch (error) {
       console.error(
@@ -121,10 +128,11 @@ const forecastService = {
 
   /**
    * Fetch AI-generated executive summary.
+   * @param {Object} params - { hospital_id }
    */
-  getNarrative: async () => {
+  getNarrative: async (params = {}) => {
     try {
-      const response = await api.get("/forecasts/narrative");
+      const response = await api.get("/forecasts/narrative", { params });
       return response.data;
     } catch (error) {
       console.error("Error fetching forecast narrative:", error);
@@ -144,6 +152,70 @@ const forecastService = {
       return response.data;
     } catch (error) {
       console.error("Error fetching auto-reorders:", error);
+      throw error;
+    }
+  },
+
+  // ── Pipeline Health ──────────────────────────────────────
+
+  /**
+   * Fetch pipeline health status.
+   * Returns: { status, last_run, demand_rows, risk_rows, model_version, stale, checked_at }
+   */
+  getHealth: async () => {
+    try {
+      const response = await api.get("/forecasts/health");
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching forecast health:", error);
+      throw error;
+    }
+  },
+
+  // ── Forecast Accuracy ────────────────────────────────────
+
+  /**
+   * Fetch accuracy metrics (MAPE/MAE per resource).
+   * @param {Object} params - { days }
+   */
+  getAccuracy: async (params = {}) => {
+    try {
+      const response = await api.get("/forecasts/accuracy", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching forecast accuracy:", error);
+      throw error;
+    }
+  },
+
+  // ── Pipeline History ─────────────────────────────────────
+
+  /**
+   * Fetch past pipeline run history.
+   * @param {Object} params - { limit }
+   */
+  getHistory: async (params = {}) => {
+    try {
+      const response = await api.get("/forecasts/history", { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching forecast history:", error);
+      throw error;
+    }
+  },
+
+  // ── Manual Trigger ───────────────────────────────────────
+
+  /**
+   * Manually trigger a forecast pipeline run.
+   * @param {Object} params - { mode, horizon }
+   */
+  triggerRun: async (params = {}) => {
+    try {
+      const response = await api.post("/forecasts/trigger", params);
+      return response.data;
+    } catch (error) {
+      console.error("Error triggering forecast run:", error);
       throw error;
     }
   },

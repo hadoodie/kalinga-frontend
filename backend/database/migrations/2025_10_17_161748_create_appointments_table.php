@@ -45,6 +45,26 @@ return new class extends Migration
             if (!Schema::hasColumn('appointments', 'patient_name')) {
                 $table->string('patient_name')->nullable()->after('user_id');
             }
+
+            // Fallback column checks for legacy environments
+            if (!Schema::hasColumn('appointments', 'appointment_at')) {
+                $table->timestamp('appointment_at')->nullable();
+            }
+            if (!Schema::hasColumn('appointments', 'location')) {
+                $table->string('location')->nullable();
+            }
+            if (!Schema::hasColumn('appointments', 'contact_phone')) {
+                $table->string('contact_phone')->nullable();
+            }
+            if (!Schema::hasColumn('appointments', 'contact_email')) {
+                $table->string('contact_email')->nullable();
+            }
+            if (!Schema::hasColumn('appointments', 'instructions')) {
+                $table->text('instructions')->nullable();
+            }
+            if (!Schema::hasColumn('appointments', 'status')) {
+                $table->string('status')->nullable();
+            }
         });
     }
 
@@ -58,9 +78,31 @@ return new class extends Migration
         }
 
         Schema::table('appointments', function (Blueprint $table) {
-            if (Schema::hasColumn('appointments', 'patient_name')) {
-                $table->dropColumn('patient_name');
+            $columnsToDrop = [
+                'patient_name',
+                'appointment_at',
+                'location',
+                'contact_phone',
+                'contact_email',
+                'instructions'
+            ];
+
+            foreach ($columnsToDrop as $column) {
+                if (Schema::hasColumn('appointments', $column)) {
+                    $table->dropColumn($column);
+                }
             }
+
+            if (!Schema::hasColumn('appointments', 'appointment_date')) {
+                $table->timestamp('appointment_date')->nullable();
+            }
+
+            if (Schema::hasColumn('appointments', 'status')) {
+                $table->string('status')->default('scheduled')->change();
+            } else {
+                $table->string('status')->default('scheduled');
+            }
+
             if (Schema::hasColumn('appointments', 'hospital')) {
                 $table->renameColumn('hospital', 'provider_name');
             }

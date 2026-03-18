@@ -16,19 +16,36 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class AllocationController extends Controller
 {
 
-public function index()
+public function index(Request $request)
 {
-    return Allocation::with([
+    $query = Allocation::with([
         'request.hospital',
+        'request.resource',
         'sourceHospital',
         'destinationHospital'
-    ])
-    ->orderBy('created_at', 'desc')
-    ->get();
+    ]);
+
+    // Filter by source hospital (for release requests tab)
+    if ($request->filled('source_hospital_id')) {
+        $query->where('source_hospital_id', $request->source_hospital_id);
+    }
+
+    // Filter by destination hospital
+    if ($request->filled('destination_hospital_id')) {
+        $query->where('destination_hospital_id', $request->destination_hospital_id);
+    }
+
+    // Filter by status
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    return $query->orderBy('created_at', 'desc')->get();
 }
 
 
@@ -625,6 +642,77 @@ public function showWithDetails($id)
     ])->findOrFail($id);
     
     return response()->json($allocation);
+}
+
+/**
+ * Get all active shipments for the Supply Tracking page.
+ * Adapted from the original AllocationRequest-based implementation
+ * to work with the current Allocation + Request architecture.
+ */
+public function getSupplyTracking()
+{
+    $activeStatuses = ['planned', 'confirmed', 'logistics_assigned', 'in_transit', 'delivered'];
+
+    $allocations = Allocation::with(['request.resource', 'sourceHospital', 'destinationHospital'])
+        ->whereIn('status', $activeStatuses)
+        ->orderBy('dispatched_at', 'asc')
+        ->orderBy('updated_at', 'desc')
+        ->get();
+
+    $formattedShipments = $allocations->map(function ($alloc) {
+        $now = Carbon::now();
+
+        // Map internal statuses to front-end display statuses
+        $statusMap = [
+            'planned'             => 'Approved',
+            'confirmed'           => 'Packed',
+            'logistics_assigned'  => 'Shipped',
+            'in_transit'          => 'On-the-Way',
+            'delivered'           => 'Delivered',
+        ];
+        $displayStatus = $statusMap[$alloc->status] ?? ucfirst($alloc->status);
+
+        // Compute ETA: use dispatched_at + 4 hours as rough ETA if no explicit field
+        $eta = $alloc->dispatched_at
+            ? Carbon::parse($alloc->dispatched_at)->addHours(4)->toIso8601String()
+            : ($alloc->assigned_at
+                ? Carbon::parse($alloc->assigned_at)->addHours(6)->toIso8601String()
+                : null);
+
+        // Mark as Delayed if ETA is past and not yet delivered
+        if ($eta && Carbon::parse($eta)->isPast() && $alloc->status !== 'delivered') {
+            $displayStatus = 'Delayed';
+        }
+
+        $source      = optional($alloc->sourceHospital)->name ?? 'Logistics HQ';
+        $destination = optional($alloc->destinationHospital)->name ?? 'Logistics HQ';
+
+        $resourceName = optional(optional($alloc->request)->resource)->name
+            ?? optional($alloc->request)->resource_name
+            ?? $alloc->resource_type
+            ?? 'Supplies';
+        $quantity = $alloc->quantity ?? optional($alloc->request)->quantity ?? 0;
+
+        // Map urgency from the request
+        $urgency = optional($alloc->request)->urgency_level ?? 'Normal';
+
+        return [
+            'id'        => 'S-' . $alloc->id,
+            'route'     => $source . ' → ' . $destination,
+            'eta'       => $eta,
+            'status'    => $displayStatus,
+            'contents'  => $resourceName . ' (Qty: ' . $quantity . ')',
+            'lastPing'  => Carbon::parse($alloc->updated_at)->diffForHumans(),
+            'priority'  => $urgency,
+            // Return GPS from meta JSON so LiveTrackingMap can place truck markers
+            'location'  => [
+                $alloc->meta['current_location_lat'] ?? null,
+                $alloc->meta['current_location_lng'] ?? null,
+            ],
+        ];
+    });
+
+    return response()->json($formattedShipments);
 }
 
 }
