@@ -7,6 +7,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { RealtimeProvider } from "./context/RealtimeContext";
 import { IncidentProvider } from "./context/IncidentContext";
 import { TriageProvider } from "./context/TriageProvider";
+import { ResponderDevMenuProvider } from "./context/ResponderDevMenuContext";
 import { Toaster } from "./components/ui/toaster";
 
 // Route Modules
@@ -36,10 +37,11 @@ function App() {
           <RealtimeProvider>
             <IncidentProvider>
               <TriageProvider>
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    {/* Public Routes */}
-                    {PublicRoutes()}
+                <ResponderDevMenuProvider>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      {/* Public Routes */}
+                      {PublicRoutes()}
 
                     {/* Account Creation Flow */}
                     {AccountRoutes()}
@@ -73,7 +75,8 @@ function App() {
                       }
                     />
                   </Routes>
-                </Suspense>
+                  </Suspense>
+                </ResponderDevMenuProvider>
               </TriageProvider>
             </IncidentProvider>
           </RealtimeProvider>
