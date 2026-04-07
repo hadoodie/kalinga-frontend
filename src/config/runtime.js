@@ -43,7 +43,7 @@ export const resolveApiBaseUrl = () => {
   const sanitizedEnv = normalizeUrl(envValue);
   const envHost = sanitizedEnv ? new URL(sanitizedEnv).hostname : null;
   const envPointsToFrontend = envHost?.includes(
-    "kalinga-frontend.onrender.com"
+    "kalinga-frontend.onrender.com",
   );
   const envIsLocal = envHost ? isLocalHost(envHost) : false;
 
@@ -58,7 +58,7 @@ export const resolveApiBaseUrl = () => {
     return `https://${RENDER_BACKEND_HOST}`;
   }
 
-  // Use the local backend by default for local development, 
+  // Use the local backend by default for local development,
   // not the frontend's origin, which causes 404s when the frontend is served on a different port.
   return LOCAL_FALLBACK_API;
 };
@@ -70,7 +70,7 @@ export const resolveRealtimeSettings = () => {
   const envHostRaw = import.meta.env.VITE_REVERB_HOST?.trim();
   const sanitizedEnvHost = stripProtocol(envHostRaw);
   const envIsFrontend = sanitizedEnvHost?.includes(
-    "kalinga-frontend.onrender.com"
+    "kalinga-frontend.onrender.com",
   );
   const envIsLocal = sanitizedEnvHost ? isLocalHost(sanitizedEnvHost) : false;
 
