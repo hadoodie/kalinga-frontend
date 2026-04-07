@@ -31,6 +31,10 @@ const hospitalService = {
     const res = await api.delete(`/hospitals/${id}`);
     return res.data;
   },
+
+  preload: () => {
+    hospitalService.getAll().catch(() => {});
+  },
 };
 
 export default hospitalService;
