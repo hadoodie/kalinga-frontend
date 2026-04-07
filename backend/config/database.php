@@ -95,44 +95,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-        ],
-
-        // Cloud Database Connection (Supabase)
-        'pgsql_cloud' => [
-            'driver' => 'pgsql',
-            'host' => env('CLOUD_DB_HOST', 'aws-1-ap-southeast-1.pooler.supabase.com'),
-            'port' => env('CLOUD_DB_PORT', '5432'),
-            'database' => env('CLOUD_DB_DATABASE', 'postgres'),
-            'username' => env('CLOUD_DB_USERNAME', 'postgres.psblyvwfbgmwyrtzoyhz'),
-            'password' => env('CLOUD_DB_PASSWORD', 'KalingaDB2526'),
-            'charset' => 'utf8',
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => env('CLOUD_DB_SSLMODE', 'require'),
             'options' => [
-                // Supabase's connection pooler (PgBouncer in transaction mode) does not support
-                // server-side prepared statements. Setting ATTR_EMULATE_PREPARES=true forces PDO
-                // to emulate prepared statements client-side, which is required when routing
-                // through the pooler. Disable this (set CLOUD_DB_EMULATE_PREPARES=false) if
-                // connecting directly to Postgres without a pooler, to restore native prepare semantics.
-                PDO::ATTR_EMULATE_PREPARES => env('CLOUD_DB_EMULATE_PREPARES', true),
+                PDO::ATTR_EMULATE_PREPARES => env('DB_EMULATE_PREPARES', true),
             ],
-        ],
-
-        // Local Database Connection (Backup)
-        'pgsql_local' => [
-            'driver' => 'pgsql',
-            'host' => env('LOCAL_DB_HOST', '127.0.0.1'),
-            'port' => env('LOCAL_DB_PORT', '5432'),
-            'database' => env('LOCAL_DB_DATABASE', 'pangdemo4_db'),
-            'username' => env('LOCAL_DB_USERNAME', 'postgres'),
-            'password' => env('LOCAL_DB_PASSWORD', 'kalingatatagdb'),
-            'charset' => 'utf8',
-            'prefix' => '',
-            'prefix_indexes' => true,
-            'search_path' => 'public',
-            'sslmode' => 'prefer',
         ],
 
         'sqlsrv' => [
