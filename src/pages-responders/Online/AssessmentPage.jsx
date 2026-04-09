@@ -17,10 +17,21 @@ const formatTime = (seconds) => {
 export default function AssessmentPage() {
   const { id, type } = useParams();
   const navigate = useNavigate();
-  const course = courseContent[id];
-  const normalizedType = type?.replace(/-/g, "").toLowerCase(); // allow "pre-test" or "pretest"
-  const questions =
-    (course && course.assessments && course.assessments[normalizedType]) || [];
+  const { user } = useAuth();
+  // URL type can be "pre-test", "quiz", "final-assessment"; course.assessments uses "pretest", "quiz", "final"
+  const rawType = type?.replace(/-/g, "").toLowerCase();
+  const normalizedType =
+    rawType === "finalassessment" ? "final" : (rawType || "");
+
+  const [course, setCourse] = useState(null);
+  const [progress, setProgress] = useState(undefined); // undefined = not yet loaded; null = no progress doc
+  const [progressError, setProgressError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [fromFirestore, setFromFirestore] = useState(false);
+
+  const questions = course && course.assessments && course.assessments[normalizedType]
+    ? course.assessments[normalizedType]
+    : [];
 
   // default duration: 10 minutes (600s) for final, 5 min for quiz, 3 min for pretest -- adjust as desired
   const defaultDurations = { pretest: 180, quiz: 300, final: 600 };
@@ -31,6 +42,86 @@ export default function AssessmentPage() {
   const [answers, setAnswers] = useState(Array(questions.length).fill(null));
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(null);
+  const [savingResult, setSavingResult] = useState(false);
+  const [certificateEarned, setCertificateEarned] = useState(false);
+  const [videoFile, setVideoFile] = useState(null);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoSubmitted, setVideoSubmitted] = useState(false);
+  const [evalFormValues, setEvalFormValues] = useState({});
+  const [evalFormSubmitted, setEvalFormSubmitted] = useState(false);
+
+  const toFriendlyFirebaseError = (err, action) => {
+    const code = err?.code ? String(err.code) : "unknown";
+    if (code.includes("permission-denied")) {
+      return `Unable to ${action} due to Firestore permissions (permission-denied).`;
+    }
+    return `Unable to ${action}. ${err?.message || "Please try again."}`;
+  };
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    getCourse(id)
+      .then((firestoreCourse) => {
+        if (cancelled) return;
+        if (firestoreCourse) {
+          setCourse(firestoreCourse);
+          setFromFirestore(true);
+        } else {
+          setCourse(courseContent[id] || null);
+          setFromFirestore(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setCourse(courseContent[id] || null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [id, normalizedType]);
+
+  useEffect(() => {
+    if (!user?.id || !id || !fromFirestore) return;
+    let cancelled = false;
+    setProgressError("");
+    getProgress(user.id, id)
+      .then((p) => { if (!cancelled) setProgress(p); })
+      .catch((e) => {
+        if (!cancelled) {
+          setProgress(null);
+          setProgressError(toFriendlyFirebaseError(e, "load training progress"));
+        }
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, id, fromFirestore]);
+
+  const isVideoSubmission = course?.assessmentType === "Practical Test" || course?.assessmentType === "Simulation";
+  const isEvalForm = course?.assessmentType === "Evaluation Form";
+
+  // Enforce order: quiz only after pretest; final only after quiz passed (70%). Skip for submission-only types.
+  useEffect(() => {
+    if (!course || !fromFirestore || loading) return;
+    if (normalizedType === "final" && (isVideoSubmission || isEvalForm)) return;
+    if (!questions.length) return;
+    if (normalizedType === "quiz" && course.assessments?.pretest?.length > 0) {
+      if (progress === undefined) return;
+      if (!progress?.assessmentResults?.pretest) {
+        navigate(`/responder/modules/${id}`, { replace: true });
+        return;
+      }
+    }
+    if (normalizedType === "final" && course.assessments?.quiz?.length > 0) {
+      if (progress === undefined) return;
+      if (!progress?.assessmentResults?.quiz?.passed) {
+        navigate(`/responder/modules/${id}`, { replace: true });
+        return;
+      }
+    }
+  }, [course, fromFirestore, loading, normalizedType, progress, id, navigate, questions.length, isVideoSubmission, isEvalForm]);
 
   useEffect(() => {
     // if no questions -> nothing to do
@@ -84,7 +175,107 @@ export default function AssessmentPage() {
         : 0,
     });
     setSubmitted(true);
+
+    if (fromFirestore && user?.id && id) {
+      setSavingResult(true);
+      try {
+        await saveAssessmentResult(user.id, id, normalizedType, { percent, passed }, course);
+        setProgress((prev) => {
+          const base = prev || { assessmentResults: {} };
+          return {
+            ...base,
+            assessmentResults: {
+              ...(base.assessmentResults || {}),
+              [normalizedType]: { percent, passed },
+            },
+          };
+        });
+        setProgressError("");
+
+        // Auto-advance only after the write succeeds, preserving the enforced flow.
+        if (normalizedType === "pretest" && course?.assessments?.quiz?.length > 0) {
+          navigate(`/responder/modules/${id}/assessment/quiz`, { replace: true });
+          return;
+        }
+        if (normalizedType === "quiz" && passed && course?.assessments?.final?.length > 0) {
+          navigate(`/responder/modules/${id}/assessment/final-assessment`, { replace: true });
+          return;
+        }
+      } catch (e) {
+        const msg = toFriendlyFirebaseError(e, "save assessment result");
+        setProgressError(msg);
+        console.warn("Failed to save assessment result", e);
+      } finally {
+        setSavingResult(false);
+      }
+    }
   };
+
+  const handleVideoSubmit = async () => {
+    if (!videoFile || !user?.id || !id || !fromFirestore) return;
+    setUploadingVideo(true);
+    setSavingResult(true);
+    try {
+      const { downloadURL, storagePath } = await uploadSubmissionVideo(user.id, id, videoFile);
+      await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false }, course, {
+        videoSubmission: { downloadURL, storagePath },
+      });
+      setVideoSubmitted(true);
+    } catch (e) {
+      console.warn("Failed to upload video", e);
+    } finally {
+      setUploadingVideo(false);
+      setSavingResult(false);
+    }
+  };
+
+  const handleEvalFormSubmit = async () => {
+    if (!user?.id || !id || !fromFirestore) return;
+    setSavingResult(true);
+    try {
+      await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false }, course, {
+        evalFormSubmission: evalFormValues,
+      });
+      setEvalFormSubmitted(true);
+    } catch (e) {
+      console.warn("Failed to save evaluation form", e);
+    } finally {
+      setSavingResult(false);
+    }
+  };
+
+  // When final assessment is passed, recheck certification (awards cert if all assessments passed)
+  useEffect(() => {
+    if (
+      submitted &&
+      score?.passed &&
+      normalizedType === "final" &&
+      fromFirestore &&
+      user?.id &&
+      id
+    ) {
+      recheckCertification(user.id, id).then((ok) => {
+        if (ok) setCertificateEarned(true);
+      });
+    }
+  }, [submitted, score?.passed, normalizedType, fromFirestore, user?.id, id]);
+
+  const waitingForProgress =
+    fromFirestore &&
+    progress === undefined &&
+    (normalizedType === "quiz" || (normalizedType === "final" && questions.length > 0 && !isVideoSubmission && !isEvalForm));
+
+  if (loading || waitingForProgress) {
+    return (
+      <Layout>
+        <div className="assessment-wrapper">
+          <p>Loading...</p>
+          {progressError && <p className="text-sm text-red-600 mt-2">{progressError}</p>}
+        </div>
+        <Footer />
+      </Layout>
+    );
+  }
 
   if (!course) {
     return (
@@ -137,6 +328,11 @@ export default function AssessmentPage() {
 
         {!submitted ? (
           <div>
+            {progressError && (
+              <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+                {progressError}
+              </div>
+            )}
             <div className="question-card">
               <div className="question-meta">
                 <strong>
@@ -204,6 +400,25 @@ export default function AssessmentPage() {
             <p>
               Score: {score.correct} / {score.total} ({score.percent}%)
             </p>
+            {fromFirestore && (
+              <p className={score.passed ? "text-green-600 font-medium" : "text-amber-600"}>
+                {score.passed ? "Passed" : "Not passed"} (required: {passingScore}%)
+              </p>
+            )}
+            {savingResult && <p className="text-sm text-foreground/60">Saving result...</p>}
+            {progressError && <p className="text-sm text-red-600 mt-2">{progressError}</p>}
+            {normalizedType === "final" && score.passed && fromFirestore && course.certificationEnabled && (
+              <div className="rounded-lg border border-green-200 bg-green-50 p-3 mt-2 mb-2 text-green-800 text-sm">
+                <strong>Certificate earned.</strong> You’ve passed all required assessments.{" "}
+                <button
+                  type="button"
+                  className="underline font-medium hover:no-underline"
+                  onClick={() => navigate("/responder/certifications")}
+                >
+                  View and download your certificate
+                </button>
+              </div>
+            )}
             <div className="result-actions">
               <button className="btn" onClick={() => navigate(-1)}>
                 Back to Course

@@ -11,14 +11,70 @@ import {
 } from "react-icons/fa";
 import "../../styles/courseDetails.css";
 
-// ----------------------
-// 🔹 Helper Functions
-// ----------------------
-const getProgress = () =>
-  JSON.parse(localStorage.getItem("courseProgress")) || {
-    generalInfo: [],
-    helpfulMaterials: [],
-    trainingMaterials: [],
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+export default function CourseDetails() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [course, setCourse] = useState(null);
+  const [progress, setProgress] = useState(null);
+  const [progressError, setProgressError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const toFriendlyFirebaseError = (err) => {
+    const code = err?.code ? String(err.code) : "unknown";
+    if (code.includes("permission-denied")) {
+      return "Training progression is unavailable due to Firestore permissions (permission-denied).";
+    }
+    return err?.message || "Unable to load training progression.";
+  };
+
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+    let cancelled = false;
+    getCourse(id)
+      .then((data) => {
+        if (!cancelled) setCourse(data);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message || "Failed to load course");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [id]);
+
+  useEffect(() => {
+    if (!user?.id || !id) return;
+    let cancelled = false;
+    setProgressError("");
+    getProgress(user.id, id)
+      .then((p) => { if (!cancelled) setProgress(p); })
+      .catch((e) => {
+        if (!cancelled) {
+          setProgress(null);
+          setProgressError(toFriendlyFirebaseError(e));
+        }
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, id]);
+
+  const getIcon = (heading) => {
+    if (heading?.includes("General")) return <FaInfoCircle className="text-green-700 text-2xl" />;
+    if (heading?.includes("Helpful")) return <FaBook className="text-green-700 text-2xl" />;
+    if (heading?.includes("Training")) return <FaPlayCircle className="text-green-700 text-2xl" />;
+    return <FaClipboardList className="text-green-700 text-2xl" />;
   };
 
 const markLessonComplete = (section, lessonId, setProgress) => {
@@ -270,6 +326,95 @@ const CourseDetails = () => {
           <span className="text-green-700 font-semibold"> {course.title} </span>
         </div>
 
+        {course.description && (
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{course.description}</p>
+        )}
+
+        {progressError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {progressError}
+          </div>
+        )}
+
+        {course.certificationEnabled && (course.assessments || course.assessmentType === "Practical Test" || course.assessmentType === "Simulation" || course.assessmentType === "Evaluation Form") && (
+          <div className="mb-6 rounded-xl border border-green-700 bg-green-50/50 p-4">
+            <h3 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+              <FaClipboardCheck /> Assessments (required for certification)
+            </h3>
+            {(course.assessmentType === "Practical Test" || course.assessmentType === "Simulation") && (
+              <>
+                <p className="text-sm text-gray-600 mb-3">
+                  Upload a video of your {course.assessmentType === "Simulation" ? "simulation" : "practical task"}. An admin will review and mark your result.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/responder/modules/${id}/assessment/final-assessment`)}
+                    className="px-3 py-2 rounded-lg bg-green-700 text-white text-sm font-medium hover:bg-green-800"
+                  >
+                    {progress?.videoSubmission ? "View submission" : "Submit video"}
+                  </button>
+                </div>
+              </>
+            )}
+            {course.assessmentType === "Evaluation Form" && (
+              <>
+                <p className="text-sm text-gray-600 mb-3">
+                  Complete the evaluation form. An admin will review your responses.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/responder/modules/${id}/assessment/final-assessment`)}
+                    className="px-3 py-2 rounded-lg bg-green-700 text-white text-sm font-medium hover:bg-green-800"
+                  >
+                    {progress?.evalFormSubmission && Object.keys(progress.evalFormSubmission).length > 0 ? "View submission" : "Complete evaluation form"}
+                  </button>
+                </div>
+              </>
+            )}
+            {course.assessmentType !== "Practical Test" && course.assessmentType !== "Simulation" && course.assessmentType !== "Evaluation Form" && course.assessments && (
+              <>
+                <p className="text-sm text-gray-600 mb-3">
+                  Take Pre-test first, then Quiz (pass 70% to unlock Final), then Final (pass 70% and complete all content to earn the certificate).
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {course.assessments.pretest?.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/responder/modules/${id}/assessment/pre-test`)}
+                      className="px-3 py-2 rounded-lg bg-green-700 text-white text-sm font-medium hover:bg-green-800"
+                    >
+                      Pre-Test
+                    </button>
+                  )}
+                  {course.assessments.quiz?.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/responder/modules/${id}/assessment/quiz`)}
+                      disabled={!progress?.assessmentResults?.pretest}
+                      title={!progress?.assessmentResults?.pretest ? "Complete Pre-test first" : ""}
+                      className="px-3 py-2 rounded-lg bg-green-700 text-white text-sm font-medium hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Quiz {!progress?.assessmentResults?.pretest ? "(complete Pre-test first)" : ""}
+                    </button>
+                  )}
+                  {course.assessments.final?.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/responder/modules/${id}/assessment/final-assessment`)}
+                      disabled={!(progress?.assessmentResults?.quiz?.passed)}
+                      title={!(progress?.assessmentResults?.quiz?.passed) ? "Pass Quiz (70%) to unlock Final" : ""}
+                      className="px-3 py-2 rounded-lg bg-green-700 text-white text-sm font-medium hover:bg-green-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Final Assessment {!(progress?.assessmentResults?.quiz?.passed) ? "(pass Quiz first)" : ""}
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="space-y-6">
           {course.sections.map((section, idx) => {
