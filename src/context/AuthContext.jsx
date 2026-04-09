@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 import authService from "../services/authService";
 
 
-import { getCsrfCookie } from "../services/api";
 import nodeApi from "../services/nodeApi";
 
 import { cleanupAuthStorage } from "../utils/storage";
