@@ -18,7 +18,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'admin',
                 'phone' => '09171234567',
-                'is_active' => true,
+                'is_active' => 'true', // Passing string 'true' prevents integer casting mismatch in Supabase PgBouncer pooler
                 'verification_status' => 'verified',
             ]
         );
@@ -31,7 +31,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'logistics',
                 'phone' => '09171234568',
-                'is_active' => true,
+                'is_active' => 'true',
                 'verification_status' => null,
             ]
         );
@@ -44,7 +44,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'logistics',
                     'phone' => '09171234568',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -59,7 +59,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'hospital_admin',
                     'phone' => '09171234567',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -82,7 +82,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'responder',
                 'phone' => '09171234569',
-                'is_active' => true,
+                'is_active' => 'true',
                 'verification_status' => null,
             ]
         );
@@ -94,7 +94,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'responder',
                 'phone' => '09171234569',
-                'is_active' => true,
+                'is_active' => 'true',
                 'verification_status' => 'verified',
             ]
         );
@@ -107,7 +107,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'responder',
                 'phone' => '09271112233',
-                'is_active' => true,
+                'is_active' => 'true',
                 'verification_status' => 'verified',
             ]
         );
@@ -119,7 +119,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'responder',
                 'phone' => '09282223344',
-                'is_active' => true,
+                'is_active' => 'true',
                 'verification_status' => 'verified',
             ]
         );
@@ -131,7 +131,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'responder',
                 'phone' => '09293334455',
-                'is_active' => true,
+                'is_active' => 'true',
                 'verification_status' => 'verified',
             ]
         );
@@ -145,7 +145,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'patient',
                 'phone' => '09171234570',
-                'is_active' => true,
+                'is_active' => 'true',
                 'verification_status' => null,
             ]
         );
@@ -157,7 +157,7 @@ class UserSeeder extends Seeder
                 'password' => Hash::make('password123'),
                 'role' => 'patient',
                 'phone' => '09171234571',
-                'is_active' => true,
+                'is_active' => 'true',
                 'verification_status' => 'verified',
                 'patientId' => 'HN-0012345',
                 'dob' => '1985-10-15',
@@ -178,7 +178,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09190000001',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                     'patientId' => 'P-1001',
                     'dob' => '1990-03-21',
@@ -193,7 +193,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'logistics',
                     'phone' => '09191000001',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -207,7 +207,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09190000002',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                     'patientId' => 'P-1002',
                     'dob' => '1988-07-12',
@@ -222,7 +222,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'logistics',
                     'phone' => '09191000002',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -236,7 +236,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09190000003',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                     'patientId' => 'P-1003',
                     'dob' => '1995-01-30',
@@ -251,7 +251,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'responder',
                     'phone' => '09191000003',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -263,7 +263,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09190000004',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                     'patientId' => 'P-1004',
                     'dob' => '1982-11-05',
@@ -278,7 +278,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'logistics',
                     'phone' => '09191000004',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -292,7 +292,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09191000005',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -304,7 +304,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'logistics',
                     'phone' => '09191000005',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -318,7 +318,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09190000006',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                     'patientId' => 'P-1006',
                     'dob' => '1992-05-18',
@@ -333,7 +333,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'responder',
                     'phone' => '09191000006',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -345,7 +345,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09190000007',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                     'patientId' => 'P-1007',
                     'dob' => '1987-02-02',
@@ -360,7 +360,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'logistics',
                     'phone' => '09191000007',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -374,7 +374,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09190000008',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                     'patientId' => 'P-1008',
                     'dob' => '1998-12-09',
@@ -389,7 +389,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'responder',
                     'phone' => '09191000008',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
@@ -401,7 +401,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'patient',
                     'phone' => '09190000009',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                     'patientId' => 'P-1009',
                     'dob' => '2000-08-25',
@@ -416,7 +416,7 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password123'),
                     'role' => 'responder',
                     'phone' => '09191000009',
-                    'is_active' => true,
+                    'is_active' => 'true',
                     'verification_status' => 'verified',
                 ]
             );
