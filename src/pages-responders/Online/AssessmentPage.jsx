@@ -26,6 +26,7 @@ export default function AssessmentPage() {
 
   const [course, setCourse] = useState(null);
   const [progress, setProgress] = useState(undefined); // undefined = not yet loaded; null = no progress doc
+  const [progressError, setProgressError] = useState("");
   const [loading, setLoading] = useState(true);
   const [fromFirestore, setFromFirestore] = useState(false);
 
@@ -48,6 +49,14 @@ export default function AssessmentPage() {
   const [videoSubmitted, setVideoSubmitted] = useState(false);
   const [evalFormValues, setEvalFormValues] = useState({});
   const [evalFormSubmitted, setEvalFormSubmitted] = useState(false);
+
+  const toFriendlyFirebaseError = (err, action) => {
+    const code = err?.code ? String(err.code) : "unknown";
+    if (code.includes("permission-denied")) {
+      return `Unable to ${action} due to Firestore permissions (permission-denied).`;
+    }
+    return `Unable to ${action}. ${err?.message || "Please try again."}`;
+  };
 
   useEffect(() => {
     if (!id) {
@@ -78,9 +87,15 @@ export default function AssessmentPage() {
   useEffect(() => {
     if (!user?.id || !id || !fromFirestore) return;
     let cancelled = false;
+    setProgressError("");
     getProgress(user.id, id)
       .then((p) => { if (!cancelled) setProgress(p); })
-      .catch(() => {});
+      .catch((e) => {
+        if (!cancelled) {
+          setProgress(null);
+          setProgressError(toFriendlyFirebaseError(e, "load training progress"));
+        }
+      });
     return () => { cancelled = true; };
   }, [user?.id, id, fromFirestore]);
 
@@ -166,7 +181,30 @@ export default function AssessmentPage() {
       setSavingResult(true);
       try {
         await saveAssessmentResult(user.id, id, normalizedType, { percent, passed }, course);
+        setProgress((prev) => {
+          const base = prev || { assessmentResults: {} };
+          return {
+            ...base,
+            assessmentResults: {
+              ...(base.assessmentResults || {}),
+              [normalizedType]: { percent, passed },
+            },
+          };
+        });
+        setProgressError("");
+
+        // Auto-advance only after the write succeeds, preserving the enforced flow.
+        if (normalizedType === "pretest" && course?.assessments?.quiz?.length > 0) {
+          navigate(`/responder/modules/${id}/assessment/quiz`, { replace: true });
+          return;
+        }
+        if (normalizedType === "quiz" && passed && course?.assessments?.final?.length > 0) {
+          navigate(`/responder/modules/${id}/assessment/final-assessment`, { replace: true });
+          return;
+        }
       } catch (e) {
+        const msg = toFriendlyFirebaseError(e, "save assessment result");
+        setProgressError(msg);
         console.warn("Failed to save assessment result", e);
       } finally {
         setSavingResult(false);
@@ -233,6 +271,7 @@ export default function AssessmentPage() {
       <Layout>
         <div className="assessment-wrapper">
           <p>Loading...</p>
+          {progressError && <p className="text-sm text-red-600 mt-2">{progressError}</p>}
         </div>
         <Footer />
       </Layout>
@@ -431,6 +470,11 @@ export default function AssessmentPage() {
 
         {!submitted ? (
           <div>
+            {progressError && (
+              <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+                {progressError}
+              </div>
+            )}
             <div className="question-card">
               <div className="question-meta">
                 <strong>Question {currentIndex + 1} / {questions.length}</strong>
@@ -487,6 +531,7 @@ export default function AssessmentPage() {
               </p>
             )}
             {savingResult && <p className="text-sm text-foreground/60">Saving result...</p>}
+            {progressError && <p className="text-sm text-red-600 mt-2">{progressError}</p>}
             {normalizedType === "final" && score.passed && fromFirestore && course.certificationEnabled && (
               <div className="rounded-lg border border-green-200 bg-green-50 p-3 mt-2 mb-2 text-green-800 text-sm">
                 <strong>Certificate earned.</strong> You’ve passed all required assessments.{" "}

@@ -30,8 +30,17 @@ export default function CourseDetails() {
   const { user } = useAuth();
   const [course, setCourse] = useState(null);
   const [progress, setProgress] = useState(null);
+  const [progressError, setProgressError] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const toFriendlyFirebaseError = (err) => {
+    const code = err?.code ? String(err.code) : "unknown";
+    if (code.includes("permission-denied")) {
+      return "Training progression is unavailable due to Firestore permissions (permission-denied).";
+    }
+    return err?.message || "Unable to load training progression.";
+  };
 
   useEffect(() => {
     if (!id) {
@@ -55,9 +64,15 @@ export default function CourseDetails() {
   useEffect(() => {
     if (!user?.id || !id) return;
     let cancelled = false;
+    setProgressError("");
     getProgress(user.id, id)
       .then((p) => { if (!cancelled) setProgress(p); })
-      .catch(() => {});
+      .catch((e) => {
+        if (!cancelled) {
+          setProgress(null);
+          setProgressError(toFriendlyFirebaseError(e));
+        }
+      });
     return () => { cancelled = true; };
   }, [user?.id, id]);
 
@@ -134,6 +149,12 @@ export default function CourseDetails() {
 
         {course.description && (
           <p className="text-gray-600 dark:text-gray-400 mb-6">{course.description}</p>
+        )}
+
+        {progressError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {progressError}
+          </div>
         )}
 
         {course.certificationEnabled && (course.assessments || course.assessmentType === "Practical Test" || course.assessmentType === "Simulation" || course.assessmentType === "Evaluation Form") && (
