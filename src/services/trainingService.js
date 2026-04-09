@@ -251,6 +251,29 @@ export async function getProgress(userId, courseId) {
 }
 
 /**
+ * List all progress documents for a user.
+ * @param {string} userId
+ * @returns {Promise<Array<{ progressId: string, userId: string, courseId: string, completedContent?: string[], assessmentResults?: Object, certifiedAt?: *, updatedAt?: * }>>}
+ */
+export async function getUserProgress(userId) {
+  if (!userId) return [];
+  const uid = String(userId);
+  let q = query(
+    collection(db, PROGRESS_COLLECTION),
+    where("userId", "==", uid)
+  );
+  let snap = await getDocs(q);
+  if (snap.empty && String(userId) !== userId) {
+    q = query(
+      collection(db, PROGRESS_COLLECTION),
+      where("userId", "==", String(userId))
+    );
+    snap = await getDocs(q);
+  }
+  return snap.docs.map((d) => ({ progressId: d.id, ...d.data() }));
+}
+
+/**
  * Mark one content item as completed. Merges with existing progress.
  * @param {string} userId
  * @param {string} courseId

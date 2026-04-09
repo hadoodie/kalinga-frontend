@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import Layout from "../../layouts/Layout";
 import Footer from "../../components/responder/Footer";
 import "../../styles/personnel-style.css";
-import { listCourses } from "@/services/trainingService";
+import { useAuth } from "@/context/AuthContext";
+import { listCourses, getUserProgress } from "@/services/trainingService";
 import {
   FaBriefcaseMedical,
   FaUserNurse,
@@ -34,9 +35,13 @@ const Modules = () => {
   const [activeTab, setActiveTab] = useState("Courses");
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [courses, setCourses] = useState([]);
+  const [trainingProgress, setTrainingProgress] = useState([]);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [progressError, setProgressError] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     let cancelled = false;
@@ -53,6 +58,32 @@ const Modules = () => {
       });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!user?.id || activeTab !== "Personal Training Record") {
+      if (activeTab !== "Personal Training Record") {
+        setTrainingProgress([]);
+        setProgressError(null);
+        setProgressLoading(false);
+      }
+      return;
+    }
+    let cancelled = false;
+    setProgressLoading(true);
+    setProgressError(null);
+    getUserProgress(user.id)
+      .then((progress) => {
+        if (!cancelled) setTrainingProgress(progress);
+      })
+      .catch((e) => {
+        if (!cancelled) setTrainingProgress([]);
+        if (!cancelled) setProgressError(e.message || "Failed to load training progress");
+      })
+      .finally(() => {
+        if (!cancelled) setProgressLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, activeTab]);
 
   const categories = ["All", ...new Set(courses.map((c) => c.category).filter(Boolean))];
   const filteredCourses =
@@ -155,6 +186,63 @@ const Modules = () => {
                 Complete courses from the Courses tab. Your progress is tracked per course.
               </p>
             </div>
+            {progressLoading ? (
+              <div className="section">
+                <div className="flex justify-center py-12">
+                  <FaSpinner className="h-8 w-8 animate-spin text-green-700" />
+                </div>
+              </div>
+            ) : progressError ? (
+              <div className="section">
+                <div className="rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                  {progressError}
+                </div>
+              </div>
+            ) : trainingProgress.length === 0 ? (
+              <div className="section">
+                <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center text-gray-600">
+                  <FaBookOpen className="mx-auto mb-2 h-10 w-10 text-gray-400" />
+                  <p>No training records yet. Complete course content to start tracking progress.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="section">
+                <h4 className="mb-4">Course Progress</h4>
+                <div className="card-grid">
+                  {trainingProgress.map((record) => {
+                    const course = courses.find((c) => String(c.id) === String(record.courseId));
+                    const totalItems = course?.sections?.reduce(
+                      (sum, section) => sum + ((section.items || []).length || 0),
+                      0
+                    );
+                    const completedCount = Array.isArray(record.completedContent) ? record.completedContent.length : 0;
+                    const progressPct = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
+                    const finalPassed = record.assessmentResults?.final?.passed === true;
+                    const completed = !!record.certifiedAt || finalPassed || progressPct === 100;
+                    return (
+                      <div key={record.progressId} className="card training-record-card">
+                        <div className="card-icon">{getCategoryIcon(course?.category)}</div>
+                        <h4>{course?.title || `Course ${record.courseId}`}</h4>
+                        <p className="text-sm text-gray-500 mb-3">
+                          {course?.description || "Track your course progress and completion status."}
+                        </p>
+                        <div className="text-sm text-gray-700 mb-2">
+                          Status: <strong>{completed ? "Completed" : "In progress"}</strong>
+                        </div>
+                        {totalItems > 0 && (
+                          <div className="progress-bar" style={{ marginBottom: 8 }}>
+                            <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+                          </div>
+                        )}
+                        <div className="text-xs text-gray-500">
+                          {completedCount} of {totalItems || "?"} content items completed
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
