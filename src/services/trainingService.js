@@ -11,6 +11,7 @@ import {
   query,
   where,
   serverTimestamp,
+  onSnapshot,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, getBlob, deleteObject } from "firebase/storage";
 import { db, storage } from "@/lib/firebase";
@@ -19,6 +20,11 @@ const COLLECTION = "training_courses";
 const PROGRESS_COLLECTION = "training_progress";
 const STORAGE_PREFIX = "training";
 const SUBMISSIONS_PREFIX = "submissions";
+
+function hasStoredGrade(result) {
+  const pct = Number(result?.percent);
+  return Number.isFinite(pct);
+}
 
 /** Parse passingCriteria string to number (e.g. "70%" or "70" -> 70). */
 export function parsePassingScore(passingCriteria) {
@@ -304,7 +310,7 @@ export async function markContentComplete(userId, courseId, contentSlug) {
  * @param {string} userId
  * @param {string} courseId
  * @param {string} assessmentType - 'pretest' | 'quiz' | 'final'
- * @param {{ percent: number, passed: boolean }} result
+ * @param {{ percent?: number, passed: boolean, score?: number | null, maxScore?: number | null, status?: string }} result
  * @param {import("./trainingService").Course} course - Full course from getCourse (for passingScore & certificationEnabled)
  * @param {{ videoSubmission?: { downloadURL: string, storagePath: string }, evalFormSubmission?: Record<string, string> }} [submission] - For Practical/Simulation (video) or Evaluation Form (form data)
  */
@@ -317,7 +323,21 @@ export async function saveAssessmentResult(userId, courseId, assessmentType, res
   const cid = String(courseId);
   const data = existing.exists() ? existing.data() : { userId: uid, courseId: cid, completedContent: [], assessmentResults: {} };
   const assessmentResults = { ...(data.assessmentResults || {}) };
-  assessmentResults[assessmentType] = { percent: result.percent, passed: result.passed };
+  const percentFromInput = Number(result?.percent);
+  const scoreFromInput = Number(result?.score);
+  const maxScoreFromInput = Number(result?.maxScore);
+  const computedPercent = Number.isFinite(percentFromInput)
+    ? percentFromInput
+    : (Number.isFinite(scoreFromInput) && Number.isFinite(maxScoreFromInput) && maxScoreFromInput > 0
+        ? Math.round((scoreFromInput / maxScoreFromInput) * 100)
+        : 0);
+  assessmentResults[assessmentType] = {
+    percent: computedPercent,
+    passed: result.passed,
+    score: Number.isFinite(scoreFromInput) ? scoreFromInput : null,
+    maxScore: Number.isFinite(maxScoreFromInput) ? maxScoreFromInput : null,
+    status: result?.status || (result.passed ? "PASSED" : "FAILED"),
+  };
   const payload = {
     userId: uid,
     courseId: cid,
@@ -335,11 +355,12 @@ export async function saveAssessmentResult(userId, courseId, assessmentType, res
   const at = course.assessmentType;
   const submissionOnly = at === "Practical Test" || at === "Simulation" || at === "Evaluation Form";
   if (submissionOnly && (payload.videoSubmission || payload.evalFormSubmission)) {
-    const finalPassed = assessmentResults.final?.passed;
-    const canCertify = course.certificationEnabled && finalPassed;
+    const finalPassed = assessmentResults.final?.passed === true;
+    const finalHasGrade = hasStoredGrade(assessmentResults.final);
+    const canCertify = course.certificationEnabled && finalPassed && finalHasGrade;
     payload.certifiedAt = canCertify ? serverTimestamp() : (data.certifiedAt || null);
   } else {
-    const allPassed = assessmentTypes.every((t) => assessmentResults[t] && assessmentResults[t].passed);
+    const allPassed = assessmentTypes.every((t) => assessmentResults[t]?.passed === true && hasStoredGrade(assessmentResults[t]));
     const canCertify = course.certificationEnabled && assessmentTypes.length > 0 && allPassed;
     payload.certifiedAt = canCertify ? serverTimestamp() : (data.certifiedAt || null);
   }
@@ -349,7 +370,7 @@ export async function saveAssessmentResult(userId, courseId, assessmentType, res
 /**
  * Re-check certification and set certifiedAt if all required assessments are passed.
  * Use when a user has already passed but certifiedAt was not set (e.g. after rule change).
- * For submission-only courses (Practical Test, Simulation, Evaluation Form), "passed" means assessmentResults.final?.passed.
+ * For submission-only courses (Practical Test, Simulation, Evaluation Form), certification requires final passed + stored numeric grade.
  * @param {string} userId
  * @param {string} courseId
  * @returns {Promise<boolean>} true if certified (now or already)
@@ -363,13 +384,13 @@ export async function recheckCertification(userId, courseId) {
   const assessmentResults = progressData?.assessmentResults || {};
   let allPassed = false;
   if (submissionOnly) {
-    allPassed = assessmentResults.final?.passed === true;
+    allPassed = assessmentResults.final?.passed === true && hasStoredGrade(assessmentResults.final);
   } else if (course.assessments) {
     const assessmentTypes = ["pretest", "quiz", "final"].filter(
       (t) => Array.isArray(course.assessments[t]) && course.assessments[t].length > 0
     );
     if (assessmentTypes.length === 0) return false;
-    allPassed = assessmentTypes.every((t) => assessmentResults[t]?.passed);
+    allPassed = assessmentTypes.every((t) => assessmentResults[t]?.passed === true && hasStoredGrade(assessmentResults[t]));
   }
   if (!allPassed) return false;
   const progressId = `${String(userId)}_${String(courseId)}`;
@@ -410,12 +431,12 @@ export async function ensureCertificationsForUser(userId) {
       const submissionOnly = at === "Practical Test" || at === "Simulation" || at === "Evaluation Form";
       const assessmentResults = p.assessmentResults || {};
       const allPassed = submissionOnly
-        ? assessmentResults.final?.passed === true
+        ? assessmentResults.final?.passed === true && hasStoredGrade(assessmentResults.final)
         : (() => {
             const types = ["pretest", "quiz", "final"].filter(
               (t) => Array.isArray(course.assessments?.[t]) && course.assessments[t].length > 0
             );
-            return types.length > 0 && types.every((t) => assessmentResults[t]?.passed);
+            return types.length > 0 && types.every((t) => assessmentResults[t]?.passed === true && hasStoredGrade(assessmentResults[t]));
           })();
       if (!allPassed) return;
       await setDoc(
@@ -443,6 +464,30 @@ export async function getProgressByCourse(courseId) {
 }
 
 /**
+ * Subscribe to progress documents for a course (admin review flow).
+ * @param {string} courseId
+ * @param {(list: Array<{ progressId: string, userId: string, courseId: string, videoSubmission?: *, evalFormSubmission?: *, assessmentResults?: * }>) => void} onData
+ * @param {(error: Error) => void} [onError]
+ * @returns {() => void}
+ */
+export function watchProgressByCourse(courseId, onData, onError) {
+  if (!courseId || typeof onData !== "function") return () => {};
+  const q = query(
+    collection(db, PROGRESS_COLLECTION),
+    where("courseId", "==", String(courseId))
+  );
+  return onSnapshot(
+    q,
+    (snap) => {
+      onData(snap.docs.map((d) => ({ progressId: d.id, ...d.data() })));
+    },
+    (err) => {
+      if (typeof onError === "function") onError(err);
+    }
+  );
+}
+
+/**
  * Admin: set assessment as passed/failed for a responder (e.g. after reviewing video or eval form).
  * @param {string} userId
  * @param {string} courseId
@@ -455,7 +500,13 @@ export async function setAssessmentPassed(userId, courseId, passed) {
   const existing = await getDoc(docRef);
   const data = existing.exists() ? existing.data() : {};
   const assessmentResults = { ...(data.assessmentResults || {}) };
-  assessmentResults.final = { percent: passed ? 100 : 0, passed };
+  assessmentResults.final = {
+    percent: passed ? 100 : 0,
+    passed,
+    score: passed ? 100 : 0,
+    maxScore: 100,
+    status: passed ? "PASSED" : "FAILED",
+  };
   const course = await getCourse(courseId);
   const at = course?.assessmentType;
   const submissionOnly = at === "Practical Test" || at === "Simulation" || at === "Evaluation Form";

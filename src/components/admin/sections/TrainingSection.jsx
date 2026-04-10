@@ -21,6 +21,7 @@ import {
   deleteCourse,
   uploadCourseFile,
   getProgressByCourse,
+  watchProgressByCourse,
   setAssessmentPassed,
 } from "@/services/trainingService";
 
@@ -127,6 +128,30 @@ export const TrainingSection = () => {
   useEffect(() => {
     loadCourses();
   }, []);
+
+  useEffect(() => {
+    if (!expandedId) return undefined;
+    const expandedCourse = courses.find((c) => c.id === expandedId);
+    if (!expandedCourse) return undefined;
+    const isSubmissionOnly =
+      expandedCourse.assessmentType === "Practical Test" ||
+      expandedCourse.assessmentType === "Simulation" ||
+      expandedCourse.assessmentType === "Evaluation Form";
+    if (!isSubmissionOnly) return undefined;
+
+    const unsub = watchProgressByCourse(
+      expandedCourse.id,
+      (list) => {
+        setSubmissionsByCourse((prev) => ({ ...prev, [expandedCourse.id]: list }));
+      },
+      (e) => {
+        setError(e.message || "Failed to load submissions");
+      }
+    );
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [expandedId, courses]);
 
   const loadSubmissionsForCourse = async (courseId) => {
     try {
@@ -405,6 +430,38 @@ export const TrainingSection = () => {
     } catch (e) {
       setError(e.message || "Failed to remove question");
     }
+  };
+
+  const extractUserIdFromStoragePath = (storagePath) => {
+    if (!storagePath || typeof storagePath !== "string") return "";
+    const parts = storagePath.split("/").filter(Boolean);
+    const submissionsIndex = parts.indexOf("submissions");
+    if (submissionsIndex < 0 || submissionsIndex + 1 >= parts.length) return "";
+    return parts[submissionsIndex + 1] || "";
+  };
+
+  const extractFileName = (submission) => {
+    const storagePath = submission?.videoSubmission?.storagePath;
+    if (storagePath && typeof storagePath === "string") {
+      const fromPath = storagePath.split("/").filter(Boolean).pop();
+      if (fromPath) return decodeURIComponent(fromPath);
+    }
+    const fileUrl = submission?.videoSubmission?.downloadURL;
+    if (fileUrl && typeof fileUrl === "string") {
+      try {
+        const decoded = decodeURIComponent(fileUrl);
+        const marker = "/o/";
+        const markerIndex = decoded.indexOf(marker);
+        if (markerIndex >= 0) {
+          const objectPath = decoded.slice(markerIndex + marker.length).split("?")[0];
+          const fromUrl = objectPath.split("/").filter(Boolean).pop();
+          if (fromUrl) return fromUrl;
+        }
+      } catch {
+        return "";
+      }
+    }
+    return "";
   };
 
   return (
@@ -1110,19 +1167,32 @@ export const TrainingSection = () => {
                           {Array.isArray(submissionsByCourse[course.id]) && (
                             <ul className="space-y-3">
                               {submissionsByCourse[course.id]
-                                .filter((p) => p.videoSubmission || p.evalFormSubmission)
+                                .filter((p) => p.videoSubmission || p.evalFormSubmission || p.assessmentResults?.final)
                                 .map((p) => (
                                   <li key={p.progressId} className="rounded-lg border border-border/40 bg-background/60 p-3 text-sm">
-                                    <div className="mb-2 font-medium text-foreground/90">User ID: {p.userId}</div>
+                                    <div className="mb-2 font-medium text-foreground/90">
+                                      User ID: {p.userId || extractUserIdFromStoragePath(p.videoSubmission?.storagePath) || "Unknown"}
+                                    </div>
                                     {p.videoSubmission?.downloadURL && (
-                                      <div className="mb-2">
+                                      <div className="mb-3 space-y-2">
+                                        <div className="text-xs text-foreground/70">
+                                          File Name: {extractFileName(p) || "Unknown file"}
+                                        </div>
+                                        <video
+                                          controls
+                                          preload="metadata"
+                                          className="w-full max-w-md rounded border border-border/40 bg-black"
+                                          src={p.videoSubmission.downloadURL}
+                                        >
+                                          Your browser cannot play this uploaded video format.
+                                        </video>
                                         <a
                                           href={p.videoSubmission.downloadURL}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="text-primary hover:underline"
+                                          className="inline-block text-primary hover:underline"
                                         >
-                                          Watch video submission
+                                          Open video in new tab
                                         </a>
                                       </div>
                                     )}
@@ -1137,6 +1207,11 @@ export const TrainingSection = () => {
                                             </div>
                                           );
                                         })}
+                                      </div>
+                                    )}
+                                    {!p.videoSubmission?.downloadURL && !p.evalFormSubmission && (
+                                      <div className="mb-2 rounded bg-amber-500/10 p-2 text-xs text-foreground/80">
+                                        No attachment metadata found for this submission record. You can still set grading status.
                                       </div>
                                     )}
                                     <div className="flex items-center gap-2">
@@ -1162,7 +1237,7 @@ export const TrainingSection = () => {
                                     </div>
                                   </li>
                                 ))}
-                              {submissionsByCourse[course.id].filter((p) => p.videoSubmission || p.evalFormSubmission).length === 0 && (
+                              {submissionsByCourse[course.id].filter((p) => p.videoSubmission || p.evalFormSubmission || p.assessmentResults?.final).length === 0 && (
                                 <li className="text-foreground/60 text-sm">No submissions yet.</li>
                               )}
                             </ul>

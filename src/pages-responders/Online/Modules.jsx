@@ -217,8 +217,21 @@ const Modules = () => {
                     );
                     const completedCount = Array.isArray(record.completedContent) ? record.completedContent.length : 0;
                     const progressPct = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
+                    const hasPretest = Array.isArray(course?.assessments?.pretest) && course.assessments.pretest.length > 0;
+                    const hasQuiz = Array.isArray(course?.assessments?.quiz) && course.assessments.quiz.length > 0;
+                    const hasFinal = Array.isArray(course?.assessments?.final) && course.assessments.final.length > 0;
+                    const hasAssessmentTrack = hasPretest || hasQuiz || hasFinal;
+                    const pretestPassed = record.assessmentResults?.pretest?.passed === true;
+                    const quizPassed = record.assessmentResults?.quiz?.passed === true;
                     const finalPassed = record.assessmentResults?.final?.passed === true;
-                    const completed = !!record.certifiedAt || finalPassed || progressPct === 100;
+                    const assessmentsPassed =
+                      (!hasPretest || pretestPassed) &&
+                      (!hasQuiz || quizPassed) &&
+                      (!hasFinal || finalPassed);
+                    const completed = !!record.certifiedAt || (hasAssessmentTrack ? assessmentsPassed : progressPct === 100);
+                    const pretestGrade = record.assessmentResults?.pretest?.percent;
+                    const quizGrade = record.assessmentResults?.quiz?.percent;
+                    const finalGrade = record.assessmentResults?.final?.percent;
                     return (
                       <div key={record.progressId} className="card training-record-card">
                         <div className="card-icon">{getCategoryIcon(course?.category)}</div>
@@ -228,6 +241,14 @@ const Modules = () => {
                         </p>
                         <div className="text-sm text-gray-700 mb-2">
                           Status: <strong>{completed ? "Completed" : "In progress"}</strong>
+                        </div>
+                        <div className="text-xs text-gray-600 mb-2 space-y-1">
+                          {Number.isFinite(Number(pretestGrade)) && <p>Pre-test Grade: {Number(pretestGrade)}%</p>}
+                          {Number.isFinite(Number(quizGrade)) && <p>Quiz Grade: {Number(quizGrade)}%</p>}
+                          {Number.isFinite(Number(finalGrade)) && <p>Final Grade: {Number(finalGrade)}%</p>}
+                          {!Number.isFinite(Number(pretestGrade)) && !Number.isFinite(Number(quizGrade)) && !Number.isFinite(Number(finalGrade)) && (
+                            <p>Grade: Not available yet</p>
+                          )}
                         </div>
                         {totalItems > 0 && (
                           <div className="progress-bar" style={{ marginBottom: 8 }}>
