@@ -1,8 +1,16 @@
+import { useEffect, useState } from "react";
 import {
-  CalendarDays,
-  ClipboardCheck,
-  DownloadCloud,
+  ChevronDown,
+  ChevronRight,
+  FileText,
+  Film,
+  FolderOpen,
   GraduationCap,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload,
 } from "lucide-react";
 import { SectionHeader } from "../SectionHeader";
 import {
@@ -17,35 +25,71 @@ import {
   setAssessmentPassed,
 } from "@/services/trainingService";
 
-const trainingTracks = [
-  {
-    title: "Incident Command System 300",
-    owner: "BFP Region 2",
-    schedule: "Oct 14 • 0800H-1700H",
-    slots: "18 of 24 seats",
-    status: "Confirming",
-  },
-  {
-    title: "Water Rescue Refresher",
-    owner: "PCG",
-    schedule: "Oct 21 • 0700H-1900H",
-    slots: "12 of 18 seats",
-    status: "Open",
-  },
-  {
-    title: "Public Information Officer Playbook",
-    owner: "PIO Network",
-    schedule: "Nov 05 • 1300H-1700H",
-    slots: "Fully booked",
-    status: "Waitlist",
-  },
+const CONTENT_TYPES = [
+  { value: "pdf", label: "PDF", icon: FileText },
+  { value: "video", label: "Video", icon: Film },
+  { value: "document", label: "Document", icon: FileText },
 ];
 
-const statusTone = {
-  Confirming: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
-  Open: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
-  Waitlist: "bg-rose-500/10 text-rose-600 dark:text-rose-300",
+const CATEGORIES = [
+  "general",
+  "medical",
+  "emergency",
+  "professional",
+  "mental",
+  "community",
+  "compliance",
+];
+
+const TARGET_AUDIENCES = ["Responders", "Students", "LGU Staff", "All"];
+const DIFFICULTY_LEVELS = [
+  { value: "beginner", label: "Beginner" },
+  { value: "intermediate", label: "Intermediate" },
+  { value: "advanced", label: "Advanced" },
+];
+const ASSESSMENT_TYPES = ["Quiz", "Practical Test", "Simulation", "Evaluation Form"];
+const DELIVERY_MODES = ["Online", "On-site", "Hybrid"];
+const MODULE_STATUSES = [
+  { value: "draft", label: "Draft" },
+  { value: "active", label: "Active" },
+  { value: "archived", label: "Archived" },
+];
+
+const initialModuleForm = {
+  moduleCode: "",
+  title: "",
+  description: "",
+  category: "general",
+  targetAudience: "",
+  difficultyLevel: "beginner",
+  estimatedDuration: "",
+  learningObjectives: "",
+  prerequisites: "",
+  keyTopics: "",
+  requiredMaterials: "",
+  references: "",
+  assessmentType: "",
+  passingCriteria: "",
+  assessmentMaterials: "",
+  certificationEnabled: false,
+  trainerName: "",
+  schedule: "",
+  deliveryMode: "online",
+  maxParticipants: "",
+  version: "1",
+  status: "draft",
+  trainerNotes: "",
+  participantFeedback: "",
+  signatories: [{ name: "", title: "" }],
+  evaluationFormQuestions: [],
 };
+
+function slugify(text) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export const TrainingSection = () => {
   const [courses, setCourses] = useState([]);
@@ -424,42 +468,536 @@ export const TrainingSection = () => {
     <div className="space-y-8">
       <SectionHeader
         title="Training & Capability Uplift"
-        description="Coordinate competency-building with partner agencies. Track enrolments, certification currency, and capability uplifts requested from the training cluster."
+        description="Create and manage online training courses. Upload PDFs, videos, and documents. Content appears in the Responder Online Training module."
         actions={
-          <div className="flex items-center gap-3">
-            <button className="inline-flex items-center gap-2 rounded-full border border-border/60 px-5 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary">
-              <DownloadCloud className="h-4 w-4" />
-              Import training plan
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:shadow-md">
-              <GraduationCap className="h-4 w-4" />
-              Request workshop
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (showCreate || editingId) {
+                closeForm();
+              } else {
+                setCreateForm(initialModuleForm);
+                setShowCreate(true);
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:shadow-md"
+          >
+            <GraduationCap className="h-4 w-4" />
+            {showCreate || editingId ? "Cancel" : "Create course"}
+          </button>
         }
       />
 
-      <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="flex-1 space-y-4">
-            {trainingTracks.map((track) => (
-              <div
-                key={track.title}
-                className="rounded-2xl border border-border/60 bg-background/60 p-5"
-              >
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-foreground">
-                      {track.title}
-                    </p>
-                    <p className="text-xs text-foreground/60">
-                      Lead agency: {track.owner}
-                    </p>
+      {error && (
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-600 dark:text-rose-300">
+          {error}
+        </div>
+      )}
+
+      {(showCreate || editingId) && (
+        <form
+          onSubmit={handleCreateCourse}
+          className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm space-y-8"
+        >
+          <h3 className="text-xl font-semibold text-foreground">
+            {editingId ? "Edit Training Module" : "Create Training Module"}
+          </h3>
+
+          {/* Basic Information */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 border-b border-border/60 pb-2">
+              Basic Information
+            </h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Module ID / Code</label>
+                <input
+                  type="text"
+                  value={createForm.moduleCode}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, moduleCode: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                  placeholder="e.g. TRN-001"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Module Title</label>
+                <input
+                  type="text"
+                  value={createForm.title}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                  placeholder="Course title"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">Module Description / Overview</label>
+              <textarea
+                value={createForm.description}
+                onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                rows={3}
+                placeholder="Brief summary of the module"
+              />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Training Category / Type</label>
+                <select
+                  value={createForm.category}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, category: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Target Audience</label>
+                <select
+                  value={createForm.targetAudience}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, targetAudience: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                >
+                  <option value="">Select</option>
+                  {TARGET_AUDIENCES.map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Difficulty Level</label>
+                <select
+                  value={createForm.difficultyLevel}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, difficultyLevel: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                >
+                  {DIFFICULTY_LEVELS.map((d) => (
+                    <option key={d.value} value={d.value}>{d.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Estimated Duration</label>
+                <input
+                  type="text"
+                  value={createForm.estimatedDuration}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, estimatedDuration: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                  placeholder="e.g. 2 hours or 90 minutes"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Learning Structure */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 border-b border-border/60 pb-2">
+              Learning Structure
+            </h4>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">Learning Objectives (one per line)</label>
+              <textarea
+                value={createForm.learningObjectives}
+                onChange={(e) => setCreateForm((f) => ({ ...f, learningObjectives: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                rows={3}
+                placeholder="What learners will achieve"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">Prerequisites (if any, one per line)</label>
+              <textarea
+                value={createForm.prerequisites}
+                onChange={(e) => setCreateForm((f) => ({ ...f, prerequisites: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                rows={2}
+                placeholder="Prior knowledge or modules required"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">Key Topics / Lessons (one per line)</label>
+              <textarea
+                value={createForm.keyTopics}
+                onChange={(e) => setCreateForm((f) => ({ ...f, keyTopics: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                rows={3}
+                placeholder="Main subjects covered"
+              />
+            </div>
+          </div>
+
+          {/* Content & Materials - note */}
+          <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
+            <span className="font-medium text-primary">Content & Materials:</span> After creating the module, expand it below and add sections. Upload PDFs, videos, slides, and manuals to each section (Firebase Storage).
+          </div>
+
+          {/* Assessment & Evaluation */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 border-b border-border/60 pb-2">
+              Assessment & Evaluation
+            </h4>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Assessment Type</label>
+                <select
+                  value={createForm.assessmentType}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, assessmentType: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                >
+                  <option value="">Select</option>
+                  {ASSESSMENT_TYPES.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 pt-7">
+                <input
+                  type="checkbox"
+                  id="certificationEnabled"
+                  checked={createForm.certificationEnabled}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, certificationEnabled: e.target.checked }))}
+                  className="rounded border-border/60"
+                />
+                <label htmlFor="certificationEnabled" className="text-sm font-medium text-foreground/80">
+                  Certification / Completion status
+                </label>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">Passing Criteria</label>
+              <input
+                type="text"
+                value={createForm.passingCriteria}
+                onChange={(e) => setCreateForm((f) => ({ ...f, passingCriteria: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                placeholder="e.g. 70% or above"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">Assessment Materials (notes)</label>
+              <textarea
+                value={createForm.assessmentMaterials}
+                onChange={(e) => setCreateForm((f) => ({ ...f, assessmentMaterials: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                rows={2}
+                placeholder="Question banks, scenarios, etc."
+              />
+            </div>
+            {createForm.assessmentType === "Evaluation Form" && (
+              <div className="rounded-xl border border-border/60 bg-background/60 p-4 space-y-3">
+                <h4 className="text-sm font-semibold text-foreground/90">Evaluation Form Questions</h4>
+                <p className="text-xs text-foreground/60">Define the form responders will fill. Options are required for radio/checkbox.</p>
+                {(createForm.evaluationFormQuestions || []).map((eq, eqIdx) => (
+                  <div key={eqIdx} className="rounded-lg border border-border/40 bg-background p-3 space-y-2">
+                    <input
+                      type="text"
+                      value={eq.question ?? ""}
+                      onChange={(e) => {
+                        const list = [...(createForm.evaluationFormQuestions || [])];
+                        if (!list[eqIdx]) list[eqIdx] = { question: "", type: "text" };
+                        list[eqIdx] = { ...list[eqIdx], question: e.target.value };
+                        setCreateForm((f) => ({ ...f, evaluationFormQuestions: list }));
+                      }}
+                      placeholder="Question text"
+                      className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-sm"
+                    />
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <select
+                        value={eq.type ?? "text"}
+                        onChange={(e) => {
+                          const list = [...(createForm.evaluationFormQuestions || [])];
+                          if (!list[eqIdx]) list[eqIdx] = { question: "", type: "text" };
+                          list[eqIdx] = { ...list[eqIdx], type: e.target.value };
+                          setCreateForm((f) => ({ ...f, evaluationFormQuestions: list }));
+                        }}
+                        className="rounded border border-border/60 bg-background px-2 py-1 text-sm"
+                      >
+                        <option value="text">Text (short)</option>
+                        <option value="textarea">Textarea (long)</option>
+                        <option value="radio">Radio (single choice)</option>
+                        <option value="checkbox">Checkbox (multiple)</option>
+                      </select>
+                      {(eq.type === "radio" || eq.type === "checkbox") && (
+                        <input
+                          type="text"
+                          value={Array.isArray(eq.options) ? eq.options.join(", ") : ""}
+                          onChange={(e) => {
+                            const list = [...(createForm.evaluationFormQuestions || [])];
+                            if (!list[eqIdx]) list[eqIdx] = { question: "", type: "text" };
+                            list[eqIdx] = { ...list[eqIdx], options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) };
+                            setCreateForm((f) => ({ ...f, evaluationFormQuestions: list }));
+                          }}
+                          placeholder="Options (comma-separated)"
+                          className="flex-1 min-w-[160px] rounded border border-border/60 bg-background px-2 py-1 text-sm"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const list = (createForm.evaluationFormQuestions || []).filter((_, i) => i !== eqIdx);
+                          setCreateForm((f) => ({ ...f, evaluationFormQuestions: list }));
+                        }}
+                        className="rounded p-1.5 text-foreground/50 hover:text-rose-600"
+                        aria-label="Remove question"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
-                  <span
-                    className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                      statusTone[track.status]
-                    }`}
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      evaluationFormQuestions: [...(f.evaluationFormQuestions || []), { question: "", type: "text" }],
+                    }))
+                  }
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                >
+                  <Plus className="h-4 w-4" /> Add evaluation question
+                </button>
+              </div>
+            )}
+            {(createForm.certificationEnabled || (createForm.signatories?.length ?? 0) > 0) && (
+              <div>
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  Certificate Signatories (name & title shown on certificate)
+                </label>
+                <div className="space-y-3">
+                  {(createForm.signatories || [{ name: "", title: "" }]).map((sig, idx) => (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <input
+                        type="text"
+                        value={sig.name}
+                        onChange={(e) => {
+                          const s = [...(createForm.signatories || [])];
+                          if (!s[idx]) s[idx] = { name: "", title: "" };
+                          s[idx] = { ...s[idx], name: e.target.value };
+                          setCreateForm((f) => ({ ...f, signatories: s }));
+                        }}
+                        className="flex-1 rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground text-sm"
+                        placeholder="Signatory name"
+                      />
+                      <input
+                        type="text"
+                        value={sig.title}
+                        onChange={(e) => {
+                          const s = [...(createForm.signatories || [])];
+                          if (!s[idx]) s[idx] = { name: "", title: "" };
+                          s[idx] = { ...s[idx], title: e.target.value };
+                          setCreateForm((f) => ({ ...f, signatories: s }));
+                        }}
+                        className="flex-1 rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground text-sm"
+                        placeholder="Title / position"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const s = (createForm.signatories || []).filter((_, i) => i !== idx);
+                          setCreateForm((f) => ({ ...f, signatories: s.length ? s : [{ name: "", title: "" }] }));
+                        }}
+                        className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
+                        title="Remove signatory"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCreateForm((f) => ({
+                        ...f,
+                        signatories: [...(f.signatories || []), { name: "", title: "" }],
+                      }))
+                    }
+                    className="flex items-center gap-1 text-sm text-primary hover:underline"
+                  >
+                    <Plus className="h-4 w-4" /> Add signatory
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Administration & Tracking */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 border-b border-border/60 pb-2">
+              Administration & Tracking
+            </h4>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Trainer / Facilitator Name</label>
+                <input
+                  type="text"
+                  value={createForm.trainerName}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, trainerName: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                  placeholder="Name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Training Schedule / Availability</label>
+                <input
+                  type="text"
+                  value={createForm.schedule}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, schedule: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                  placeholder="e.g. Always available"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Delivery Mode</label>
+                <select
+                  value={createForm.deliveryMode}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, deliveryMode: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                >
+                  <option value="online">Online</option>
+                  <option value="on-site">On-site</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Max Participants</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={createForm.maxParticipants}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, maxParticipants: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                  placeholder="Optional"
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Version Number</label>
+                <input
+                  type="text"
+                  value={createForm.version}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, version: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                  placeholder="e.g. 1"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80">Status</label>
+                <select
+                  value={createForm.status}
+                  onChange={(e) => setCreateForm((f) => ({ ...f, status: e.target.value }))}
+                  className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                >
+                  {MODULE_STATUSES.map((s) => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Content references */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 border-b border-border/60 pb-2">
+              Content & Materials (references)
+            </h4>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">Required Materials / Equipment</label>
+              <textarea
+                value={createForm.requiredMaterials}
+                onChange={(e) => setCreateForm((f) => ({ ...f, requiredMaterials: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                rows={2}
+                placeholder="Materials or equipment needed"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">References / Sources</label>
+              <textarea
+                value={createForm.references}
+                onChange={(e) => setCreateForm((f) => ({ ...f, references: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                rows={2}
+                placeholder="External references or sources"
+              />
+            </div>
+          </div>
+
+          {/* Feedback & Improvement */}
+          <div className="space-y-4">
+            <h4 className="text-sm font-semibold uppercase tracking-wide text-foreground/70 border-b border-border/60 pb-2">
+              Feedback & Improvement
+            </h4>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80">Trainer Notes / Remarks</label>
+              <textarea
+                value={createForm.trainerNotes}
+                onChange={(e) => setCreateForm((f) => ({ ...f, trainerNotes: e.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
+                rows={2}
+                placeholder="Internal notes"
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-4 border-t border-border/60">
+            <button
+              type="submit"
+              disabled={creating}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+            >
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              {editingId ? "Save changes" : "Create Training Module"}
+            </button>
+            <button
+              type="button"
+              onClick={closeForm}
+              className="rounded-full border border-border/60 px-5 py-2.5 text-sm font-medium text-foreground/70"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
+        <h3 className="text-lg font-semibold text-foreground">Courses</h3>
+        <p className="mt-1 text-sm text-foreground/60">
+          Expand a course to add sections and upload PDFs, videos, or documents to Firebase Storage. Responders see these in Online Training.
+        </p>
+        <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
+          <span className="font-medium text-primary">How to upload:</span> Create a course → Expand it (click the row) → Add section → Click &quot;Upload PDF, video, or document&quot; → Choose file → Add. Files are stored in Firebase Storage.
+        </div>
+
+        {loading ? (
+          <div className="mt-6 flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-border/60 bg-background/40 py-12 text-center text-sm text-foreground/60">
+            No courses yet. Create one above, then expand it, add a section, and use &quot;Upload PDF, video, or document&quot; to upload files to Firebase Storage.
+          </div>
+        ) : (
+          <div className="mt-6 space-y-2">
+            {courses.map((course) => {
+              const isExpanded = expandedId === course.id;
+              const sectionCount = (course.sections || []).length;
+              const itemCount = (course.sections || []).reduce((acc, s) => acc + (s.items?.length ?? 0), 0);
+              return (
+                <div
+                  key={course.id}
+                  className="rounded-2xl border border-border/60 bg-background/60"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setExpandedId((id) => (id === course.id ? null : course.id))}
+                    className="flex w-full items-center gap-3 p-4 text-left"
                   >
                     {isExpanded ? (
                       <ChevronDown className="h-5 w-5 text-foreground/70" />
@@ -872,57 +1410,10 @@ export const TrainingSection = () => {
                     </div>
                   )}
                 </div>
-                <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-foreground/70">
-                  <span className="inline-flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4" />
-                    {track.schedule}
-                  </span>
-                  <span className="inline-flex items-center gap-2">
-                    <ClipboardCheck className="h-4 w-4" />
-                    {track.slots}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-
-          <div className="flex w-full max-w-sm flex-col justify-between gap-4 rounded-2xl border border-border/60 bg-background/60 p-5">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">
-                Capability requests
-              </h3>
-              <p className="mt-1 text-sm text-foreground/60">
-                Coordinate with the training cluster for new requirements.
-              </p>
-            </div>
-            <div className="space-y-4 text-sm text-foreground/70">
-              <div className="rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4">
-                <p className="font-semibold text-primary">
-                  Technical rescue training
-                </p>
-                <p className="text-xs text-primary/70">
-                  Requested by Barangay DRRM Council — awaiting schedule slot.
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 p-4">
-                <p className="font-semibold text-foreground">
-                  Emergency communications drill
-                </p>
-                <p className="text-xs text-foreground/60">
-                  PIO cluster prepping joint exercise across LGU offices.
-                </p>
-              </div>
-              <div className="rounded-xl border border-border/60 p-4">
-                <p className="font-semibold text-foreground">
-                  Barangay ICS orientation
-                </p>
-                <p className="text-xs text-foreground/60">
-                  Coordinating with municipal DILG officers.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -1,10 +1,11 @@
-// src/pages/Online/AssessmentPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Layout from "../../layouts/Layout";
 import Footer from "../../components/responder/Footer";
 import courseContent from "../../data/courseContent";
 import "../../styles/assessment.css";
+import { getCourse, getProgress, saveAssessmentResult, parsePassingScore, recheckCertification, uploadSubmissionVideo } from "@/services/trainingService";
+import { useAuth } from "@/context/AuthContext";
 
 const formatTime = (seconds) => {
   const m = Math.floor(seconds / 60)
@@ -33,13 +34,12 @@ export default function AssessmentPage() {
     ? course.assessments[normalizedType]
     : [];
 
-  // default duration: 10 minutes (600s) for final, 5 min for quiz, 3 min for pretest -- adjust as desired
   const defaultDurations = { pretest: 180, quiz: 300, final: 600 };
   const initialTime = defaultDurations[normalizedType] || 300;
 
   const [timeLeft, setTimeLeft] = useState(initialTime);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState(Array(questions.length).fill(null));
+  const [answers, setAnswers] = useState([]);
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(null);
   const [savingResult, setSavingResult] = useState(false);
@@ -124,27 +124,33 @@ export default function AssessmentPage() {
   }, [course, fromFirestore, loading, normalizedType, progress, id, navigate, questions.length, isVideoSubmission, isEvalForm]);
 
   useEffect(() => {
-    // if no questions -> nothing to do
     if (!questions.length) return;
     setAnswers(Array(questions.length).fill(null));
-  }, [id, type]); // reset when id/type changes
+  }, [id, type, questions.length]);
+
+  useEffect(() => {
+    if (!course?.evaluationFormQuestions?.length) return;
+    const initial = {};
+    course.evaluationFormQuestions.forEach((q, i) => {
+      initial[`q${i}`] = Array.isArray(q.options) ? "" : "";
+    });
+    setEvalFormValues((prev) => ({ ...initial, ...prev }));
+  }, [course?.id, course?.evaluationFormQuestions]);
 
   useEffect(() => {
     if (!questions.length) return;
     if (submitted) return;
     const t = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(t);
-          handleSubmit(); // auto-submit when time's up
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
     return () => clearInterval(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questions, submitted]);
+  }, [questions.length, submitted]);
+
+  useEffect(() => {
+    if (timeLeft === 0 && !submitted && questions.length > 0) {
+      handleSubmit();
+    }
+  }, [timeLeft, submitted, questions.length]);
 
   const handleSelect = (qIndex, optionIndex) => {
     if (submitted) return;
@@ -159,21 +165,16 @@ export default function AssessmentPage() {
   const handleNext = () =>
     setCurrentIndex((i) => Math.min(questions.length - 1, i + 1));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (submitted) return;
-    // compute score
     let correct = 0;
     for (let i = 0; i < questions.length; i += 1) {
-      if (answers[i] != null && answers[i] === questions[i].answer)
-        correct += 1;
+      if (answers[i] != null && answers[i] === questions[i].answer) correct += 1;
     }
-    setScore({
-      correct,
-      total: questions.length,
-      percent: questions.length
-        ? Math.round((correct / questions.length) * 100)
-        : 0,
-    });
+    const percent = questions.length ? Math.round((correct / questions.length) * 100) : 0;
+    const passingScore = course ? parsePassingScore(course.passingCriteria) : 70;
+    const passed = percent >= passingScore;
+    setScore({ correct, total: questions.length, percent, passed });
     setSubmitted(true);
 
     if (fromFirestore && user?.id && id) {
@@ -476,13 +477,9 @@ export default function AssessmentPage() {
     return (
       <Layout>
         <div className="assessment-wrapper">
-          <h2>
-            {course.title} — {normalizedType.toUpperCase()}
-          </h2>
+          <h2>{course.title} — {(normalizedType || "").toUpperCase()}</h2>
           <p>No assessment questions available for this activity.</p>
-          <button onClick={() => navigate(-1)} className="btn">
-            Back
-          </button>
+          <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn">Back to Course</button>
         </div>
         <Footer />
       </Layout>
@@ -490,6 +487,7 @@ export default function AssessmentPage() {
   }
 
   const currentQ = questions[currentIndex];
+  const passingScore = parsePassingScore(course.passingCriteria);
 
   return (
     <Layout>
@@ -498,14 +496,14 @@ export default function AssessmentPage() {
           <div>
             <h2>{course.title}</h2>
             <h4 className="muted">
-              {normalizedType === "pretest"
-                ? "Pre-Test"
-                : normalizedType === "quiz"
-                ? "Quiz"
-                : "Final Assessment"}
+              {normalizedType === "pretest" ? "Pre-Test" : normalizedType === "quiz" ? "Quiz" : "Final Assessment"}
             </h4>
+            {fromFirestore && course.certificationEnabled && (
+              <p className="text-sm text-foreground/70 mt-1">
+                Passing score: {passingScore}%
+              </p>
+            )}
           </div>
-
           <div className="timer">
             <div>Time left</div>
             <div className="timer-value">{formatTime(timeLeft)}</div>
@@ -521,19 +519,14 @@ export default function AssessmentPage() {
             )}
             <div className="question-card">
               <div className="question-meta">
-                <strong>
-                  Question {currentIndex + 1} / {questions.length}
-                </strong>
+                <strong>Question {currentIndex + 1} / {questions.length}</strong>
               </div>
               <div className="question-text">{currentQ.q}</div>
-
               <div className="options">
                 {currentQ.options.map((opt, oi) => (
                   <label
                     key={oi}
-                    className={`option ${
-                      answers[currentIndex] === oi ? "selected" : ""
-                    }`}
+                    className={`option ${answers[currentIndex] === oi ? "selected" : ""}`}
                   >
                     <input
                       type="radio"
@@ -545,20 +538,11 @@ export default function AssessmentPage() {
                   </label>
                 ))}
               </div>
-
               <div className="question-actions">
-                <button
-                  onClick={handlePrev}
-                  className="btn btn-light"
-                  disabled={currentIndex === 0}
-                >
+                <button onClick={handlePrev} className="btn btn-light" disabled={currentIndex === 0}>
                   Previous
                 </button>
-                <button
-                  onClick={handleNext}
-                  className="btn btn-light"
-                  disabled={currentIndex === questions.length - 1}
-                >
+                <button onClick={handleNext} className="btn btn-light" disabled={currentIndex === questions.length - 1}>
                   Next
                 </button>
                 <div style={{ flex: 1 }} />
@@ -567,14 +551,11 @@ export default function AssessmentPage() {
                 </button>
               </div>
             </div>
-
             <div className="progress-line">
               {questions.map((_, i) => (
                 <div
                   key={i}
-                  className={`progress-dot ${
-                    answers[i] != null ? "answered" : ""
-                  } ${i === currentIndex ? "active" : ""}`}
+                  className={`progress-dot ${answers[i] != null ? "answered" : ""} ${i === currentIndex ? "active" : ""}`}
                   onClick={() => setCurrentIndex(i)}
                 />
               ))}
@@ -606,13 +587,12 @@ export default function AssessmentPage() {
               </div>
             )}
             <div className="result-actions">
-              <button className="btn" onClick={() => navigate(-1)}>
+              <button className="btn" onClick={() => navigate(`/responder/modules/${id}`)}>
                 Back to Course
               </button>
               <button
                 className="btn btn-outline"
                 onClick={() => {
-                  // reset and return to first question
                   setSubmitted(false);
                   setAnswers(Array(questions.length).fill(null));
                   setScore(null);
@@ -623,29 +603,19 @@ export default function AssessmentPage() {
                 Retake
               </button>
             </div>
-
             <div className="answers-review">
               <h4>Review</h4>
               {questions.map((qq, idx) => (
                 <div key={idx} className="review-item">
-                  <div>
-                    <strong>{idx + 1}.</strong> {qq.q}
-                  </div>
-                  <div>
-                    {" "}
-                    Your answer:{" "}
-                    {answers[idx] == null
-                      ? "No answer"
-                      : qq.options[answers[idx]]}
-                  </div>
-                  <div> Correct: {qq.options[qq.answer]}</div>
+                  <div><strong>{idx + 1}.</strong> {qq.q}</div>
+                  <div>Your answer: {answers[idx] == null ? "No answer" : qq.options[answers[idx]]}</div>
+                  <div>Correct: {qq.options[qq.answer]}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
-
       <Footer />
     </Layout>
   );
