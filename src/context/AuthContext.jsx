@@ -1,6 +1,11 @@
-import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react";
 import authService from "../services/authService";
-
 
 import nodeApi from "../services/nodeApi";
 
@@ -61,14 +66,14 @@ export const AuthProvider = ({ children }) => {
                   // Only log out if it's explicitly a 401 Unauthorized (invalid token)
                   if (bgError.response?.status === 401) {
                     console.warn(
-                      "Cached auth token rejected by API, clearing auth state"
+                      "Cached auth token rejected by API, clearing auth state",
                     );
                     cleanupAuthStorage();
                     setUser(null);
                     setToken(null);
                   } else {
                     console.log(
-                      "Background user refresh failed (network issue), using cached data"
+                      "Background user refresh failed (network issue), using cached data",
                     );
                   }
                 }
@@ -130,16 +135,19 @@ export const AuthProvider = ({ children }) => {
     if (!user || !token) return;
 
     // Ping server every 10 minutes to keep session active
-    const keepAliveInterval = setInterval(async () => {
-      try {
-        await authService.getCurrentUser();
-        console.log("Session keep-alive successful");
-      } catch (error) {
-        // If keep-alive fails, session might be expired
-        // But don't force logout - let the API interceptor handle it
-        console.warn("Session keep-alive failed:", error.message);
-      }
-    }, 10 * 60 * 1000); // 10 minutes
+    const keepAliveInterval = setInterval(
+      async () => {
+        try {
+          await authService.getCurrentUser();
+          console.log("Session keep-alive successful");
+        } catch (error) {
+          // If keep-alive fails, session might be expired
+          // But don't force logout - let the API interceptor handle it
+          console.warn("Session keep-alive failed:", error.message);
+        }
+      },
+      10 * 60 * 1000,
+    ); // 10 minutes
 
     return () => clearInterval(keepAliveInterval);
   }, [user, token]);
@@ -156,7 +164,9 @@ export const AuthProvider = ({ children }) => {
       preloadCriticalData({ userRole: data.user.role });
 
       // Record this device/browser in active_devices (fire-and-forget)
-      nodeApi.post("/auth/record-device", { location: "Philippines" }).catch(() => {});
+      nodeApi
+        .post("/auth/record-device", { location: "Philippines" })
+        .catch(() => {});
 
       return data;
     } catch (error) {
@@ -211,7 +221,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     register,
-    setSession, 
+    setSession,
     isAuthenticated: !!token && !!user,
   };
 

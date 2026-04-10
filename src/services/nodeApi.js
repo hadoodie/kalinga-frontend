@@ -1,11 +1,11 @@
 /**
- * Axios client for the Node.js / Express + Supabase backend (port 5000).
+ * Axios client for the Node.js / Express + Supabase backend (port 5005).
  * This is separate from api.js which targets the Laravel backend.
  */
 import axios from "axios";
 
 const NODE_API_URL =
-  import.meta.env.VITE_NODE_API_URL || "http://localhost:5000";
+  import.meta.env.VITE_NODE_API_URL || "http://localhost:5005";
 
 const nodeApi = axios.create({
   baseURL: `${NODE_API_URL}/api`,
@@ -34,7 +34,10 @@ nodeApi.interceptors.response.use(
     }
 
     if (error.response?.status === 429) {
-      const retryAfter = parseInt(error.response.headers?.["retry-after"] || "0", 10);
+      const retryAfter = parseInt(
+        error.response.headers?.["retry-after"] || "0",
+        10,
+      );
       if (retryAfter > 0 && !error.config._retried429) {
         // Back off for the server-specified duration and retry once
         await new Promise((resolve) => setTimeout(resolve, retryAfter * 1000));
@@ -42,13 +45,15 @@ nodeApi.interceptors.response.use(
         return nodeApi(error.config);
       }
       // Surface a user-friendly error message
-      const friendly = new Error("Too many requests. Please slow down and try again in a moment.");
+      const friendly = new Error(
+        "Too many requests. Please slow down and try again in a moment.",
+      );
       friendly.status = 429;
       return Promise.reject(friendly);
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default nodeApi;
