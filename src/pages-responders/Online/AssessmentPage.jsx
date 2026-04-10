@@ -221,8 +221,21 @@ export default function AssessmentPage() {
       await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false }, course, {
         videoSubmission: { downloadURL, storagePath },
       });
+      setProgress((prev) => {
+        const base = prev || { assessmentResults: {} };
+        return {
+          ...base,
+          videoSubmission: { downloadURL, storagePath },
+          assessmentResults: {
+            ...(base.assessmentResults || {}),
+            final: { percent: 0, passed: false },
+          },
+        };
+      });
+      setProgressError("");
       setVideoSubmitted(true);
     } catch (e) {
+      setProgressError(toFriendlyFirebaseError(e, "upload video submission"));
       console.warn("Failed to upload video", e);
     } finally {
       setUploadingVideo(false);
@@ -237,8 +250,21 @@ export default function AssessmentPage() {
       await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false }, course, {
         evalFormSubmission: evalFormValues,
       });
+      setProgress((prev) => {
+        const base = prev || { assessmentResults: {} };
+        return {
+          ...base,
+          evalFormSubmission: evalFormValues,
+          assessmentResults: {
+            ...(base.assessmentResults || {}),
+            final: { percent: 0, passed: false },
+          },
+        };
+      });
+      setProgressError("");
       setEvalFormSubmitted(true);
     } catch (e) {
+      setProgressError(toFriendlyFirebaseError(e, "submit evaluation form"));
       console.warn("Failed to save evaluation form", e);
     } finally {
       setSavingResult(false);
@@ -312,6 +338,11 @@ export default function AssessmentPage() {
           ) : (
             <div className="question-card">
               <p className="mb-3">Upload your video demonstrating the practical task or simulation.</p>
+              {progressError && (
+                <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+                  {progressError}
+                </div>
+              )}
               <input
                 type="file"
                 accept="video/*"
@@ -321,7 +352,7 @@ export default function AssessmentPage() {
               <button
                 type="button"
                 onClick={handleVideoSubmit}
-                disabled={!videoFile || uploadingVideo}
+                disabled={!videoFile || uploadingVideo || savingResult}
                 className="btn btn-primary"
               >
                 {uploadingVideo || savingResult ? "Uploading..." : "Submit video"}
@@ -365,6 +396,11 @@ export default function AssessmentPage() {
           ) : (
             <div className="question-card">
               <p className="mb-4">Please complete the evaluation form below.</p>
+              {progressError && (
+                <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+                  {progressError}
+                </div>
+              )}
               {evalQuestions.map((q, i) => (
                 <div key={i} className="mb-4">
                   <label className="block font-medium mb-1">{q.question}</label>
