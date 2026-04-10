@@ -179,7 +179,13 @@ export default function AssessmentPage() {
     if (fromFirestore && user?.id && id) {
       setSavingResult(true);
       try {
-        await saveAssessmentResult(user.id, id, normalizedType, { percent, passed }, course);
+        await saveAssessmentResult(
+          user.id,
+          id,
+          normalizedType,
+          { percent, passed, score: correct, maxScore: questions.length, status: passed ? "PASSED" : "FAILED" },
+          course
+        );
         setProgress((prev) => {
           const base = prev || { assessmentResults: {} };
           return {
@@ -217,7 +223,7 @@ export default function AssessmentPage() {
     setSavingResult(true);
     try {
       const { downloadURL, storagePath } = await uploadSubmissionVideo(user.id, id, videoFile);
-      await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false }, course, {
+      await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false, score: null, maxScore: null, status: "PENDING_REVIEW" }, course, {
         videoSubmission: { downloadURL, storagePath },
       });
       setProgress((prev) => {
@@ -246,7 +252,7 @@ export default function AssessmentPage() {
     if (!user?.id || !id || !fromFirestore) return;
     setSavingResult(true);
     try {
-      await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false }, course, {
+      await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false, score: null, maxScore: null, status: "PENDING_REVIEW" }, course, {
         evalFormSubmission: evalFormValues,
       });
       setProgress((prev) => {

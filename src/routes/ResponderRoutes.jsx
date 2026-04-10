@@ -31,9 +31,6 @@ const CourseDetails = lazy(() =>
   import("../pages-responders/Online/CourseDetails")
 );
 const InfoPage = lazy(() => import("../pages-responders/Online/InfoPage"));
-const LessonDetails = lazy(() =>
-  import("../pages-responders/Online/LessonDetails")
-);
 const SectionPage = lazy(() =>
   import("../pages-responders/Online/SectionPage")
 );
@@ -42,9 +39,6 @@ const AssessmentPage = lazy(() =>
 );
 const Certifications = lazy(() =>
   import("../pages-responders/Online/Certifications")
-);
-const ActivityPage = lazy(() =>
-  import("../pages-responders/Online/ActivityPage")
 );
 
 const Module1 = lazy(() =>
@@ -196,7 +190,7 @@ export const ResponderRoutes = () => (
       path={ROUTES.RESPONDER.MODULE_LESSON}
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
-          <LessonDetails />
+          <CourseDetails />
         </ProtectedRoute>
       }
     />
@@ -301,7 +295,7 @@ export const ResponderRoutes = () => (
       path={ROUTES.RESPONDER.MODULE_ACTIVITY}
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
-          <ActivityPage />
+          <CourseDetails />
         </ProtectedRoute>
       }
     />
