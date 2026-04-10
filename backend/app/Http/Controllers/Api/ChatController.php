@@ -706,7 +706,7 @@ class ChatController extends Controller
         $conversation = Conversation::query()
             ->where('user_id1', $ids[0])
             ->where('user_id2', $ids[1])
-            ->where('is_archived', false)
+            ->where('is_archived', 'false')
             ->first();
 
         if ($conversation) {
