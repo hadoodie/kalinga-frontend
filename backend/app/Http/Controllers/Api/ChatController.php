@@ -561,7 +561,7 @@ class ChatController extends Controller
             $incidentData['conversation_id'] = $conversationId;
 
             Conversation::whereKey($conversationId)->update([
-                'is_archived' => false,
+                'is_archived' => 'false',
                 'archived_at' => null,
             ]);
         }
@@ -716,7 +716,7 @@ class ChatController extends Controller
         return Conversation::create([
             'user_id1' => $ids[0],
             'user_id2' => $ids[1],
-            'is_archived' => false,
+            'is_archived' => 'false',
         ]);
     }
 
