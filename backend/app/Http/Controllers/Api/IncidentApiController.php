@@ -611,7 +611,7 @@ class IncidentApiController extends Controller
         $conversation = Conversation::query()
             ->where('user_id1', $pair[0])
             ->where('user_id2', $pair[1])
-            ->where('is_archived', false)
+            ->where('is_archived', 'false')
             ->first();
 
         if ($conversation) {

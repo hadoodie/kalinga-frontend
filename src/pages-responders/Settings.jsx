@@ -21,19 +21,35 @@ import {
   FaUserClock,
   FaVolumeUp,
 } from "react-icons/fa";
-import api from "../services/api";
+import nodeApi from "../services/nodeApi";
+import { useAuth } from "../context/AuthContext";
 
 function DutyStatusModal({ onClose }) {
   const [dutyStatus, setDutyStatus] = useState("on-duty");
+  const [savedStatus, setSavedStatus] = useState("on-duty");
+  const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const mapApiStatusToUi = (status) => {
+    if (status === "On Duty" || status === "Available") return "on-duty";
+    return "off-duty";
+  };
+
+  const mapUiStatusToApi = (status) => {
+    if (status === "on-duty") return "On Duty";
+    return "Off Duty";
+  };
 
   useEffect(() => {
     const fetchDutyStatus = async () => {
       try {
-        // const response = await api.get("/duty-status");
-        // setDutyStatus(response.data.status);
-        // Simulated data
-        setDutyStatus("on-duty");
+        const response = await nodeApi.get("/profile");
+        const profile = response?.data?.data;
+
+        setUserId(profile?.id ?? null);
+        const uiStatus = mapApiStatusToUi(profile?.responder_status);
+        setDutyStatus(uiStatus);
+        setSavedStatus(uiStatus);
       } catch (error) {
         console.error("Error fetching duty status:", error);
       }
@@ -42,14 +58,25 @@ function DutyStatusModal({ onClose }) {
   }, []);
 
   const handleSave = async () => {
+    if (!userId) {
+      alert("User record not found. Please contact support.");
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // await api.post("/duty-status", { status: dutyStatus });
-      alert(`Duty status changed to ${dutyStatus.toUpperCase()} (Simulated)`);
-      onClose();
+      const res = await nodeApi.put(`/responders/${userId}/status`, {
+        status: mapUiStatusToApi(dutyStatus),
+      });
+      if (res.status === 200) {
+        setSavedStatus(dutyStatus);
+        alert(`Duty status changed to ${dutyStatus === "on-duty" ? "ON-DUTY" : "OFF-DUTY"}`);
+        onClose();
+      }
     } catch (error) {
       console.error("Error updating duty status:", error);
-      alert("Failed to update duty status. Please try again.");
+      setDutyStatus(savedStatus);
+      alert(error.response?.data?.message || "Failed to update duty status. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -575,13 +602,12 @@ function ChangePasswordModal({ onClose }) {
 
     setIsLoading(true);
     try {
-      // await api.post("/change-password", {
-      //   current_password: currentPassword,
-      //   new_password: newPassword,
-      //   new_password_confirmation: confirmPassword,
-      // });
+      await nodeApi.put("/profile/password", {
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
 
-      alert("Password changed successfully! (Simulated)");
+      alert("Password changed successfully!");
       onClose();
     } catch (error) {
       console.error("Error changing password:", error);
@@ -689,46 +715,35 @@ function ChangePasswordModal({ onClose }) {
 }
 
 function LoggedInDevicesModal({ onClose }) {
+  const { user } = useAuth();
   const [devices, setDevices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!user?.id) return;
     const fetchDevices = async () => {
-      // Fallback data
-      setDevices([
-        {
-          id: 1,
-          device_name: "Windows PC (Current)",
-          device_type: "desktop",
-          location: "Manila, Philippines",
-          ip_address: "192.168.1.100",
-          last_active: "2025-11-30 10:30:00",
-          is_current: true,
-        },
-        {
-          id: 2,
-          device_name: "iPhone 14",
-          device_type: "mobile",
-          location: "Quezon City, Philippines",
-          ip_address: "192.168.1.101",
-          last_active: "2025-11-29 18:45:00",
-          is_current: false,
-        },
-        {
-          id: 3,
-          device_name: "iPad Pro",
-          device_type: "tablet",
-          location: "Makati, Philippines",
-          ip_address: "192.168.1.102",
-          last_active: "2025-11-28 14:20:00",
-          is_current: false,
-        },
-      ]);
-      setIsLoading(false);
+      try {
+        const { data } = await nodeApi.get(`/users/${user.id}/devices`);
+        setDevices(
+          (data?.data || []).sort((a, b) => new Date(b.last_active) - new Date(a.last_active)).map((d) => ({
+            id: d.id,
+            device_name: d.device_name,
+            device_type: d.device_type || "desktop",
+            location: d.location || "Unknown",
+            ip_address: d.ip_address || "N/A",
+            last_active: d.last_active,
+            is_current: d.is_current_device,
+          }))
+        );
+      } catch (error) {
+        console.error("Error fetching devices:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     fetchDevices();
-  }, []);
+  }, [user?.id]);
 
   const getDeviceIcon = (type) => {
     switch (type) {
@@ -744,12 +759,11 @@ function LoggedInDevicesModal({ onClose }) {
   const handleLogout = async (deviceId) => {
     if (window.confirm("Are you sure you want to log out this device?")) {
       try {
-        // await api.post(`/devices/${deviceId}/logout`);
+        await nodeApi.delete(`/profile/devices/${deviceId}`);
         setDevices(devices.filter((d) => d.id !== deviceId));
-        alert("Device logged out successfully (Simulated)");
       } catch (error) {
         console.error("Error logging out device:", error);
-        alert("Failed to log out device. Please try again.");
+        alert(error.response?.data?.message || "Failed to log out device. Please try again.");
       }
     }
   };
@@ -793,9 +807,13 @@ function LoggedInDevicesModal({ onClose }) {
                         <h4 className="font-semibold text-gray-900">
                           {device.device_name}
                         </h4>
-                        {device.is_current && (
-                          <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
+                        {device.is_current ? (
+                          <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded">
                             Current Device
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">
+                            {new Date(device.last_active).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         )}
                       </div>

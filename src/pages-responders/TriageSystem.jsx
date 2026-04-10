@@ -1,5 +1,5 @@
 // src/pages-responders/TriageSystem.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart,
@@ -19,6 +19,7 @@ import {
 import Layout from "../layouts/Layout";
 import "../styles/triage-system.css";
 import Footer from "../components/responder/Footer";
+import nodeApi from "../services/nodeApi";
 
 // Severity color map
 const SEVERITY_COLORS = {
@@ -67,175 +68,83 @@ const TriageSystem = () => {
   const [compareMode, setCompareMode] = useState(false);
   const [compareHospitals, setCompareHospitals] = useState([]);
 
-  const areas = [
-    "Metro Manila",
-    "North Luzon",
-    "South Luzon",
-    "Visayas",
-    "Mindanao",
-  ];
+  const [areas, setAreas] = useState(["Metro Manila"]);
+  const [data, setData] = useState({ "Metro Manila": [] });
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Extended hospital data with more details
-  const data = {
-    "Metro Manila": [
-      {
-        hospital: "Philippine Heart Center",
-        specialty: "Cardiology",
-        topDoctor: "Dr. Santos",
-        values: [25, 12, 4, 3, 1],
-        trend: [20, 22, 25, 28, 25],
-      },
-      {
-        hospital: "East Avenue Medical Center",
-        specialty: "General",
-        topDoctor: "Dr. Cruz",
-        values: [40, 18, 10, 5, 2],
-        trend: [35, 38, 42, 40, 40],
-      },
-      {
-        hospital: "Jose Reyes Memorial Medical Center",
-        specialty: "Neurology",
-        topDoctor: "Dr. Reyes",
-        values: [32, 14, 6, 4, 1],
-        trend: [28, 30, 32, 34, 32],
-      },
-      {
-        hospital: "San Lazaro Hospital",
-        specialty: "Infectious Disease",
-        topDoctor: "Dr. Garcia",
-        values: [28, 20, 9, 2, 0],
-        trend: [22, 25, 28, 30, 28],
-      },
-      {
-        hospital: "National Children's Hospital",
-        specialty: "Pediatrics",
-        topDoctor: "Dr. Luna",
-        values: [35, 15, 7, 3, 1],
-        trend: [30, 32, 35, 38, 35],
-      },
-      {
-        hospital: "Lung Center of the Philippines",
-        specialty: "Pulmonology",
-        topDoctor: "Dr. Bautista",
-        values: [22, 10, 5, 2, 1],
-        trend: [18, 20, 22, 24, 22],
-      },
-    ],
-    "North Luzon": [
-      {
-        hospital: "Baguio General Hospital",
-        specialty: "General",
-        topDoctor: "Dr. Abad",
-        values: [38, 10, 5, 2, 1],
-        trend: [32, 35, 38, 40, 38],
-      },
-      {
-        hospital: "Ilocos Training & Regional Medical Center",
-        specialty: "Trauma",
-        topDoctor: "Dr. Valdez",
-        values: [25, 12, 6, 2, 1],
-        trend: [20, 22, 25, 28, 25],
-      },
-      {
-        hospital: "Region 1 Medical Center",
-        specialty: "Orthopedics",
-        topDoctor: "Dr. Ramos",
-        values: [30, 14, 8, 4, 2],
-        trend: [26, 28, 30, 32, 30],
-      },
-    ],
-    "South Luzon": [
-      {
-        hospital: "Batangas Medical Center",
-        specialty: "General",
-        topDoctor: "Dr. Hernandez",
-        values: [45, 22, 10, 6, 2],
-        trend: [40, 42, 45, 48, 45],
-      },
-      {
-        hospital: "Bicol Regional Hospital",
-        specialty: "General",
-        topDoctor: "Dr. Ocampo",
-        values: [30, 15, 8, 5, 2],
-        trend: [26, 28, 30, 32, 30],
-      },
-      {
-        hospital: "CALABARZON Regional Hospital",
-        specialty: "Trauma",
-        topDoctor: "Dr. Torres",
-        values: [42, 20, 9, 4, 1],
-        trend: [38, 40, 42, 44, 42],
-      },
-    ],
-    Visayas: [
-      {
-        hospital: "Vicente Sotto Memorial Medical Center",
-        specialty: "Cardiology",
-        topDoctor: "Dr. Villanueva",
-        values: [40, 18, 9, 4, 1],
-        trend: [35, 37, 40, 42, 40],
-      },
-      {
-        hospital: "Western Visayas Medical Center",
-        specialty: "General",
-        topDoctor: "Dr. Aquino",
-        values: [32, 14, 6, 3, 0],
-        trend: [28, 30, 32, 34, 32],
-      },
-      {
-        hospital: "Eastern Visayas Regional Medical Center",
-        specialty: "Orthopedics",
-        topDoctor: "Dr. Mendoza",
-        values: [28, 12, 5, 2, 1],
-        trend: [24, 26, 28, 30, 28],
-      },
-    ],
-    Mindanao: [
-      {
-        hospital: "Southern Philippines Medical Center",
-        specialty: "General",
-        topDoctor: "Dr. Fernandez",
-        values: [60, 20, 15, 6, 3],
-        trend: [52, 55, 60, 62, 60],
-      },
-      {
-        hospital: "Northern Mindanao Medical Center",
-        specialty: "Trauma",
-        topDoctor: "Dr. Castro",
-        values: [35, 18, 9, 5, 2],
-        trend: [30, 32, 35, 38, 35],
-      },
-      {
-        hospital: "Davao Regional Medical Center",
-        specialty: "Cardiology",
-        topDoctor: "Dr. Diaz",
-        values: [48, 22, 12, 5, 2],
-        trend: [42, 45, 48, 50, 48],
-      },
-    ],
-  };
+  useEffect(() => {
+    Promise.all([
+      nodeApi.get("/hospitals", { params: { limit: 50 } }),
+      nodeApi.get("/triage/patients", { params: { limit: 500 } }),
+      nodeApi.get("/reports", { params: { limit: 10, severity: "critical" } }),
+    ])
+      .then(([hospRes, triageRes, reportsRes]) => {
+        const hospitals = hospRes.data?.data || [];
+        const patients = triageRes.data?.data || [];
+        const reports = reportsRes.data?.data || [];
 
-  const alerts = [
-    {
-      text: "Philippine Heart Center currently lacks <b>cardiologists</b> for new critical cases.",
-      level: "critical",
-      hospital: "Philippine Heart Center",
-    },
-    {
-      text: "Jose Reyes Memorial reports a <b>surge in neurology cases</b>.",
-      level: "veryHigh",
-      hospital: "Jose Reyes Memorial Medical Center",
-    },
-    {
-      text: "San Lazaro Hospital at <b>85% capacity</b> for infectious disease ward.",
-      level: "high",
-      hospital: "San Lazaro Hospital",
-    },
-  ];
+        // Group triage patients by hospital_id
+        const triageByHospital = {};
+        patients.forEach((p) => {
+          const hid = p.hospital_id;
+          if (!triageByHospital[hid]) {
+            triageByHospital[hid] = { low: 0, medium: 0, high: 0, very_high: 0, critical: 0 };
+          }
+          const lvl = p.triage_level?.toLowerCase();
+          if (lvl === "low") triageByHospital[hid].low++;
+          else if (lvl === "medium") triageByHospital[hid].medium++;
+          else if (lvl === "high") triageByHospital[hid].high++;
+          else if (lvl === "very_high") triageByHospital[hid].very_high++;
+          else if (lvl === "critical") triageByHospital[hid].critical++;
+        });
+
+        // Build hospital entries
+        const hospitalEntries = hospitals.map((h) => {
+          const triage = triageByHospital[h.id] || {
+            low: 0, medium: 0, high: 0, very_high: 0, critical: 0,
+          };
+          const total =
+            triage.low + triage.medium + triage.high + triage.very_high + triage.critical;
+          return {
+            id: h.id,
+            hospital: h.name,
+            specialty: h.level || "General",
+            topDoctor: "—",
+            values: [triage.low, triage.medium, triage.high, triage.very_high, triage.critical],
+            // flat trend using total (no time-series in DB)
+            trend: Array(5).fill(total),
+          };
+        });
+
+        // Build areas from distinct city/level groupings
+        // Since all seeded hospitals are Metro Manila, group as single area
+        const areaMap = { "Metro Manila": hospitalEntries };
+        const areaList = Object.keys(areaMap);
+
+        setAreas(areaList);
+        setData(areaMap);
+        setSelectedArea(areaList[0] || "Metro Manila");
+
+        // Transform reports to alerts format
+        const alertList = reports.slice(0, 5).map((r) => ({
+          text: `<b>${r.hospital_name}</b>: ${r.message || r.title}`,
+          level: r.severity === "critical"
+            ? "critical"
+            : r.severity === "high"
+            ? "high"
+            : "medium",
+          hospital: r.hospital_name,
+        }));
+        setAlerts(alertList);
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
 
   // Calculate totals for current area
   const areaTotals = useMemo(() => {
-    const hospitals = data[selectedArea];
+    const hospitals = data[selectedArea] || [];
     return {
       low: hospitals.reduce((sum, h) => sum + h.values[0], 0),
       medium: hospitals.reduce((sum, h) => sum + h.values[1], 0),
@@ -243,13 +152,12 @@ const TriageSystem = () => {
       veryHigh: hospitals.reduce((sum, h) => sum + h.values[3], 0),
       critical: hospitals.reduce((sum, h) => sum + h.values[4], 0),
     };
-  }, [selectedArea]);
+  }, [selectedArea, data]);
 
   // Filtered and sorted data
   const filteredData = useMemo(() => {
-    let result = [...data[selectedArea]];
+    let result = [...(data[selectedArea] || [])];
 
-    // Search filter
     if (searchTerm) {
       result = result.filter(
         (h) =>
@@ -258,21 +166,13 @@ const TriageSystem = () => {
       );
     }
 
-    // Severity filter
     if (severityFilter !== "all") {
-      const severityIndex = {
-        low: 0,
-        medium: 1,
-        high: 2,
-        veryHigh: 3,
-        critical: 4,
-      };
+      const severityIndex = { low: 0, medium: 1, high: 2, veryHigh: 3, critical: 4 };
       result = result.filter(
         (h) => h.values[severityIndex[severityFilter]] > 0
       );
     }
 
-    // Sorting
     if (sortBy === "hospital") {
       result.sort((a, b) => a.hospital.localeCompare(b.hospital));
     } else if (sortBy === "total") {
@@ -286,22 +186,22 @@ const TriageSystem = () => {
     }
 
     return result;
-  }, [selectedArea, searchTerm, sortBy, severityFilter]);
+  }, [selectedArea, searchTerm, sortBy, severityFilter, data]);
 
   // Pie chart data for personnel needs
   const personnelData = useMemo(() => {
-    const needs = calculatePersonnelNeeds(data[selectedArea]);
+    const needs = calculatePersonnelNeeds(data[selectedArea] || []);
     return [
       { name: "Nurses", value: needs.nurses, fill: "#3b82f6" },
       { name: "Doctors", value: needs.doctors, fill: "#22c55e" },
       { name: "Specialists", value: needs.specialists, fill: "#f59e0b" },
       { name: "ICU Staff", value: needs.icu, fill: "#dc2626" },
     ];
-  }, [selectedArea]);
+  }, [selectedArea, data]);
 
   // Bar chart data for severity overview
   const severityChartData = useMemo(() => {
-    return data[selectedArea].map((h) => ({
+    return (data[selectedArea] || []).map((h) => ({
       name: h.hospital.split(" ").slice(0, 2).join(" "),
       Low: h.values[0],
       Medium: h.values[1],
@@ -309,21 +209,20 @@ const TriageSystem = () => {
       "Very High": h.values[3],
       Critical: h.values[4],
     }));
-  }, [selectedArea]);
+  }, [selectedArea, data]);
 
   // Trend data for line chart
   const trendData = useMemo(() => {
     const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
     return days.map((day, i) => {
       const dayData = { name: day };
-      data[selectedArea].forEach((h) => {
+      (data[selectedArea] || []).forEach((h) => {
         dayData[h.hospital.split(" ")[0]] = h.trend[i];
       });
       return dayData;
     });
-  }, [selectedArea]);
+  }, [selectedArea, data]);
 
-  // Handle hospital comparison
   const toggleCompare = (hospital) => {
     if (compareHospitals.includes(hospital.hospital)) {
       setCompareHospitals(
@@ -334,12 +233,11 @@ const TriageSystem = () => {
     }
   };
 
-  // Get compare data
   const compareData = useMemo(() => {
-    return data[selectedArea].filter((h) =>
+    return (data[selectedArea] || []).filter((h) =>
       compareHospitals.includes(h.hospital)
     );
-  }, [selectedArea, compareHospitals]);
+  }, [selectedArea, compareHospitals, data]);
 
   const badge = {
     low: "Low",
@@ -348,6 +246,17 @@ const TriageSystem = () => {
     veryHigh: "Very High",
     critical: "Critical",
   };
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="triage-fullpage">
+          <p style={{ padding: "2rem", textAlign: "center" }}>Loading triage data…</p>
+        </div>
+        <Footer />
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -376,7 +285,7 @@ const TriageSystem = () => {
               </div>
               <div className="status-item">
                 <span className="label">Hospitals</span>
-                <span className="value">{data[selectedArea].length}</span>
+                <span className="value">{(data[selectedArea] || []).length}</span>
               </div>
             </div>
           </div>
@@ -444,22 +353,10 @@ const TriageSystem = () => {
                   <Tooltip />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Bar dataKey="Low" stackId="a" fill={SEVERITY_COLORS.low} />
-                  <Bar
-                    dataKey="Medium"
-                    stackId="a"
-                    fill={SEVERITY_COLORS.medium}
-                  />
+                  <Bar dataKey="Medium" stackId="a" fill={SEVERITY_COLORS.medium} />
                   <Bar dataKey="High" stackId="a" fill={SEVERITY_COLORS.high} />
-                  <Bar
-                    dataKey="Very High"
-                    stackId="a"
-                    fill={SEVERITY_COLORS.veryHigh}
-                  />
-                  <Bar
-                    dataKey="Critical"
-                    stackId="a"
-                    fill={SEVERITY_COLORS.critical}
-                  />
+                  <Bar dataKey="Very High" stackId="a" fill={SEVERITY_COLORS.veryHigh} />
+                  <Bar dataKey="Critical" stackId="a" fill={SEVERITY_COLORS.critical} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -486,7 +383,7 @@ const TriageSystem = () => {
                     <th>High</th>
                     <th>Very High</th>
                     <th>Critical</th>
-                    <th>Top Doctor</th>
+                    <th>Level</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -494,14 +391,10 @@ const TriageSystem = () => {
                     <tr
                       key={idx}
                       className={`clickable-row ${
-                        compareHospitals.includes(row.hospital)
-                          ? "selected"
-                          : ""
+                        compareHospitals.includes(row.hospital) ? "selected" : ""
                       }`}
                       onClick={() =>
-                        compareMode
-                          ? toggleCompare(row)
-                          : setSelectedHospital(row)
+                        compareMode ? toggleCompare(row) : setSelectedHospital(row)
                       }
                     >
                       {compareMode && (
@@ -523,7 +416,7 @@ const TriageSystem = () => {
                       <td className="very-high">{row.values[3]}</td>
                       <td className="critical">{row.values[4]}</td>
                       <td>
-                        <span className="doctor-badge">{row.topDoctor}</span>
+                        <span className="doctor-badge">{row.specialty}</span>
                       </td>
                     </tr>
                   ))}
@@ -545,7 +438,7 @@ const TriageSystem = () => {
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip />
-                  {data[selectedArea].slice(0, 3).map((h, i) => (
+                  {(data[selectedArea] || []).slice(0, 3).map((h, i) => (
                     <Line
                       key={i}
                       type="monotone"
@@ -590,10 +483,13 @@ const TriageSystem = () => {
           {/* Alerts Card */}
           <div className="card alerts">
             <h3 className="card-title">Active Alerts</h3>
+            {alerts.length === 0 && (
+              <p style={{ padding: "1rem", color: "#666" }}>No active alerts.</p>
+            )}
             {alerts.map((a, i) => (
               <div key={i} className={`alert-card severity-${a.level}`}>
                 <span className={`severity-badge ${a.level}`}>
-                  {badge[a.level]}
+                  {badge[a.level] || a.level}
                 </span>
                 <span dangerouslySetInnerHTML={{ __html: a.text }} />
               </div>
@@ -611,41 +507,16 @@ const TriageSystem = () => {
                     <div key={i} className="compare-item">
                       <div className="compare-label">{h.hospital}</div>
                       <div className="bar-row">
-                        <div
-                          className="bar-fill"
-                          style={{
-                            width: `${(h.values[0] / total) * 100}%`,
-                            background: SEVERITY_COLORS.low,
-                          }}
-                        ></div>
-                        <div
-                          className="bar-fill"
-                          style={{
-                            width: `${(h.values[1] / total) * 100}%`,
-                            background: SEVERITY_COLORS.medium,
-                          }}
-                        ></div>
-                        <div
-                          className="bar-fill"
-                          style={{
-                            width: `${(h.values[2] / total) * 100}%`,
-                            background: SEVERITY_COLORS.high,
-                          }}
-                        ></div>
-                        <div
-                          className="bar-fill"
-                          style={{
-                            width: `${(h.values[3] / total) * 100}%`,
-                            background: SEVERITY_COLORS.veryHigh,
-                          }}
-                        ></div>
-                        <div
-                          className="bar-fill"
-                          style={{
-                            width: `${(h.values[4] / total) * 100}%`,
-                            background: SEVERITY_COLORS.critical,
-                          }}
-                        ></div>
+                        {h.values.map((v, vi) => (
+                          <div
+                            key={vi}
+                            className="bar-fill"
+                            style={{
+                              width: total > 0 ? `${(v / total) * 100}%` : "0%",
+                              background: Object.values(SEVERITY_COLORS)[vi],
+                            }}
+                          />
+                        ))}
                       </div>
                       <div className="compare-stats">
                         Total: {total} | Critical: {h.values[4]}
@@ -683,8 +554,7 @@ const TriageSystem = () => {
                 </button>
                 <h2>{selectedHospital.hospital}</h2>
                 <p className="modal-specialty">
-                  Specialty: {selectedHospital.specialty} | Lead:{" "}
-                  {selectedHospital.topDoctor}
+                  Level: {selectedHospital.specialty}
                 </p>
 
                 <table className="modal-table">
@@ -703,10 +573,10 @@ const TriageSystem = () => {
                           (a, b) => a + b,
                           0
                         );
-                        const percent = (
-                          (selectedHospital.values[i] / total) *
-                          100
-                        ).toFixed(1);
+                        const percent =
+                          total > 0
+                            ? ((selectedHospital.values[i] / total) * 100).toFixed(1)
+                            : "0.0";
                         const actions = [
                           "Routine monitoring",
                           "Scheduled assessment",
