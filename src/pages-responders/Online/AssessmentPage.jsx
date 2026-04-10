@@ -4,7 +4,14 @@ import Layout from "../../layouts/Layout";
 import Footer from "../../components/responder/Footer";
 import courseContent from "../../data/courseContent";
 import "../../styles/assessment.css";
-import { getCourse, getProgress, saveAssessmentResult, parsePassingScore, recheckCertification, uploadSubmissionVideo } from "@/services/trainingService";
+import {
+  getCourse,
+  getProgress,
+  saveAssessmentResult,
+  parsePassingScore,
+  recheckCertification,
+  uploadSubmissionVideo,
+} from "@/services/trainingService";
 import { useAuth } from "@/context/AuthContext";
 
 const formatTime = (seconds) => {
@@ -22,7 +29,7 @@ export default function AssessmentPage() {
   // URL type can be "pre-test", "quiz", "final-assessment"; course.assessments uses "pretest", "quiz", "final"
   const rawType = type?.replace(/-/g, "").toLowerCase();
   const normalizedType =
-    rawType === "finalassessment" ? "final" : (rawType || "");
+    rawType === "finalassessment" ? "final" : rawType || "";
 
   const [course, setCourse] = useState(null);
   const [progress, setProgress] = useState(undefined); // undefined = not yet loaded; null = no progress doc
@@ -30,9 +37,10 @@ export default function AssessmentPage() {
   const [loading, setLoading] = useState(true);
   const [fromFirestore, setFromFirestore] = useState(false);
 
-  const questions = course && course.assessments && course.assessments[normalizedType]
-    ? course.assessments[normalizedType]
-    : [];
+  const questions =
+    course && course.assessments && course.assessments[normalizedType]
+      ? course.assessments[normalizedType]
+      : [];
 
   const defaultDurations = { pretest: 180, quiz: 300, final: 600 };
   const initialTime = defaultDurations[normalizedType] || 300;
@@ -44,6 +52,7 @@ export default function AssessmentPage() {
   const [score, setScore] = useState(null);
   const [savingResult, setSavingResult] = useState(false);
   const [certificateEarned, setCertificateEarned] = useState(false);
+  console.log(certificateEarned); // Temporary to suppress ESLint no-unused-vars rule
   const [videoFile, setVideoFile] = useState(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoSubmitted, setVideoSubmitted] = useState(false);
@@ -81,7 +90,9 @@ export default function AssessmentPage() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [id, normalizedType]);
 
   useEffect(() => {
@@ -89,17 +100,25 @@ export default function AssessmentPage() {
     let cancelled = false;
     setProgressError("");
     getProgress(user.id, id)
-      .then((p) => { if (!cancelled) setProgress(p); })
+      .then((p) => {
+        if (!cancelled) setProgress(p);
+      })
       .catch((e) => {
         if (!cancelled) {
           setProgress(null);
-          setProgressError(toFriendlyFirebaseError(e, "load training progress"));
+          setProgressError(
+            toFriendlyFirebaseError(e, "load training progress"),
+          );
         }
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, id, fromFirestore]);
 
-  const isVideoSubmission = course?.assessmentType === "Practical Test" || course?.assessmentType === "Simulation";
+  const isVideoSubmission =
+    course?.assessmentType === "Practical Test" ||
+    course?.assessmentType === "Simulation";
   const isEvalForm = course?.assessmentType === "Evaluation Form";
 
   // Enforce order: quiz only after pretest; final only after quiz passed (70%). Skip for submission-only types.
@@ -121,7 +140,18 @@ export default function AssessmentPage() {
         return;
       }
     }
-  }, [course, fromFirestore, loading, normalizedType, progress, id, navigate, questions.length, isVideoSubmission, isEvalForm]);
+  }, [
+    course,
+    fromFirestore,
+    loading,
+    normalizedType,
+    progress,
+    id,
+    navigate,
+    questions.length,
+    isVideoSubmission,
+    isEvalForm,
+  ]);
 
   useEffect(() => {
     if (!questions.length) return;
@@ -169,10 +199,15 @@ export default function AssessmentPage() {
     if (submitted) return;
     let correct = 0;
     for (let i = 0; i < questions.length; i += 1) {
-      if (answers[i] != null && answers[i] === questions[i].answer) correct += 1;
+      if (answers[i] != null && answers[i] === questions[i].answer)
+        correct += 1;
     }
-    const percent = questions.length ? Math.round((correct / questions.length) * 100) : 0;
-    const passingScore = course ? parsePassingScore(course.passingCriteria) : 70;
+    const percent = questions.length
+      ? Math.round((correct / questions.length) * 100)
+      : 0;
+    const passingScore = course
+      ? parsePassingScore(course.passingCriteria)
+      : 70;
     const passed = percent >= passingScore;
     setScore({ correct, total: questions.length, percent, passed });
     setSubmitted(true);
@@ -184,8 +219,14 @@ export default function AssessmentPage() {
           user.id,
           id,
           normalizedType,
-          { percent, passed, score: correct, maxScore: questions.length, status: passed ? "PASSED" : "FAILED" },
-          course
+          {
+            percent,
+            passed,
+            score: correct,
+            maxScore: questions.length,
+            status: passed ? "PASSED" : "FAILED",
+          },
+          course,
         );
         setProgress((prev) => {
           const base = prev || { assessmentResults: {} };
@@ -200,12 +241,23 @@ export default function AssessmentPage() {
         setProgressError("");
 
         // Auto-advance only after the write succeeds, preserving the enforced flow.
-        if (normalizedType === "pretest" && course?.assessments?.quiz?.length > 0) {
-          navigate(`/responder/modules/${id}/assessment/quiz`, { replace: true });
+        if (
+          normalizedType === "pretest" &&
+          course?.assessments?.quiz?.length > 0
+        ) {
+          navigate(`/responder/modules/${id}/assessment/quiz`, {
+            replace: true,
+          });
           return;
         }
-        if (normalizedType === "quiz" && passed && course?.assessments?.final?.length > 0) {
-          navigate(`/responder/modules/${id}/assessment/final-assessment`, { replace: true });
+        if (
+          normalizedType === "quiz" &&
+          passed &&
+          course?.assessments?.final?.length > 0
+        ) {
+          navigate(`/responder/modules/${id}/assessment/final-assessment`, {
+            replace: true,
+          });
           return;
         }
       } catch (e) {
@@ -223,10 +275,27 @@ export default function AssessmentPage() {
     setUploadingVideo(true);
     setSavingResult(true);
     try {
-      const { downloadURL, storagePath } = await uploadSubmissionVideo(user.id, id, videoFile);
-      await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false, score: null, maxScore: null, status: "PENDING_REVIEW" }, course, {
-        videoSubmission: { downloadURL, storagePath },
-      });
+      const { downloadURL, storagePath } = await uploadSubmissionVideo(
+        user.id,
+        id,
+        videoFile,
+      );
+      await saveAssessmentResult(
+        user.id,
+        id,
+        "final",
+        {
+          percent: 0,
+          passed: false,
+          score: null,
+          maxScore: null,
+          status: "PENDING_REVIEW",
+        },
+        course,
+        {
+          videoSubmission: { downloadURL, storagePath },
+        },
+      );
       setProgress((prev) => {
         const base = prev || { assessmentResults: {} };
         return {
@@ -253,9 +322,22 @@ export default function AssessmentPage() {
     if (!user?.id || !id || !fromFirestore) return;
     setSavingResult(true);
     try {
-      await saveAssessmentResult(user.id, id, "final", { percent: 0, passed: false, score: null, maxScore: null, status: "PENDING_REVIEW" }, course, {
-        evalFormSubmission: evalFormValues,
-      });
+      await saveAssessmentResult(
+        user.id,
+        id,
+        "final",
+        {
+          percent: 0,
+          passed: false,
+          score: null,
+          maxScore: null,
+          status: "PENDING_REVIEW",
+        },
+        course,
+        {
+          evalFormSubmission: evalFormValues,
+        },
+      );
       setProgress((prev) => {
         const base = prev || { assessmentResults: {} };
         return {
@@ -296,14 +378,20 @@ export default function AssessmentPage() {
   const waitingForProgress =
     fromFirestore &&
     progress === undefined &&
-    (normalizedType === "quiz" || (normalizedType === "final" && questions.length > 0 && !isVideoSubmission && !isEvalForm));
+    (normalizedType === "quiz" ||
+      (normalizedType === "final" &&
+        questions.length > 0 &&
+        !isVideoSubmission &&
+        !isEvalForm));
 
   if (loading || waitingForProgress) {
     return (
       <Layout>
         <div className="assessment-wrapper">
           <p>Loading...</p>
-          {progressError && <p className="text-sm text-red-600 mt-2">{progressError}</p>}
+          {progressError && (
+            <p className="text-sm text-red-600 mt-2">{progressError}</p>
+          )}
         </div>
         <Footer />
       </Layout>
@@ -314,7 +402,12 @@ export default function AssessmentPage() {
     return (
       <Layout>
         <div style={{ padding: 24 }}>Course not found.</div>
-        <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn">Back to Modules</button>
+        <button
+          onClick={() => navigate(`/responder/modules/${id}`)}
+          className="btn"
+        >
+          Back to Modules
+        </button>
         <Footer />
       </Layout>
     );
@@ -332,18 +425,37 @@ export default function AssessmentPage() {
           {alreadySubmitted ? (
             <div className="result-card">
               <h3>Video submitted</h3>
-              <p>Your video has been submitted. An admin will review it and mark the result.</p>
-              <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn">Back to Course</button>
+              <p>
+                Your video has been submitted. An admin will review it and mark
+                the result.
+              </p>
+              <button
+                onClick={() => navigate(`/responder/modules/${id}`)}
+                className="btn"
+              >
+                Back to Course
+              </button>
             </div>
           ) : videoSubmitted ? (
             <div className="result-card">
               <h3>Submitted</h3>
-              <p>Your video has been uploaded successfully. An admin will review it.</p>
-              <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn">Back to Course</button>
+              <p>
+                Your video has been uploaded successfully. An admin will review
+                it.
+              </p>
+              <button
+                onClick={() => navigate(`/responder/modules/${id}`)}
+                className="btn"
+              >
+                Back to Course
+              </button>
             </div>
           ) : (
             <div className="question-card">
-              <p className="mb-3">Upload your video demonstrating the practical task or simulation.</p>
+              <p className="mb-3">
+                Upload your video demonstrating the practical task or
+                simulation.
+              </p>
               {progressError && (
                 <div className="mb-3 rounded border border-red-200 bg-red-50 p-2 text-sm text-red-700">
                   {progressError}
@@ -361,9 +473,16 @@ export default function AssessmentPage() {
                 disabled={!videoFile || uploadingVideo || savingResult}
                 className="btn btn-primary"
               >
-                {uploadingVideo || savingResult ? "Uploading..." : "Submit video"}
+                {uploadingVideo || savingResult
+                  ? "Uploading..."
+                  : "Submit video"}
               </button>
-              <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn btn-light ml-2">Cancel</button>
+              <button
+                onClick={() => navigate(`/responder/modules/${id}`)}
+                className="btn btn-light ml-2"
+              >
+                Cancel
+              </button>
             </div>
           )}
         </div>
@@ -374,7 +493,9 @@ export default function AssessmentPage() {
 
   if (normalizedType === "final" && isEvalForm) {
     const evalQuestions = course.evaluationFormQuestions || [];
-    const alreadySubmitted = progress?.evalFormSubmission && Object.keys(progress.evalFormSubmission).length > 0;
+    const alreadySubmitted =
+      progress?.evalFormSubmission &&
+      Object.keys(progress.evalFormSubmission).length > 0;
     return (
       <Layout>
         <div className="assessment-wrapper">
@@ -385,19 +506,39 @@ export default function AssessmentPage() {
           {alreadySubmitted ? (
             <div className="result-card">
               <h3>Form submitted</h3>
-              <p>Your evaluation form has been submitted. An admin will review it.</p>
-              <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn">Back to Course</button>
+              <p>
+                Your evaluation form has been submitted. An admin will review
+                it.
+              </p>
+              <button
+                onClick={() => navigate(`/responder/modules/${id}`)}
+                className="btn"
+              >
+                Back to Course
+              </button>
             </div>
           ) : evalFormSubmitted ? (
             <div className="result-card">
               <h3>Submitted</h3>
               <p>Your evaluation form has been submitted successfully.</p>
-              <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn">Back to Course</button>
+              <button
+                onClick={() => navigate(`/responder/modules/${id}`)}
+                className="btn"
+              >
+                Back to Course
+              </button>
             </div>
           ) : evalQuestions.length === 0 ? (
             <div className="result-card">
-              <p>No evaluation form questions have been set for this course yet.</p>
-              <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn">Back to Course</button>
+              <p>
+                No evaluation form questions have been set for this course yet.
+              </p>
+              <button
+                onClick={() => navigate(`/responder/modules/${id}`)}
+                className="btn"
+              >
+                Back to Course
+              </button>
             </div>
           ) : (
             <div className="question-card">
@@ -414,56 +555,89 @@ export default function AssessmentPage() {
                     <input
                       type="text"
                       value={evalFormValues[`q${i}`] ?? ""}
-                      onChange={(e) => setEvalFormValues((v) => ({ ...v, [`q${i}`]: e.target.value }))}
+                      onChange={(e) =>
+                        setEvalFormValues((v) => ({
+                          ...v,
+                          [`q${i}`]: e.target.value,
+                        }))
+                      }
                       className="w-full rounded-lg border border-border/60 bg-background px-3 py-2"
                     />
                   )}
                   {q.type === "textarea" && (
                     <textarea
                       value={evalFormValues[`q${i}`] ?? ""}
-                      onChange={(e) => setEvalFormValues((v) => ({ ...v, [`q${i}`]: e.target.value }))}
+                      onChange={(e) =>
+                        setEvalFormValues((v) => ({
+                          ...v,
+                          [`q${i}`]: e.target.value,
+                        }))
+                      }
                       className="w-full rounded-lg border border-border/60 bg-background px-3 py-2"
                       rows={3}
                     />
                   )}
-                  {q.type === "radio" && (q.options || []).map((opt, oi) => (
-                    <label key={oi} className="block mb-1">
-                      <input
-                        type="radio"
-                        name={`eval-q${i}`}
-                        checked={(evalFormValues[`q${i}`] ?? "") === opt}
-                        onChange={() => setEvalFormValues((v) => ({ ...v, [`q${i}`]: opt }))}
-                        className="mr-2"
-                      />
-                      {opt}
-                    </label>
-                  ))}
-                  {q.type === "checkbox" && (q.options || []).map((opt) => {
-                    const key = `q${i}`;
-                    const current = (evalFormValues[key] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-                    const checked = current.includes(opt);
-                    return (
-                      <label key={opt} className="block mb-1">
+                  {q.type === "radio" &&
+                    (q.options || []).map((opt, oi) => (
+                      <label key={oi} className="block mb-1">
                         <input
-                          type="checkbox"
-                          checked={checked}
-                          onChange={() => {
-                            const next = checked ? current.filter((c) => c !== opt) : [...current, opt];
-                            setEvalFormValues((v) => ({ ...v, [key]: next.join(", ") }));
-                          }}
+                          type="radio"
+                          name={`eval-q${i}`}
+                          checked={(evalFormValues[`q${i}`] ?? "") === opt}
+                          onChange={() =>
+                            setEvalFormValues((v) => ({ ...v, [`q${i}`]: opt }))
+                          }
                           className="mr-2"
                         />
                         {opt}
                       </label>
-                    );
-                  })}
+                    ))}
+                  {q.type === "checkbox" &&
+                    (q.options || []).map((opt) => {
+                      const key = `q${i}`;
+                      const current = (evalFormValues[key] ?? "")
+                        .split(",")
+                        .map((s) => s.trim())
+                        .filter(Boolean);
+                      const checked = current.includes(opt);
+                      return (
+                        <label key={opt} className="block mb-1">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const next = checked
+                                ? current.filter((c) => c !== opt)
+                                : [...current, opt];
+                              setEvalFormValues((v) => ({
+                                ...v,
+                                [key]: next.join(", "),
+                              }));
+                            }}
+                            className="mr-2"
+                          />
+                          {opt}
+                        </label>
+                      );
+                    })}
                 </div>
               ))}
               <div className="mt-4 flex gap-2">
-                <button type="button" onClick={handleEvalFormSubmit} disabled={savingResult} className="btn btn-primary">
+                <button
+                  type="button"
+                  onClick={handleEvalFormSubmit}
+                  disabled={savingResult}
+                  className="btn btn-primary"
+                >
                   {savingResult ? "Saving..." : "Submit form"}
                 </button>
-                <button type="button" onClick={() => navigate(`/responder/modules/${id}`)} className="btn btn-light">Cancel</button>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/responder/modules/${id}`)}
+                  className="btn btn-light"
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           )}
@@ -477,9 +651,16 @@ export default function AssessmentPage() {
     return (
       <Layout>
         <div className="assessment-wrapper">
-          <h2>{course.title} — {(normalizedType || "").toUpperCase()}</h2>
+          <h2>
+            {course.title} — {(normalizedType || "").toUpperCase()}
+          </h2>
           <p>No assessment questions available for this activity.</p>
-          <button onClick={() => navigate(`/responder/modules/${id}`)} className="btn">Back to Course</button>
+          <button
+            onClick={() => navigate(`/responder/modules/${id}`)}
+            className="btn"
+          >
+            Back to Course
+          </button>
         </div>
         <Footer />
       </Layout>
@@ -496,7 +677,11 @@ export default function AssessmentPage() {
           <div>
             <h2>{course.title}</h2>
             <h4 className="muted">
-              {normalizedType === "pretest" ? "Pre-Test" : normalizedType === "quiz" ? "Quiz" : "Final Assessment"}
+              {normalizedType === "pretest"
+                ? "Pre-Test"
+                : normalizedType === "quiz"
+                  ? "Quiz"
+                  : "Final Assessment"}
             </h4>
             {fromFirestore && course.certificationEnabled && (
               <p className="text-sm text-foreground/70 mt-1">
@@ -519,7 +704,9 @@ export default function AssessmentPage() {
             )}
             <div className="question-card">
               <div className="question-meta">
-                <strong>Question {currentIndex + 1} / {questions.length}</strong>
+                <strong>
+                  Question {currentIndex + 1} / {questions.length}
+                </strong>
               </div>
               <div className="question-text">{currentQ.q}</div>
               <div className="options">
@@ -539,10 +726,18 @@ export default function AssessmentPage() {
                 ))}
               </div>
               <div className="question-actions">
-                <button onClick={handlePrev} className="btn btn-light" disabled={currentIndex === 0}>
+                <button
+                  onClick={handlePrev}
+                  className="btn btn-light"
+                  disabled={currentIndex === 0}
+                >
                   Previous
                 </button>
-                <button onClick={handleNext} className="btn btn-light" disabled={currentIndex === questions.length - 1}>
+                <button
+                  onClick={handleNext}
+                  className="btn btn-light"
+                  disabled={currentIndex === questions.length - 1}
+                >
                   Next
                 </button>
                 <div style={{ flex: 1 }} />
@@ -568,26 +763,42 @@ export default function AssessmentPage() {
               Score: {score.correct} / {score.total} ({score.percent}%)
             </p>
             {fromFirestore && (
-              <p className={score.passed ? "text-green-600 font-medium" : "text-amber-600"}>
-                {score.passed ? "Passed" : "Not passed"} (required: {passingScore}%)
+              <p
+                className={
+                  score.passed ? "text-green-600 font-medium" : "text-amber-600"
+                }
+              >
+                {score.passed ? "Passed" : "Not passed"} (required:{" "}
+                {passingScore}%)
               </p>
             )}
-            {savingResult && <p className="text-sm text-foreground/60">Saving result...</p>}
-            {progressError && <p className="text-sm text-red-600 mt-2">{progressError}</p>}
-            {normalizedType === "final" && score.passed && fromFirestore && course.certificationEnabled && (
-              <div className="rounded-lg border border-green-200 bg-green-50 p-3 mt-2 mb-2 text-green-800 text-sm">
-                <strong>Certificate earned.</strong> You’ve passed all required assessments.{" "}
-                <button
-                  type="button"
-                  className="underline font-medium hover:no-underline"
-                  onClick={() => navigate("/responder/certifications")}
-                >
-                  View and download your certificate
-                </button>
-              </div>
+            {savingResult && (
+              <p className="text-sm text-foreground/60">Saving result...</p>
             )}
+            {progressError && (
+              <p className="text-sm text-red-600 mt-2">{progressError}</p>
+            )}
+            {normalizedType === "final" &&
+              score.passed &&
+              fromFirestore &&
+              course.certificationEnabled && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-3 mt-2 mb-2 text-green-800 text-sm">
+                  <strong>Certificate earned.</strong> You’ve passed all
+                  required assessments.{" "}
+                  <button
+                    type="button"
+                    className="underline font-medium hover:no-underline"
+                    onClick={() => navigate("/responder/certifications")}
+                  >
+                    View and download your certificate
+                  </button>
+                </div>
+              )}
             <div className="result-actions">
-              <button className="btn" onClick={() => navigate(`/responder/modules/${id}`)}>
+              <button
+                className="btn"
+                onClick={() => navigate(`/responder/modules/${id}`)}
+              >
                 Back to Course
               </button>
               <button
@@ -607,8 +818,15 @@ export default function AssessmentPage() {
               <h4>Review</h4>
               {questions.map((qq, idx) => (
                 <div key={idx} className="review-item">
-                  <div><strong>{idx + 1}.</strong> {qq.q}</div>
-                  <div>Your answer: {answers[idx] == null ? "No answer" : qq.options[answers[idx]]}</div>
+                  <div>
+                    <strong>{idx + 1}.</strong> {qq.q}
+                  </div>
+                  <div>
+                    Your answer:{" "}
+                    {answers[idx] == null
+                      ? "No answer"
+                      : qq.options[answers[idx]]}
+                  </div>
                   <div>Correct: {qq.options[qq.answer]}</div>
                 </div>
               ))}
