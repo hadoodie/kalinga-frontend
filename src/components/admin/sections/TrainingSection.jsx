@@ -47,7 +47,12 @@ const DIFFICULTY_LEVELS = [
   { value: "intermediate", label: "Intermediate" },
   { value: "advanced", label: "Advanced" },
 ];
-const ASSESSMENT_TYPES = ["Quiz", "Practical Test", "Simulation", "Evaluation Form"];
+const ASSESSMENT_TYPES = [
+  "Quiz",
+  "Practical Test",
+  "Simulation",
+  "Evaluation Form",
+];
 const DELIVERY_MODES = ["Online", "On-site", "Hybrid"];
 const MODULE_STATUSES = [
   { value: "draft", label: "Draft" },
@@ -108,7 +113,14 @@ export const TrainingSection = () => {
   const [uploadingFile, setUploadingFile] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [addingQuestion, setAddingQuestion] = useState(null);
-  const [newQuestion, setNewQuestion] = useState({ q: "", option1: "", option2: "", option3: "", option4: "", answer: 0 });
+  const [newQuestion, setNewQuestion] = useState({
+    q: "",
+    option1: "",
+    option2: "",
+    option3: "",
+    option4: "",
+    answer: 0,
+  });
   const [submissionsByCourse, setSubmissionsByCourse] = useState({});
   const [markingPassed, setMarkingPassed] = useState(null);
 
@@ -142,11 +154,14 @@ export const TrainingSection = () => {
     const unsub = watchProgressByCourse(
       expandedCourse.id,
       (list) => {
-        setSubmissionsByCourse((prev) => ({ ...prev, [expandedCourse.id]: list }));
+        setSubmissionsByCourse((prev) => ({
+          ...prev,
+          [expandedCourse.id]: list,
+        }));
       },
       (e) => {
         setError(e.message || "Failed to load submissions");
-      }
+      },
     );
     return () => {
       if (typeof unsub === "function") unsub();
@@ -190,9 +205,15 @@ export const TrainingSection = () => {
     targetAudience: course.targetAudience ?? "",
     difficultyLevel: course.difficultyLevel ?? "beginner",
     estimatedDuration: course.estimatedDuration ?? "",
-    learningObjectives: Array.isArray(course.learningObjectives) ? course.learningObjectives.join("\n") : "",
-    prerequisites: Array.isArray(course.prerequisites) ? course.prerequisites.join("\n") : "",
-    keyTopics: Array.isArray(course.keyTopics) ? course.keyTopics.join("\n") : "",
+    learningObjectives: Array.isArray(course.learningObjectives)
+      ? course.learningObjectives.join("\n")
+      : "",
+    prerequisites: Array.isArray(course.prerequisites)
+      ? course.prerequisites.join("\n")
+      : "",
+    keyTopics: Array.isArray(course.keyTopics)
+      ? course.keyTopics.join("\n")
+      : "",
     requiredMaterials: course.requiredMaterials ?? "",
     references: course.references ?? "",
     assessmentType: course.assessmentType ?? "",
@@ -202,16 +223,22 @@ export const TrainingSection = () => {
     trainerName: course.trainerName ?? "",
     schedule: course.schedule ?? "",
     deliveryMode: course.deliveryMode ?? "online",
-    maxParticipants: course.maxParticipants != null ? String(course.maxParticipants) : "",
+    maxParticipants:
+      course.maxParticipants != null ? String(course.maxParticipants) : "",
     version: course.version ?? "1",
     status: course.status ?? "draft",
     trainerNotes: course.trainerNotes ?? "",
     participantFeedback: course.participantFeedback ?? "",
     signatories:
       Array.isArray(course.signatories) && course.signatories.length > 0
-        ? course.signatories.map((s) => ({ name: s.name ?? "", title: s.title ?? "" }))
+        ? course.signatories.map((s) => ({
+            name: s.name ?? "",
+            title: s.title ?? "",
+          }))
         : [{ name: "", title: "" }],
-    evaluationFormQuestions: Array.isArray(course.evaluationFormQuestions) ? course.evaluationFormQuestions : [],
+    evaluationFormQuestions: Array.isArray(course.evaluationFormQuestions)
+      ? course.evaluationFormQuestions
+      : [],
   });
 
   const openEditForm = (course) => {
@@ -246,15 +273,22 @@ export const TrainingSection = () => {
     trainerName: createForm.trainerName.trim() || undefined,
     schedule: createForm.schedule.trim() || undefined,
     deliveryMode: createForm.deliveryMode,
-    maxParticipants: createForm.maxParticipants ? Number(createForm.maxParticipants) : null,
+    maxParticipants: createForm.maxParticipants
+      ? Number(createForm.maxParticipants)
+      : null,
     version: createForm.version.trim() || "1",
     status: createForm.status,
     trainerNotes: createForm.trainerNotes.trim() || undefined,
     participantFeedback: createForm.participantFeedback.trim() || undefined,
     signatories: (createForm.signatories || [])
       .filter((s) => (s.name || "").trim() || (s.title || "").trim())
-      .map((s) => ({ name: (s.name || "").trim(), title: (s.title || "").trim() })),
-    evaluationFormQuestions: Array.isArray(createForm.evaluationFormQuestions) ? createForm.evaluationFormQuestions : [],
+      .map((s) => ({
+        name: (s.name || "").trim(),
+        title: (s.title || "").trim(),
+      })),
+    evaluationFormQuestions: Array.isArray(createForm.evaluationFormQuestions)
+      ? createForm.evaluationFormQuestions
+      : [],
   });
 
   const handleCreateCourse = async (e) => {
@@ -272,7 +306,10 @@ export const TrainingSection = () => {
       closeForm();
       await loadCourses();
     } catch (e) {
-      setError(e.message || (isEdit ? "Failed to update module" : "Failed to create course"));
+      setError(
+        e.message ||
+          (isEdit ? "Failed to update module" : "Failed to create course"),
+      );
     } finally {
       setCreating(false);
     }
@@ -297,7 +334,10 @@ export const TrainingSection = () => {
     if (!newSectionHeading.trim()) return;
     const course = courses.find((c) => c.id === courseId);
     if (!course) return;
-    const sections = [...(course.sections || []), { heading: newSectionHeading.trim(), items: [] }];
+    const sections = [
+      ...(course.sections || []),
+      { heading: newSectionHeading.trim(), items: [] },
+    ];
     setError(null);
     try {
       await updateCourse(courseId, { sections });
@@ -315,7 +355,9 @@ export const TrainingSection = () => {
     const sections = [...(course.sections || [])];
     const section = sections[sectionIndex];
     if (!section) return;
-    const fileInput = document.getElementById(`file-${courseId}-${sectionIndex}`);
+    const fileInput = document.getElementById(
+      `file-${courseId}-${sectionIndex}`,
+    );
     if (!fileInput?.files?.length && !newItemTitle.trim()) return;
 
     setUploadingFile(`${courseId}-${sectionIndex}`);
@@ -326,12 +368,26 @@ export const TrainingSection = () => {
       if (fileInput?.files?.length) {
         const file = fileInput.files[0];
         const type = newItemType;
-        const { downloadURL: url, storagePath: path } = await uploadCourseFile(courseId, file, type);
+        const { downloadURL: url, storagePath: path } = await uploadCourseFile(
+          courseId,
+          file,
+          type,
+        );
         downloadURL = url;
         storagePath = path;
       }
-      const title = newItemTitle.trim() || (fileInput?.files?.[0]?.name ?? "Untitled");
-      const items = [...(section.items || []), { title, type: newItemType, downloadURL, storagePath, order: section.items?.length ?? 0 }];
+      const title =
+        newItemTitle.trim() || (fileInput?.files?.[0]?.name ?? "Untitled");
+      const items = [
+        ...(section.items || []),
+        {
+          title,
+          type: newItemType,
+          downloadURL,
+          storagePath,
+          order: section.items?.length ?? 0,
+        },
+      ];
       sections[sectionIndex] = { ...section, items };
       await updateCourse(courseId, { sections });
       setNewItemTitle("");
@@ -366,7 +422,9 @@ export const TrainingSection = () => {
   const handleRemoveSection = async (courseId, sectionIndex) => {
     const course = courses.find((c) => c.id === courseId);
     if (!course) return;
-    const sections = (course.sections || []).filter((_, i) => i !== sectionIndex);
+    const sections = (course.sections || []).filter(
+      (_, i) => i !== sectionIndex,
+    );
     setError(null);
     try {
       await updateCourse(courseId, { sections });
@@ -380,7 +438,8 @@ export const TrainingSection = () => {
   const handleSavePassingScore = async (courseId, value) => {
     const course = courses.find((c) => c.id === courseId);
     if (!course) return;
-    const passingCriteria = value.trim() === "" ? "70" : value.replace(/%/g, "").trim();
+    const passingCriteria =
+      value.trim() === "" ? "70" : value.replace(/%/g, "").trim();
     setError(null);
     try {
       await updateCourse(courseId, { passingCriteria });
@@ -392,7 +451,14 @@ export const TrainingSection = () => {
 
   const handleAddAssessmentQuestion = (courseId, type) => {
     setAddingQuestion(`${courseId}_${type}`);
-    setNewQuestion({ q: "", option1: "", option2: "", option3: "", option4: "", answer: 0 });
+    setNewQuestion({
+      q: "",
+      option1: "",
+      option2: "",
+      option3: "",
+      option4: "",
+      answer: 0,
+    });
   };
 
   const handleSaveAssessmentQuestion = async (courseId, type) => {
@@ -400,16 +466,30 @@ export const TrainingSection = () => {
     if (!course) return;
     const { q, option1, option2, option3, option4, answer } = newQuestion;
     if (!q.trim()) return;
-    const options = [option1, option2, option3, option4].filter((o) => o.trim());
+    const options = [option1, option2, option3, option4].filter((o) =>
+      o.trim(),
+    );
     if (options.length < 2) return;
-    const assessments = { ...(course.assessments || { pretest: [], quiz: [], final: [] }) };
+    const assessments = {
+      ...(course.assessments || { pretest: [], quiz: [], final: [] }),
+    };
     if (!Array.isArray(assessments[type])) assessments[type] = [];
-    assessments[type] = [...assessments[type], { q: q.trim(), options, answer: Number(answer) }];
+    assessments[type] = [
+      ...assessments[type],
+      { q: q.trim(), options, answer: Number(answer) },
+    ];
     setError(null);
     try {
       await updateCourse(courseId, { assessments });
       setAddingQuestion(null);
-      setNewQuestion({ q: "", option1: "", option2: "", option3: "", option4: "", answer: 0 });
+      setNewQuestion({
+        q: "",
+        option1: "",
+        option2: "",
+        option3: "",
+        option4: "",
+        answer: 0,
+      });
       await loadCourses();
     } catch (e) {
       setError(e.message || "Failed to add question");
@@ -419,7 +499,9 @@ export const TrainingSection = () => {
   const handleRemoveAssessmentQuestion = async (courseId, type, index) => {
     const course = courses.find((c) => c.id === courseId);
     if (!course) return;
-    const assessments = { ...(course.assessments || { pretest: [], quiz: [], final: [] }) };
+    const assessments = {
+      ...(course.assessments || { pretest: [], quiz: [], final: [] }),
+    };
     const list = [...(assessments[type] || [])];
     list.splice(index, 1);
     assessments[type] = list;
@@ -453,7 +535,9 @@ export const TrainingSection = () => {
         const marker = "/o/";
         const markerIndex = decoded.indexOf(marker);
         if (markerIndex >= 0) {
-          const objectPath = decoded.slice(markerIndex + marker.length).split("?")[0];
+          const objectPath = decoded
+            .slice(markerIndex + marker.length)
+            .split("?")[0];
           const fromUrl = objectPath.split("/").filter(Boolean).pop();
           if (fromUrl) return fromUrl;
         }
@@ -510,21 +594,29 @@ export const TrainingSection = () => {
             </h4>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Module ID / Code</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Module ID / Code
+                </label>
                 <input
                   type="text"
                   value={createForm.moduleCode}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, moduleCode: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, moduleCode: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                   placeholder="e.g. TRN-001"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Module Title</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Module Title
+                </label>
                 <input
                   type="text"
                   value={createForm.title}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, title: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, title: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                   placeholder="Course title"
                   required
@@ -532,10 +624,14 @@ export const TrainingSection = () => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">Module Description / Overview</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                Module Description / Overview
+              </label>
               <textarea
                 value={createForm.description}
-                onChange={(e) => setCreateForm((f) => ({ ...f, description: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, description: e.target.value }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 rows={3}
                 placeholder="Brief summary of the module"
@@ -543,10 +639,14 @@ export const TrainingSection = () => {
             </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Training Category / Type</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Training Category / Type
+                </label>
                 <select
                   value={createForm.category}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, category: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, category: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 >
                   {CATEGORIES.map((cat) => (
@@ -557,36 +657,61 @@ export const TrainingSection = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Target Audience</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Target Audience
+                </label>
                 <select
                   value={createForm.targetAudience}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, targetAudience: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      targetAudience: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 >
                   <option value="">Select</option>
                   {TARGET_AUDIENCES.map((a) => (
-                    <option key={a} value={a}>{a}</option>
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Difficulty Level</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Difficulty Level
+                </label>
                 <select
                   value={createForm.difficultyLevel}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, difficultyLevel: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      difficultyLevel: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 >
                   {DIFFICULTY_LEVELS.map((d) => (
-                    <option key={d.value} value={d.value}>{d.label}</option>
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Estimated Duration</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Estimated Duration
+                </label>
                 <input
                   type="text"
                   value={createForm.estimatedDuration}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, estimatedDuration: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      estimatedDuration: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                   placeholder="e.g. 2 hours or 90 minutes"
                 />
@@ -600,30 +725,48 @@ export const TrainingSection = () => {
               Learning Structure
             </h4>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">Learning Objectives (one per line)</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                Learning Objectives (one per line)
+              </label>
               <textarea
                 value={createForm.learningObjectives}
-                onChange={(e) => setCreateForm((f) => ({ ...f, learningObjectives: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({
+                    ...f,
+                    learningObjectives: e.target.value,
+                  }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 rows={3}
                 placeholder="What learners will achieve"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">Prerequisites (if any, one per line)</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                Prerequisites (if any, one per line)
+              </label>
               <textarea
                 value={createForm.prerequisites}
-                onChange={(e) => setCreateForm((f) => ({ ...f, prerequisites: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({
+                    ...f,
+                    prerequisites: e.target.value,
+                  }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 rows={2}
                 placeholder="Prior knowledge or modules required"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">Key Topics / Lessons (one per line)</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                Key Topics / Lessons (one per line)
+              </label>
               <textarea
                 value={createForm.keyTopics}
-                onChange={(e) => setCreateForm((f) => ({ ...f, keyTopics: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, keyTopics: e.target.value }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 rows={3}
                 placeholder="Main subjects covered"
@@ -633,7 +776,12 @@ export const TrainingSection = () => {
 
           {/* Content & Materials - note */}
           <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
-            <span className="font-medium text-primary">Content & Materials:</span> After creating the module, expand it below and add sections. Upload PDFs, videos, slides, and manuals to each section (Firebase Storage).
+            <span className="font-medium text-primary">
+              Content & Materials:
+            </span>{" "}
+            After creating the module, expand it below and add sections. Upload
+            PDFs, videos, slides, and manuals to each section (Firebase
+            Storage).
           </div>
 
           {/* Assessment & Evaluation */}
@@ -643,15 +791,24 @@ export const TrainingSection = () => {
             </h4>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Assessment Type</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Assessment Type
+                </label>
                 <select
                   value={createForm.assessmentType}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, assessmentType: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      assessmentType: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 >
                   <option value="">Select</option>
                   {ASSESSMENT_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -660,29 +817,51 @@ export const TrainingSection = () => {
                   type="checkbox"
                   id="certificationEnabled"
                   checked={createForm.certificationEnabled}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, certificationEnabled: e.target.checked }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      certificationEnabled: e.target.checked,
+                    }))
+                  }
                   className="rounded border-border/60"
                 />
-                <label htmlFor="certificationEnabled" className="text-sm font-medium text-foreground/80">
+                <label
+                  htmlFor="certificationEnabled"
+                  className="text-sm font-medium text-foreground/80"
+                >
                   Certification / Completion status
                 </label>
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">Passing Criteria</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                Passing Criteria
+              </label>
               <input
                 type="text"
                 value={createForm.passingCriteria}
-                onChange={(e) => setCreateForm((f) => ({ ...f, passingCriteria: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({
+                    ...f,
+                    passingCriteria: e.target.value,
+                  }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 placeholder="e.g. 70% or above"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">Assessment Materials (notes)</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                Assessment Materials (notes)
+              </label>
               <textarea
                 value={createForm.assessmentMaterials}
-                onChange={(e) => setCreateForm((f) => ({ ...f, assessmentMaterials: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({
+                    ...f,
+                    assessmentMaterials: e.target.value,
+                  }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 rows={2}
                 placeholder="Question banks, scenarios, etc."
@@ -690,18 +869,35 @@ export const TrainingSection = () => {
             </div>
             {createForm.assessmentType === "Evaluation Form" && (
               <div className="rounded-xl border border-border/60 bg-background/60 p-4 space-y-3">
-                <h4 className="text-sm font-semibold text-foreground/90">Evaluation Form Questions</h4>
-                <p className="text-xs text-foreground/60">Define the form responders will fill. Options are required for radio/checkbox.</p>
+                <h4 className="text-sm font-semibold text-foreground/90">
+                  Evaluation Form Questions
+                </h4>
+                <p className="text-xs text-foreground/60">
+                  Define the form responders will fill. Options are required for
+                  radio/checkbox.
+                </p>
                 {(createForm.evaluationFormQuestions || []).map((eq, eqIdx) => (
-                  <div key={eqIdx} className="rounded-lg border border-border/40 bg-background p-3 space-y-2">
+                  <div
+                    key={eqIdx}
+                    className="rounded-lg border border-border/40 bg-background p-3 space-y-2"
+                  >
                     <input
                       type="text"
                       value={eq.question ?? ""}
                       onChange={(e) => {
-                        const list = [...(createForm.evaluationFormQuestions || [])];
-                        if (!list[eqIdx]) list[eqIdx] = { question: "", type: "text" };
-                        list[eqIdx] = { ...list[eqIdx], question: e.target.value };
-                        setCreateForm((f) => ({ ...f, evaluationFormQuestions: list }));
+                        const list = [
+                          ...(createForm.evaluationFormQuestions || []),
+                        ];
+                        if (!list[eqIdx])
+                          list[eqIdx] = { question: "", type: "text" };
+                        list[eqIdx] = {
+                          ...list[eqIdx],
+                          question: e.target.value,
+                        };
+                        setCreateForm((f) => ({
+                          ...f,
+                          evaluationFormQuestions: list,
+                        }));
                       }}
                       placeholder="Question text"
                       className="w-full rounded-lg border border-border/60 bg-background px-2 py-1.5 text-sm"
@@ -710,10 +906,19 @@ export const TrainingSection = () => {
                       <select
                         value={eq.type ?? "text"}
                         onChange={(e) => {
-                          const list = [...(createForm.evaluationFormQuestions || [])];
-                          if (!list[eqIdx]) list[eqIdx] = { question: "", type: "text" };
-                          list[eqIdx] = { ...list[eqIdx], type: e.target.value };
-                          setCreateForm((f) => ({ ...f, evaluationFormQuestions: list }));
+                          const list = [
+                            ...(createForm.evaluationFormQuestions || []),
+                          ];
+                          if (!list[eqIdx])
+                            list[eqIdx] = { question: "", type: "text" };
+                          list[eqIdx] = {
+                            ...list[eqIdx],
+                            type: e.target.value,
+                          };
+                          setCreateForm((f) => ({
+                            ...f,
+                            evaluationFormQuestions: list,
+                          }));
                         }}
                         className="rounded border border-border/60 bg-background px-2 py-1 text-sm"
                       >
@@ -725,12 +930,28 @@ export const TrainingSection = () => {
                       {(eq.type === "radio" || eq.type === "checkbox") && (
                         <input
                           type="text"
-                          value={Array.isArray(eq.options) ? eq.options.join(", ") : ""}
+                          value={
+                            Array.isArray(eq.options)
+                              ? eq.options.join(", ")
+                              : ""
+                          }
                           onChange={(e) => {
-                            const list = [...(createForm.evaluationFormQuestions || [])];
-                            if (!list[eqIdx]) list[eqIdx] = { question: "", type: "text" };
-                            list[eqIdx] = { ...list[eqIdx], options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) };
-                            setCreateForm((f) => ({ ...f, evaluationFormQuestions: list }));
+                            const list = [
+                              ...(createForm.evaluationFormQuestions || []),
+                            ];
+                            if (!list[eqIdx])
+                              list[eqIdx] = { question: "", type: "text" };
+                            list[eqIdx] = {
+                              ...list[eqIdx],
+                              options: e.target.value
+                                .split(",")
+                                .map((s) => s.trim())
+                                .filter(Boolean),
+                            };
+                            setCreateForm((f) => ({
+                              ...f,
+                              evaluationFormQuestions: list,
+                            }));
                           }}
                           placeholder="Options (comma-separated)"
                           className="flex-1 min-w-[160px] rounded border border-border/60 bg-background px-2 py-1 text-sm"
@@ -739,8 +960,13 @@ export const TrainingSection = () => {
                       <button
                         type="button"
                         onClick={() => {
-                          const list = (createForm.evaluationFormQuestions || []).filter((_, i) => i !== eqIdx);
-                          setCreateForm((f) => ({ ...f, evaluationFormQuestions: list }));
+                          const list = (
+                            createForm.evaluationFormQuestions || []
+                          ).filter((_, i) => i !== eqIdx);
+                          setCreateForm((f) => ({
+                            ...f,
+                            evaluationFormQuestions: list,
+                          }));
                         }}
                         className="rounded p-1.5 text-foreground/50 hover:text-rose-600"
                         aria-label="Remove question"
@@ -755,7 +981,10 @@ export const TrainingSection = () => {
                   onClick={() =>
                     setCreateForm((f) => ({
                       ...f,
-                      evaluationFormQuestions: [...(f.evaluationFormQuestions || []), { question: "", type: "text" }],
+                      evaluationFormQuestions: [
+                        ...(f.evaluationFormQuestions || []),
+                        { question: "", type: "text" },
+                      ],
                     }))
                   }
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
@@ -764,57 +993,70 @@ export const TrainingSection = () => {
                 </button>
               </div>
             )}
-            {(createForm.certificationEnabled || (createForm.signatories?.length ?? 0) > 0) && (
+            {(createForm.certificationEnabled ||
+              (createForm.signatories?.length ?? 0) > 0) && (
               <div>
                 <label className="block text-sm font-medium text-foreground/80 mb-2">
                   Certificate Signatories (name & title shown on certificate)
                 </label>
                 <div className="space-y-3">
-                  {(createForm.signatories || [{ name: "", title: "" }]).map((sig, idx) => (
-                    <div key={idx} className="flex gap-2 items-start">
-                      <input
-                        type="text"
-                        value={sig.name}
-                        onChange={(e) => {
-                          const s = [...(createForm.signatories || [])];
-                          if (!s[idx]) s[idx] = { name: "", title: "" };
-                          s[idx] = { ...s[idx], name: e.target.value };
-                          setCreateForm((f) => ({ ...f, signatories: s }));
-                        }}
-                        className="flex-1 rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground text-sm"
-                        placeholder="Signatory name"
-                      />
-                      <input
-                        type="text"
-                        value={sig.title}
-                        onChange={(e) => {
-                          const s = [...(createForm.signatories || [])];
-                          if (!s[idx]) s[idx] = { name: "", title: "" };
-                          s[idx] = { ...s[idx], title: e.target.value };
-                          setCreateForm((f) => ({ ...f, signatories: s }));
-                        }}
-                        className="flex-1 rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground text-sm"
-                        placeholder="Title / position"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const s = (createForm.signatories || []).filter((_, i) => i !== idx);
-                          setCreateForm((f) => ({ ...f, signatories: s.length ? s : [{ name: "", title: "" }] }));
-                        }}
-                        className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
-                        title="Remove signatory"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ))}
+                  {(createForm.signatories || [{ name: "", title: "" }]).map(
+                    (sig, idx) => (
+                      <div key={idx} className="flex gap-2 items-start">
+                        <input
+                          type="text"
+                          value={sig.name}
+                          onChange={(e) => {
+                            const s = [...(createForm.signatories || [])];
+                            if (!s[idx]) s[idx] = { name: "", title: "" };
+                            s[idx] = { ...s[idx], name: e.target.value };
+                            setCreateForm((f) => ({ ...f, signatories: s }));
+                          }}
+                          className="flex-1 rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground text-sm"
+                          placeholder="Signatory name"
+                        />
+                        <input
+                          type="text"
+                          value={sig.title}
+                          onChange={(e) => {
+                            const s = [...(createForm.signatories || [])];
+                            if (!s[idx]) s[idx] = { name: "", title: "" };
+                            s[idx] = { ...s[idx], title: e.target.value };
+                            setCreateForm((f) => ({ ...f, signatories: s }));
+                          }}
+                          className="flex-1 rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground text-sm"
+                          placeholder="Title / position"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const s = (createForm.signatories || []).filter(
+                              (_, i) => i !== idx,
+                            );
+                            setCreateForm((f) => ({
+                              ...f,
+                              signatories: s.length
+                                ? s
+                                : [{ name: "", title: "" }],
+                            }));
+                          }}
+                          className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
+                          title="Remove signatory"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ),
+                  )}
                   <button
                     type="button"
                     onClick={() =>
                       setCreateForm((f) => ({
                         ...f,
-                        signatories: [...(f.signatories || []), { name: "", title: "" }],
+                        signatories: [
+                          ...(f.signatories || []),
+                          { name: "", title: "" },
+                        ],
                       }))
                     }
                     className="flex items-center gap-1 text-sm text-primary hover:underline"
@@ -833,30 +1075,48 @@ export const TrainingSection = () => {
             </h4>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Trainer / Facilitator Name</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Trainer / Facilitator Name
+                </label>
                 <input
                   type="text"
                   value={createForm.trainerName}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, trainerName: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      trainerName: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                   placeholder="Name"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Training Schedule / Availability</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Training Schedule / Availability
+                </label>
                 <input
                   type="text"
                   value={createForm.schedule}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, schedule: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, schedule: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                   placeholder="e.g. Always available"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Delivery Mode</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Delivery Mode
+                </label>
                 <select
                   value={createForm.deliveryMode}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, deliveryMode: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      deliveryMode: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 >
                   <option value="online">Online</option>
@@ -865,12 +1125,19 @@ export const TrainingSection = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Max Participants</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Max Participants
+                </label>
                 <input
                   type="number"
                   min={0}
                   value={createForm.maxParticipants}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, maxParticipants: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({
+                      ...f,
+                      maxParticipants: e.target.value,
+                    }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                   placeholder="Optional"
                 />
@@ -878,24 +1145,34 @@ export const TrainingSection = () => {
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Version Number</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Version Number
+                </label>
                 <input
                   type="text"
                   value={createForm.version}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, version: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, version: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                   placeholder="e.g. 1"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80">Status</label>
+                <label className="block text-sm font-medium text-foreground/80">
+                  Status
+                </label>
                 <select
                   value={createForm.status}
-                  onChange={(e) => setCreateForm((f) => ({ ...f, status: e.target.value }))}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, status: e.target.value }))
+                  }
                   className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 >
                   {MODULE_STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -908,20 +1185,31 @@ export const TrainingSection = () => {
               Content & Materials (references)
             </h4>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">Required Materials / Equipment</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                Required Materials / Equipment
+              </label>
               <textarea
                 value={createForm.requiredMaterials}
-                onChange={(e) => setCreateForm((f) => ({ ...f, requiredMaterials: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({
+                    ...f,
+                    requiredMaterials: e.target.value,
+                  }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 rows={2}
                 placeholder="Materials or equipment needed"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">References / Sources</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                References / Sources
+              </label>
               <textarea
                 value={createForm.references}
-                onChange={(e) => setCreateForm((f) => ({ ...f, references: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, references: e.target.value }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 rows={2}
                 placeholder="External references or sources"
@@ -935,10 +1223,14 @@ export const TrainingSection = () => {
               Feedback & Improvement
             </h4>
             <div>
-              <label className="block text-sm font-medium text-foreground/80">Trainer Notes / Remarks</label>
+              <label className="block text-sm font-medium text-foreground/80">
+                Trainer Notes / Remarks
+              </label>
               <textarea
                 value={createForm.trainerNotes}
-                onChange={(e) => setCreateForm((f) => ({ ...f, trainerNotes: e.target.value }))}
+                onChange={(e) =>
+                  setCreateForm((f) => ({ ...f, trainerNotes: e.target.value }))
+                }
                 className="mt-1 w-full rounded-xl border border-border/60 bg-background px-3 py-2 text-foreground"
                 rows={2}
                 placeholder="Internal notes"
@@ -969,10 +1261,14 @@ export const TrainingSection = () => {
       <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-foreground">Courses</h3>
         <p className="mt-1 text-sm text-foreground/60">
-          Expand a course to add sections and upload PDFs, videos, or documents to Firebase Storage. Responders see these in Online Training.
+          Expand a course to add sections and upload PDFs, videos, or documents
+          to Firebase Storage. Responders see these in Online Training.
         </p>
         <div className="mt-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground/80">
-          <span className="font-medium text-primary">How to upload:</span> Create a course → Expand it (click the row) → Add section → Click &quot;Upload PDF, video, or document&quot; → Choose file → Add. Files are stored in Firebase Storage.
+          <span className="font-medium text-primary">How to upload:</span>{" "}
+          Create a course → Expand it (click the row) → Add section → Click
+          &quot;Upload PDF, video, or document&quot; → Choose file → Add. Files
+          are stored in Firebase Storage.
         </div>
 
         {loading ? (
@@ -981,14 +1277,19 @@ export const TrainingSection = () => {
           </div>
         ) : courses.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-dashed border-border/60 bg-background/40 py-12 text-center text-sm text-foreground/60">
-            No courses yet. Create one above, then expand it, add a section, and use &quot;Upload PDF, video, or document&quot; to upload files to Firebase Storage.
+            No courses yet. Create one above, then expand it, add a section, and
+            use &quot;Upload PDF, video, or document&quot; to upload files to
+            Firebase Storage.
           </div>
         ) : (
           <div className="mt-6 space-y-2">
             {courses.map((course) => {
               const isExpanded = expandedId === course.id;
               const sectionCount = (course.sections || []).length;
-              const itemCount = (course.sections || []).reduce((acc, s) => acc + (s.items?.length ?? 0), 0);
+              const itemCount = (course.sections || []).reduce(
+                (acc, s) => acc + (s.items?.length ?? 0),
+                0,
+              );
               return (
                 <div
                   key={course.id}
@@ -996,7 +1297,11 @@ export const TrainingSection = () => {
                 >
                   <button
                     type="button"
-                    onClick={() => setExpandedId((id) => (id === course.id ? null : course.id))}
+                    onClick={() =>
+                      setExpandedId((id) =>
+                        id === course.id ? null : course.id,
+                      )
+                    }
                     className="flex w-full items-center gap-3 p-4 text-left"
                   >
                     {isExpanded ? (
@@ -1005,10 +1310,13 @@ export const TrainingSection = () => {
                       <ChevronRight className="h-5 w-5 text-foreground/70" />
                     )}
                     <div className="flex-1">
-                      <p className="font-semibold text-foreground">{course.title}</p>
+                      <p className="font-semibold text-foreground">
+                        {course.title}
+                      </p>
                       <p className="text-xs text-foreground/60">
                         {course.moduleCode ? `${course.moduleCode} · ` : ""}
-                        {course.category} · {course.status || "draft"} · {sectionCount} section(s) · {itemCount} item(s)
+                        {course.category} · {course.status || "draft"} ·{" "}
+                        {sectionCount} section(s) · {itemCount} item(s)
                       </p>
                     </div>
                     <button
@@ -1044,34 +1352,67 @@ export const TrainingSection = () => {
 
                       {/* Assessments: passing score + pretest / quiz / final questions */}
                       <div className="mb-6 rounded-xl border border-border/40 bg-background/40 p-4">
-                        <h4 className="mb-3 font-medium text-foreground">Assessments (for certification)</h4>
+                        <h4 className="mb-3 font-medium text-foreground">
+                          Assessments (for certification)
+                        </h4>
                         <p className="mb-3 text-xs text-foreground/60">
-                          Set passing score and add questions for Pre-test, Quiz, and Final. Responders must pass all assessments (at this score) and complete all content to earn the certificate.
+                          Set passing score and add questions for Pre-test,
+                          Quiz, and Final. Responders must pass all assessments
+                          (at this score) and complete all content to earn the
+                          certificate.
                         </p>
                         <div className="mb-4 flex items-center gap-2">
-                          <label className="text-sm text-foreground/80">Passing score (%):</label>
+                          <label className="text-sm text-foreground/80">
+                            Passing score (%):
+                          </label>
                           <input
                             type="number"
                             min={0}
                             max={100}
-                            defaultValue={course.passingCriteria ? String(course.passingCriteria).replace(/%/g, "") : "70"}
-                            onBlur={(e) => handleSavePassingScore(course.id, e.target.value)}
+                            defaultValue={
+                              course.passingCriteria
+                                ? String(course.passingCriteria).replace(
+                                    /%/g,
+                                    "",
+                                  )
+                                : "70"
+                            }
+                            onBlur={(e) =>
+                              handleSavePassingScore(course.id, e.target.value)
+                            }
                             className="w-20 rounded-lg border border-border/60 bg-background px-2 py-1.5 text-sm"
                           />
                         </div>
                         {["pretest", "quiz", "final"].map((atype) => {
-                          const questions = (course.assessments && course.assessments[atype]) || [];
+                          const questions =
+                            (course.assessments && course.assessments[atype]) ||
+                            [];
                           const key = `${course.id}_${atype}`;
                           const isAdding = addingQuestion === key;
-                          const typeLabel = atype === "pretest" ? "Pre-test" : atype === "quiz" ? "Quiz" : "Final Assessment";
+                          const typeLabel =
+                            atype === "pretest"
+                              ? "Pre-test"
+                              : atype === "quiz"
+                                ? "Quiz"
+                                : "Final Assessment";
                           return (
-                            <div key={atype} className="mb-4 rounded-lg border border-border/40 bg-background/60 p-3">
+                            <div
+                              key={atype}
+                              className="mb-4 rounded-lg border border-border/40 bg-background/60 p-3"
+                            >
                               <div className="mb-2 flex items-center justify-between">
-                                <span className="text-sm font-medium text-foreground">{typeLabel}</span>
+                                <span className="text-sm font-medium text-foreground">
+                                  {typeLabel}
+                                </span>
                                 {!isAdding && (
                                   <button
                                     type="button"
-                                    onClick={() => handleAddAssessmentQuestion(course.id, atype)}
+                                    onClick={() =>
+                                      handleAddAssessmentQuestion(
+                                        course.id,
+                                        atype,
+                                      )
+                                    }
                                     className="text-xs text-primary hover:underline"
                                   >
                                     <Plus className="h-3.5 w-3.5 inline mr-1" />
@@ -1082,11 +1423,22 @@ export const TrainingSection = () => {
                               {questions.length > 0 && (
                                 <ul className="mb-2 space-y-1 text-sm text-foreground/80">
                                   {questions.map((q, qi) => (
-                                    <li key={qi} className="flex items-center justify-between rounded bg-background/60 px-2 py-1.5">
-                                      <span className="truncate flex-1">{q.q}</span>
+                                    <li
+                                      key={qi}
+                                      className="flex items-center justify-between rounded bg-background/60 px-2 py-1.5"
+                                    >
+                                      <span className="truncate flex-1">
+                                        {q.q}
+                                      </span>
                                       <button
                                         type="button"
-                                        onClick={() => handleRemoveAssessmentQuestion(course.id, atype, qi)}
+                                        onClick={() =>
+                                          handleRemoveAssessmentQuestion(
+                                            course.id,
+                                            atype,
+                                            qi,
+                                          )
+                                        }
                                         className="rounded p-1 text-foreground/50 hover:text-rose-600"
                                         aria-label="Remove question"
                                       >
@@ -1101,7 +1453,12 @@ export const TrainingSection = () => {
                                   <input
                                     type="text"
                                     value={newQuestion.q}
-                                    onChange={(e) => setNewQuestion((n) => ({ ...n, q: e.target.value }))}
+                                    onChange={(e) =>
+                                      setNewQuestion((n) => ({
+                                        ...n,
+                                        q: e.target.value,
+                                      }))
+                                    }
                                     placeholder="Question text"
                                     className="mb-2 w-full rounded border border-border/60 bg-background px-2 py-1.5"
                                   />
@@ -1110,16 +1467,28 @@ export const TrainingSection = () => {
                                       key={i}
                                       type="text"
                                       value={newQuestion[`option${i}`]}
-                                      onChange={(e) => setNewQuestion((n) => ({ ...n, [`option${i}`]: e.target.value }))}
+                                      onChange={(e) =>
+                                        setNewQuestion((n) => ({
+                                          ...n,
+                                          [`option${i}`]: e.target.value,
+                                        }))
+                                      }
                                       placeholder={`Option ${i}`}
                                       className="mb-1.5 w-full rounded border border-border/60 bg-background px-2 py-1"
                                     />
                                   ))}
                                   <div className="mt-2 flex items-center gap-2">
-                                    <label className="text-foreground/70">Correct answer:</label>
+                                    <label className="text-foreground/70">
+                                      Correct answer:
+                                    </label>
                                     <select
                                       value={newQuestion.answer}
-                                      onChange={(e) => setNewQuestion((n) => ({ ...n, answer: Number(e.target.value) }))}
+                                      onChange={(e) =>
+                                        setNewQuestion((n) => ({
+                                          ...n,
+                                          answer: Number(e.target.value),
+                                        }))
+                                      }
                                       className="rounded border border-border/60 bg-background px-2 py-1"
                                     >
                                       <option value={0}>Option 1</option>
@@ -1131,7 +1500,12 @@ export const TrainingSection = () => {
                                   <div className="mt-2 flex gap-2">
                                     <button
                                       type="button"
-                                      onClick={() => handleSaveAssessmentQuestion(course.id, atype)}
+                                      onClick={() =>
+                                        handleSaveAssessmentQuestion(
+                                          course.id,
+                                          atype,
+                                        )
+                                      }
                                       className="rounded bg-primary px-2 py-1 text-xs font-medium text-primary-foreground"
                                     >
                                       Save question
@@ -1151,11 +1525,19 @@ export const TrainingSection = () => {
                         })}
                       </div>
 
-                      {(course.assessmentType === "Practical Test" || course.assessmentType === "Simulation" || course.assessmentType === "Evaluation Form") && (
+                      {(course.assessmentType === "Practical Test" ||
+                        course.assessmentType === "Simulation" ||
+                        course.assessmentType === "Evaluation Form") && (
                         <div className="mb-6 rounded-xl border border-border/40 bg-background/40 p-4">
-                          <h4 className="mb-3 font-medium text-foreground">Submissions (review &amp; re-evaluate)</h4>
+                          <h4 className="mb-3 font-medium text-foreground">
+                            Submissions (review &amp; re-evaluate)
+                          </h4>
                           <p className="mb-3 text-xs text-foreground/60">
-                            Responders submit {course.assessmentType === "Evaluation Form" ? "evaluation forms" : "videos"}. Review and mark as passed or failed.
+                            Responders submit{" "}
+                            {course.assessmentType === "Evaluation Form"
+                              ? "evaluation forms"
+                              : "videos"}
+                            . Review and mark as passed or failed.
                           </p>
                           <button
                             type="button"
@@ -1167,16 +1549,30 @@ export const TrainingSection = () => {
                           {Array.isArray(submissionsByCourse[course.id]) && (
                             <ul className="space-y-3">
                               {submissionsByCourse[course.id]
-                                .filter((p) => p.videoSubmission || p.evalFormSubmission || p.assessmentResults?.final)
+                                .filter(
+                                  (p) =>
+                                    p.videoSubmission ||
+                                    p.evalFormSubmission ||
+                                    p.assessmentResults?.final,
+                                )
                                 .map((p) => (
-                                  <li key={p.progressId} className="rounded-lg border border-border/40 bg-background/60 p-3 text-sm">
+                                  <li
+                                    key={p.progressId}
+                                    className="rounded-lg border border-border/40 bg-background/60 p-3 text-sm"
+                                  >
                                     <div className="mb-2 font-medium text-foreground/90">
-                                      User ID: {p.userId || extractUserIdFromStoragePath(p.videoSubmission?.storagePath) || "Unknown"}
+                                      User ID:{" "}
+                                      {p.userId ||
+                                        extractUserIdFromStoragePath(
+                                          p.videoSubmission?.storagePath,
+                                        ) ||
+                                        "Unknown"}
                                     </div>
                                     {p.videoSubmission?.downloadURL && (
                                       <div className="mb-3 space-y-2">
                                         <div className="text-xs text-foreground/70">
-                                          File Name: {extractFileName(p) || "Unknown file"}
+                                          File Name:{" "}
+                                          {extractFileName(p) || "Unknown file"}
                                         </div>
                                         <video
                                           controls
@@ -1184,7 +1580,8 @@ export const TrainingSection = () => {
                                           className="w-full max-w-md rounded border border-border/40 bg-black"
                                           src={p.videoSubmission.downloadURL}
                                         >
-                                          Your browser cannot play this uploaded video format.
+                                          Your browser cannot play this uploaded
+                                          video format.
                                         </video>
                                         <a
                                           href={p.videoSubmission.downloadURL}
@@ -1196,40 +1593,83 @@ export const TrainingSection = () => {
                                         </a>
                                       </div>
                                     )}
-                                    {p.evalFormSubmission && typeof p.evalFormSubmission === "object" && (
-                                      <div className="mb-2 space-y-1 rounded bg-background/80 p-2">
-                                        {Object.entries(p.evalFormSubmission).map(([k, v]) => {
-                                          const qIndex = k.replace(/^q/, "");
-                                          const label = Array.isArray(course.evaluationFormQuestions)?.[Number(qIndex)]?.question || k;
-                                          return (
-                                            <div key={k}>
-                                              <span className="text-foreground/60">{label}:</span> {String(v)}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
-                                    {!p.videoSubmission?.downloadURL && !p.evalFormSubmission && (
-                                      <div className="mb-2 rounded bg-amber-500/10 p-2 text-xs text-foreground/80">
-                                        No attachment metadata found for this submission record. You can still set grading status.
-                                      </div>
-                                    )}
+                                    {p.evalFormSubmission &&
+                                      typeof p.evalFormSubmission ===
+                                        "object" && (
+                                        <div className="mb-2 space-y-1 rounded bg-background/80 p-2">
+                                          {Object.entries(
+                                            p.evalFormSubmission,
+                                          ).map(([k, v]) => {
+                                            const qIndex = k.replace(/^q/, "");
+                                            const label =
+                                              Array.isArray(
+                                                course.evaluationFormQuestions,
+                                              )?.[Number(qIndex)]?.question ||
+                                              k;
+                                            return (
+                                              <div key={k}>
+                                                <span className="text-foreground/60">
+                                                  {label}:
+                                                </span>{" "}
+                                                {String(v)}
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    {!p.videoSubmission?.downloadURL &&
+                                      !p.evalFormSubmission && (
+                                        <div className="mb-2 rounded bg-amber-500/10 p-2 text-xs text-foreground/80">
+                                          No attachment metadata found for this
+                                          submission record. You can still set
+                                          grading status.
+                                        </div>
+                                      )}
                                     <div className="flex items-center gap-2">
-                                      <span className={p.assessmentResults?.final?.passed ? "text-green-600 font-medium" : "text-foreground/70"}>
-                                        {p.assessmentResults?.final?.passed ? "Passed" : "Pending / Failed"}
+                                      <span
+                                        className={
+                                          p.assessmentResults?.final?.passed
+                                            ? "text-green-600 font-medium"
+                                            : "text-foreground/70"
+                                        }
+                                      >
+                                        {p.assessmentResults?.final?.passed
+                                          ? "Passed"
+                                          : "Pending / Failed"}
                                       </span>
                                       <button
                                         type="button"
-                                        disabled={markingPassed === `${p.userId}_${course.id}`}
-                                        onClick={() => handleSetAssessmentPassed(p.userId, course.id, true)}
+                                        disabled={
+                                          markingPassed ===
+                                          `${p.userId}_${course.id}`
+                                        }
+                                        onClick={() =>
+                                          handleSetAssessmentPassed(
+                                            p.userId,
+                                            course.id,
+                                            true,
+                                          )
+                                        }
                                         className="rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700 disabled:opacity-50"
                                       >
-                                        {markingPassed === `${p.userId}_${course.id}` ? "..." : "Mark passed"}
+                                        {markingPassed ===
+                                        `${p.userId}_${course.id}`
+                                          ? "..."
+                                          : "Mark passed"}
                                       </button>
                                       <button
                                         type="button"
-                                        disabled={markingPassed === `${p.userId}_${course.id}`}
-                                        onClick={() => handleSetAssessmentPassed(p.userId, course.id, false)}
+                                        disabled={
+                                          markingPassed ===
+                                          `${p.userId}_${course.id}`
+                                        }
+                                        onClick={() =>
+                                          handleSetAssessmentPassed(
+                                            p.userId,
+                                            course.id,
+                                            false,
+                                          )
+                                        }
                                         className="rounded border border-border/60 px-2 py-1 text-xs font-medium hover:bg-rose-500/10 text-rose-600 disabled:opacity-50"
                                       >
                                         Mark failed
@@ -1237,8 +1677,15 @@ export const TrainingSection = () => {
                                     </div>
                                   </li>
                                 ))}
-                              {submissionsByCourse[course.id].filter((p) => p.videoSubmission || p.evalFormSubmission || p.assessmentResults?.final).length === 0 && (
-                                <li className="text-foreground/60 text-sm">No submissions yet.</li>
+                              {submissionsByCourse[course.id].filter(
+                                (p) =>
+                                  p.videoSubmission ||
+                                  p.evalFormSubmission ||
+                                  p.assessmentResults?.final,
+                              ).length === 0 && (
+                                <li className="text-foreground/60 text-sm">
+                                  No submissions yet.
+                                </li>
                               )}
                             </ul>
                           )}
@@ -1247,7 +1694,13 @@ export const TrainingSection = () => {
 
                       {(course.sections || []).length === 0 && (
                         <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-foreground/90">
-                          <span className="font-medium">Add a section first, then upload files.</span> After adding a section (e.g. &quot;Materials&quot; or &quot;Videos&quot;), use &quot;Upload PDF, video, or document&quot; inside it to upload to Firebase Storage.
+                          <span className="font-medium">
+                            Add a section first, then upload files.
+                          </span>{" "}
+                          After adding a section (e.g. &quot;Materials&quot; or
+                          &quot;Videos&quot;), use &quot;Upload PDF, video, or
+                          document&quot; inside it to upload to Firebase
+                          Storage.
                         </div>
                       )}
                       {(course.sections || []).map((section, sIdx) => (
@@ -1262,7 +1715,9 @@ export const TrainingSection = () => {
                             </span>
                             <button
                               type="button"
-                              onClick={() => handleRemoveSection(course.id, sIdx)}
+                              onClick={() =>
+                                handleRemoveSection(course.id, sIdx)
+                              }
                               className="rounded p-1.5 text-foreground/50 hover:bg-rose-500/10 hover:text-rose-600"
                               aria-label="Remove section"
                             >
@@ -1283,12 +1738,20 @@ export const TrainingSection = () => {
                                   )}
                                   {item.title}
                                   {item.downloadURL ? (
-                                    <span className="text-xs text-foreground/50">(file)</span>
+                                    <span className="text-xs text-foreground/50">
+                                      (file)
+                                    </span>
                                   ) : null}
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveContentItem(course.id, sIdx, iIdx)}
+                                  onClick={() =>
+                                    handleRemoveContentItem(
+                                      course.id,
+                                      sIdx,
+                                      iIdx,
+                                    )
+                                  }
                                   className="rounded p-1 text-foreground/50 hover:text-rose-600"
                                   aria-label="Remove item"
                                 >
@@ -1305,13 +1768,18 @@ export const TrainingSection = () => {
                               <input
                                 type="text"
                                 value={newItemTitle}
-                                onChange={(e) => setNewItemTitle(e.target.value)}
+                                onChange={(e) =>
+                                  setNewItemTitle(e.target.value)
+                                }
                                 placeholder="Item title (or use file name)"
                                 className="mb-3 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
                               />
                               <div className="mb-3 flex gap-4">
                                 {CONTENT_TYPES.map(({ value, label }) => (
-                                  <label key={value} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                                  <label
+                                    key={value}
+                                    className="flex items-center gap-1.5 text-sm cursor-pointer"
+                                  >
                                     <input
                                       type="radio"
                                       name={`type-${course.id}-${sIdx}`}
@@ -1323,7 +1791,9 @@ export const TrainingSection = () => {
                                 ))}
                               </div>
                               <label className="mb-3 flex cursor-pointer flex-col gap-1 text-sm">
-                                <span className="font-medium text-foreground/80">Choose file (PDF, video, or document)</span>
+                                <span className="font-medium text-foreground/80">
+                                  Choose file (PDF, video, or document)
+                                </span>
                                 <input
                                   id={`file-${course.id}-${sIdx}`}
                                   type="file"
@@ -1334,8 +1804,12 @@ export const TrainingSection = () => {
                               <div className="flex gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => handleAddContentItem(course.id, sIdx)}
-                                  disabled={uploadingFile === `${course.id}-${sIdx}`}
+                                  onClick={() =>
+                                    handleAddContentItem(course.id, sIdx)
+                                  }
+                                  disabled={
+                                    uploadingFile === `${course.id}-${sIdx}`
+                                  }
                                   className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
                                 >
                                   {uploadingFile === `${course.id}-${sIdx}` ? (
@@ -1360,7 +1834,9 @@ export const TrainingSection = () => {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => setAddingItem(`${course.id}-${sIdx}`)}
+                              onClick={() =>
+                                setAddingItem(`${course.id}-${sIdx}`)
+                              }
                               className="mt-2 inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-primary/50 bg-primary/5 px-4 py-3 text-sm font-medium text-primary hover:border-primary hover:bg-primary/10"
                             >
                               <Upload className="h-4 w-4" />
@@ -1375,7 +1851,9 @@ export const TrainingSection = () => {
                           <input
                             type="text"
                             value={newSectionHeading}
-                            onChange={(e) => setNewSectionHeading(e.target.value)}
+                            onChange={(e) =>
+                              setNewSectionHeading(e.target.value)
+                            }
                             placeholder="Section heading (e.g. General Information)"
                             className="flex-1 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
                           />
