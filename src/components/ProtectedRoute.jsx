@@ -51,7 +51,7 @@ export const ProtectedRoute = ({
     const roleRedirects = {
       admin: "/admin",
       logistics: "/logistics/dashboard",
-      responder: "/responder",
+      responder: "/responder/dashboard",
       patient: "/patient/dashboard",
     };
     return (

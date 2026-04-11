@@ -18,7 +18,7 @@ export const getDefaultRouteForRole = (role, user = null) => {
       return "/logistics/dashboard";
 
     case "responder":
-      return "/responder";
+      return "/responder/dashboard";
 
     case "patient":
       // For patients, check verification status
