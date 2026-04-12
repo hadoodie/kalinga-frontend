@@ -180,7 +180,9 @@ const Modules = () => {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -201,15 +203,21 @@ const Modules = () => {
       })
       .catch((e) => {
         if (!cancelled) setTrainingProgress([]);
-        if (!cancelled) setProgressError(e.message || "Failed to load training progress");
+        if (!cancelled)
+          setProgressError(e.message || "Failed to load training progress");
       })
       .finally(() => {
         if (!cancelled) setProgressLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id, activeTab]);
 
-  const categories = ["All", ...new Set(courses.map((c) => c.category).filter(Boolean))];
+  const categories = [
+    "All",
+    ...new Set(courses.map((c) => c.category).filter(Boolean)),
+  ];
   const filteredCourses =
     selectedFilter === "All"
       ? courses
@@ -451,7 +459,10 @@ const Modules = () => {
               <div className="section">
                 <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 py-12 text-center text-gray-600">
                   <FaBookOpen className="mx-auto mb-2 h-10 w-10 text-gray-400" />
-                  <p>No training records yet. Complete course content to start tracking progress.</p>
+                  <p>
+                    No training records yet. Complete course content to start
+                    tracking progress.
+                  </p>
                 </div>
               </div>
             ) : (
@@ -459,53 +470,102 @@ const Modules = () => {
                 <h4 className="mb-4">Course Progress</h4>
                 <div className="card-grid">
                   {trainingProgress.map((record) => {
-                    const course = courses.find((c) => String(c.id) === String(record.courseId));
-                    const totalItems = course?.sections?.reduce(
-                      (sum, section) => sum + ((section.items || []).length || 0),
-                      0
+                    const course = courses.find(
+                      (c) => String(c.id) === String(record.courseId),
                     );
-                    const completedCount = Array.isArray(record.completedContent) ? record.completedContent.length : 0;
-                    const progressPct = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
-                    const hasPretest = Array.isArray(course?.assessments?.pretest) && course.assessments.pretest.length > 0;
-                    const hasQuiz = Array.isArray(course?.assessments?.quiz) && course.assessments.quiz.length > 0;
-                    const hasFinal = Array.isArray(course?.assessments?.final) && course.assessments.final.length > 0;
-                    const hasAssessmentTrack = hasPretest || hasQuiz || hasFinal;
-                    const pretestPassed = record.assessmentResults?.pretest?.passed === true;
-                    const quizPassed = record.assessmentResults?.quiz?.passed === true;
-                    const finalPassed = record.assessmentResults?.final?.passed === true;
+                    const totalItems = course?.sections?.reduce(
+                      (sum, section) =>
+                        sum + ((section.items || []).length || 0),
+                      0,
+                    );
+                    const completedCount = Array.isArray(
+                      record.completedContent,
+                    )
+                      ? record.completedContent.length
+                      : 0;
+                    const progressPct =
+                      totalItems > 0
+                        ? Math.round((completedCount / totalItems) * 100)
+                        : 0;
+                    const hasPretest =
+                      Array.isArray(course?.assessments?.pretest) &&
+                      course.assessments.pretest.length > 0;
+                    const hasQuiz =
+                      Array.isArray(course?.assessments?.quiz) &&
+                      course.assessments.quiz.length > 0;
+                    const hasFinal =
+                      Array.isArray(course?.assessments?.final) &&
+                      course.assessments.final.length > 0;
+                    const hasAssessmentTrack =
+                      hasPretest || hasQuiz || hasFinal;
+                    const pretestPassed =
+                      record.assessmentResults?.pretest?.passed === true;
+                    const quizPassed =
+                      record.assessmentResults?.quiz?.passed === true;
+                    const finalPassed =
+                      record.assessmentResults?.final?.passed === true;
                     const assessmentsPassed =
                       (!hasPretest || pretestPassed) &&
                       (!hasQuiz || quizPassed) &&
                       (!hasFinal || finalPassed);
-                    const completed = !!record.certifiedAt || (hasAssessmentTrack ? assessmentsPassed : progressPct === 100);
-                    const pretestGrade = record.assessmentResults?.pretest?.percent;
+                    const completed =
+                      !!record.certifiedAt ||
+                      (hasAssessmentTrack
+                        ? assessmentsPassed
+                        : progressPct === 100);
+                    const pretestGrade =
+                      record.assessmentResults?.pretest?.percent;
                     const quizGrade = record.assessmentResults?.quiz?.percent;
                     const finalGrade = record.assessmentResults?.final?.percent;
                     return (
-                      <div key={record.progressId} className="card training-record-card">
-                        <div className="card-icon">{getCategoryIcon(course?.category)}</div>
+                      <div
+                        key={record.progressId}
+                        className="card training-record-card"
+                      >
+                        <div className="card-icon">
+                          {getCategoryIcon(course?.category)}
+                        </div>
                         <h4>{course?.title || `Course ${record.courseId}`}</h4>
                         <p className="text-sm text-gray-500 mb-3">
-                          {course?.description || "Track your course progress and completion status."}
+                          {course?.description ||
+                            "Track your course progress and completion status."}
                         </p>
                         <div className="text-sm text-gray-700 mb-2">
-                          Status: <strong>{completed ? "Completed" : "In progress"}</strong>
+                          Status:{" "}
+                          <strong>
+                            {completed ? "Completed" : "In progress"}
+                          </strong>
                         </div>
                         <div className="text-xs text-gray-600 mb-2 space-y-1">
-                          {Number.isFinite(Number(pretestGrade)) && <p>Pre-test Grade: {Number(pretestGrade)}%</p>}
-                          {Number.isFinite(Number(quizGrade)) && <p>Quiz Grade: {Number(quizGrade)}%</p>}
-                          {Number.isFinite(Number(finalGrade)) && <p>Final Grade: {Number(finalGrade)}%</p>}
-                          {!Number.isFinite(Number(pretestGrade)) && !Number.isFinite(Number(quizGrade)) && !Number.isFinite(Number(finalGrade)) && (
-                            <p>Grade: Not available yet</p>
+                          {Number.isFinite(Number(pretestGrade)) && (
+                            <p>Pre-test Grade: {Number(pretestGrade)}%</p>
                           )}
+                          {Number.isFinite(Number(quizGrade)) && (
+                            <p>Quiz Grade: {Number(quizGrade)}%</p>
+                          )}
+                          {Number.isFinite(Number(finalGrade)) && (
+                            <p>Final Grade: {Number(finalGrade)}%</p>
+                          )}
+                          {!Number.isFinite(Number(pretestGrade)) &&
+                            !Number.isFinite(Number(quizGrade)) &&
+                            !Number.isFinite(Number(finalGrade)) && (
+                              <p>Grade: Not available yet</p>
+                            )}
                         </div>
                         {totalItems > 0 && (
-                          <div className="progress-bar" style={{ marginBottom: 8 }}>
-                            <div className="progress-fill" style={{ width: `${progressPct}%` }} />
+                          <div
+                            className="progress-bar"
+                            style={{ marginBottom: 8 }}
+                          >
+                            <div
+                              className="progress-fill"
+                              style={{ width: `${progressPct}%` }}
+                            />
                           </div>
                         )}
                         <div className="text-xs text-gray-500">
-                          {completedCount} of {totalItems || "?"} content items completed
+                          {completedCount} of {totalItems || "?"} content items
+                          completed
                         </div>
                       </div>
                     );

@@ -11,7 +11,12 @@
  */
 export const getDefaultRouteForRole = (role, user = null) => {
   // Try mapping the role object safely (sometimes role might be undefined or mismatched case)
-  const normalizedRole = (role || user?.role || user?.user_type || "").toLowerCase();
+  const normalizedRole = (
+    role ||
+    user?.role ||
+    user?.user_type ||
+    ""
+  ).toLowerCase();
 
   switch (normalizedRole) {
     case "admin":

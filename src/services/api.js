@@ -80,20 +80,18 @@ api.interceptors.response.use(
 
     // Handle 401 Unauthorized - but be smart about it
     if (error.response?.status === 401) {
-      // Check if this is truly an auth failure or just a network/temporary issue
+      // Only force a global logout for explicit auth/session endpoint failures.
+      // Feature endpoints can return 401 for route-level authorization issues and
+      // should not tear down the whole app session.
+      const requestUrl = String(originalRequest?.url || "");
       const isAuthEndpoint =
-        originalRequest.url?.includes("/login") ||
-        originalRequest.url?.includes("/register") ||
-        originalRequest.url?.includes("/me");
-
-      // Always clear stale auth data on 401s
-      forceLogout();
+        requestUrl.includes("/login") ||
+        requestUrl.includes("/register") ||
+        requestUrl.includes("/logout") ||
+        requestUrl.includes("/me");
 
       if (isAuthEndpoint) {
-        // Route to home on forced logout to keep sign-out behavior consistent
-        if (typeof window !== "undefined" && window.location.pathname !== "/") {
-          window.location.href = "/";
-        }
+        forceLogout();
       }
     }
 

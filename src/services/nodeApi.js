@@ -29,8 +29,14 @@ nodeApi.interceptors.response.use(
   (res) => res,
   async (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid — dispatch the same logout event used elsewhere
-      window.dispatchEvent(new Event("auth:logout"));
+      // Do not force global logout for generic Node API 401s.
+      // The Node service is a secondary backend and may reject specific routes
+      // even when the primary Laravel session is valid.
+      const requestUrl = String(error.config?.url || "");
+      const isNodeAuthCheck = requestUrl.includes("/auth/me");
+      if (isNodeAuthCheck && typeof window !== "undefined") {
+        window.dispatchEvent(new Event("auth:logout"));
+      }
     }
 
     if (error.response?.status === 429) {

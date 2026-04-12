@@ -47,7 +47,10 @@ export const ProtectedRoute = ({
 
   // Check if user has required role
   const normalizedRole = (user?.role || user?.user_type || "").toLowerCase();
-  if (allowedRoles.length > 0 && !allowedRoles.map(r => r.toLowerCase()).includes(normalizedRole)) {
+  if (
+    allowedRoles.length > 0 &&
+    !allowedRoles.map((r) => r.toLowerCase()).includes(normalizedRole)
+  ) {
     // Redirect to appropriate dashboard based on role
     const roleRedirects = {
       admin: "/admin",
