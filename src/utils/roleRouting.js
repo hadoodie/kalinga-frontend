@@ -59,7 +59,12 @@ export const getDefaultRouteForRole = (role, user = null) => {
  * @param {number} options.delay - Delay in ms before navigation (default: 0)
  */
 export const navigateToRoleBasedRoute = (user, navigate, options = {}) => {
-  const { from = null, delay = 0 } = options;
+  let { from = null, delay = 0 } = options;
+
+  // Prevent routing back to public/auth pages accidentally
+  if (from === "/" || from === "/login") {
+    from = null;
+  }
 
   const doNavigation = () => {
     if (from) {
