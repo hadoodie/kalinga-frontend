@@ -20,6 +20,7 @@ import {
   FaBalanceScale,
   FaCertificate,
   FaDownload,
+  FaBookOpen,
 } from "react-icons/fa";
 
 // Full Category Filters
