@@ -114,7 +114,7 @@ export default function Settings() {
         description: "You have been logged out from all devices.",
       });
       setDevices([]);
-      navigate("/");
+      window.location.assign("/#hero");
     } catch (error) {
       console.error("Logout error:", error);
       toast({

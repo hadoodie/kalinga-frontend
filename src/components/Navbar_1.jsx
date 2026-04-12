@@ -55,10 +55,10 @@ export const NavbarA = () => {
     try {
       await logout();
       setIsProfileOpen(false);
-      navigate("/");
+      window.location.assign("/#hero");
     } catch (error) {
       console.error("Logout failed:", error);
-      navigate("/");
+      window.location.assign("/#hero");
     }
   };
 

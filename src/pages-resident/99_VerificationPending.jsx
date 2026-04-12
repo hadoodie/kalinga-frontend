@@ -96,7 +96,7 @@ export default function VerificationPending() {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/");
+    window.location.assign("/#hero");
   };
 
   return (
