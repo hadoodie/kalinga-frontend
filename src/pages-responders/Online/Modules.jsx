@@ -1,5 +1,5 @@
 // src/pages/Online/Modules.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Layout from "../../layouts/Layout";
 import Footer from "../../components/responder/Footer";
