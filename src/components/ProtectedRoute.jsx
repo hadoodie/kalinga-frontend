@@ -46,7 +46,8 @@ export const ProtectedRoute = ({
   }
 
   // Check if user has required role
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+  const normalizedRole = (user?.role || user?.user_type || "").toLowerCase();
+  if (allowedRoles.length > 0 && !allowedRoles.map(r => r.toLowerCase()).includes(normalizedRole)) {
     // Redirect to appropriate dashboard based on role
     const roleRedirects = {
       admin: "/admin",
@@ -56,7 +57,7 @@ export const ProtectedRoute = ({
     };
     return (
       <Navigate
-        to={roleRedirects[user?.role] || "/patient/dashboard"}
+        to={roleRedirects[normalizedRole] || "/patient/dashboard"}
         replace
       />
     );
