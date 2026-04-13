@@ -1,4 +1,12 @@
 .triage-card {
+  --triage-low: #2e7d32;
+  --triage-medium: #fbc02d;
+  --triage-high: #ef6c00;
+  --triage-very-high: #d84315;
+  --triage-critical: #b71c1c;
+}
+
+.triage-card {
   background: #ffffff;
   border-radius: 8px;
   padding: 1.5rem;
@@ -41,23 +49,23 @@
 
 .triage-table .low {
   background: #e8f5e9;
-  color: #1b5e20;
+  color: var(--triage-low);
 }
 .triage-table .medium {
   background: #fff8e1;
-  color: #f57f17;
+  color: #8a6a00;
 }
 .triage-table .high {
   background: #fff3e0;
-  color: #e65100;
+  color: var(--triage-high);
 }
 .triage-table .very-high {
   background: #fbe9e7;
-  color: #bf360c;
+  color: var(--triage-very-high);
 }
 .triage-table .critical {
   background: #ffebee;
-  color: #b71c1c;
+  color: var(--triage-critical);
 }
 
 .triage-legend {
@@ -77,19 +85,19 @@
 }
 
 .legend-dot.low {
-  background: #2e7d32;
+  background: var(--triage-low);
 }
 .legend-dot.medium {
-  background: #fbc02d;
+  background: var(--triage-medium);
 }
 .legend-dot.high {
-  background: #ef6c00;
+  background: var(--triage-high);
 }
 .legend-dot.very-high {
-  background: #d84315;
+  background: var(--triage-very-high);
 }
 .legend-dot.critical {
-  background: #b71c1c;
+  background: var(--triage-critical);
 }
 
 .triage-mobile-list {
@@ -135,6 +143,38 @@
     font-size: 0.78rem;
     font-weight: 700;
     text-align: center;
+    border: 1px solid transparent;
+    color: #0f172a;
+  }
+
+  .triage-mobile-metrics .metric.low {
+    background: #e8f5e9;
+    border-color: #c8e6c9;
+    color: var(--triage-low);
+  }
+
+  .triage-mobile-metrics .metric.medium {
+    background: #fff8e1;
+    border-color: #f6e4ad;
+    color: #8a6a00;
+  }
+
+  .triage-mobile-metrics .metric.high {
+    background: #fff3e0;
+    border-color: #ffd9b0;
+    color: var(--triage-high);
+  }
+
+  .triage-mobile-metrics .metric.very-high {
+    background: #fbe9e7;
+    border-color: #f3c0b7;
+    color: var(--triage-very-high);
+  }
+
+  .triage-mobile-metrics .metric.critical {
+    background: #ffebee;
+    border-color: #f5b3bd;
+    color: var(--triage-critical);
   }
 
   .triage-mobile-metrics .very-high,
