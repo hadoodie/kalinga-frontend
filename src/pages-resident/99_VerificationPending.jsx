@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, CheckCircle, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import {
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { NavbarB } from "../components/Navbar_2";
 import { Footer } from "../components/Footer";
@@ -74,17 +80,17 @@ export default function VerificationPending() {
 
         // 2. Update the global Auth Context
         setUser(response.data);
-        
+
         // --- FIX: Persist the updated user to localStorage so it doesn't revert on refresh ---
         localStorage.setItem("user", JSON.stringify(response.data));
 
         // 3. Show feedback based on the new status
-        if (response.data.verification_status === 'verified') {
+        if (response.data.verification_status === "verified") {
           // The UI will automatically re-render to the Green "Verified" state
-        } else if (response.data.verification_status === 'rejected') {
-           // UI updates to Red
+        } else if (response.data.verification_status === "rejected") {
+          // UI updates to Red
         } else {
-           alert("Status is still pending. We will notify you once approved.");
+          alert("Status is still pending. We will notify you once approved.");
         }
       } catch (error) {
         console.error("Failed to refresh status", error);
@@ -130,7 +136,8 @@ export default function VerificationPending() {
                 </div>
                 <div className="space-y-1 text-sm">
                   <p>
-                    <span className="font-medium">Name:</span> {user?.name || "Kalinga Patient"}
+                    <span className="font-medium">Name:</span>{" "}
+                    {user?.name || "Kalinga Patient"}
                   </p>
                   <p>
                     <span className="font-medium">Email:</span> {user?.email}
@@ -142,8 +149,8 @@ export default function VerificationPending() {
                         user?.verification_status === "verified"
                           ? "text-green-600"
                           : user?.verification_status === "rejected"
-                          ? "text-red-600"
-                          : "text-yellow-600"
+                            ? "text-red-600"
+                            : "text-yellow-600"
                       }`}
                     >
                       {user?.verification_status?.toUpperCase() || "PENDING"}

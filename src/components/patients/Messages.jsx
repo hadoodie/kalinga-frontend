@@ -2066,6 +2066,8 @@ export default function MessagesContact() {
 
         if (options.emergencyPayload) {
           requestPayload.emergency_payload = options.emergencyPayload;
+          const dispatchTime = Date.now();
+          console.log(`[SOS DISPATCH] Payload sent at: ${dispatchTime}`);
         }
 
         const payload = await chatService.sendMessage(requestPayload);
