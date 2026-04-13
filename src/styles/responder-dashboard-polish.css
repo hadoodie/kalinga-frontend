@@ -101,6 +101,10 @@
   align-items: center;
 }
 
+.resources-card .card-title {
+  text-align: center;
+}
+
 .resources-legend h4 {
   margin: 0 0 8px;
   color: #1f2937;
@@ -148,7 +152,23 @@
 @media (max-width: 1180px) {
   .resources-main-row {
     grid-template-columns: 1fr;
-    align-items: stretch;
+    align-items: center;
+    justify-items: center;
+  }
+
+  .resources-legend {
+    width: min(100%, 420px);
+  }
+
+  .resources-donut {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+
+  .resources-right {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -160,5 +180,17 @@
 
   .responder-dashboard-shell {
     padding: 0 14px 20px;
+  }
+
+  .resources-main-row {
+    gap: 12px;
+  }
+
+  .resources-legend li {
+    font-size: 0.9rem;
+  }
+
+  .center-pie {
+    flex: 0 0 156px;
   }
 }

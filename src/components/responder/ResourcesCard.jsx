@@ -29,7 +29,7 @@ const ResourcesCard = () => {
         });
         setAllCentersData(
           Object.entries(totals).map(([type, value]) => ({
-            name: TYPE_LABELS[type] || type,
+            name: TYPE_LABELS[type] || "Unknown",
             value,
           })),
         );
@@ -37,10 +37,10 @@ const ResourcesCard = () => {
         // Group by center name for per-center pie charts
         const byCenter = {};
         rows.forEach(({ type, quantity, center }) => {
-          const name = center?.name || "Unknown Center";
+          const name = center?.name?.trim() || "Unknown Center";
           if (!byCenter[name]) byCenter[name] = [];
           byCenter[name].push({
-            name: TYPE_LABELS[type] || type,
+            name: TYPE_LABELS[type] || "Unknown",
             value: Number(quantity),
           });
         });

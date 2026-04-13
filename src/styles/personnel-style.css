@@ -83,7 +83,9 @@ body {
   border-radius: 8px;
   white-space: nowrap;
   opacity: 0;
-  transition: background 0.3s ease, opacity 0.3s ease;
+  transition:
+    background 0.3s ease,
+    opacity 0.3s ease;
 }
 
 .sidebar:hover li {
@@ -236,7 +238,9 @@ body {
   background: #ffffff;
   border-radius: 8px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
   border: 1px solid #e5e7eb;
   transition: all 0.2s ease;
   display: flex;
@@ -248,7 +252,7 @@ body {
   font-weight: 700;
   color: #1f2937;
   margin: 0 0 1rem 0;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   line-height: 1.5;
   letter-spacing: -0.025em;
 }
@@ -458,7 +462,9 @@ body {
   background: #ffffff;
   border-radius: 8px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
   border: 1px solid #e5e7eb;
   transition: all 0.2s ease;
   display: flex;
@@ -563,6 +569,44 @@ body {
   color: #1a4d2e;
   font-size: 16px;
 }
+
+@media (max-width: 900px) {
+  .footer-card {
+    margin: 24px 0;
+    border-radius: 10px;
+  }
+
+  .footer {
+    padding: 16px;
+  }
+
+  .footer-top {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .feedback,
+  .social,
+  .contact {
+    text-align: center;
+  }
+
+  .footer-form {
+    max-width: 360px;
+    margin: 0 auto;
+  }
+
+  .footer-form button {
+    align-self: center;
+    min-width: 120px;
+  }
+
+  .footer-bottom {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}
 /* --- Social Media Icons --- */
 .social-icons {
   display: flex;
@@ -574,7 +618,9 @@ body {
 .social-icons a {
   font-size: 28px; /* slightly bigger for visibility */
   color: #1a4d2e;
-  transition: color 0.3s, transform 0.2s;
+  transition:
+    color 0.3s,
+    transform 0.2s;
 }
 
 .social-icons a:hover {
@@ -1023,7 +1069,9 @@ body {
   background: #ffffff;
   border-radius: 8px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
   border: 1px solid #e5e7eb;
   transition: all 0.2s ease;
   display: flex;
@@ -1201,7 +1249,9 @@ body {
   background: #ffffff;
   border-radius: 8px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
   border: 1px solid #e5e7eb;
   transition: all 0.2s ease;
   display: flex;
@@ -1995,7 +2045,7 @@ body {
   font-weight: 700;
   color: #1f2937;
   margin: 0 0 1rem 0;
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
   line-height: 1.5;
   letter-spacing: -0.025em;
 }
@@ -2368,7 +2418,9 @@ body {
   background: #ffffff;
   border-radius: 8px;
   padding: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
   border: 1px solid #e5e7eb;
   transition: all 0.2s ease;
   display: flex;
@@ -2525,7 +2577,9 @@ body {
   cursor: pointer;
   padding: 8px 12px;
   border-radius: 6px;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
   text-align: left;
 }
 

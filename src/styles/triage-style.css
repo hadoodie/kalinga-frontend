@@ -9,6 +9,16 @@
   transition: all 0.2s ease;
 }
 
+.triage-content {
+  width: 100%;
+}
+
+.triage-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .triage-table {
   width: 100%;
   border-collapse: collapse;
@@ -55,6 +65,7 @@
   justify-content: center;
   gap: 1.5rem;
   font-size: 14px;
+  flex-wrap: wrap;
 }
 
 .legend-dot {
@@ -79,4 +90,68 @@
 }
 .legend-dot.critical {
   background: #b71c1c;
+}
+
+.triage-mobile-list {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .triage-card {
+    padding: 1rem;
+  }
+
+  .triage-table-wrapper {
+    display: none;
+  }
+
+  .triage-mobile-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .triage-mobile-item {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+    background: #f8fafc;
+  }
+
+  .triage-mobile-item h4 {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    color: #0f172a;
+  }
+
+  .triage-mobile-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .triage-mobile-metrics .metric {
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .triage-mobile-metrics .very-high,
+  .triage-mobile-metrics .critical {
+    grid-column: span 2;
+  }
+
+  .triage-mobile-empty {
+    text-align: center;
+    color: #475569;
+    margin: 0;
+  }
+
+  .triage-legend {
+    margin-top: 12px;
+    justify-content: center;
+    gap: 0.75rem 1rem;
+    font-size: 12px;
+  }
 }
