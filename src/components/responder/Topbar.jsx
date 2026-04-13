@@ -289,34 +289,38 @@ export default function ResponderTopbar({
 
       {/* Mobile Active Incident Quick Access */}
       {activeAssignment && (
-        <div className="mt-4 sm:mt-3">
+        <div className="mt-4 sm:mt-3 px-1">
           <button
             onClick={() =>
               navigate(`/responder/response-mode/${activeAssignment.id}`)
             }
-            className="w-full flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2 sm:py-3 shadow-sm transition hover:bg-red-100"
+            className="w-full flex items-center justify-between rounded-xl bg-white border border-gray-200 border-l-4 border-l-red-600 px-4 py-3 shadow-md hover:shadow-lg transition-all duration-200 group"
           >
-            <div className="flex items-center gap-2 sm:gap-3 text-left">
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-700">
-                <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-                <AlertCircle />
+            <div className="flex items-center gap-3 sm:gap-4 text-left">
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600 group-hover:bg-red-100 transition-colors">
+                <span className="absolute top-0 right-0 h-2.5 w-2.5 rounded-full bg-red-500 animate-pulse ring-2 ring-white" />
+                <AlertCircle className="w-5 h-5" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-semibold uppercase tracking-wide text-red-700">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-red-600 mb-0.5">
                   Active Incident
                 </span>
-                <span className="text-sm font-semibold text-gray-900 line-clamp-1">
+                <span className="text-sm font-bold text-gray-900 line-clamp-1 leading-tight">
                   {activeAddress || `Incident #${activeAssignment.id}`}
                 </span>
-                <span className="flex items-center gap-1 text-xs text-gray-600">
-                  <MapPin size={14} />
-                  <span className="line-clamp-1">
+                <span className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
+                  <MapPin size={12} className="text-gray-400" />
+                  <span className="line-clamp-1 font-medium">
                     {activeAssignment.barangay || "Live response mode"}
                   </span>
                 </span>
               </div>
             </div>
-            <span className="text-xs font-semibold text-red-700">Open</span>
+            <div className="flex items-center justify-center px-3 py-1 bg-red-50 rounded-full border border-red-100">
+              <span className="text-[10px] font-bold text-red-700 uppercase tracking-widest">
+                View
+              </span>
+            </div>
           </button>
         </div>
       )}

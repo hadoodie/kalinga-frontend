@@ -13,7 +13,9 @@ const HospitalPatientChart = () => {
     const fetchDistribution = async () => {
       try {
         // Primary: Node backend
-        const { data: res } = await nodeApi.get("/hospitals/patient-distribution");
+        const { data: res } = await nodeApi.get(
+          "/hospitals/patient-distribution",
+        );
         setData(res.data || []);
       } catch (err) {
         console.error("Failed to fetch patient distribution", err);
@@ -36,18 +38,35 @@ const HospitalPatientChart = () => {
               data={data}
               cx="50%"
               cy="50%"
+              innerRadius={50}
               outerRadius={90}
+              paddingAngle={2}
               dataKey="value"
-              label={({ name, percent }) =>
-                `${name} ${(percent * 100).toFixed(0)}%`
-              }
+              stroke="none"
             >
               {data.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
               ))}
             </Pie>
-            <Tooltip />
-            <Legend layout="horizontal" verticalAlign="bottom" align="center" />
+            <Tooltip
+              contentStyle={{
+                borderRadius: "8px",
+                border: "none",
+                boxShadow:
+                  "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+              }}
+              itemStyle={{ fontWeight: "600", color: "#374151" }}
+            />
+            <Legend
+              layout="horizontal"
+              verticalAlign="bottom"
+              align="center"
+              iconType="circle"
+              wrapperStyle={{ paddingTop: "20px" }}
+            />
           </PieChart>
         </div>
       )}

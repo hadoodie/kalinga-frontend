@@ -1,5 +1,12 @@
 .triage-card {
-  padding: 1rem;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease;
 }
 
 .triage-table {
@@ -22,11 +29,26 @@
   color: white;
 }
 
-.triage-table .low { background: #2e7d32; color: white; }
-.triage-table .medium { background: #fbc02d; color: black; }
-.triage-table .high { background: #ef6c00; color: white; }
-.triage-table .very-high { background: #d84315; color: white; }
-.triage-table .critical { background: #b71c1c; color: white; }
+.triage-table .low {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+.triage-table .medium {
+  background: #fff8e1;
+  color: #f57f17;
+}
+.triage-table .high {
+  background: #fff3e0;
+  color: #e65100;
+}
+.triage-table .very-high {
+  background: #fbe9e7;
+  color: #bf360c;
+}
+.triage-table .critical {
+  background: #ffebee;
+  color: #b71c1c;
+}
 
 .triage-legend {
   display: flex;
@@ -43,8 +65,18 @@
   margin-right: 6px;
 }
 
-.legend-dot.low { background: #2e7d32; }
-.legend-dot.medium { background: #fbc02d; }
-.legend-dot.high { background: #ef6c00; }
-.legend-dot.very-high { background: #d84315; }
-.legend-dot.critical { background: #b71c1c; }
+.legend-dot.low {
+  background: #2e7d32;
+}
+.legend-dot.medium {
+  background: #fbc02d;
+}
+.legend-dot.high {
+  background: #ef6c00;
+}
+.legend-dot.very-high {
+  background: #d84315;
+}
+.legend-dot.critical {
+  background: #b71c1c;
+}
