@@ -1,6 +1,13 @@
 // src/components/HospitalPatientChart.jsx
 import React, { useEffect, useState } from "react";
-import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import nodeApi from "../../services/nodeApi";
 
 const COLORS = ["#1A4718", "#FEC700", "#1877F2", "#cf0909ff"];
@@ -58,8 +65,7 @@ const HospitalPatientChart = () => {
                 contentStyle={{
                   borderRadius: "8px",
                   border: "1px solid #e5e7eb",
-                  boxShadow:
-                    "0 8px 20px rgba(15, 23, 42, 0.08)",
+                  boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
                 }}
                 itemStyle={{ fontWeight: 600, color: "#374151" }}
               />

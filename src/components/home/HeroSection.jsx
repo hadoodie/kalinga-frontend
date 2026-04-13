@@ -1,7 +1,12 @@
 import { Link } from "react-router-dom";
 import { ROUTES } from "../../config/routes";
+import { useAuth } from "../../context/AuthContext";
+import { getDefaultRouteForRole } from "../../utils/roleRouting";
 
 export const HeroSection = () => {
+  const { isAuthenticated, user, loading } = useAuth();
+  const dashboardRoute = getDefaultRouteForRole(user?.role, user);
+
   return (
     <section
       id="hero"
@@ -34,22 +39,43 @@ export const HeroSection = () => {
         </p>
 
         <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 opacity-0 animate-fade-in-delay-4">
-          <Link
-            to={ROUTES.LOGIN}
-            className="px-8 py-3 rounded-lg bg-white text-primary font-bold
-                       hover:bg-white/90 hover:shadow-[0_0_10px_rgba(255,223,100,0.45)]
-                       transition-all duration-300"
-          >
-            Log In
-          </Link>
-          <Link
-            to={ROUTES.CREATE_ACCOUNT}
-            className="px-8 py-3 rounded-lg border border-white/80 bg-white/10 text-white font-bold
-                       hover:bg-white/20 hover:border-white
-                       transition-all duration-300"
-          >
-            Sign Up
-          </Link>
+          {loading ? (
+            <button
+              type="button"
+              disabled
+              className="px-8 py-3 rounded-lg bg-white/70 text-primary font-bold cursor-not-allowed"
+            >
+              Checking Session...
+            </button>
+          ) : isAuthenticated ? (
+            <Link
+              to={dashboardRoute}
+              className="px-8 py-3 rounded-lg bg-white text-primary font-bold
+                         hover:bg-white/90 hover:shadow-[0_0_10px_rgba(255,223,100,0.45)]
+                         transition-all duration-300"
+            >
+              Go to Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                to={ROUTES.LOGIN}
+                className="px-8 py-3 rounded-lg bg-white text-primary font-bold
+                           hover:bg-white/90 hover:shadow-[0_0_10px_rgba(255,223,100,0.45)]
+                           transition-all duration-300"
+              >
+                Log In
+              </Link>
+              <Link
+                to={ROUTES.CREATE_ACCOUNT}
+                className="px-8 py-3 rounded-lg border border-white/80 bg-white/10 text-white font-bold
+                           hover:bg-white/20 hover:border-white
+                           transition-all duration-300"
+              >
+                Sign Up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </section>
