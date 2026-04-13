@@ -97,7 +97,7 @@ const ResourcesCard = () => {
 
   if (loading) {
     return (
-      <div className="card resources-card">
+      <div className="card resources-card responder-widget">
         <h3 className="card-title">Resources</h3>
         <p style={{ padding: "1rem" }}>Loading…</p>
       </div>
@@ -105,7 +105,7 @@ const ResourcesCard = () => {
   }
 
   return (
-    <div className="card resources-card">
+    <div className="card resources-card responder-widget">
       <h3 className="card-title">Resources</h3>
 
       <div className="resources-main-row">
@@ -145,7 +145,14 @@ const ResourcesCard = () => {
                   />
                 ))}
               </Pie>
-              <Tooltip />
+              <Tooltip
+                formatter={(value, name) => [`${value} Units`, name]}
+                contentStyle={{
+                  borderRadius: "8px",
+                  border: "1px solid #e5e7eb",
+                  boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
+                }}
+              />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -172,7 +179,14 @@ const ResourcesCard = () => {
                       />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip
+                    formatter={(value, name) => [`${value} Units`, name]}
+                    contentStyle={{
+                      borderRadius: "8px",
+                      border: "1px solid #e5e7eb",
+                      boxShadow: "0 8px 20px rgba(15, 23, 42, 0.08)",
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>

@@ -49,7 +49,7 @@ const MapCard = () => {
 
   return (
     <div
-      className="card reports-card"
+      className="card responder-widget map-widget-card"
       style={{
         paddingBottom: 0,
         overflow: "hidden",
@@ -57,7 +57,7 @@ const MapCard = () => {
         flexDirection: "column",
       }}
     >
-      <h3 className="card-title" style={{ marginBottom: "0.75rem" }}>
+      <h3 className="card-title" style={{ marginBottom: "0.75rem", textAlign: "center" }}>
         Nearest Hospitals Around You
       </h3>
 

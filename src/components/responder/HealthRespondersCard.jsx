@@ -25,21 +25,14 @@ const HealthRespondersCard = () => {
     stats.total > 0 ? (stats.on_duty / stats.total) * 100 : 0;
 
   return (
-    <div className="card evacuation">
-      <h3>Health Responders</h3>
+    <div className="card evacuation responder-widget responder-widget--responders">
+      <h3 className="card-title">Health Responders</h3>
 
       {loading ? (
         <p style={{ textAlign: "center", padding: "1rem" }}>Loading…</p>
       ) : (
         <>
-          <div
-            className="circle-chart"
-            style={{
-              position: "relative",
-              width: "160px",
-              margin: "0 auto 20px",
-            }}
-          >
+          <div className="circle-chart responder-donut-wrap">
             <svg viewBox="0 0 36 36">
               <path
                 className="circle-bg"
@@ -51,89 +44,25 @@ const HealthRespondersCard = () => {
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
               />
             </svg>
-            <div
-              className="circle-label"
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                textAlign: "center",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "2rem",
-                  fontWeight: "bold",
-                  lineHeight: "1",
-                }}
-              >
-                {stats.total}
-              </span>
-              <span
-                className="circle-sub"
-                style={{
-                  fontSize: "0.875rem",
-                  color: "#6b7280",
-                  marginTop: "4px",
-                }}
-              >
-                Total
-              </span>
+            <div className="circle-label responder-total-label">
+              <strong>{stats.total}</strong>
+              <span>Total</span>
             </div>
           </div>
 
-          <div
-            className="legend"
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "20px",
-              marginTop: "1rem",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "0.875rem",
-                color: "#374151",
-              }}
-            >
+          <div className="legend responder-legend">
+            <div className="responder-legend-item">
               <span
-                style={{
-                  background: "#1A4718",
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  display: "inline-block",
-                }}
-              ></span>{" "}
+                className="responder-legend-dot"
+                style={{ background: "#1A4718" }}
+              ></span>
               On-Duty ({stats.on_duty})
             </div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "0.875rem",
-                color: "#374151",
-              }}
-            >
+            <div className="responder-legend-item">
               <span
-                style={{
-                  background: "#FEC700",
-                  width: "12px",
-                  height: "12px",
-                  borderRadius: "50%",
-                  display: "inline-block",
-                }}
-              ></span>{" "}
+                className="responder-legend-dot"
+                style={{ background: "#FEC700" }}
+              ></span>
               Stand-by ({stats.standby})
             </div>
           </div>
