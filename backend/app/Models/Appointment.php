@@ -22,6 +22,7 @@ class Appointment extends Model
         'complaint',          
         'provider_name',
         'provider_specialty',
+        'appointment_at',
         'appointment_date',
         'location',
         'contact_phone',
