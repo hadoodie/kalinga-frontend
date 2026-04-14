@@ -14,6 +14,7 @@ import {
   getCachedIncidents,
   mergeIncidentToCache,
   assignNearestIncident,
+  recordIncidentSocketReceipt,
 } from "../services/incidents";
 import { useRealtime } from "./RealtimeContext";
 import { getEchoInstance } from "../services/echo";
@@ -146,7 +147,7 @@ export const IncidentProvider = ({ children }) => {
         setError(
           err?.response?.data?.message ||
             err?.message ||
-            "Unable to load incidents right now."
+            "Unable to load incidents right now.",
         );
       } finally {
         setLoading(false);
@@ -160,7 +161,7 @@ export const IncidentProvider = ({ children }) => {
         }, INITIAL_REFRESH_INTERVAL_MS);
       }
     },
-    [authLoading, isAuthenticated]
+    [authLoading, isAuthenticated],
   );
 
   useEffect(() => {
@@ -199,7 +200,7 @@ export const IncidentProvider = ({ children }) => {
         (error) => {
           console.warn("Geolocation error:", error.message);
         },
-        { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 }
+        { enableHighAccuracy: true, maximumAge: 30000, timeout: 10000 },
       );
     }
 
@@ -225,13 +226,13 @@ export const IncidentProvider = ({ children }) => {
         return incident.assignments?.some(
           (assignment) =>
             assignment?.responder?.id === user.id &&
-            !["completed", "cancelled"].includes(assignment.status)
+            !["completed", "cancelled"].includes(assignment.status),
         );
       });
 
       if (userHasActiveAssignment) {
         console.log(
-          "User already has an active assignment, skipping auto-assign"
+          "User already has an active assignment, skipping auto-assign",
         );
         return;
       }
@@ -256,7 +257,7 @@ export const IncidentProvider = ({ children }) => {
           // Navigate to response mode
           const responseModePath = ROUTES.RESPONDER.RESPONSE_MODE.replace(
             ":incidentId",
-            assignedIncident.id
+            assignedIncident.id,
           );
           navigate(responseModePath, {
             state: { incident: assignedIncident, autoAssigned: true },
@@ -271,7 +272,7 @@ export const IncidentProvider = ({ children }) => {
         autoAssignInProgressRef.current = false;
       }
     },
-    [autoAssignEnabled, userLocation, user?.id, mergeIncident, navigate]
+    [autoAssignEnabled, userLocation, user?.id, mergeIncident, navigate],
   );
 
   useEffect(() => {
@@ -294,7 +295,7 @@ export const IncidentProvider = ({ children }) => {
         } catch (leaveError) {
           console.warn(
             "Unable to leave incidents channel before subscribing",
-            leaveError
+            leaveError,
           );
         }
 
@@ -305,7 +306,7 @@ export const IncidentProvider = ({ children }) => {
 
             const incomingIncident = payload.incident;
             const isNewIncident = !knownIncidentIdsRef.current.has(
-              incomingIncident.id
+              incomingIncident.id,
             );
 
             // Track known incidents
@@ -320,6 +321,41 @@ export const IncidentProvider = ({ children }) => {
               autoAssignEnabled
             ) {
               attemptAutoAssign(incomingIncident);
+            }
+
+            const canRecordSocketTelemetry = [
+              "admin",
+              "responder",
+              "logistics",
+            ].includes(String(user?.role || "").toLowerCase());
+
+            if (
+              canRecordSocketTelemetry &&
+              isNewIncident &&
+              incomingIncident.status === "reported"
+            ) {
+              const incidentReportedAtMs = incomingIncident.reported_at
+                ? Date.parse(incomingIncident.reported_at)
+                : null;
+
+              // Fire-and-forget telemetry write; do not block UX on analytics.
+              recordIncidentSocketReceipt(incomingIncident.id, {
+                event_name: "IncidentUpdated",
+                client_received_at_ms: Date.now(),
+                incident_reported_at_ms: Number.isFinite(incidentReportedAtMs)
+                  ? incidentReportedAtMs
+                  : undefined,
+                metadata: {
+                  channel: "incidents",
+                  source: "IncidentContext",
+                  status: incomingIncident.status,
+                },
+              }).catch((telemetryError) => {
+                console.warn(
+                  "Failed to record incident websocket telemetry",
+                  telemetryError,
+                );
+              });
             }
 
             if (refreshTimerRef.current) {
@@ -356,6 +392,7 @@ export const IncidentProvider = ({ children }) => {
     loadIncidents,
     autoAssignEnabled,
     attemptAutoAssign,
+    user?.role,
   ]);
 
   // Initialize known incident IDs from initial load
@@ -388,7 +425,7 @@ export const IncidentProvider = ({ children }) => {
       mergeIncident,
       autoAssignEnabled,
       userLocation,
-    ]
+    ],
   );
 
   return (

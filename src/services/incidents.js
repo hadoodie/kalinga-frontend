@@ -39,7 +39,7 @@ export const fetchResponderIncidents = async (params = {}, options = {}) => {
       ttlMs: INCIDENTS_TTL_MS,
       forceRefresh,
       staleWhileRevalidate,
-    }
+    },
   );
 
   // result.data is the axios response, which has .data containing actual incidents
@@ -71,8 +71,8 @@ export const mergeIncidentToCache = (incident) => {
   const currentData = Array.isArray(cached.data?.data)
     ? cached.data.data
     : Array.isArray(cached.data)
-    ? cached.data
-    : [];
+      ? cached.data
+      : [];
 
   const index = currentData.findIndex((item) => item.id === incident.id);
   let updated;
@@ -105,7 +105,7 @@ export const fetchIncidentHistory = async (incidentId, options = {}) => {
       const response = await api.get(`/incidents/${incidentId}/history`);
       return response.data;
     },
-    { ttlMs: INCIDENT_HISTORY_TTL_MS, forceRefresh }
+    { ttlMs: INCIDENT_HISTORY_TTL_MS, forceRefresh },
   );
 
   return data;
@@ -141,6 +141,21 @@ export const assignNearestIncident = async (payload) => {
 };
 
 /**
+ * Record websocket receipt telemetry for incident events (responder/admin/logistics).
+ */
+export const recordIncidentSocketReceipt = async (incidentId, payload = {}) => {
+  if (!incidentId) {
+    return null;
+  }
+
+  const response = await api.post(
+    `/incidents/${incidentId}/telemetry/socket-receipt`,
+    payload,
+  );
+  return response.data;
+};
+
+/**
  * Preload incidents into cache (fire-and-forget)
  */
 export const preloadIncidents = (params = {}) => {
@@ -150,6 +165,6 @@ export const preloadIncidents = (params = {}) => {
       const response = await api.get("/incidents", { params });
       return response;
     },
-    INCIDENTS_TTL_MS
+    INCIDENTS_TTL_MS,
   );
 };

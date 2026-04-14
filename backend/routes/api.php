@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Api\RouteLogController;
 use App\Http\Controllers\Api\ResponderTrackingController;
+use App\Http\Controllers\Api\IncidentTelemetryController;
 use App\Http\Controllers\Api\NLPController;
 use App\Http\Controllers\HospitalSafetyIndexController;
 use App\Http\Controllers\VerificationController;
@@ -463,6 +464,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/incidents/{incident}/hospital-recommendations', [IncidentApiController::class, 'hospitalRecommendations']);
         Route::post('/incidents/{incident}/assign', [IncidentApiController::class, 'assign']);
         Route::post('/incidents/{incident}/status', [IncidentApiController::class, 'updateStatus']);
+        Route::post('/incidents/{incident}/telemetry/socket-receipt', [IncidentTelemetryController::class, 'storeSocketReceipt']);
         Route::post('/incidents/assign-nearest', [IncidentApiController::class, 'assignNearest']);
         
         // AI Smart Routing endpoints
