@@ -47,9 +47,9 @@ class UserSeeder extends Seeder
             ],
         ]);
 
-        // Responder users (5)
+        // Responder users (20)
         $responderUsers = [];
-        for ($i = 1; $i <= 5; $i++) {
+        for ($i = 1; $i <= 20; $i++) {
             $responderUsers[] = [
                 'name' => 'Responder ' . $this->numberWord($i),
                 'email' => "responder{$i}@kalinga.com",
@@ -62,9 +62,9 @@ class UserSeeder extends Seeder
         }
         $this->seedUsers($responderUsers);
 
-        // Patient users (10)
+        // Patient users (50)
         $patientUsers = [];
-        for ($i = 1; $i <= 10; $i++) {
+        for ($i = 1; $i <= 50; $i++) {
             $patientUsers[] = [
                 'name' => 'Patient ' . $this->numberWord($i),
                 'email' => "patient{$i}@kalinga.com",
