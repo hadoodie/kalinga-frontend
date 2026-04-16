@@ -1,8 +1,10 @@
 import { lazy } from "react";
 import { Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "../components/ProtectedRoute";
+import ErrorBoundary from "../components/ErrorBoundary";
+import ResponderLayout from "../layouts/ResponderLayout";
+import Layout from "../layouts/Layout";
 import { ROUTES, ROLES } from "../config/routes";
-import { getCourseProgress, markLessonComplete, isSectionCompleted } from "../lib/progressUtils";
 
 // Responder Pages
 const Dashboard = lazy(() => import("../pages-responders/Dashboard"));
@@ -11,6 +13,9 @@ const IncidentLogs = lazy(() => import("../pages-responders/IncidentLogs"));
 const EmergencySOS = lazy(() => import("../pages-responders/EmergencySOS"));
 const TriageSystem = lazy(() => import("../pages-responders/TriageSystem"));
 const OnlineTraining = lazy(() => import("../pages-responders/OnlineTraining"));
+const PatientCareReport = lazy(() => import("../pages-responders/PatientCareReport"));
+const PatientCareReportPrint = lazy(() => import("../pages-responders/PatientCareReportPrint"));
+const PCRHistoryView = lazy(() => import("../components/responder/pcr/PCRHistoryView"));
 const ResponseMode = lazy(() => import("../pages-responders/ResponseMode"));
 const Settings = lazy(() => import("../pages-responders/Settings"));
 const Profile = lazy(() => import("../pages-responders/Profile"));
@@ -81,274 +86,86 @@ const Lesson7 = lazy(() =>
 );
 
 const responderRoles = [ROLES.RESPONDER];
+const responderChildPath = (path) => {
+  if (typeof path !== "string") {
+    console.error("Invalid responder route path", path);
+    return "";
+  }
+  return path.replace("/responder/", "");
+};
 
 export const ResponderRoutes = () => (
   <>
-    {/* Redirect root to dashboard */}
     <Route
       path={ROUTES.RESPONDER.ROOT}
-      element={<Navigate to={ROUTES.RESPONDER.DASHBOARD} replace />}
-    />
+      element={
+        <ProtectedRoute allowedRoles={responderRoles}>
+          <ResponderLayout />
+        </ProtectedRoute>
+      }
+    >
+      <Route
+        index
+        element={<Navigate to={responderChildPath(ROUTES.RESPONDER.DASHBOARD)} replace />}
+      />
 
-    {/* Dashboard & Operations */}
-    <Route
-      path={ROUTES.RESPONDER.DASHBOARD}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Dashboard />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.EMERGENCY_CONSOLE}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <EmergencyConsole />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.RESPONSE_MODE}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <ResponseMode />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.INCIDENT_LOGS}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <IncidentLogs />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.EMERGENCY_SOS}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <EmergencySOS />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/responder/response-map"
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <ResponseMap />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/responder/hospital-map"
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <HospitalMap />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.TRIAGE_SYSTEM}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <TriageSystem />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path="/responder/messages"
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Messages />
-        </ProtectedRoute>
-      }
-    />
+      <Route path={responderChildPath(ROUTES.RESPONDER.DASHBOARD)} element={<Dashboard />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.EMERGENCY_CONSOLE)} element={<EmergencyConsole />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.RESPONSE_MODE)} element={<ResponseMode />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.INCIDENT_LOGS)} element={<IncidentLogs />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.EMERGENCY_SOS)} element={<EmergencySOS />} />
+      <Route path="response-map" element={<ResponseMap />} />
+      <Route path="hospital-map" element={<HospitalMap />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.TRIAGE_SYSTEM)} element={<TriageSystem />} />
+      <Route path="messages" element={<Messages />} />
 
-    {/* Training & Education */}
-    <Route
-      path={ROUTES.RESPONDER.ONLINE_TRAINING}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <OnlineTraining />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.MODULES}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Modules />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.MODULE_INFO}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <InfoPage />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.MODULE_LESSON}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <CourseDetails />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.MODULE_SECTION}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <SectionPage />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.MODULE_1}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Module1 />
-        </ProtectedRoute>
-      }
-    />
+      <Route path={responderChildPath(ROUTES.RESPONDER.ONLINE_TRAINING)} element={<OnlineTraining />} />
+      <Route
+        path={responderChildPath(ROUTES.RESPONDER.PATIENT_CARE_REPORT)}
+        element={
+          <ErrorBoundary>
+            <PatientCareReport />
+          </ErrorBoundary>
+        }
+      />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULES)} element={<Modules />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_INFO)} element={<InfoPage />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_LESSON)} element={<CourseDetails />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_SECTION)} element={<SectionPage />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_1)} element={<Module1 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.LESSON_1)} element={<Lesson1 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.LESSON_2)} element={<Lesson2 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.LESSON_3)} element={<Lesson3 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_2)} element={<Module2 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.LESSON_4)} element={<Lesson4 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.LESSON_5)} element={<Lesson5 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.LESSON_6)} element={<Lesson6 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.LESSON_7)} element={<Lesson7 />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_ASSESSMENT)} element={<AssessmentPage />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_ACTIVITY)} element={<CourseDetails />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_DETAILS)} element={<CourseDetails />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.MODULE_CONTENT)} element={<ContentViewer />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.CERTIFICATIONS)} element={<Certifications />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.GRADES)} element={<Grades />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.SETTINGS)} element={<Settings />} />
+      <Route path={responderChildPath(ROUTES.RESPONDER.PROFILE)} element={<Profile />} />
+    </Route>
 
     <Route
-      path={ROUTES.RESPONDER.LESSON_1}
+      path={ROUTES.RESPONDER.PATIENT_CARE_REPORT_PRINT}
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
-          <Lesson1 />
-        </ProtectedRoute>
-      }
-    />
-
-    <Route
-      path={ROUTES.RESPONDER.LESSON_2}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Lesson2 />
-        </ProtectedRoute>
-      }
-    />
-
-    <Route
-      path={ROUTES.RESPONDER.LESSON_3}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Lesson3 />
-        </ProtectedRoute>
-      }
-    />
-
-    <Route
-      path={ROUTES.RESPONDER.MODULE_2}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Module2 />
-        </ProtectedRoute>
-      }
-    />
-
-    <Route
-      path={ROUTES.RESPONDER.LESSON_4}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Lesson4 />
-        </ProtectedRoute>
-      }
-    />
-
-    <Route
-      path={ROUTES.RESPONDER.LESSON_5}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Lesson5 />
-        </ProtectedRoute>
-      }
-    />
-
-    <Route
-      path={ROUTES.RESPONDER.LESSON_6}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Lesson6 />
-        </ProtectedRoute>
-      }
-    />
-
-    <Route
-      path={ROUTES.RESPONDER.LESSON_7}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Lesson7 />
-        </ProtectedRoute>
-      }
-    />
-
-    <Route
-      path={ROUTES.RESPONDER.MODULE_ASSESSMENT}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <AssessmentPage />
+          <PatientCareReportPrint />
         </ProtectedRoute>
       }
     />
     <Route
-      path={ROUTES.RESPONDER.MODULE_ACTIVITY}
+      path={ROUTES.RESPONDER.PATIENT_CARE_REPORT_HISTORY}
       element={
         <ProtectedRoute allowedRoles={responderRoles}>
-          <CourseDetails />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.MODULE_DETAILS}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <CourseDetails />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.MODULE_CONTENT}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <ContentViewer />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.CERTIFICATIONS}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Certifications />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.GRADES}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Grades />
-        </ProtectedRoute>
-      }
-    />
-
-    {/* User Settings */}
-    <Route
-      path={ROUTES.RESPONDER.SETTINGS}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Settings />
-        </ProtectedRoute>
-      }
-    />
-    <Route
-      path={ROUTES.RESPONDER.PROFILE}
-      element={
-        <ProtectedRoute allowedRoles={responderRoles}>
-          <Profile />
+          <Layout>
+            <PCRHistoryView />
+          </Layout>
         </ProtectedRoute>
       }
     />

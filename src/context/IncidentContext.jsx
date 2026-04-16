@@ -397,5 +397,3 @@ export const IncidentProvider = ({ children }) => {
     </IncidentContext.Provider>
   );
 };
-
-export default IncidentContext;

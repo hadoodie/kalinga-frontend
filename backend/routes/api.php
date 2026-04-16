@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\ResponderController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LogisticsController;
 use App\Http\Controllers\Api\SensorDataController;
+use App\Http\Controllers\Api\PatientCareReportController;
 use App\Http\Controllers\Api\HealthSimulatorController;
 
 use Illuminate\Http\Request;
@@ -420,6 +421,11 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Responder (and Logistics) routes
     Route::middleware(['role:admin,responder,logistics'])->group(function () {
         // Pathfinding routes
+        Route::apiResource('patient-care-reports', PatientCareReportController::class)
+            ->only(['index', 'show', 'store']);
+        Route::post('patient-care-reports/{patientCareReport}/soft-copy', [PatientCareReportController::class, 'generateSoftCopy']);
+        Route::get('patient-care-reports/{patientCareReport}/soft-copy', [PatientCareReportController::class, 'downloadSoftCopy']);
+
         Route::get('/incidents/{incident}/conversation', [IncidentApiController::class, 'conversation']);
         Route::get('/incidents/{incident}/hospital-recommendations', [IncidentApiController::class, 'hospitalRecommendations']);
         Route::post('/incidents/{incident}/assign', [IncidentApiController::class, 'assign']);

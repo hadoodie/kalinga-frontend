@@ -19,6 +19,7 @@ import logsRouter from './logs.js';
 import dashboardRouter from './dashboard.js';
 import authRouter from './auth.js';
 import usersRouter from './users.js';
+import edgeRouter from './edge.js';
 
 const router = Router();
 
@@ -42,5 +43,6 @@ router.use('/logs', logsRouter);
 router.use('/dashboard', dashboardRouter);
 router.use('/auth', authRouter);
 router.use('/users', usersRouter);
+router.use('/edge', edgeRouter);
 
 export default router;

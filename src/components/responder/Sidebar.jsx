@@ -13,8 +13,8 @@ import {
   Menu,
   LogOut,
   Settings,
-  User,
   MessageSquare,
+  ClipboardPlus,
 } from "lucide-react";
 import logo from "../../assets/kalinga-logo-white.PNG";
 
@@ -27,6 +27,7 @@ export default function ResponderSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [trainingOpen, setTrainingOpen] = useState(false);
+  const [pcrOpen, setPcrOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
@@ -57,15 +58,23 @@ export default function ResponderSidebar() {
     localStorage.setItem("sidebar-collapsed", JSON.stringify(collapsed));
   }, [collapsed]);
 
-  // Check if any training path is active
   useEffect(() => {
     const trainingPaths = [
       "/responder/online-training",
       "/responder/modules",
       "/responder/certifications",
     ];
+    const pcrPaths = [
+      "/responder/patient-care-report",
+      "/responder/pcr-history",
+    ];
+
     if (trainingPaths.some((path) => location.pathname === path)) {
       setTrainingOpen(true);
+    }
+
+    if (pcrPaths.some((path) => location.pathname === path)) {
+      setPcrOpen(true);
     }
   }, [location.pathname]);
 
@@ -117,6 +126,26 @@ export default function ResponderSidebar() {
     },
   ];
 
+  const pcrItems = [
+    {
+      label: "Patient Care Report",
+      path: "/responder/patient-care-report",
+      icon: <ClipboardPlus size={25} />,
+    },
+    {
+      label: "Create New",
+      path: "/responder/patient-care-report",
+      icon: <ClipboardPlus size={20} />,
+      isSubmenu: true,
+    },
+    {
+      label: "History",
+      path: "/responder/pcr-history",
+      icon: <FileText size={20} />,
+      isSubmenu: true,
+    },
+  ];
+
   const handleNavigation = (item) => {
     if (item.path) navigate(item.path);
     setMobileOpen(false);
@@ -142,12 +171,10 @@ export default function ResponderSidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <aside
         className={`h-screen bg-gradient-to-b from-green-950 to-green-600 text-white flex-col font-sans transition-[width] duration-500 ease-in-out hidden lg:flex
         ${collapsed ? "w-20" : "w-64"}`}
       >
-        {/* Top Section with Logo + Hamburger */}
         <div
           className={`flex items-center transition-all duration-300
           ${collapsed ? "justify-center h-16" : "justify-between h-16 px-3"}`}
@@ -167,7 +194,6 @@ export default function ResponderSidebar() {
           </button>
         </div>
 
-        {/* Active Assignment Quick Link */}
         {activeAssignment && (
           <div
             className={`mb-2 px-2 ${collapsed ? "flex justify-center" : ""}`}
@@ -206,7 +232,6 @@ export default function ResponderSidebar() {
           </div>
         )}
 
-        {/* Menu */}
         <ul className="list-none flex-1 p-2 space-y-1">
           {items.map((item, idx) => {
             const isEmergencyItem =
@@ -267,7 +292,6 @@ export default function ResponderSidebar() {
                   )}
                 </div>
 
-                {/* Tooltip when collapsed */}
                 {collapsed && (
                   <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-green-950 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
                     {item.label}
@@ -277,7 +301,6 @@ export default function ResponderSidebar() {
             );
           })}
 
-          {/* Online Training Section */}
           <li className="group relative">
             <div
               className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 ${
@@ -312,14 +335,12 @@ export default function ResponderSidebar() {
               )}
             </div>
 
-            {/* Tooltip when collapsed */}
             {collapsed && (
               <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-green-950 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
                 Online Training
               </span>
             )}
 
-            {/* Submenu - show when opened */}
             {!collapsed && trainingOpen && (
               <ul className="ml-4 mt-1 space-y-1">
                 {trainingItems.slice(1).map((subItem, idx) => (
@@ -340,11 +361,70 @@ export default function ResponderSidebar() {
               </ul>
             )}
           </li>
+
+          <li className="group relative">
+            <div
+              className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 ${
+                collapsed ? "justify-center" : "gap-2"
+              } ${
+                pcrOpen ? "bg-white/20 font-bold" : "hover:bg-white/10"
+              }`}
+              onClick={() =>
+                handleNavigation({ path: "/responder/patient-care-report" })
+              }
+            >
+              {collapsed && (
+                <span className="transition-transform duration-300">
+                  <ClipboardPlus size={25} />
+                </span>
+              )}
+              {!collapsed && (
+                <>
+                  <span>Patient Care Report</span>
+                  <span
+                    className={`ml-auto transition-transform duration-300 ${
+                      pcrOpen ? "rotate-180" : ""
+                    }`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPcrOpen((prev) => !prev);
+                    }}
+                  >
+                    ▼
+                  </span>
+                </>
+              )}
+            </div>
+
+            {collapsed && (
+              <span className="absolute left-full top-1/2 -translate-y-1/2 ml-2 bg-green-950 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap">
+                Patient Care Report
+              </span>
+            )}
+
+            {!collapsed && pcrOpen && (
+              <ul className="ml-4 mt-1 space-y-1">
+                {pcrItems.slice(1).map((subItem, idx) => (
+                  <li key={idx}>
+                    <div
+                      className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition-all duration-300 ${
+                        isActive(subItem.path)
+                          ? "bg-white/20 font-bold"
+                          : "hover:bg-white/10"
+                      }`}
+                      onClick={() => handleNavigation(subItem)}
+                    >
+                      {subItem.icon}
+                      <span>{subItem.label}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
         </ul>
 
-        {/* Settings & Logout pinned at bottom */}
         <div className="p-2 space-y-2">
-          {/* Settings */}
           <div
             className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
               ${collapsed ? "justify-center" : "gap-2"}`}
@@ -353,7 +433,6 @@ export default function ResponderSidebar() {
             {collapsed ? <Settings size={25} /> : <span>Settings</span>}
           </div>
 
-          {/* Logout */}
           <div
             className={`flex items-center cursor-pointer px-2 py-2 rounded-md transition-all duration-300 hover:bg-white/10
               ${collapsed ? "justify-center" : "gap-2"}`}
@@ -364,7 +443,6 @@ export default function ResponderSidebar() {
         </div>
       </aside>
 
-      {/* Mobile Hamburger + Dropdown */}
       <div className="lg:hidden fixed top-4 right-4 z-50">
         <button
           onClick={() => setMobileOpen((prev) => !prev)}
@@ -374,8 +452,7 @@ export default function ResponderSidebar() {
         </button>
 
         {mobileOpen && (
-          <div className="absolute right-0 mt-2 w-56 bg-green-900 text-white rounded-md shadow-lg p-4 space-y-3 max-h-[80vh] overflow-y-auto">
-            {/* Main Menu Items */}
+          <div className="absolute right-0 mt-2 w-64 bg-green-900 text-white rounded-md shadow-lg p-4 space-y-3 max-h-[80vh] overflow-y-auto">
             {items.map((item, idx) => {
               const isEmergencyItem =
                 item.path === "/responder/emergency-console";
@@ -408,7 +485,6 @@ export default function ResponderSidebar() {
               );
             })}
 
-            {/* Online Training Expandable */}
             <div>
               <div
                 className="flex items-center justify-between cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
@@ -436,6 +512,7 @@ export default function ResponderSidebar() {
                         }`}
                       onClick={() => handleNavigation(subItem)}
                     >
+                      {subItem.icon}
                       <span>{subItem.label}</span>
                     </div>
                   ))}
@@ -443,7 +520,41 @@ export default function ResponderSidebar() {
               )}
             </div>
 
-            {/* Settings and Logout */}
+            <div>
+              <div
+                className="flex items-center justify-between cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
+                onClick={() => setPcrOpen((prev) => !prev)}
+              >
+                <span>Patient Care Report</span>
+                <span
+                  className={`transition-transform duration-300 ${
+                    pcrOpen ? "rotate-180" : ""
+                  }`}
+                >
+                  ▼
+                </span>
+              </div>
+              {pcrOpen && (
+                <div className="ml-4 mt-1 space-y-2">
+                  {pcrItems.slice(1).map((subItem, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md transition
+                        ${
+                          isActive(subItem.path)
+                            ? "bg-white/20 font-bold"
+                            : "hover:bg-white/10"
+                        }`}
+                      onClick={() => handleNavigation(subItem)}
+                    >
+                      {subItem.icon}
+                      <span>{subItem.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div
               className="flex items-center gap-2 cursor-pointer px-2 py-2 rounded-md hover:bg-white/10"
               onClick={() => navigate("/responder/settings")}

@@ -91,6 +91,11 @@ class Incident extends Model
         return $this->hasMany(IncidentStatusUpdate::class)->orderByDesc('created_at');
     }
 
+    public function patientCareReports(): HasMany
+    {
+        return $this->hasMany(PatientCareReport::class);
+    }
+
     public function latestStatusUpdate(): HasOne
     {
         return $this->hasOne(IncidentStatusUpdate::class)->latestOfMany();

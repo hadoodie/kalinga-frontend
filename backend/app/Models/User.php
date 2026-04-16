@@ -12,6 +12,7 @@ use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\AllocationRequest;
 use Illuminate\Support\Str;
+use App\Models\PatientCareReport;
 
 class User extends Authenticatable
 {
@@ -123,6 +124,16 @@ class User extends Authenticatable
     public function incidentStatusUpdates(): HasMany
     {
         return $this->hasMany(IncidentStatusUpdate::class);
+    }
+
+    public function authoredPatientCareReports(): HasMany
+    {
+        return $this->hasMany(PatientCareReport::class, 'user_id');
+    }
+
+    public function patientCareReportsAsPatient(): HasMany
+    {
+        return $this->hasMany(PatientCareReport::class, 'patient_user_id');
     }
 
     /**

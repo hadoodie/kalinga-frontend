@@ -56,6 +56,11 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    if (config.url?.includes("/patient-care-reports") && config.method === "post") {
+      console.log("PCR request auth header", config.headers.Authorization);
+      console.log("PCR request CSRF header", config.headers["X-XSRF-TOKEN"]);
+    }
+
     try {
       const echoInstance = getEchoInstance?.();
       const socketId = echoInstance?.socketId?.();
