@@ -1,0 +1,62 @@
+.pcr-print-root {
+  max-width: 980px;
+  margin: 0 auto;
+  color: #000;
+  background: #fff;
+  font-family: "Times New Roman", serif;
+  padding: 12px;
+}
+
+.pcr-title {
+  margin: 0 0 10px;
+  text-align: center;
+  font-size: 22px;
+}
+
+.pcr-section {
+  border: 1px solid #000;
+  margin-bottom: 10px;
+}
+
+.pcr-section h2 {
+  margin: 0;
+  padding: 6px;
+  border-bottom: 1px solid #000;
+  font-size: 14px;
+}
+
+.pcr-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.pcr-grid th,
+.pcr-grid td {
+  border: 1px solid #000;
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+.pcr-signature-line {
+  height: 42px;
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    margin: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .pcr-no-split {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .pcr-grid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
