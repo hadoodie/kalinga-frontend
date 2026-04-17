@@ -365,43 +365,50 @@ const mergeConversationSnapshot = (
 
 const PATIENT_CARE_TEAM = [
   {
-    name: "Dr. Leda Vance",
-    role: "Primary Care Provider (PCP)",
-    phone: "(555) 101-2000",
-    email: "leda.vance@clinic.org",
-    photo: "https://placehold.co/100x100/34D399/ffffff?text=LV",
+    name: "NDRRMC",
+    role: "National Disaster Risk Reduction and Management Council",
+    phone: "(02) 8911-5061 to 65",
+    email: "opcen@ndrrmc.gov.ph",
+    photo: "https://placehold.co/100x100/1E3A8A/ffffff?text=ND",
   },
   {
-    name: "Clinical Nurse Sarah",
-    role: "RN, Patient Coordinator",
-    phone: "(555) 101-2001",
-    email: "sarah.rn@clinic.org",
-    photo: "https://placehold.co/100x100/60A5FA/ffffff?text=SN",
+    name: "Department of Health (DOH)",
+    role: "National Health Hotline",
+    phone: "1555 / (02) 8651-7800",
+    email: "callcenter@doh.gov.ph",
+    photo: "https://placehold.co/100x100/10B981/ffffff?text=DOH",
   },
   {
-    name: "Alex Chen",
-    role: "Billing Specialist",
-    phone: "(555) 101-2002",
-    email: "alex.chen@clinic.org",
-    photo: "https://placehold.co/100x100/FBBF24/ffffff?text=AC",
+    name: "Philippine National Police (PNP)",
+    role: "Emergency Police Response",
+    phone: "117 / (02) 8722-0650",
+    email: "pnp@pnp.gov.ph",
+    photo: "https://placehold.co/100x100/DC2626/ffffff?text=PNP",
+  },
+  {
+    name: "Bureau of Fire Protection (BFP)",
+    role: "Fire and Rescue",
+    phone: "911 / (02) 8426-0219",
+    email: "bfp@bfp.gov.ph",
+    photo: "https://placehold.co/100x100/F59E0B/ffffff?text=BFP",
   },
 ];
 
 const HOSPITAL_CONTACTS = [
   {
-    name: "Main Hospital Line",
-    number: "(555) 500-1234",
-    role: "General Inquiry",
+    name: "National Emergency Hotline",
+    number: "911",
+    role: "General Emergency",
   },
   {
-    name: "Scheduling Office",
-    number: "(555) 500-1235",
-    role: "Appointments",
+    name: "Red Cross Philippines",
+    number: "143 / (02) 8527-0000",
+    role: "Medical and Disaster Response",
   },
   {
-    name: "Billing & Insurance",
-    number: "(555) 500-1236",
-    role: "Payment Questions",
+    name: "Metro Manila Development Auth.",
+    number: "136",
+    role: "Traffic and Flood Control",
   },
 ];
 
@@ -1009,7 +1016,7 @@ const ContactDirectory = () => (
     <div className="flex-1 min-h-0 overflow-y-auto p-6 space-y-8">
       <div className="space-y-4">
         <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-1">
-          My Care Team
+          National Emergency Agencies
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
           {PATIENT_CARE_TEAM.map((member) => (
@@ -1050,7 +1057,7 @@ const ContactDirectory = () => (
 
       <div className="space-y-4 pt-4 border-t text-left">
         <h3 className="text-xl font-semibold text-gray-800 flex items-center gap-1">
-          General Contact Numbers
+          General Emergency Hotlines
         </h3>
         <div className="space-y-3">
           {HOSPITAL_CONTACTS.map((contact) => (
@@ -2858,13 +2865,6 @@ export default function MessagesContact() {
           }`}
         >
           <div className="bg-white p-4 rounded-xl shadow-xl border flex flex-col min-h-0 flex-1">
-            <button
-              onClick={navigateToCompose}
-              className="shrink-0 w-full bg-primary hover:bg-green-700 text-white font-bold py-3 rounded-xl mb-4 flex items-center justify-center gap-2 transition shadow-md shadow-green-200"
-            >
-              <Plus size={20} /> New Message
-            </button>
-
             {emergencyAction.status !== "idle" && (
               <div
                 className={`shrink-0 mb-4 flex items-start gap-3 rounded-xl border p-3 text-sm ${
@@ -2932,16 +2932,6 @@ export default function MessagesContact() {
                 }`}
               >
                 <Phone size={20} /> Contact Directory
-              </button>
-              <button
-                onClick={navigateToSupport}
-                className={`w-full text-left flex items-center gap-3 p-3 rounded-xl font-semibold transition ${
-                  activeTab === MainContentTabs.SUPPORT
-                    ? "bg-green-100 text-green-700"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <HelpCircle size={20} /> Support & FAQ
               </button>
             </div>
 
