@@ -297,42 +297,46 @@ const OverallStatusCard = ({ inventory, facilities }) => {
         </h3>
         <div className="flex flex-col flex-1 w-full h-full justify-between gap-4">
           {/* Top row: Metrics + Chart (Wraps on very small screens) */}
-          <div className="flex flex-wrap xl:flex-nowrap items-center justify-between gap-4 w-full">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6 sm:gap-4 w-full">
             {/* Key Metrics */}
-            <div className="flex flex-col justify-center shrink-0 min-w-[140px]">
-              <p className="text-5xl font-extrabold text-gray-900 leading-none">
+            <div className="flex flex-col items-center sm:items-start justify-center shrink-0 w-full sm:w-auto">
+              <p className="text-5xl md:text-6xl font-extrabold text-gray-900 leading-none text-center sm:text-left">
                 {totalRemaining}
               </p>
-              <p className="text-[11px] md:text-xs text-gray-500 uppercase font-bold tracking-wider mt-2 mb-4">
+              <p className="text-[11px] md:text-xs text-gray-500 uppercase font-bold tracking-wider mt-2 mb-4 text-center sm:text-left">
                 Total Inventory
               </p>
 
-              <div className="space-y-3 text-sm">
-                <p className="font-medium text-gray-600 flex items-center">
-                  <span className="w-6 flex shrink-0 justify-start">
+              <div className="space-y-3 text-sm w-full">
+                <p className="font-medium text-gray-600 flex items-center justify-center sm:justify-start">
+                  <span className="w-6 flex shrink-0 justify-center sm:justify-start">
                     <Home className="h-4 w-4 text-gray-400" />
                   </span>
                   <span className="truncate">{facilityCount} Facilities</span>
                 </p>
-                <p className="font-medium text-gray-600 flex items-center">
-                  <span className="w-6 flex shrink-0 justify-start">
+                <p className="font-medium text-gray-600 flex items-center justify-center sm:justify-start">
+                  <span className="w-6 flex shrink-0 justify-center sm:justify-start">
                     <Briefcase className="h-4 w-4 text-gray-400" />
                   </span>
                   <span className="truncate">{itemCategories} Categories</span>
                 </p>
-                <p className="font-semibold text-red-600 flex items-center bg-red-50 py-1 px-2 rounded-lg -ml-2 w-max">
-                  <span className="w-6 flex shrink-0 justify-start">
-                    <AlertTriangle className="h-4 w-4 text-red-600" />
-                  </span>
-                  <span>{criticalCount} Critical Alerts</span>
-                </p>
+                <div className="flex justify-center sm:justify-start w-full">
+                  <p className="font-semibold text-red-600 flex items-center bg-red-50 py-1 px-2 rounded-lg w-max">
+                    <span className="w-6 flex shrink-0 justify-center sm:justify-start">
+                      <AlertTriangle className="h-4 w-4 text-red-600" />
+                    </span>
+                    <span>{criticalCount} Critical Alerts</span>
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Pie Chart */}
-            <div className="w-full sm:w-auto flex-1 flex justify-center items-center min-w-[140px] h-[160px] md:h-[180px] relative">
+            <div className="w-full sm:w-1/2 flex justify-center items-center min-h-[160px] relative">
               {facilities && facilities.length > 0 ? (
-                <FacilityPieChart data={facilities} />
+                <div className="w-[140px] h-[140px] sm:w-[160px] sm:h-[160px] lg:w-[180px] lg:h-[180px]">
+                  <FacilityPieChart data={facilities} />
+                </div>
               ) : (
                 <p className="text-gray-400 text-sm">No facility data</p>
               )}
@@ -708,12 +712,12 @@ const TabNavigation = ({ activeTab, setActiveTab, assignedHospitalName }) => {
           </p>
         </div>
 
-        <div className="flex space-x-2 bg-gray-100 p-1 rounded-xl">
+        <div className="flex overflow-x-auto gap-2 bg-gray-100 p-1 rounded-xl w-full scrollbar-none">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-3 rounded-lg font-bold transition-all flex items-center gap-2 ${
+              className={`px-4 py-2 md:px-6 md:py-3 whitespace-nowrap rounded-lg text-sm md:text-base font-bold transition-all flex items-center gap-2 ${
                 activeTab === tab.id
                   ? `${tab.color} text-white shadow-lg`
                   : "text-gray-700 hover:bg-gray-200"
@@ -727,7 +731,7 @@ const TabNavigation = ({ activeTab, setActiveTab, assignedHospitalName }) => {
       </div>
 
       {/* Assigned Hospital Indicator */}
-      <div className="mt-4 flex items-center gap-4">
+      <div className="mt-4 flex flex-wrap items-center gap-3 md:gap-4">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm font-semibold text-green-700">
@@ -937,23 +941,23 @@ const LogisDash = () => {
           </div>
         )}
         {/* ROW 1: Top Cards */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <div className="md:col-span-1 lg:col-span-1 h-full">
+        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-6">
+          <div className="md:col-span-2 lg:col-span-2 xl:col-span-2 h-full">
             <OverallStatusCard inventory={inventory} facilities={facilities} />
           </div>
 
-          <div className="md:col-span-1 lg:col-span-1 h-full">
+          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 h-full">
             <AssetStatusCard assets={assets} />
           </div>
 
-          <div className="md:col-span-1 lg:col-span-1 h-full">
+          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 h-full">
             <DeliveryPerformanceCard
               requests={requests}
               shipments={shipments}
             />
           </div>
 
-          <div className="md:col-span-1 lg:col-span-1 h-full">
+          <div className="md:col-span-2 lg:col-span-1 xl:col-span-1 h-full">
             <PendingRequestsCard requests={requests} />
           </div>
         </section>

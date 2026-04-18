@@ -306,7 +306,7 @@ export default function PatientDash() {
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [vitalsData, setVitalsData] = useState([]);
   const [isVitalsLoading, setIsVitalsLoading] = useState(true);
   const [vitalsError, setVitalsError] = useState(null);
@@ -352,17 +352,24 @@ export default function PatientDash() {
     try {
       const response = await api.get("/my-patient-care-reports");
       // Mapping the response data to match the expected structure
-      const mappedData = response.data.data.map(report => {
-        const firstVital = (report.vitals_entries && report.vitals_entries.length > 0) ? report.vitals_entries[0] : {};
-        const gcs = report.gcs_entries && report.gcs_entries.length > 0 ? report.gcs_entries[0] : {};
-        
+      const mappedData = response.data.data.map((report) => {
+        const firstVital =
+          report.vitals_entries && report.vitals_entries.length > 0
+            ? report.vitals_entries[0]
+            : {};
+        const gcs =
+          report.gcs_entries && report.gcs_entries.length > 0
+            ? report.gcs_entries[0]
+            : {};
+
         let mentalStatus = report.physiological_status?.mentalStatus || "-";
         if (mentalStatus === "-" && gcs.eyes) {
           mentalStatus = `GCS: ${parseInt(gcs.eyes) + parseInt(gcs.verbal || 0) + parseInt(gcs.motor || 0)}`;
         }
-        
-        const rDate = report.dispatch_date || report.submitted_at || report.created_at;
-        
+
+        const rDate =
+          report.dispatch_date || report.submitted_at || report.created_at;
+
         return {
           id: report.case_no || `PCR-${report.id}`,
           date: rDate ? new Date(rDate).toLocaleDateString("en-US") : "-",
@@ -536,12 +543,17 @@ export default function PatientDash() {
 
       <div
         className={`mt-2 text-center text-xs font-bold py-1 px-2 rounded ${
-          item.level === "medium" || item.level === "medium-priority" || item.level === "moderate"
+          item.level === "medium" ||
+          item.level === "medium-priority" ||
+          item.level === "moderate"
             ? "bg-orange-100 text-orange-800"
             : "bg-gray-100"
         }`}
       >
-        Level: {item.level && typeof item.level === 'string' ? item.level.toUpperCase() : item.level}
+        Level:{" "}
+        {item.level && typeof item.level === "string"
+          ? item.level.toUpperCase()
+          : item.level}
       </div>
     </div>
   );
@@ -571,15 +583,23 @@ export default function PatientDash() {
             {/* Mobile Vitals View */}
             <div className="md:hidden">
               {isVitalsLoading ? (
-                <div className="text-center py-4 text-gray-500">Loading triage history...</div>
+                <div className="text-center py-4 text-gray-500">
+                  Loading triage history...
+                </div>
               ) : vitalsError ? (
-                <div className="text-center py-4 text-red-500">{vitalsError}</div>
+                <div className="text-center py-4 text-red-500">
+                  {vitalsError}
+                </div>
               ) : vitalsData.length > 0 ? (
-                vitalsData.slice(0, 5).map((item, idx) => (
-                  <MobileVitalsCard key={idx} item={item} />
-                ))
+                vitalsData
+                  .slice(0, 5)
+                  .map((item, idx) => (
+                    <MobileVitalsCard key={idx} item={item} />
+                  ))
               ) : (
-                <div className="text-center py-4 text-gray-500">No triage history found.</div>
+                <div className="text-center py-4 text-gray-500">
+                  No triage history found.
+                </div>
               )}
             </div>
             {/* Desktop Vitals Table */}
@@ -619,7 +639,10 @@ export default function PatientDash() {
                 <tbody className="divide-y divide-gray-100 bg-white">
                   {isVitalsLoading ? (
                     <tr>
-                      <td colSpan={9} className="py-4 text-center text-gray-500">
+                      <td
+                        colSpan={9}
+                        className="py-4 text-center text-gray-500"
+                      >
                         Loading triage history...
                       </td>
                     </tr>
@@ -650,15 +673,21 @@ export default function PatientDash() {
                         >
                           {item.complaint}
                         </td>
-                        <td className="px-2 py-3 text-primary">{item.mental}</td>
+                        <td className="px-2 py-3 text-primary">
+                          {item.mental}
+                        </td>
                         <td
                           className={`px-2 py-3 font-bold ${
-                            item.level === "medium" || item.level === "medium-priority" || item.level === "moderate"
+                            item.level === "medium" ||
+                            item.level === "medium-priority" ||
+                            item.level === "moderate"
                               ? "bg-orange-50 text-[#C05621]"
                               : ""
                           }`}
                         >
-                          {item.level && typeof item.level === 'string' ? item.level.toUpperCase() : item.level}
+                          {item.level && typeof item.level === "string"
+                            ? item.level.toUpperCase()
+                            : item.level}
                         </td>
                         <td className="px-2 py-3 text-green-800 break-words">
                           {item.doctor}
@@ -667,7 +696,10 @@ export default function PatientDash() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={9} className="py-4 text-center text-gray-500">
+                      <td
+                        colSpan={9}
+                        className="py-4 text-center text-gray-500"
+                      >
                         No triage history found.
                       </td>
                     </tr>
