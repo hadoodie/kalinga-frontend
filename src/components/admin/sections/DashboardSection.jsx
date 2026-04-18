@@ -128,6 +128,7 @@ export const DashboardSection = () => {
   // Backend dashboard stats
   const [dashboardStats, setDashboardStats] = useState(null);
   const [backendIncidents, setBackendIncidents] = useState([]);
+  const [recentNotifications, setRecentNotifications] = useState([]);
   const [statsLoading, setStatsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(null);
 
@@ -142,12 +143,14 @@ export const DashboardSection = () => {
   const fetchDashboardStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const [stats, incidents] = await Promise.all([
+      const [stats, incidents, notifications] = await Promise.all([
         adminService.getDashboardStats(),
         adminService.getIncidents({ include_resolved: false }),
+        adminService.getNotifications().catch(() => []),
       ]);
       setDashboardStats(stats);
-      setBackendIncidents(incidents);
+      setBackendIncidents(incidents || []);
+      setRecentNotifications(notifications || []);
       setLastRefresh(new Date());
     } catch (error) {
       console.error("Failed to fetch dashboard stats:", error);
@@ -155,6 +158,77 @@ export const DashboardSection = () => {
       setStatsLoading(false);
     }
   }, []);
+
+  // Dynamic Trends
+  const dynamicTrends = useMemo(() => {
+    if (!backendIncidents || backendIncidents.length === 0) return trends;
+    const typeCounts = backendIncidents.reduce((acc, inc) => {
+      const t = inc.type || "Other";
+      const clean = t.toLowerCase().includes('fire') ? 'Fire' :
+                    t.toLowerCase().includes('flood') ? 'Flood' :
+                    t.toLowerCase().includes('medical') || t.toLowerCase().includes('accident') ? 'Medical' :
+                    t.toLowerCase().includes('earth') ? 'Earthquake' :
+                    t.toLowerCase().includes('typhoon') ? 'Typhoon' : 'Other';
+      acc[clean] = (acc[clean] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Convert to target array, but if empty still return the existing mock to not break visuals entirely
+    if (Object.keys(typeCounts).length === 0) return trends;
+    
+    const maxCount = Math.max(...Object.values(typeCounts), 1);
+    return Object.entries(typeCounts).map(([label, count]) => ({
+      label,
+      value: count,
+      percent: Math.max((count / maxCount) * 100, 15)
+    })).sort((a,b) => b.value - a.value).slice(0, 5);
+  }, [backendIncidents]);
+
+  // Dynamic Ops Timeline
+  const dynamicTimeline = useMemo(() => {
+    if (!backendIncidents || backendIncidents.length === 0) return opsTimeline;
+    return backendIncidents
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 4)
+      .map(inc => ({
+        time: new Date(inc.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        title: inc.type || "Reported Incident",
+        by: inc.reporter?.name || "System",
+        status: inc.status ? `Status: ${inc.status.charAt(0).toUpperCase() + inc.status.slice(1)}` : "Pending"
+      }));
+  }, [backendIncidents]);
+
+  // Dynamic Team Readiness
+  const dynamicTeamReadiness = useMemo(() => {
+    if (!dashboardStats?.responders) return teamReadiness;
+    const statusObj = dashboardStats.responders.byStatus || {};
+    const total = dashboardStats.responders.total || 1;
+    const readyObj = (key) => ({
+      readiness: Math.round(((statusObj[key] || 0) / total) * 100) || 0,
+      onCall: statusObj[key] || 0
+    });
+    
+    // Group active assignments versus available.
+    const busyCount = (statusObj.busy || 0) + (statusObj.offline || 0);
+    const busyReadiness = Math.round((busyCount / total) * 100) || 0;
+
+    return [
+      { label: "Available", readiness: readyObj('available').readiness, onCall: readyObj('available').onCall },
+      { label: "On Scene", readiness: readyObj('on_scene').readiness, onCall: readyObj('on_scene').onCall },
+      { label: "En Route", readiness: readyObj('en_route').readiness, onCall: readyObj('en_route').onCall },
+      { label: "Busy / Offline", readiness: busyReadiness, onCall: busyCount }
+    ];
+  }, [dashboardStats]);
+
+  // Dynamic Dispatch Queue -> Recent Broadcasts
+  const dynamicDispatchQueue = useMemo(() => {
+    if (!recentNotifications || recentNotifications.length === 0) return dispatchQueue;
+    return recentNotifications.slice(0, 3).map(n => ({
+      channel: `${(n.type || "Alert").charAt(0).toUpperCase() + (n.type || "alert").slice(1)} Broadcast`,
+      status: "Sent",
+      note: n.title || "No subject"
+    }));
+  }, [recentNotifications]);
 
   // Initial fetch and periodic refresh of backend data
   useEffect(() => {
@@ -476,20 +550,19 @@ export const DashboardSection = () => {
               </p>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-              <CircleDot className="h-3.5 w-3.5" /> {updatedLabel}
-            </span>
-          </div>
+                <CircleDot className="h-3.5 w-3.5" /> Recent
+              </span>
+            </div>
 
-          <div className="mt-6 flex h-64 items-end justify-between gap-3">
-            {trends.map((item) => (
-              <div
-                key={item.label}
-                className="flex h-full flex-1 flex-col items-center justify-end gap-3"
-              >
+            <div className="mt-6 flex h-64 items-end justify-between gap-3">
+              {dynamicTrends.map((item) => (
                 <div
-                  className="flex w-full flex-col items-center justify-end gap-2 rounded-2xl bg-gradient-to-t from-primary/10 via-primary/20 to-primary/30 p-2"
-                  style={{ height: `${Math.max(item.value, 25)}%` }}
+                  key={item.label}
+                  className="flex h-full flex-1 flex-col items-center justify-end gap-3"
                 >
+                  <div
+                    className="flex w-full flex-col items-center justify-end gap-2 rounded-2xl bg-gradient-to-t from-primary/10 via-primary/20 to-primary/30 p-2"
+                    style={{ height: `${item.percent || Math.max(item.value, 25)}%` }}
                   <span className="text-sm font-semibold text-primary/80">
                     {item.value}
                   </span>
@@ -729,14 +802,8 @@ export const DashboardSection = () => {
           </div>
 
           <div className="mt-6 space-y-4">
-            {opsTimeline.map((event) => (
-              <div key={event.title} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <span className="rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                    {event.time}
-                  </span>
-                  <span className="mt-1 h-full w-px bg-border/60" />
-                </div>
+              {dynamicTimeline.map((event, i) => (
+                <div key={i} className="flex gap-4">
                 <div className="flex-1 rounded-2xl border border-border/60 bg-background/60 p-4">
                   <p className="text-sm font-semibold text-foreground">
                     {event.title}
@@ -760,7 +827,7 @@ export const DashboardSection = () => {
               Availability & standby strength.
             </p>
             <div className="mt-4 space-y-3 text-sm">
-              {teamReadiness.map((team) => (
+              {dynamicTeamReadiness.map((team) => (
                 <div
                   key={team.label}
                   className="space-y-2 rounded-2xl border border-border/60 bg-background/60 p-4"
@@ -769,7 +836,7 @@ export const DashboardSection = () => {
                     <span className="font-semibold text-foreground">
                       {team.label}
                     </span>
-                    <span>{team.onCall} on-call</span>
+                    <span>{team.onCall} counts</span>
                   </div>
                   <div className="h-2 rounded-full bg-foreground/10">
                     <div
@@ -778,7 +845,7 @@ export const DashboardSection = () => {
                     />
                   </div>
                   <div className="text-xs font-semibold text-primary">
-                    {team.readiness}% ready
+                    {team.readiness}% total
                   </div>
                 </div>
               ))}
@@ -790,12 +857,12 @@ export const DashboardSection = () => {
               Comms & dispatch
             </h3>
             <p className="text-sm text-foreground/60">
-              Monitor coordination channels.
+              Recent Broadcasts & Advisories.
             </p>
             <div className="mt-4 space-y-3 text-sm">
-              {dispatchQueue.map((entry) => (
+              {dynamicDispatchQueue.map((entry, i) => (
                 <div
-                  key={entry.channel}
+                  key={i}
                   className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/60 p-4"
                 >
                   <span className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
