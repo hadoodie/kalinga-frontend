@@ -28,6 +28,18 @@ class PatientCareReportController extends Controller
         return response()->json($reports);
     }
 
+    public function myReports(Request $request)
+    {
+        $reports = PatientCareReport::query()
+            ->where('patient_user_id', $request->user()->id)
+            ->where('status', 'submitted')
+            ->orderBy('created_at', 'desc')
+            ->with(['vitals', 'waiver', 'incident', 'user'])
+            ->get();
+
+        return response()->json(['data' => $reports]);
+    }
+
     public function show(Request $request, PatientCareReport $patientCareReport)
     {
         if ((int) $patientCareReport->user_id !== (int) $request->user()->id && $request->user()->role !== 'admin') {
@@ -202,3 +214,4 @@ class PatientCareReportController extends Controller
         );
     }
 }
+

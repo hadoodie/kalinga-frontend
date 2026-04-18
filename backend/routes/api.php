@@ -485,6 +485,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // Patient routes
     Route::middleware(['role:admin,patient'])->group(function () {
         Route::get('/lab-results', [LabResultController::class, 'index']);
+        Route::get('/my-patient-care-reports', [PatientCareReportController::class, 'myReports']);
         Route::get('/appointments', [AppointmentController::class, 'index']);
         Route::delete('/appointments/{id}', [AppointmentController::class, 'destroy']);
         
@@ -719,3 +720,4 @@ Route::middleware(['throttle:120,1'])->get('/incidents/poll', function (\Illumin
         'polled_at'  => now()->toIso8601String(),
     ]);
 });
+
