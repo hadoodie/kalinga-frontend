@@ -7,7 +7,7 @@
  * Both views share the same underlying state passed via props.
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   ChevronUp,
   ChevronDown,
@@ -16,7 +16,6 @@ import {
   CheckCircle,
   Clock,
   Hospital,
-  Phone,
   Truck,
 } from "lucide-react";
 
@@ -59,6 +58,26 @@ export const formatDistance = (km) => {
   if (!km || km <= 0) return "--";
   if (km < 1) return `${Math.round(km * 1000)} m`;
   return `${km.toFixed(1)} km`;
+};
+
+export const formatRelativeUpdate = (lastUpdatedAt, nowMs = Date.now()) => {
+  if (!lastUpdatedAt) return "Updated just now";
+
+  const updatedMs = new Date(lastUpdatedAt).getTime();
+  if (Number.isNaN(updatedMs)) return "Updated just now";
+
+  const seconds = Math.max(0, Math.floor((nowMs - updatedMs) / 1000));
+
+  if (seconds <= 1) return "Updated just now";
+  if (seconds < 60) return `Updated ${seconds} seconds ago`;
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes === 1) return "Updated 1 minute ago";
+  if (minutes < 60) return `Updated ${minutes} minutes ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours === 1) return "Updated 1 hour ago";
+  return `Updated ${hours} hours ago`;
 };
 
 // ── Progress Tracker ─────────────────────────────────────────────────────────
@@ -161,12 +180,32 @@ function DetailContent({
   vehicle,
   status,
   hospitalName,
+  lastUpdatedAt,
 }) {
+  const [nowMs, setNowMs] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const isToHospital = [
     "transporting",
     "hospital_transfer",
     "resolved",
   ].includes(status);
+
+  const updatedLabel = useMemo(
+    () => formatRelativeUpdate(lastUpdatedAt, nowMs),
+    [lastUpdatedAt, nowMs],
+  );
+
+  const isSignalDelayed = useMemo(() => {
+    if (!lastUpdatedAt) return false;
+    const updatedMs = new Date(lastUpdatedAt).getTime();
+    if (Number.isNaN(updatedMs)) return false;
+    return nowMs - updatedMs > 20000;
+  }, [lastUpdatedAt, nowMs]);
 
   return (
     <div className="space-y-4">
@@ -239,14 +278,16 @@ function DetailContent({
         </span>
       </div>
 
-      {/* Call dispatch */}
-      <button
-        className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-red-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        onClick={() => (window.location.href = "tel:911")}
-      >
-        <Phone size={20} strokeWidth={2.5} />
-        <span>CALL DISPATCH</span>
-      </button>
+      {/* Realtime indicator */}
+      <div className="flex items-center gap-2 text-xs font-medium text-gray-500 pt-1">
+        <Clock size={14} />
+        <span>{updatedLabel}</span>
+        {isSignalDelayed && (
+          <span className="ml-2 inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
+            Signal delayed
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -386,6 +427,7 @@ export default function RescueDetailPanel({
   vehicle,
   status,
   hospitalName,
+  lastUpdatedAt,
 }) {
   const sharedProps = {
     eta,
@@ -394,6 +436,7 @@ export default function RescueDetailPanel({
     vehicle,
     status,
     hospitalName,
+    lastUpdatedAt,
   };
 
   return (

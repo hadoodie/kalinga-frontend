@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import nodeApi from "../../services/nodeApi";
 
 // ✅ Fix marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
@@ -21,42 +23,25 @@ const SetViewOnLocation = ({ coords }) => {
 
 const MapCard = () => {
   const [userLocation, setUserLocation] = useState(null);
+  const [hospitals, setHospitals] = useState([]);
 
-  // 🔹 Example hospital dataset (Metro Manila)
-  const hospitals = [
-    {
-      name: "Philippine General Hospital (PGH)",
-      position: [14.5794, 120.9822],
-      specialty: "Cardiology, Emergency, Pediatrics",
-    },
-    {
-      name: "East Avenue Medical Center",
-      position: [14.6362, 121.0437],
-      specialty: "Neurology, Internal Medicine, Trauma Care",
-    },
-    {
-      name: "Rizal Medical Center",
-      position: [14.5641, 121.0713],
-      specialty: "Surgery, Obstetrics & Gynecology",
-    },
-    {
-      name: "Jose R. Reyes Memorial Medical Center",
-      position: [14.6155, 120.9843],
-      specialty: "Emergency, Neurosurgery, Pediatrics",
-    },
-    {
-      name: "St. Luke’s Medical Center (Quezon City)",
-      position: [14.6397, 121.0518],
-      specialty: "Cardiology, Orthopedics, Oncology",
-    },
-  ];
+  useEffect(() => {
+    nodeApi
+      .get("/hospitals", { params: { limit: 20 } })
+      .then(({ data }) => {
+        const list = (data?.data || []).filter(
+          (h) => h.latitude && h.longitude,
+        );
+        setHospitals(list);
+      })
+      .catch(console.error);
+  }, []);
 
-  // 🔹 Get user's current location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
-        () => setUserLocation([14.5995, 120.9842]) // Default to Manila
+        () => setUserLocation([14.5995, 120.9842]),
       );
     } else {
       setUserLocation([14.5995, 120.9842]);
@@ -65,7 +50,7 @@ const MapCard = () => {
 
   return (
     <div
-      className="card reports-card"
+      className="card responder-widget map-widget-card"
       style={{
         paddingBottom: 0,
         overflow: "hidden",
@@ -73,7 +58,10 @@ const MapCard = () => {
         flexDirection: "column",
       }}
     >
-      <h3 className="card-title" style={{ marginBottom: "0.75rem" }}>
+      <h3
+        className="card-title"
+        style={{ marginBottom: "0.75rem", textAlign: "center" }}
+      >
         Nearest Hospitals Around You
       </h3>
 
@@ -109,13 +97,22 @@ const MapCard = () => {
               <Popup>You are here 📍</Popup>
             </Marker>
 
-            {/* 🏥 Hospitals */}
-            {hospitals.map((h, i) => (
-              <Marker key={i} position={h.position}>
+            {/* 🏥 Hospitals from DB */}
+            {hospitals.map((h) => (
+              <Marker
+                key={h.id}
+                position={[parseFloat(h.latitude), parseFloat(h.longitude)]}
+              >
                 <Popup>
                   <strong>{h.name}</strong>
                   <br />
-                  {h.specialty}
+                  {h.level || h.code}
+                  {h.bed_capacity && (
+                    <>
+                      <br />
+                      Beds: {h.current_occupancy}/{h.bed_capacity}
+                    </>
+                  )}
                 </Popup>
               </Marker>
             ))}
@@ -123,7 +120,9 @@ const MapCard = () => {
             <SetViewOnLocation coords={userLocation} />
           </MapContainer>
         ) : (
-          <p style={{ textAlign: "center", padding: "2rem" }}>Getting your location...</p>
+          <p style={{ textAlign: "center", padding: "2rem" }}>
+            Getting your location...
+          </p>
         )}
       </div>
     </div>

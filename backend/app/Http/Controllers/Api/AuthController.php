@@ -251,7 +251,7 @@ class AuthController extends Controller
      */
     public function getAllUsers(Request $request)
     {
-        $query = User::query();
+        $query = User::with('hospitals');
         
         // Filter by role if provided
         if ($request->has('role')) {
@@ -263,9 +263,84 @@ class AuthController extends Controller
             $query->where('verification_status', $request->verification_status);
         }
         
-        $users = $query->paginate(15);
+        $perPage = $request->input('per_page', 15);
+        $users = $query->paginate($perPage);
         
         return response()->json($users);
+    }
+
+    /**
+     * Update user assignment (Admin only)
+     * 
+     */
+    public function updateUser(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'nullable|string|max:255',
+            'email' => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
+            'role' => 'nullable|string|max:50', 
+            'phone' => 'nullable|string|max:20',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'birthday' => 'nullable|date',
+            'contact_number' => 'nullable|string|max:20',
+            'address' => 'nullable|string|max:500',
+            'bloodType' => 'nullable|string|max:10',
+            'patientId' => 'nullable|string',
+            'emergencyContactName' => 'nullable|string',
+            'emergencyContactPhone' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $validatedData = $validator->validated();
+
+        if (isset($validatedData['phoneNumber'])) {
+            $validatedData['phone'] = $validatedData['phoneNumber'];
+            unset($validatedData['phoneNumber']);
+        }
+
+        $user->update($validatedData);
+
+        return response()->json([
+            'message' => 'User updated successfully',
+            'user' => $user->fresh()->load('hospitals')
+        ]);
+    }
+
+    /**
+     * Update user hospital assignment (Admin only)
+     * 
+     */
+    public function updateUserHospital(Request $request, $id)
+    {
+        $request->validate([
+            'hospital_id' => 'nullable|exists:hospitals,id'
+        ]);
+
+        $user = User::findOrFail($id);
+
+        if ($user->role !== 'logistics') {
+            return response()->json([
+                'message' => 'Only logistics users can be assigned to a hospital'
+            ], 422);
+        }
+
+        if ($request->hospital_id) {
+            $user->hospitals()->sync([$request->hospital_id]);
+        } else {
+            $user->hospitals()->detach();
+        }
+
+        return response()->json([
+            'message' => 'Hospital assignment updated successfully',
+            'user' => $user->load('hospitals'),
+        ]);
     }
 
     /**

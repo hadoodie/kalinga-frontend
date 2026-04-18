@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http; 
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Schema;
 
 class AppointmentController extends Controller
 {
@@ -13,8 +14,22 @@ class AppointmentController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        $orderColumn = Schema::hasColumn('appointments', 'appointment_at')
+            ? 'appointment_at'
+            : (Schema::hasColumn('appointments', 'appointment_date') ? 'appointment_date' : 'created_at');
+
         // Return appointments ordered by newest date first
-        $appointments = $user->appointments()->orderBy('appointment_date', 'asc')->get();
+        $appointments = $user->appointments()->orderBy($orderColumn, 'asc')->get();
+
+        // Keep frontend payload stable even if DB uses appointment_at.
+        $appointments->transform(function ($appointment) {
+            if (!isset($appointment->appointment_date)) {
+                $appointment->appointment_date = $appointment->appointment_at;
+            }
+            return $appointment;
+        });
+
         return response()->json($appointments);
     }
 
@@ -28,7 +43,8 @@ class AppointmentController extends Controller
         $validated = $request->validate([
             'hospital' => 'required|string',
             'service' => 'required|string',
-            'appointment_date' => 'required|date', 
+            'appointment_date' => 'nullable|date',
+            'appointment_at' => 'nullable|date',
             'complaint' => 'required|string',
             'patient_name' => 'required|string',
             'contact_email' => 'nullable|email',
@@ -40,6 +56,22 @@ class AppointmentController extends Controller
             'provider_specialty' => 'nullable|string',
             'recaptcha_token' => 'required|string', 
         ]);
+
+        $appointmentAt = $request->input('appointment_at') ?? $request->input('appointment_date');
+        if (!$appointmentAt) {
+            return response()->json([
+                'message' => 'The appointment date is required.'
+            ], 422);
+        }
+
+        // Persist into whichever date column exists in the current environment.
+        unset($validated['appointment_date'], $validated['appointment_at']);
+        if (Schema::hasColumn('appointments', 'appointment_at')) {
+            $validated['appointment_at'] = $appointmentAt;
+        }
+        if (Schema::hasColumn('appointments', 'appointment_date')) {
+            $validated['appointment_date'] = $appointmentAt;
+        }
 
         // Verify with Google reCAPTCHA (skip in dev if secret key is not configured)
         $recaptchaSecret = config('services.recaptcha.secret');

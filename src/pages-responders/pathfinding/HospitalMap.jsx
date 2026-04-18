@@ -37,7 +37,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     severity: "medium",
   });
   const [currentLocationDisplay, setCurrentLocationDisplay] = useState(
-    "Getting location..."
+    "Getting location...",
   );
   const [hospitalsWithDistance, setHospitalsWithDistance] = useState([]);
   const [hospitalCatalog, setHospitalCatalog] = useState([]);
@@ -66,7 +66,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           lat: location.lat,
           lng: location.lng,
           timestamp: Date.now(),
-        })
+        }),
       );
     } catch (error) {
       console.warn("Failed to save location to localStorage:", error);
@@ -76,7 +76,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const broadcastLocationOverride = useCallback((payload) => {
     if (typeof window === "undefined") return;
     window.dispatchEvent(
-      new CustomEvent(LOCATION_OVERRIDE_EVENT, { detail: payload })
+      new CustomEvent(LOCATION_OVERRIDE_EVENT, { detail: payload }),
     );
   }, []);
 
@@ -143,7 +143,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       userMarkerRef.current = marker;
       return marker;
     },
-    [map]
+    [map],
   );
 
   // Mobile bottom interface states
@@ -236,7 +236,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         console.error("Failed to log route analytics", error);
       }
     },
-    [activeRouteLogId, destination, isNavigating, routeSessionStart, user]
+    [activeRouteLogId, destination, isNavigating, routeSessionStart, user],
   );
 
   // Predefined hospitals in Metro Manila (fallback)
@@ -358,7 +358,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           maxZoom: 18,
           minZoom: 6,
           subdomains: "abcd",
-        }
+        },
       ).addTo(leafletMap);
 
       // Add road labels overlay
@@ -369,7 +369,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           maxZoom: 18,
           minZoom: 6,
           subdomains: "abcd",
-        }
+        },
       ).addTo(leafletMap);
 
       setMap(leafletMap);
@@ -431,7 +431,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         } catch (error) {
           console.warn(
             "Error requesting device orientation permission:",
-            error
+            error,
           );
           return false;
         }
@@ -471,7 +471,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       if (orientationWatchId) {
         window.removeEventListener(
           "deviceorientation",
-          handleDeviceOrientation
+          handleDeviceOrientation,
         );
         setOrientationWatchId(null);
       }
@@ -492,7 +492,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             lat: location.lat,
             lng: location.lng,
             timestamp: Date.now(),
-          })
+          }),
         );
       } catch (error) {
         console.warn("Failed to save location to localStorage:", error);
@@ -549,7 +549,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             if (!userLocation) {
               leafletMap.setView(
                 [latitude, longitude],
-                KALINGA_CONFIG.USER_LOCATION_ZOOM
+                KALINGA_CONFIG.USER_LOCATION_ZOOM,
               );
             }
           }
@@ -578,8 +578,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
               setUserLocation(lastKnown);
               setCurrentLocationDisplay(
                 `Last known location (${errorMessage})\n${lastKnown.lat.toFixed(
-                  6
-                )}, ${lastKnown.lng.toFixed(6)}`
+                  6,
+                )}, ${lastKnown.lng.toFixed(6)}`,
               );
               updateHospitalDistances(lastKnown);
               if (leafletMap && resolvedLeaflet) {
@@ -587,20 +587,22 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                   resolvedLeaflet,
                   lastKnown.lat,
                   lastKnown.lng,
-                  "lastKnown"
+                  "lastKnown",
                 );
                 leafletMap.setView(
                   [lastKnown.lat, lastKnown.lng],
-                  KALINGA_CONFIG.USER_LOCATION_ZOOM
+                  KALINGA_CONFIG.USER_LOCATION_ZOOM,
                 );
               }
             }
           } else {
-            // Use default TUP Manila location for testing
+            // Use default Rodriguez, Rizal Command Center location for testing
             const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
             liveUserLocationRef.current = fallback;
             if (!isSimulatingLocationRef.current) {
-              setCurrentLocationDisplay("Default location (TUP Manila)");
+              setCurrentLocationDisplay(
+                "Default location (Rodriguez, Rizal Command Center)",
+              );
               setUserLocation(fallback);
               updateHospitalDistances(fallback);
               if (leafletMap && resolvedLeaflet) {
@@ -608,11 +610,11 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                   resolvedLeaflet,
                   fallback.lat,
                   fallback.lng,
-                  "default"
+                  "default",
                 );
                 leafletMap.setView(
                   [fallback.lat, fallback.lng],
-                  KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+                  KALINGA_CONFIG.DEFAULT_LOCATION.zoom,
                 );
               }
             }
@@ -622,7 +624,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           enableHighAccuracy: true, // Use GPS if available
           maximumAge: 10000, // Use cached position if less than 10 seconds old
           timeout: 15000, // Wait up to 15 seconds for a position
-        }
+        },
       );
 
       // Store watch ID for cleanup
@@ -636,8 +638,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           setUserLocation(lastKnown);
           setCurrentLocationDisplay(
             `Last known location (Geolocation not supported)\n${lastKnown.lat.toFixed(
-              6
-            )}, ${lastKnown.lng.toFixed(6)}`
+              6,
+            )}, ${lastKnown.lng.toFixed(6)}`,
           );
           updateHospitalDistances(lastKnown);
           if (leafletMap) {
@@ -646,24 +648,24 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                 Leaflet,
                 lastKnown.lat,
                 lastKnown.lng,
-                "lastKnown"
+                "lastKnown",
               );
             });
 
             leafletMap.setView(
               [lastKnown.lat, lastKnown.lng],
-              KALINGA_CONFIG.USER_LOCATION_ZOOM
+              KALINGA_CONFIG.USER_LOCATION_ZOOM,
             );
           }
         }
       } else {
-        // Use default TUP Manila location (Geolocation not supported)
+        // Use default Rodriguez, Rizal Command Center location (Geolocation not supported)
         const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
         liveUserLocationRef.current = fallback;
         if (!isSimulatingLocationRef.current) {
           setUserLocation(fallback);
           setCurrentLocationDisplay(
-            "TUP Manila (Default - Geolocation not supported)"
+            "Rodriguez, Rizal Command Center (Default - Geolocation not supported)",
           );
           updateHospitalDistances(fallback);
           if (leafletMap) {
@@ -673,7 +675,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
 
             leafletMap.setView(
               [fallback.lat, fallback.lng],
-              KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+              KALINGA_CONFIG.DEFAULT_LOCATION.zoom,
             );
           }
         }
@@ -688,7 +690,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     try {
       const response = await fetch(
         `${KALINGA_CONFIG.API_BASE_URL}/api/geocode/reverse?lat=${lat}&lon=${lng}&zoom=18`,
-        { headers: { Accept: "application/json" } }
+        { headers: { Accept: "application/json" } },
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -714,7 +716,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         setCurrentLocationDisplay(
           `${
             shortAddress || data.display_name.split(",").slice(0, 2).join(",")
-          }\n${coordsText}`
+          }\n${coordsText}`,
         );
       }
     } catch (error) {
@@ -774,7 +776,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
 
       setHospitalsWithDistance(enriched);
     },
-    [effectiveHospitals]
+    [effectiveHospitals],
   );
 
   const calculateDistance = (lat1, lng1, lat2, lng2) => {
@@ -805,7 +807,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       setUserLocation(location);
       updateHospitalDistances(location);
       setCurrentLocationDisplay(
-        `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`
+        `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`,
       );
       persistLocationToStorage(location);
       broadcastLocationOverride({ lat, lng, active: true });
@@ -820,7 +822,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           {
             animate: true,
             duration: 0.9,
-          }
+          },
         );
       }
 
@@ -835,7 +837,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             false,
             isNavigating,
             true,
-            location
+            location,
           );
         }, 400);
       }
@@ -850,7 +852,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       placeUserMarker,
       persistLocationToStorage,
       updateHospitalDistances,
-    ]
+    ],
   );
 
   const handleStopSimulatedLocation = useCallback(async () => {
@@ -868,8 +870,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     updateHospitalDistances(fallbackLocation);
     setCurrentLocationDisplay(
       `Live GPS restored\n${fallbackLocation.lat.toFixed(
-        6
-      )}, ${fallbackLocation.lng.toFixed(6)}`
+        6,
+      )}, ${fallbackLocation.lng.toFixed(6)}`,
     );
     updateLocationDisplay(fallbackLocation.lat, fallbackLocation.lng);
     persistLocationToStorage(fallbackLocation);
@@ -884,7 +886,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       Leaflet,
       fallbackLocation.lat,
       fallbackLocation.lng,
-      "live"
+      "live",
     );
 
     if (map) {
@@ -894,7 +896,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         {
           animate: true,
           duration: 0.9,
-        }
+        },
       );
     }
   }, [
@@ -967,7 +969,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             ? hospital.services
                 .map(
                   (service) =>
-                    `<span style="background: #e8f5e8; padding: 2px 6px; margin: 2px; border-radius: 10px; font-size: 11px; display: inline-block;">${service}</span>`
+                    `<span style="background: #e8f5e8; padding: 2px 6px; margin: 2px; border-radius: 10px; font-size: 11px; display: inline-block;">${service}</span>`,
                 )
                 .join("")
             : '<span style="font-size:12px;color:#6b7280;">Live capability data</span>';
@@ -976,8 +978,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             typeof hospital.distance_km === "number"
               ? `${hospital.distance_km.toFixed(2)} km`
               : typeof hospital.distance === "number"
-              ? `${hospital.distance.toFixed(2)} km`
-              : "Distance unavailable";
+                ? `${hospital.distance.toFixed(2)} km`
+                : "Distance unavailable";
 
           const marker = L.marker([lat, lng], {
             icon: hospitalIcon,
@@ -1034,7 +1036,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         return newMarkers;
       });
     },
-    [effectiveHospitals]
+    [effectiveHospitals],
   );
 
   const fetchHospitalsFromApi = useCallback(
@@ -1073,8 +1075,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         const list = Array.isArray(payload?.data)
           ? payload.data
           : Array.isArray(payload)
-          ? payload
-          : [];
+            ? payload
+            : [];
 
         const normalized = list
           .map((hospital) => ({
@@ -1084,7 +1086,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           }))
           .filter(
             (hospital) =>
-              Number.isFinite(hospital.lat) && Number.isFinite(hospital.lng)
+              Number.isFinite(hospital.lat) && Number.isFinite(hospital.lng),
           );
 
         setHospitalCatalog(normalized);
@@ -1106,7 +1108,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         }));
       }
     },
-    [updateHospitalDistances, userLocation]
+    [updateHospitalDistances, userLocation],
   );
 
   useEffect(() => {
@@ -1140,7 +1142,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     }
 
     const coarseKey = `${userLocation.lat.toFixed(
-      3
+      3,
     )},${userLocation.lng.toFixed(3)}`;
     if (hospitalSyncMeta.lastFetchKey === coarseKey) {
       return;
@@ -1271,8 +1273,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                         ${blockade.reported_at_human || "Unknown time"}
                     </p>
                     <button onclick="removeBlockadeHandler(${blockade.id}, '${
-        blockade.title
-      }')" 
+                      blockade.title
+                    }')" 
                             style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; width: 100%;">
                         🗑️ Remove Blockade
                     </button>
@@ -1296,8 +1298,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     // Ask user if they want to start navigation
     const startNavigation = window.confirm(
       `Nearest hospital: ${nearest.name}\nDistance: ${nearest.distance.toFixed(
-        2
-      )} km\nAddress: ${nearest.address}\n\nStart turn-by-turn navigation?`
+        2,
+      )} km\nAddress: ${nearest.address}\n\nStart turn-by-turn navigation?`,
     );
 
     // Draw route to nearest hospital
@@ -1332,16 +1334,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     isNearest = false,
     enableNavigation = false,
     isAutoRecalculation = false,
-    originOverride = null
+    originOverride = null,
   ) {
-    const latNum = parseFloat(destLat);
-    const lngNum = parseFloat(destLng);
-
-    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
-      console.warn("Invalid coordinates passed to drawRoute:", destLat, destLng);
-      return;
-    }
-
     const originLocation = originOverride || userLocation;
 
     if (!originLocation || !map || isDrawingRoute) return;
@@ -1353,7 +1347,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       setIsRecalculatingRoute(true);
     }
 
-    setDestination({ lat: latNum, lng: lngNum });
+    setDestination({ lat: destLat, lng: destLng });
 
     // Set drawing state to prevent concurrent route requests
     setIsDrawingRoute(true);
@@ -1366,7 +1360,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       const L = await import("leaflet");
 
       const newDestMarker = L.default
-        .marker([latNum, lngNum])
+        .marker([destLat, destLng])
         .addTo(map)
         .bindPopup("Hospital Destination")
         .openPopup();
@@ -1380,12 +1374,12 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             Accept: "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        }
+        },
       );
       const blockades = await blockadeResponse.json();
 
       // Enhanced OSRM query with step details for navigation
-      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${originLocation.lng},${originLocation.lat};${lngNum},${latNum}`;
+      const baseUrl = `${KALINGA_CONFIG.OSRM_SERVER}/route/v1/driving/${originLocation.lng},${originLocation.lat};${destLng},${destLat}`;
       const params = enableNavigation
         ? "?overview=full&geometries=geojson&steps=true&annotations=true"
         : "?overview=full&geometries=geojson";
@@ -1415,7 +1409,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
               coord[0],
               coord[1],
               blockadeLat,
-              blockadeLng
+              blockadeLng,
             );
             if (distance < 0.1) {
               // Within 100 meters
@@ -1537,7 +1531,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                 detourRoute.legs[0].steps
               ) {
                 const instructions = processRouteInstructions(
-                  detourRoute.legs[0].steps
+                  detourRoute.legs[0].steps,
                 );
                 setRouteInstructions(instructions);
                 setCurrentInstructionIndex(0);
@@ -1613,7 +1607,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         false,
         isNavigating,
         true,
-        currentLocation
+        currentLocation,
       );
     },
     [
@@ -1623,7 +1617,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
       isNavigating,
       isRecalculatingRoute,
       lastDeviationTimestamp,
-    ]
+    ],
   );
 
   // Process OSRM route steps into turn-by-turn instructions
@@ -1660,7 +1654,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           break;
         case "roundabout":
           instruction = `Take the ${getOrdinal(
-            maneuver.exit || 1
+            maneuver.exit || 1,
           )} exit at the roundabout onto ${step.name || "the road"}`;
           icon = "🔄";
           break;
@@ -1759,7 +1753,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         }
         // Timeout errors are expected on desktop - no logging needed
       },
-      options
+      options,
     );
 
     setHighAccuracyWatchId(watchId);
@@ -1778,7 +1772,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
         currentLocation.lat,
         currentLocation.lng,
         coord[0],
-        coord[1]
+        coord[1],
       );
       if (distance < minDistance) {
         minDistance = distance;
@@ -1801,7 +1795,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           currentLocation.lat,
           currentLocation.lng,
           currentInstruction.coordinates[0][0],
-          currentInstruction.coordinates[0][1]
+          currentInstruction.coordinates[0][1],
         ) * 1000; // Convert to meters
 
       setDistanceToNextTurn(Math.round(distanceToTurn));
@@ -1902,7 +1896,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
     // Try to snap to nearest road using OSRM
     try {
       const response = await fetch(
-        `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`
+        `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`,
       );
       const data = await response.json();
 
@@ -1980,7 +1974,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
             severity: blockadeForm.severity,
             reported_by: user.id,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -2012,7 +2006,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   const removeBlockade = async (blockadeId, blockadeTitle) => {
     if (
       !confirm(
-        `Are you sure you want to remove the blockade "${blockadeTitle}"? This action cannot be undone.`
+        `Are you sure you want to remove the blockade "${blockadeTitle}"? This action cannot be undone.`,
       )
     ) {
       return;
@@ -2031,7 +2025,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           body: JSON.stringify({
             removed_by: user.id,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -2041,7 +2035,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
           data.message +
             (data.blockade
               ? ` by ${data.blockade.removed_by} at ${data.blockade.removed_at_human}`
-              : "")
+              : ""),
         );
 
         // Refresh blockades
@@ -2070,10 +2064,8 @@ export default function HospitalMap({ embedded = false, className = "" }) {
   };
 
   const centerMapOnLocation = (lat, lng) => {
-    const latNum = parseFloat(lat);
-    const lngNum = parseFloat(lng);
-    if (map && Number.isFinite(latNum) && Number.isFinite(lngNum)) {
-      map.flyTo([latNum, lngNum], 17, {
+    if (map && lat && lng) {
+      map.flyTo([lat, lng], 17, {
         animate: true,
         duration: 1.2,
       });
@@ -2266,7 +2258,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                     onClick={() => {
                       centerMapOnLocation(
                         blockade.start_lat,
-                        blockade.start_lng
+                        blockade.start_lng,
                       );
                       setShowBlockadesList(false);
                     }}
@@ -2761,10 +2753,7 @@ export default function HospitalMap({ embedded = false, className = "" }) {
                     key={index}
                     className="p-3 border rounded-lg hover:bg-gray-50 cursor-pointer"
                     onClick={() =>
-                      drawRoute(
-                        blockade.latitude ?? blockade.start_lat,
-                        blockade.longitude ?? blockade.start_lng
-                      )
+                      drawRoute(blockade.latitude, blockade.longitude)
                     }
                   >
                     <div className="font-semibold text-red-600 text-sm">

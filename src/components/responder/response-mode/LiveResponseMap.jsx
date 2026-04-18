@@ -27,6 +27,10 @@ import { useBlockades } from "../../../hooks/useBlockades";
 import TurnByTurnNavigation from "./TurnByTurnNavigation";
 import { useResponderLocationBroadcast } from "../../../hooks/useResponderLocationBroadcast";
 import api from "../../../services/api";
+import {
+  createRouteLog,
+  appendRouteDeviation,
+} from "../../../services/routeLogService";
 import { useAuth } from "../../../context/AuthContext";
 import blockadeService from "../../../services/blockadeService";
 
@@ -41,6 +45,8 @@ const DETOUR_OFFSETS_METERS = [50, 100, 200, 300, 500];
 const DETOUR_MAX_DISTANCE_MULTIPLIER = 1.3;
 const DETOUR_MAX_CANDIDATES = 100;
 const DETOUR_SNAP_DISTANCE_METERS = 600;
+const ROUTE_DEVIATION_MIN_INTERVAL_MS = 10000;
+const ROUTE_PREVIEW_REFRESH_MS = 1200;
 const DEGREE_IN_RADIANS = Math.PI / 180;
 const EARTH_RADIUS_METERS = 6378137;
 
@@ -799,12 +805,15 @@ export default function LiveResponseMap({
 }) {
   const [responderPosition, setResponderPosition] = useState(null);
   const [isSimulatingResponder, setIsSimulatingResponder] = useState(false);
+  const [dragMarkerEnabled, setDragMarkerEnabled] = useState(false);
   const liveResponderRef = useRef(null);
   const isSimulatingRef = useRef(false);
   const [routePoints, setRoutePoints] = useState(null);
   const [routeLoading, setRouteLoading] = useState(false);
   const [routeError, setRouteError] = useState(null);
   const [routeSelection, setRouteSelection] = useState(null);
+  const [activeRouteLogId, setActiveRouteLogId] = useState(null);
+  const [pendingManualDeviation, setPendingManualDeviation] = useState(null);
   const [routeAlert, setRouteAlert] = useState(null);
   const [navigationEnabled, setNavigationEnabled] = useState(false);
   useEffect(() => {
@@ -828,6 +837,10 @@ export default function LiveResponseMap({
   const [reportCoords, setReportCoords] = useState(null);
   const [removingBlockadeId, setRemovingBlockadeId] = useState(null);
   const transportNavTriggeredRef = useRef(false);
+  const routeSessionStartedAtRef = useRef(null);
+  const routeSessionKeyRef = useRef(null);
+  const lastDeviationLoggedAtRef = useRef(0);
+  const lastDragPreviewUpdateAtRef = useRef(0);
   const { user } = useAuth();
 
   const canManageBlockades = useMemo(() => {
@@ -845,6 +858,7 @@ export default function LiveResponseMap({
   } = useResponderLocationBroadcast({
     incidentId: incident?.id,
     enabled:
+      !isSimulatingResponder &&
       !!incident &&
       ["acknowledged", "en_route", "on_scene", "transporting"].includes(
         incident?.status,
@@ -854,6 +868,10 @@ export default function LiveResponseMap({
 
   // Keep map responder state in sync with the broadcast hook (if it produces a position)
   useEffect(() => {
+    if (isSimulatingResponder) {
+      return;
+    }
+
     const normalizedBroadcastPosition = toLatLngTuple(broadcastPosition);
     if (normalizedBroadcastPosition) {
       setResponderPosition(normalizedBroadcastPosition);
@@ -861,7 +879,7 @@ export default function LiveResponseMap({
     if (typeof broadcastHeading !== "undefined" && broadcastHeading !== null) {
       setResponderHeading(broadcastHeading);
     }
-  }, [broadcastPosition, broadcastHeading]);
+  }, [broadcastPosition, broadcastHeading, isSimulatingResponder]);
 
   // Use the real-time blockades hook (WebSocket + polling fallback every 2 mins)
   const {
@@ -1086,14 +1104,46 @@ export default function LiveResponseMap({
 
   const routingKey = useMemo(() => {
     if (!activeStart || !activeDestination) return null;
-    const startKey = `${activeStart[0].toFixed(4)},${activeStart[1].toFixed(
-      4,
-    )}`;
+    const keyPrecision = isSimulatingResponder && dragMarkerEnabled ? 5 : 4;
+    const startKey = `${activeStart[0].toFixed(
+      keyPrecision,
+    )},${activeStart[1].toFixed(keyPrecision)}`;
     const destKey = `${activeDestination[0].toFixed(
-      4,
-    )},${activeDestination[1].toFixed(4)}`;
+      keyPrecision,
+    )},${activeDestination[1].toFixed(keyPrecision)}`;
     return `${startKey}|${destKey}`;
-  }, [activeStart, activeDestination]);
+  }, [
+    activeStart,
+    activeDestination,
+    dragMarkerEnabled,
+    isSimulatingResponder,
+  ]);
+
+  const routeSessionKey = useMemo(() => {
+    if (!routingKey || !incident?.id) {
+      return null;
+    }
+    return `${incident.id}|${mode}|${routingKey}`;
+  }, [incident?.id, mode, routingKey]);
+
+  useEffect(() => {
+    if (!routeSessionKey) {
+      setActiveRouteLogId(null);
+      setPendingManualDeviation(null);
+      routeSessionStartedAtRef.current = null;
+      routeSessionKeyRef.current = null;
+      lastDeviationLoggedAtRef.current = 0;
+      return;
+    }
+
+    if (routeSessionKeyRef.current !== routeSessionKey) {
+      setActiveRouteLogId(null);
+      setPendingManualDeviation(null);
+      routeSessionStartedAtRef.current = null;
+      routeSessionKeyRef.current = routeSessionKey;
+      lastDeviationLoggedAtRef.current = 0;
+    }
+  }, [routeSessionKey]);
 
   useEffect(() => {
     if (!routingKey) {
@@ -1219,6 +1269,132 @@ export default function LiveResponseMap({
       }
     }
   }, [routeSelection, isBroadcasting, broadcast]);
+
+  useEffect(() => {
+    const persistRouteLog = async () => {
+      const normalizedRoutePoints = Array.isArray(routePoints)
+        ? routePoints.map(toLatLngTuple).filter(Boolean)
+        : null;
+
+      if (!user?.id || !incident?.id || !activeStart || !activeDestination) {
+        return;
+      }
+
+      if (!normalizedRoutePoints || normalizedRoutePoints.length < 2) {
+        return;
+      }
+
+      const selectedRoute = routeSelection?.selected?.route ?? null;
+      const routeDistance =
+        selectedRoute?.distance ?? routeSelection?.selected?.distance ?? null;
+      const routeDuration =
+        selectedRoute?.duration ?? routeSelection?.selected?.duration ?? null;
+
+      if (!activeRouteLogId) {
+        try {
+          const startedAt =
+            routeSessionStartedAtRef.current || new Date().toISOString();
+          const response = await createRouteLog({
+            start_lat: activeStart[0],
+            start_lng: activeStart[1],
+            dest_lat: activeDestination[0],
+            dest_lng: activeDestination[1],
+            route_path: normalizedRoutePoints,
+            distance: routeDistance,
+            duration: routeDuration,
+            started_at: startedAt,
+            session_identifier: routeSessionKey || undefined,
+            metadata: {
+              source: "live_response_map",
+              incident_id: incident.id,
+              mode,
+              rerouted: Boolean(routeSelection?.rerouted),
+              blockades_present: Boolean(routeSelection?.blockadesPresent),
+              selected_conflict_count:
+                routeSelection?.selected?.conflicts?.length ?? 0,
+            },
+          });
+
+          const logId = response?.route_log?.id;
+          if (logId) {
+            setActiveRouteLogId(logId);
+            routeSessionStartedAtRef.current = startedAt;
+          }
+        } catch (error) {
+          console.warn("Failed to create route log", error);
+        }
+        return;
+      }
+
+      const hasDeviationSignal =
+        Boolean(pendingManualDeviation) ||
+        Boolean(routeSelection?.rerouted) ||
+        Boolean(routeSelection?.detourMeta) ||
+        (routeSelection?.selected?.conflicts?.length ?? 0) > 0;
+
+      if (!hasDeviationSignal) {
+        return;
+      }
+
+      const now = Date.now();
+      if (
+        now - lastDeviationLoggedAtRef.current <
+        ROUTE_DEVIATION_MIN_INTERVAL_MS
+      ) {
+        return;
+      }
+
+      try {
+        const deviationLocation = pendingManualDeviation
+          ? [pendingManualDeviation.lat, pendingManualDeviation.lng]
+          : safeResponderPosition || activeStart;
+        await appendRouteDeviation(activeRouteLogId, {
+          deviation_lat: deviationLocation[0],
+          deviation_lng: deviationLocation[1],
+          route_path: normalizedRoutePoints,
+          distance: routeDistance,
+          duration: routeDuration,
+          metadata: {
+            source: "live_response_map",
+            incident_id: incident.id,
+            mode,
+            event_type: pendingManualDeviation
+              ? `manual_${pendingManualDeviation.reason || "deviation"}`
+              : routeSelection?.rerouted
+                ? "reroute"
+                : "deviation",
+            root_cause: pendingManualDeviation
+              ? "manual_simulation"
+              : "system_detected",
+            detour_strategy: routeSelection?.detourMeta?.strategy ?? null,
+            detour_label: routeSelection?.detourMeta?.label ?? null,
+            selected_conflict_count:
+              routeSelection?.selected?.conflicts?.length ?? 0,
+          },
+        });
+        lastDeviationLoggedAtRef.current = now;
+        if (pendingManualDeviation) {
+          setPendingManualDeviation(null);
+        }
+      } catch (error) {
+        console.warn("Failed to append route deviation", error);
+      }
+    };
+
+    persistRouteLog();
+  }, [
+    activeDestination,
+    activeRouteLogId,
+    activeStart,
+    incident?.id,
+    mode,
+    routeSelection,
+    routeSessionKey,
+    routePoints,
+    pendingManualDeviation,
+    safeResponderPosition,
+    user?.id,
+  ]);
 
   useEffect(() => {
     if (!onRouteMetaChange) {
@@ -1470,6 +1646,14 @@ export default function LiveResponseMap({
     const [lat, lng] = next;
     setIsSimulatingResponder(true);
     setResponderPosition(next);
+    if (options.reason === "drag") {
+      setPendingManualDeviation({
+        lat,
+        lng,
+        reason: "drag",
+        occurredAt: new Date().toISOString(),
+      });
+    }
 
     if (options.centerMap !== false && mapRef.current) {
       try {
@@ -1525,7 +1709,26 @@ export default function LiveResponseMap({
     })();
   };
 
+  const handleSimulatedLocationPreview = (coords) => {
+    if (!coords) return;
+    const next = toLatLngTuple([coords.lat, coords.lng]);
+    if (!next) {
+      return;
+    }
+
+    const now = Date.now();
+    // Keep route updates responsive while preventing excessive OSRM requests.
+    if (now - lastDragPreviewUpdateAtRef.current < ROUTE_PREVIEW_REFRESH_MS) {
+      return;
+    }
+
+    lastDragPreviewUpdateAtRef.current = now;
+    setIsSimulatingResponder(true);
+    setResponderPosition(next);
+  };
+
   const handleStopSimulatedLocation = () => {
+    setDragMarkerEnabled(false);
     setIsSimulatingResponder(false);
     const fallback =
       toLatLngTuple(liveResponderRef.current) ||
@@ -1543,6 +1746,14 @@ export default function LiveResponseMap({
           console.warn("StopSimulation: flyTo failed", e);
         }
       }
+    }
+  };
+
+  const handleToggleDragMarker = (enabled) => {
+    setDragMarkerEnabled(Boolean(enabled));
+    if (enabled) {
+      // Enter simulation mode immediately so dragging won't be overwritten by live GPS.
+      setIsSimulatingResponder(true);
     }
   };
 
@@ -1626,6 +1837,8 @@ export default function LiveResponseMap({
                   : null
             }
             isActive={isSimulatingResponder}
+            dragMarkerEnabled={dragMarkerEnabled}
+            onToggleDragMarker={handleToggleDragMarker}
             onLocationChange={handleSimulatedLocationChange}
             onStopSimulation={handleStopSimulatedLocation}
             buttonLabel="Simulate responder"
@@ -1660,7 +1873,36 @@ export default function LiveResponseMap({
           )}
 
           {safeResponderPosition && (
-            <Marker position={safeResponderPosition} icon={responderMarkerIcon}>
+            <Marker
+              position={safeResponderPosition}
+              icon={responderMarkerIcon}
+              draggable={isSimulatingResponder && dragMarkerEnabled}
+              eventHandlers={{
+                dragstart: () => {
+                  setIsSimulatingResponder(true);
+                },
+                drag: (event) => {
+                  const latlng = event?.target?.getLatLng?.();
+                  if (!latlng) {
+                    return;
+                  }
+                  handleSimulatedLocationPreview({
+                    lat: latlng.lat,
+                    lng: latlng.lng,
+                  });
+                },
+                dragend: (event) => {
+                  const latlng = event?.target?.getLatLng?.();
+                  if (!latlng) {
+                    return;
+                  }
+                  handleSimulatedLocationChange(
+                    { lat: latlng.lat, lng: latlng.lng },
+                    { centerMap: false, reason: "drag" },
+                  );
+                },
+              }}
+            >
               <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                 Responder location
               </Tooltip>

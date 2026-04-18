@@ -298,53 +298,6 @@ const DOWNLOAD_ICON_SVG = (
 );
 
 // --- Vitals Mock Data ---
-const vitalsData = [
-  {
-    id: "RM023271",
-    date: "2024-11-20",
-    temp: 38.1,
-    hr: 66,
-    spo2: 85,
-    complaint: "Difficulty breathing",
-    mental: "A (Alert)",
-    level: "medium",
-    doctor: "Pulmonologist",
-  },
-  {
-    id: "RM023271",
-    date: "2024-11-15",
-    temp: 37.8,
-    hr: 64,
-    spo2: 99,
-    complaint: "Dizziness",
-    mental: "A (Alert)",
-    level: "medium",
-    doctor: "Neurologist",
-  },
-  {
-    id: "RM023271",
-    date: "2024-11-10",
-    temp: 39.1,
-    hr: 103,
-    spo2: 86,
-    complaint: "Chest pain",
-    mental: "V (Verbal)",
-    level: "medium",
-    doctor: "Cardiologist",
-  },
-  {
-    id: "RM023271",
-    date: "2024-11-05",
-    temp: 37.5,
-    hr: 74,
-    spo2: 90,
-    complaint: "Chest pain",
-    mental: "P (Pain)",
-    level: "medium",
-    doctor: "Cardiologist",
-  },
-];
-
 // --- Main Component ---
 
 export default function PatientDash() {
@@ -353,6 +306,10 @@ export default function PatientDash() {
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const [vitalsData, setVitalsData] = useState([]);
+  const [isVitalsLoading, setIsVitalsLoading] = useState(true);
+  const [vitalsError, setVitalsError] = useState(null);
 
   const [dateFrom, setDateFrom] = useState("2024-01-01");
   const [dateTo, setDateTo] = useState("2025-07-10");
@@ -389,8 +346,54 @@ export default function PatientDash() {
     }
   };
 
+  const fetchVitals = async () => {
+    setIsVitalsLoading(true);
+    setVitalsError(null);
+    try {
+      const response = await api.get("/my-patient-care-reports");
+      // Mapping the response data to match the expected structure
+      const mappedData = response.data.data.map((report) => {
+        const firstVital =
+          report.vitals_entries && report.vitals_entries.length > 0
+            ? report.vitals_entries[0]
+            : {};
+        const gcs =
+          report.gcs_entries && report.gcs_entries.length > 0
+            ? report.gcs_entries[0]
+            : {};
+
+        let mentalStatus = report.physiological_status?.mentalStatus || "-";
+        if (mentalStatus === "-" && gcs.eyes) {
+          mentalStatus = `GCS: ${parseInt(gcs.eyes) + parseInt(gcs.verbal || 0) + parseInt(gcs.motor || 0)}`;
+        }
+
+        const rDate =
+          report.dispatch_date || report.submitted_at || report.created_at;
+
+        return {
+          id: report.case_no || `PCR-${report.id}`,
+          date: rDate ? new Date(rDate).toLocaleDateString("en-US") : "-",
+          temp: firstVital.temp || "-",
+          hr: firstVital.pulse || "-",
+          spo2: firstVital.spo2 || "-",
+          complaint: report.noi_moi?.chiefComplaint || "-",
+          mental: mentalStatus,
+          level: report.patient_details?.priorityLevel || "medium",
+          doctor: report.user?.name || "Responder",
+        };
+      });
+      setVitalsData(mappedData);
+    } catch (err) {
+      setVitalsError("Failed to fetch triage history.");
+      console.error("fetchVitals Error:", err);
+    } finally {
+      setIsVitalsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchResults();
+    fetchVitals();
   }, []);
 
   const handleGoClick = () => {
@@ -540,12 +543,17 @@ export default function PatientDash() {
 
       <div
         className={`mt-2 text-center text-xs font-bold py-1 px-2 rounded ${
-          item.level === "medium"
+          item.level === "medium" ||
+          item.level === "medium-priority" ||
+          item.level === "moderate"
             ? "bg-orange-100 text-orange-800"
             : "bg-gray-100"
         }`}
       >
-        Level: {item.level.toUpperCase()}
+        Level:{" "}
+        {item.level && typeof item.level === "string"
+          ? item.level.toUpperCase()
+          : item.level}
       </div>
     </div>
   );
@@ -574,9 +582,25 @@ export default function PatientDash() {
             </div>
             {/* Mobile Vitals View */}
             <div className="md:hidden">
-              {vitalsData.slice(0, 5).map((item, idx) => (
-                <MobileVitalsCard key={idx} item={item} />
-              ))}
+              {isVitalsLoading ? (
+                <div className="text-center py-4 text-gray-500">
+                  Loading triage history...
+                </div>
+              ) : vitalsError ? (
+                <div className="text-center py-4 text-red-500">
+                  {vitalsError}
+                </div>
+              ) : vitalsData.length > 0 ? (
+                vitalsData
+                  .slice(0, 5)
+                  .map((item, idx) => (
+                    <MobileVitalsCard key={idx} item={item} />
+                  ))
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  No triage history found.
+                </div>
+              )}
             </div>
             {/* Desktop Vitals Table */}
             <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200 min-w-0">
@@ -613,41 +637,73 @@ export default function PatientDash() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white">
-                  {vitalsData.slice(0, 5).map((item, idx) => (
-                    <tr
-                      key={idx}
-                      className="hover:bg-gray-50 transition text-center"
-                    >
-                      <td className="px-2 py-3 font-medium text-green-700">
-                        {item.id}
-                      </td>
-                      <td className="px-2 py-3 text-primary">{item.date}</td>
-                      <td className="px-1 py-3 text-primary">{item.temp}</td>
-                      <td className="px-1 py-3 text-primary">{item.hr}</td>
-                      <td className="px-1 py-3 font-bold text-green-600">
-                        {item.spo2}
-                      </td>
+                  {isVitalsLoading ? (
+                    <tr>
                       <td
-                        className="px-2 py-3 max-w-[100px] truncate text-primary"
-                        title={item.complaint}
+                        colSpan={9}
+                        className="py-4 text-center text-gray-500"
                       >
-                        {item.complaint}
-                      </td>
-                      <td className="px-2 py-3 text-primary">{item.mental}</td>
-                      <td
-                        className={`px-2 py-3 font-bold ${
-                          item.level === "medium"
-                            ? "bg-orange-50 text-[#C05621]"
-                            : ""
-                        }`}
-                      >
-                        {item.level}
-                      </td>
-                      <td className="px-2 py-3 text-green-800 break-words">
-                        {item.doctor}
+                        Loading triage history...
                       </td>
                     </tr>
-                  ))}
+                  ) : vitalsError ? (
+                    <tr>
+                      <td colSpan={9} className="py-4 text-center text-red-500">
+                        {vitalsError}
+                      </td>
+                    </tr>
+                  ) : vitalsData.length > 0 ? (
+                    vitalsData.slice(0, 5).map((item, idx) => (
+                      <tr
+                        key={idx}
+                        className="hover:bg-gray-50 transition text-center"
+                      >
+                        <td className="px-2 py-3 font-medium text-green-700">
+                          {item.id}
+                        </td>
+                        <td className="px-2 py-3 text-primary">{item.date}</td>
+                        <td className="px-1 py-3 text-primary">{item.temp}</td>
+                        <td className="px-1 py-3 text-primary">{item.hr}</td>
+                        <td className="px-1 py-3 font-bold text-green-600">
+                          {item.spo2}
+                        </td>
+                        <td
+                          className="px-2 py-3 max-w-[100px] truncate text-primary"
+                          title={item.complaint}
+                        >
+                          {item.complaint}
+                        </td>
+                        <td className="px-2 py-3 text-primary">
+                          {item.mental}
+                        </td>
+                        <td
+                          className={`px-2 py-3 font-bold ${
+                            item.level === "medium" ||
+                            item.level === "medium-priority" ||
+                            item.level === "moderate"
+                              ? "bg-orange-50 text-[#C05621]"
+                              : ""
+                          }`}
+                        >
+                          {item.level && typeof item.level === "string"
+                            ? item.level.toUpperCase()
+                            : item.level}
+                        </td>
+                        <td className="px-2 py-3 text-green-800 break-words">
+                          {item.doctor}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        className="py-4 text-center text-gray-500"
+                      >
+                        No triage history found.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -543,7 +543,7 @@ class IncidentApiController extends Controller
         ], true);
 
         Conversation::whereKey($incident->conversation_id)->update([
-            'is_archived' => $shouldArchive,
+            'is_archived' => $shouldArchive ? 'true' : 'false',
             'archived_at' => $shouldArchive ? now() : null,
         ]);
     }
@@ -611,7 +611,7 @@ class IncidentApiController extends Controller
         $conversation = Conversation::query()
             ->where('user_id1', $pair[0])
             ->where('user_id2', $pair[1])
-            ->where('is_archived', false)
+            ->where('is_archived', 'false')
             ->first();
 
         if ($conversation) {
@@ -621,7 +621,7 @@ class IncidentApiController extends Controller
         return Conversation::create([
             'user_id1' => $pair[0],
             'user_id2' => $pair[1],
-            'is_archived' => false,
+            'is_archived' => 'false',
         ]);
     }
 

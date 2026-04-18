@@ -2,423 +2,123 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin User
-        User::updateOrCreate(
-            ['email' => 'admin@kalinga.com'],
+        $password = Hash::make('password123');
+
+        // Admin users
+        $this->seedUsers([
             [
                 'name' => 'Admin User',
-                'password' => Hash::make('password123'),
+                'email' => 'admin@kalinga.com',
                 'role' => 'admin',
-                'phone' => '09171234567',
-                'is_active' => true,
+                'phone' => '09170000001',
+                'password' => $password,
+                'is_active' => 'true',
                 'verification_status' => 'verified',
-            ]
-        );
+            ],
+        ]);
 
-              // Logistics User
-        User::updateOrCreate(
-            ['email' => 'logistics_unverified@kalinga.com'],
+        // Logistics users
+        $this->seedUsers([
             [
-                'name' => 'Logistics Unverified',
-                'password' => Hash::make('password123'),
+                'name' => 'Logistics One',
+                'email' => 'logistics1@kalinga.com',
                 'role' => 'logistics',
-                'phone' => '09171234568',
-                'is_active' => true,
-                'verification_status' => null,
-            ]
-        );
+                'phone' => '09170000011',
+                'password' => $password,
+                'is_active' => 'true',
+                'verification_status' => 'verified',
+            ],
+            [
+                'name' => 'Logistics Two',
+                'email' => 'logistics2@kalinga.com',
+                'role' => 'logistics',
+                'phone' => '09170000012',
+                'password' => $password,
+                'is_active' => 'true',
+                'verification_status' => 'verified',
+            ],
+        ]);
 
-            // Logistics Verified
-            $logisticsVerified = User::updateOrCreate(
-                ['email' => 'logistics_verified@kalinga.com'],
+        // Responder users (20)
+        $responderUsers = [];
+        for ($i = 1; $i <= 20; $i++) {
+            $responderUsers[] = [
+                'name' => 'Responder ' . $this->numberWord($i),
+                'email' => "responder{$i}@kalinga.com",
+                'role' => 'responder',
+                'phone' => sprintf('091700001%02d', $i),
+                'password' => $password,
+                'is_active' => 'true',
+                'verification_status' => 'verified',
+            ];
+        }
+        $this->seedUsers($responderUsers);
+
+        // Patient users (50)
+        $patientUsers = [];
+        for ($i = 1; $i <= 50; $i++) {
+            $patientUsers[] = [
+                'name' => 'Patient ' . $this->numberWord($i),
+                'email' => "patient{$i}@kalinga.com",
+                'role' => 'patient',
+                'phone' => sprintf('091700002%02d', $i),
+                'password' => $password,
+                'is_active' => 'true',
+                'verification_status' => 'verified',
+            ];
+        }
+        $this->seedUsers($patientUsers);
+    }
+
+    private function seedUsers(array $users): void
+    {
+        foreach ($users as $user) {
+            $userModel = User::updateOrCreate(
+                ['email' => $user['email']],
                 [
-                    'name' => 'Logistics Verified',
-                    'password' => Hash::make('password123'),
-                    'role' => 'logistics',
-                    'phone' => '09171234568',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
+                    'name' => $user['name'],
+                    'password' => $user['password'],
+                    'role' => $user['role'],
+                    'phone' => $user['phone'],
+                    // String 'true' avoids casting mismatch with current Supabase pooler setup.
+                    'is_active' => $user['is_active'],
+                    'verification_status' => $user['verification_status'],
                 ]
             );
 
-            // Attach logistics_verified to Hospital 1 (Central)
-            $logisticsVerified->hospitals()->syncWithoutDetaching([1]);
-
-            $hospAdmin = User::updateOrCreate(
-                ['email' => 'admin@centralhospital.gov.ph'],
-                [
-                    'name' => 'Central Hospital Admin',
-                    'password' => Hash::make('password123'),
-                    'role' => 'hospital_admin',
-                    'phone' => '09171234567',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-
-            // Attach hospital_admin to Hospital 1
-            $hospAdmin->hospitals()->sync([1]);
-
-            // ── Admin gets access to ALL hospitals ──
-            $admin = User::where('email', 'admin@kalinga.com')->first();
-            if ($admin) {
-                $allHospitalIds = \App\Models\Hospital::pluck('id')->toArray();
-                $admin->hospitals()->syncWithoutDetaching($allHospitalIds);
+            // Ensure Logistics users are assigned to a hospital so they don't get 403 errors on their Forecast API scopes.
+            if ($userModel->role === 'logistics' && $userModel->hospitals()->count() === 0) {
+                // Attach to the first hospital if it exists, otherwise leave until hospitals exist
+                $hospital = \App\Models\Hospital::first();
+                if ($hospital) {
+                    $userModel->hospitals()->attach($hospital->id);
+                }
             }
+        }
+    }
 
-        // Responder User
-        User::updateOrCreate(
-            ['email' => 'responder_unverified@kalinga.com'],
-            [
-                'name' => 'Responder Unverified',
-                'password' => Hash::make('password123'),
-                'role' => 'responder',
-                'phone' => '09171234569',
-                'is_active' => true,
-                'verification_status' => null,
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'responder_verified@kalinga.com'],
-            [
-                'name' => 'Responder Verified',
-                'password' => Hash::make('password123'),
-                'role' => 'responder',
-                'phone' => '09171234569',
-                'is_active' => true,
-                'verification_status' => 'verified',
-            ]
-        );
-
-        // Additional Verified Responders
-        User::updateOrCreate(
-            ['email' => 'jane.doe@kalinga.com'],
-            [
-                'name' => 'Jane Doe',
-                'password' => Hash::make('password123'),
-                'role' => 'responder',
-                'phone' => '09271112233',
-                'is_active' => true,
-                'verification_status' => 'verified',
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'john.smith@kalinga.com'],
-            [
-                'name' => 'John Smith',
-                'password' => Hash::make('password123'),
-                'role' => 'responder',
-                'phone' => '09282223344',
-                'is_active' => true,
-                'verification_status' => 'verified',
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'maria.clara@kalinga.com'],
-            [
-                'name' => 'Maria Clara',
-                'password' => Hash::make('password123'),
-                'role' => 'responder',
-                'phone' => '09293334455',
-                'is_active' => true,
-                'verification_status' => 'verified',
-            ]
-        );
-
-
-        // Patient User
-        User::updateOrCreate(
-            ['email' => 'patient_unverified@kalinga.com'],
-            [
-                'name' => 'Patient Unverified',
-                'password' => Hash::make('password123'),
-                'role' => 'patient',
-                'phone' => '09171234570',
-                'is_active' => true,
-                'verification_status' => null,
-            ]
-        );
-
-        User::updateOrCreate(
-            ['email' => 'patient_verified@kalinga.com'],
-            [
-                'name' => 'Patient Verified',
-                'password' => Hash::make('password123'),
-                'role' => 'patient',
-                'phone' => '09171234571',
-                'is_active' => true,
-                'verification_status' => 'verified',
-                'patientId' => 'HN-0012345',
-                'dob' => '1985-10-15',
-                'bloodType' => 'O+',
-                'address' => '456 Rizal St., Valenzuela, Metro Manila',
-                'admitted' => '2025-10-20',
-                'emergencyContactName' => 'Juan Dela Cruz',
-                'emergencyContactPhone' => '0918-555-4321',
-            ]
-        );
-
-
-            // Additional requested patients and logistics accounts
-            User::updateOrCreate(
-                ['email' => 'angelo.hermano.patient@kalinga.com'],
-                [
-                    'name' => 'Angelo Hermano',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09190000001',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                    'patientId' => 'P-1001',
-                    'dob' => '1990-03-21',
-                    'bloodType' => 'A+',
-                ]
-            );
-
-            $angeloLogistics = User::updateOrCreate(
-                ['email' => 'angelo.hermano.logistics@kalinga.com'],
-                [
-                    'name' => 'Angelo Hermano',
-                    'password' => Hash::make('password123'),
-                    'role' => 'logistics',
-                    'phone' => '09191000001',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-            // Attach to Hospital 2 (Emergency Field)
-            $angeloLogistics->hospitals()->syncWithoutDetaching([2]);
-
-            User::updateOrCreate(
-                ['email' => 'elisha.borromeo.patient@kalinga.com'],
-                [
-                    'name' => 'Elisha Borromeo',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09190000002',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                    'patientId' => 'P-1002',
-                    'dob' => '1988-07-12',
-                    'bloodType' => 'B+',
-                ]
-            );
-
-            $elishaLogistics = User::updateOrCreate(
-                ['email' => 'elisha.borromeo.logistics@kalinga.com'],
-                [
-                    'name' => 'Elisha Borromeo',
-                    'password' => Hash::make('password123'),
-                    'role' => 'logistics',
-                    'phone' => '09191000002',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-            // Attach to Hospital 2 (Emergency Field)
-            $elishaLogistics->hospitals()->syncWithoutDetaching([2]);
-
-            User::updateOrCreate(
-                ['email' => 'evan.christjohn.camba.patient@kalinga.com'],
-                [
-                    'name' => 'Evan Christ John Camba',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09190000003',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                    'patientId' => 'P-1003',
-                    'dob' => '1995-01-30',
-                    'bloodType' => 'O-',
-                ]
-            );
-
-            User::updateOrCreate(
-                ['email' => 'evan.christjohn.camba.responder@kalinga.com'],
-                [
-                    'name' => 'Evan Christ John Camba',
-                    'password' => Hash::make('password123'),
-                    'role' => 'responder',
-                    'phone' => '09191000003',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-
-            User::updateOrCreate(
-                ['email' => 'genryv.cachero.patient@kalinga.com'],
-                [
-                    'name' => 'Genryv Cachero',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09190000004',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                    'patientId' => 'P-1004',
-                    'dob' => '1982-11-05',
-                    'bloodType' => 'AB+',
-                ]
-            );
-
-            $genryvLogistics = User::updateOrCreate(
-                ['email' => 'genryv.cachero.logistics@kalinga.com'],
-                [
-                    'name' => 'Genryv Cachero',
-                    'password' => Hash::make('password123'),
-                    'role' => 'logistics',
-                    'phone' => '09191000004',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-            // Attach to Hospital 3 (St. Luke's)
-            $genryvLogistics->hospitals()->syncWithoutDetaching([3]);
-
-            User::updateOrCreate(
-                ['email' => 'jared.posada.patient@kalinga.com'],
-                [
-                    'name' => 'Jared Posada',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09191000005',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-
-            $jaredLogistics = User::updateOrCreate(
-                ['email' => 'jared.posada.logistics@kalinga.com'],
-                [
-                    'name' => 'Jared Posada',
-                    'password' => Hash::make('password123'),
-                    'role' => 'logistics',
-                    'phone' => '09191000005',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-            // Attach to Hospital 3 (St. Luke's)
-            $jaredLogistics->hospitals()->syncWithoutDetaching([3]);
-
-            User::updateOrCreate(
-                ['email' => 'kayann.nicolette.dimalanta.patient@kalinga.com'],
-                [
-                    'name' => 'Kay-Ann Nicolette Dimalanta',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09190000006',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                    'patientId' => 'P-1006',
-                    'dob' => '1992-05-18',
-                    'bloodType' => 'A-',
-                ]
-            );
-
-            User::updateOrCreate(
-                ['email' => 'kayann.nicolette.dimalanta.responder@kalinga.com'],
-                [
-                    'name' => 'Kay-Ann Nicolette Dimalanta',
-                    'password' => Hash::make('password123'),
-                    'role' => 'responder',
-                    'phone' => '09191000006',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-
-            User::updateOrCreate(
-                ['email' => 'keenan.claude.mimis.patient@kalinga.com'],
-                [
-                    'name' => 'Keenan Claude Mimis',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09190000007',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                    'patientId' => 'P-1007',
-                    'dob' => '1987-02-02',
-                    'bloodType' => 'B-',
-                ]
-            );
-
-            $keenanLogistics = User::updateOrCreate(
-                ['email' => 'keenan.claude.mimis.logistics@kalinga.com'],
-                [
-                    'name' => 'Keenan Claude Mimis',
-                    'password' => Hash::make('password123'),
-                    'role' => 'logistics',
-                    'phone' => '09191000007',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-            // Attach to Hospital 1 (Central)
-            $keenanLogistics->hospitals()->syncWithoutDetaching([1]);
-
-            User::updateOrCreate(
-                ['email' => 'mikha.villaraza.patient@kalinga.com'],
-                [
-                    'name' => 'Mikha Villaraza',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09190000008',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                    'patientId' => 'P-1008',
-                    'dob' => '1998-12-09',
-                    'bloodType' => 'O+',
-                ]
-            );
-
-            User::updateOrCreate(
-                ['email' => 'mikha.villaraza.responder@kalinga.com'],
-                [
-                    'name' => 'Mikha Villaraza',
-                    'password' => Hash::make('password123'),
-                    'role' => 'responder',
-                    'phone' => '09191000008',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
-
-            User::updateOrCreate(
-                ['email' => 'precious.joy.lauresta.patient@kalinga.com'],
-                [
-                    'name' => 'Precious Joy Lauresta',
-                    'password' => Hash::make('password123'),
-                    'role' => 'patient',
-                    'phone' => '09190000009',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                    'patientId' => 'P-1009',
-                    'dob' => '2000-08-25',
-                    'bloodType' => 'AB-',
-                ]
-            );
-
-            User::updateOrCreate(
-                ['email' => 'precious.joy.lauresta.responder@kalinga.com'],
-                [
-                    'name' => 'Precious Joy Lauresta',
-                    'password' => Hash::make('password123'),
-                    'role' => 'responder',
-                    'phone' => '09191000009',
-                    'is_active' => true,
-                    'verification_status' => 'verified',
-                ]
-            );
+    private function numberWord(int $number): string
+    {
+        return match ($number) {
+            1 => 'One',
+            2 => 'Two',
+            3 => 'Three',
+            4 => 'Four',
+            5 => 'Five',
+            6 => 'Six',
+            7 => 'Seven',
+            8 => 'Eight',
+            9 => 'Nine',
+            10 => 'Ten',
+            default => (string) $number,
+        };
     }
 }

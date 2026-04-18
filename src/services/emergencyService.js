@@ -4,6 +4,9 @@ import api from "./api";
 // to the backend incidents endpoint. Adjust the endpoint if your API
 // exposes a different route for emergency alerts.
 export const submitEmergencyReport = async (payload = {}) => {
+  const dispatchTime = Date.now();
+  console.log(`[SOS DISPATCH] Payload sent at: ${dispatchTime}`);
+
   const response = await api.post("/incidents", payload);
   return response.data;
 };

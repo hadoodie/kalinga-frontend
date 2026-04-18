@@ -55,7 +55,7 @@ export const NavbarB = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/");
+    window.location.assign("/#hero");
   };
 
   useEffect(() => {

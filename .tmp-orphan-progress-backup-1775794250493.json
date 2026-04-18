@@ -1,0 +1,64 @@
+[
+  {
+    "id": "5_FWFrVE5dPoNwqBmn9YnD",
+    "completedContent": [
+      "consys-lab-proj-proposal-1-pdf"
+    ],
+    "courseId": "FWFrVE5dPoNwqBmn9YnD",
+    "updatedAt": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1770050415,
+      "nanoseconds": 275000000
+    },
+    "certifiedAt": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1770050407,
+      "nanoseconds": 487000000
+    },
+    "userId": "5",
+    "assessmentResults": {
+      "quiz": {
+        "passed": true,
+        "percent": 100
+      },
+      "final": {
+        "percent": 100,
+        "passed": true
+      },
+      "pretest": {
+        "percent": 100,
+        "passed": true
+      }
+    }
+  },
+  {
+    "id": "5_aR4dlDdoXPGdSbmyoRwk",
+    "updatedAt": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1770025970,
+      "nanoseconds": 338000000
+    },
+    "certifiedAt": {
+      "type": "firestore/timestamp/1.0",
+      "seconds": 1770025970,
+      "nanoseconds": 338000000
+    },
+    "userId": "5",
+    "assessmentResults": {
+      "final": {
+        "percent": 100,
+        "passed": true
+      },
+      "pretest": {
+        "percent": 100,
+        "passed": true
+      },
+      "quiz": {
+        "percent": 100,
+        "passed": true
+      }
+    },
+    "courseId": "aR4dlDdoXPGdSbmyoRwk",
+    "completedContent": []
+  }
+]

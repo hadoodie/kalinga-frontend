@@ -10,7 +10,15 @@
  * @returns {string} The route path to navigate to
  */
 export const getDefaultRouteForRole = (role, user = null) => {
-  switch (role) {
+  // Try mapping the role object safely (sometimes role might be undefined or mismatched case)
+  const normalizedRole = (
+    role ||
+    user?.role ||
+    user?.user_type ||
+    ""
+  ).toLowerCase();
+
+  switch (normalizedRole) {
     case "admin":
       return "/admin";
 
@@ -18,7 +26,7 @@ export const getDefaultRouteForRole = (role, user = null) => {
       return "/logistics/dashboard";
 
     case "responder":
-      return "/responder";
+      return "/responder/dashboard";
 
     case "patient":
       // For patients, check verification status
@@ -42,6 +50,7 @@ export const getDefaultRouteForRole = (role, user = null) => {
       return "/verify-id";
 
     default:
+      // Fallback
       return "/patient/dashboard";
   }
 };
@@ -55,7 +64,12 @@ export const getDefaultRouteForRole = (role, user = null) => {
  * @param {number} options.delay - Delay in ms before navigation (default: 0)
  */
 export const navigateToRoleBasedRoute = (user, navigate, options = {}) => {
-  const { from = null, delay = 0 } = options;
+  let { from = null, delay = 0 } = options;
+
+  // Prevent routing back to public/auth pages accidentally
+  if (from === "/" || from === "/login") {
+    from = null;
+  }
 
   const doNavigation = () => {
     if (from) {

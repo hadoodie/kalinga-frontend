@@ -68,7 +68,7 @@ export default function Sidebar() {
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
-    navigate("/");
+    window.location.assign("/#hero");
     setMobileOpen(false);
   };
 

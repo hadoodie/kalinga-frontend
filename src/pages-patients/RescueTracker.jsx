@@ -244,11 +244,20 @@ export const RescueTracker = () => {
 
       const data = await response.json();
       if (data.code === "Ok" && data.routes?.[0]) {
-        const coords = data.routes[0].geometry.coordinates.map((c) => [
-          c[1],
-          c[0],
-        ]);
+        const bestRoute = data.routes[0];
+        const coords = bestRoute.geometry.coordinates.map((c) => [c[1], c[0]]);
         setRoutePoints(coords);
+
+        // Keep detail panel metrics synced from the latest computed route.
+        setResponderLocation((prev) =>
+          prev
+            ? {
+                ...prev,
+                eta: (bestRoute.duration || 0) / 60,
+                distance: (bestRoute.distance || 0) / 1000,
+              }
+            : prev,
+        );
       }
     } catch (err) {
       console.error("Failed to fetch route:", err);
@@ -330,7 +339,7 @@ export const RescueTracker = () => {
   useEffect(() => {
     pollIntervalRef.current = setInterval(() => {
       fetchRescueStatus(true);
-    }, 10000);
+    }, 5000);
 
     return () => {
       if (pollIntervalRef.current) {
@@ -421,6 +430,7 @@ export const RescueTracker = () => {
     vehicle: rescueData?.vehicle,
     status: rescueData?.incident?.status,
     hospitalName: rescueData?.hospital?.name,
+    lastUpdatedAt: lastUpdate,
   };
 
   return (
