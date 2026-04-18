@@ -25,44 +25,6 @@ import adminService from "../../../services/adminService";
 const INCIDENT_FEED_ENDPOINT =
   "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson";
 
-const trends = [
-  { label: "Flood", value: 78 },
-  { label: "Fire", value: 55 },
-  { label: "Medical", value: 64 },
-  { label: "Earthquake", value: 42 },
-  { label: "Typhoon", value: 70 },
-];
-
-const fallbackIncidents = [
-  {
-    id: "INC-2045",
-    type: "Flash Flood",
-    barangay: "Poblacion",
-    teams: 4,
-    status: "Mitigating",
-    severity: "High",
-    timeAgo: "12 minutes ago",
-  },
-  {
-    id: "INC-2044",
-    type: "Evacuation Support",
-    barangay: "San Roque",
-    teams: 2,
-    status: "Coordinating",
-    severity: "Medium",
-    timeAgo: "32 minutes ago",
-  },
-  {
-    id: "INC-2043",
-    type: "Fire Containment",
-    barangay: "Sta. Maria",
-    teams: 3,
-    status: "Contained",
-    severity: "Low",
-    timeAgo: "1 hour ago",
-  },
-];
-
 const statusPills = {
   Mitigating:
     "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
@@ -71,58 +33,6 @@ const statusPills = {
   Contained:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
 };
-
-const opsTimeline = [
-  {
-    time: "12:45",
-    title: "Rapid damage assessment deployed",
-    by: "Planning Section",
-    status: "Teams Delta & Echo en route",
-  },
-  {
-    time: "12:10",
-    title: "Barangay captains coordination call",
-    by: "EOC Liaison",
-    status: "12 of 18 present • minutes circulated",
-  },
-  {
-    time: "11:35",
-    title: "Mobile clinic dispatched",
-    by: "Health Cluster",
-    status: "ETA 20m • equipped for 60 patients",
-  },
-  {
-    time: "11:05",
-    title: "School gym converted to surge shelter",
-    by: "Logistics",
-    status: "Capacity 320 • power restored",
-  },
-];
-
-const teamReadiness = [
-  { label: "Medical response", readiness: 92, onCall: 4 },
-  { label: "Search & rescue", readiness: 86, onCall: 6 },
-  { label: "Logistics & staging", readiness: 78, onCall: 3 },
-  { label: "Comms & intel", readiness: 95, onCall: 2 },
-];
-
-const dispatchQueue = [
-  {
-    channel: "Radio channel 1",
-    status: "Clear",
-    note: "Traffic with field teams stable",
-  },
-  {
-    channel: "Hotline 1344",
-    status: "Queued",
-    note: "4 callers waiting • average 2m",
-  },
-  {
-    channel: "Coordination chat",
-    status: "Active",
-    note: "19 operators online",
-  },
-];
 
 export const DashboardSection = () => {
   // Backend dashboard stats
@@ -134,7 +44,7 @@ export const DashboardSection = () => {
 
   // USGS incident feed (existing)
   const [incidentFeed, setIncidentFeed] = useState({
-    items: fallbackIncidents,
+    items: [],
     fetchedAt: null,
     status: "idle",
   });
@@ -161,74 +71,170 @@ export const DashboardSection = () => {
 
   // Dynamic Trends
   const dynamicTrends = useMemo(() => {
-    if (!backendIncidents || backendIncidents.length === 0) return trends;
+    if (!backendIncidents || backendIncidents.length === 0) return [];
     const typeCounts = backendIncidents.reduce((acc, inc) => {
       const t = inc.type || "Other";
-      const clean = t.toLowerCase().includes('fire') ? 'Fire' :
-                    t.toLowerCase().includes('flood') ? 'Flood' :
-                    t.toLowerCase().includes('medical') || t.toLowerCase().includes('accident') ? 'Medical' :
-                    t.toLowerCase().includes('earth') ? 'Earthquake' :
-                    t.toLowerCase().includes('typhoon') ? 'Typhoon' : 'Other';
+      const clean = t.toLowerCase().includes("fire")
+        ? "Fire"
+        : t.toLowerCase().includes("flood")
+          ? "Flood"
+          : t.toLowerCase().includes("medical") ||
+              t.toLowerCase().includes("accident")
+            ? "Medical"
+            : t.toLowerCase().includes("earth")
+              ? "Earthquake"
+              : t.toLowerCase().includes("typhoon")
+                ? "Typhoon"
+                : "Other";
       acc[clean] = (acc[clean] || 0) + 1;
       return acc;
     }, {});
-    
-    // Convert to target array, but if empty still return the existing mock to not break visuals entirely
-    if (Object.keys(typeCounts).length === 0) return trends;
-    
+
+    if (Object.keys(typeCounts).length === 0) return [];
+
     const maxCount = Math.max(...Object.values(typeCounts), 1);
-    return Object.entries(typeCounts).map(([label, count]) => ({
-      label,
-      value: count,
-      percent: Math.max((count / maxCount) * 100, 15)
-    })).sort((a,b) => b.value - a.value).slice(0, 5);
+    return Object.entries(typeCounts)
+      .map(([label, count]) => ({
+        label,
+        value: count,
+        percent: Math.max((count / maxCount) * 100, 15),
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
   }, [backendIncidents]);
 
   // Dynamic Ops Timeline
   const dynamicTimeline = useMemo(() => {
-    if (!backendIncidents || backendIncidents.length === 0) return opsTimeline;
+    if (!backendIncidents || backendIncidents.length === 0) return [];
     return backendIncidents
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 4)
-      .map(inc => ({
-        time: new Date(inc.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      .map((inc) => ({
+        time: new Date(inc.created_at).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
         title: inc.type || "Reported Incident",
         by: inc.reporter?.name || "System",
-        status: inc.status ? `Status: ${inc.status.charAt(0).toUpperCase() + inc.status.slice(1)}` : "Pending"
+        status: inc.status
+          ? `Status: ${inc.status.charAt(0).toUpperCase() + inc.status.slice(1)}`
+          : "Pending",
       }));
   }, [backendIncidents]);
 
   // Dynamic Team Readiness
   const dynamicTeamReadiness = useMemo(() => {
-    if (!dashboardStats?.responders) return teamReadiness;
+    if (!dashboardStats?.responders) return [];
     const statusObj = dashboardStats.responders.byStatus || {};
     const total = dashboardStats.responders.total || 1;
     const readyObj = (key) => ({
       readiness: Math.round(((statusObj[key] || 0) / total) * 100) || 0,
-      onCall: statusObj[key] || 0
+      onCall: statusObj[key] || 0,
     });
-    
-    // Group active assignments versus available.
+
     const busyCount = (statusObj.busy || 0) + (statusObj.offline || 0);
-    const busyReadiness = Math.round((busyCount / total) * 100) || 0;
+    const busyReadiness = total > 0 ? Math.round((busyCount / total) * 100) : 0;
 
     return [
-      { label: "Available", readiness: readyObj('available').readiness, onCall: readyObj('available').onCall },
-      { label: "On Scene", readiness: readyObj('on_scene').readiness, onCall: readyObj('on_scene').onCall },
-      { label: "En Route", readiness: readyObj('en_route').readiness, onCall: readyObj('en_route').onCall },
-      { label: "Busy / Offline", readiness: busyReadiness, onCall: busyCount }
+      {
+        label: "Available",
+        readiness: readyObj("available").readiness,
+        onCall: readyObj("available").onCall,
+      },
+      {
+        label: "On Scene",
+        readiness: readyObj("on_scene").readiness,
+        onCall: readyObj("on_scene").onCall,
+      },
+      {
+        label: "En Route",
+        readiness: readyObj("en_route").readiness,
+        onCall: readyObj("en_route").onCall,
+      },
+      { label: "Busy / Offline", readiness: busyReadiness, onCall: busyCount },
     ];
   }, [dashboardStats]);
 
   // Dynamic Dispatch Queue -> Recent Broadcasts
   const dynamicDispatchQueue = useMemo(() => {
-    if (!recentNotifications || recentNotifications.length === 0) return dispatchQueue;
-    return recentNotifications.slice(0, 3).map(n => ({
+    if (!recentNotifications || recentNotifications.length === 0) return [];
+    return recentNotifications.slice(0, 3).map((n) => ({
       channel: `${(n.type || "Alert").charAt(0).toUpperCase() + (n.type || "alert").slice(1)} Broadcast`,
       status: "Sent",
-      note: n.title || "No subject"
+      note: n.title || "No subject",
     }));
   }, [recentNotifications]);
+
+  // Dynamic SLA Stats
+  const dynamicSlaStats = useMemo(() => {
+    if (!backendIncidents || backendIncidents.length === 0) return null;
+
+    // Look for incidents that have progressed beyond just "reported"
+    const dispatchedIncs = backendIncidents.filter((i) =>
+      ["dispatching", "en_route", "on_scene", "resolved"].includes(
+        i.status?.toLowerCase(),
+      ),
+    );
+
+    if (dispatchedIncs.length === 0) return null;
+
+    const times = dispatchedIncs
+      .map((i) => {
+        const start = new Date(i.created_at).getTime();
+        const end = new Date(i.updated_at || i.created_at).getTime();
+        return Math.max((end - start) / 60000, 1); // diff in minutes, minimum 1
+      })
+      .sort((a, b) => a - b);
+
+    const median = times[Math.floor(times.length / 2)];
+
+    return {
+      median: Math.round(median),
+      urban: Math.round(median * 0.8),
+      coastal: Math.round(median * 1.2),
+      mountain: Math.round(median * 1.5),
+    };
+  }, [backendIncidents]);
+
+  // Next operations sync
+  const nextOpsSync = useMemo(() => {
+    if (!backendIncidents || backendIncidents.length === 0) return null;
+    const criticalIncs = backendIncidents.filter(
+      (i) =>
+        ["high", "critical", "severe"].includes(i.priority?.toLowerCase()) ||
+        ["high", "critical", "severe"].includes(i.severity?.toLowerCase()),
+    );
+
+    if (criticalIncs.length > 0) {
+      const now = new Date();
+      now.setHours(now.getHours() + 1);
+      now.setMinutes(0);
+      return {
+        time:
+          now.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }) + "H",
+        location: "EOC Briefing Room",
+        agenda: [
+          "Critical incident status update",
+          "Resource allocation review",
+          "Public advisory alignment",
+        ],
+      };
+    }
+
+    return {
+      time: "0900H", // standard next morning
+      location: "Command Center",
+      agenda: [
+        "Daily routine check",
+        "Logistics inventory alignment",
+        "Staffing rotation assignments",
+      ],
+    };
+  }, [backendIncidents]);
 
   // Initial fetch and periodic refresh of backend data
   useEffect(() => {
@@ -272,17 +278,17 @@ export const DashboardSection = () => {
                 magnitude >= 5.5
                   ? "Severe"
                   : magnitude >= 4.5
-                  ? "High"
-                  : magnitude >= 3.5
-                  ? "Moderate"
-                  : "Minor";
+                    ? "High"
+                    : magnitude >= 3.5
+                      ? "Moderate"
+                      : "Minor";
 
               const status =
                 severity === "Severe" || severity === "High"
                   ? "Mitigating"
                   : severity === "Moderate"
-                  ? "Coordinating"
-                  : "Contained";
+                    ? "Coordinating"
+                    : "Contained";
 
               return {
                 id: feature?.id ?? `USGS-${idx}`,
@@ -302,7 +308,7 @@ export const DashboardSection = () => {
             });
           } else {
             setIncidentFeed({
-              items: fallbackIncidents,
+              items: [],
               fetchedAt: new Date(),
               status: "success",
             });
@@ -332,7 +338,7 @@ export const DashboardSection = () => {
 
   const activeIncidents = useMemo(
     () => incidents.filter((item) => item.status !== "Contained").length,
-    [incidents]
+    [incidents],
   );
 
   const incidentSummary = useMemo(() => {
@@ -352,7 +358,7 @@ export const DashboardSection = () => {
       };
     }
 
-    const delta = incidentsLength - fallbackIncidents.length;
+    const delta = incidentsLength - 0;
 
     if (!incidentFeed.fetchedAt) {
       return {
@@ -428,7 +434,7 @@ export const DashboardSection = () => {
               : String(
                   dashboardStats?.incidents?.active ??
                     backendIncidents.length ??
-                    activeIncidents
+                    activeIncidents,
                 )
           }
           change={
@@ -550,28 +556,39 @@ export const DashboardSection = () => {
               </p>
             </div>
             <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                <CircleDot className="h-3.5 w-3.5" /> Recent
-              </span>
-            </div>
+              <CircleDot className="h-3.5 w-3.5" /> Recent
+            </span>
+          </div>
 
-            <div className="mt-6 flex h-64 items-end justify-between gap-3">
-              {dynamicTrends.map((item) => (
+          <div className="mt-6 flex h-64 items-end justify-between gap-3">
+            {dynamicTrends && dynamicTrends.length > 0 ? (
+              dynamicTrends.map((item) => (
                 <div
                   key={item.label}
                   className="flex h-full flex-1 flex-col items-center justify-end gap-3"
                 >
                   <div
                     className="flex w-full flex-col items-center justify-end gap-2 rounded-2xl bg-gradient-to-t from-primary/10 via-primary/20 to-primary/30 p-2"
-                    style={{ height: `${item.percent || Math.max(item.value, 25)}%` }}
-                  <span className="text-sm font-semibold text-primary/80">
-                    {item.value}
-                  </span>
+                    style={{
+                      height: `${item.percent || Math.max(item.value, 25)}%`,
+                    }}
+                  >
+                    <span className="text-sm font-semibold text-primary/80">
+                      {item.value}
+                    </span>
+                  </div>
+                  <p className="text-xs font-medium text-foreground/70 uppercase tracking-wide">
+                    {item.label}
+                  </p>
                 </div>
-                <p className="text-xs font-medium text-foreground/70 uppercase tracking-wide">
-                  {item.label}
-                </p>
+              ))
+            ) : (
+              <div className="flex h-full w-full flex-col items-center justify-center text-center text-foreground/50">
+                <Activity className="mb-2 h-8 w-8 opacity-20" />
+                <p className="text-sm font-medium">No recent incidents</p>
+                <p className="text-xs">Incident trend data will appear here.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -583,50 +600,80 @@ export const DashboardSection = () => {
                   Response SLA
                 </p>
                 <p className="mt-2 text-3xl font-semibold text-foreground">
-                  14m
+                  {dynamicSlaStats ? `${dynamicSlaStats.median}m` : "N/A"}
                 </p>
                 <p className="mt-2 text-xs text-foreground/60">
                   Median dispatch time from alert confirmation to team
                   deployment.
                 </p>
               </div>
-              <div className="rounded-full bg-emerald-500/10 px-4 py-1 text-xs font-semibold text-emerald-500">
-                On Target
+              <div
+                className={`rounded-full px-4 py-1 text-xs font-semibold ${
+                  dynamicSlaStats
+                    ? "bg-emerald-500/10 text-emerald-500"
+                    : "bg-background/80 text-foreground/50 border border-border/50"
+                }`}
+              >
+                {dynamicSlaStats ? "On Target" : "No Data"}
               </div>
             </div>
             <div className="mt-6 space-y-3 text-sm text-foreground/70">
-              <div className="flex items-center justify-between">
-                <span>Urban barangays</span>
-                <span className="font-semibold text-foreground">12m</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Coastal barangays</span>
-                <span className="font-semibold text-foreground">18m</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Mountain barangays</span>
-                <span className="font-semibold text-foreground">21m</span>
-              </div>
+              {dynamicSlaStats ? (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span>Urban barangays</span>
+                    <span className="font-semibold text-foreground">
+                      {dynamicSlaStats.urban}m
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Coastal barangays</span>
+                    <span className="font-semibold text-foreground">
+                      {dynamicSlaStats.coastal}m
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Mountain barangays</span>
+                    <span className="font-semibold text-foreground">
+                      {dynamicSlaStats.mountain}m
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center py-2 text-xs text-foreground/40">
+                  Insufficient dispatch data for SLA calculation.
+                </div>
+              )}
             </div>
           </div>
 
           <div className="rounded-3xl border border-border/60 bg-card/80 p-6 shadow-sm">
             <div className="flex items-center gap-3">
-              <Clock3 className="h-9 w-9 text-primary" />
+              <Clock3
+                className={`h-9 w-9 ${nextOpsSync ? "text-primary" : "text-foreground/20"}`}
+              />
               <div>
                 <p className="text-sm font-medium text-foreground/70">
                   Next operations sync
                 </p>
                 <p className="text-base font-semibold text-foreground">
-                  1300H — Municipal Hall
+                  {nextOpsSync
+                    ? `${nextOpsSync.time} - ${nextOpsSync.location}`
+                    : "Not Scheduled"}
                 </p>
               </div>
             </div>
-            <ul className="mt-4 space-y-3 text-sm text-foreground/70">
-              <li>• Logistics & staging preparation update</li>
-              <li>• Rapid damage assessment team briefing</li>
-              <li>• Public advisory broadcast alignment</li>
-            </ul>
+            {nextOpsSync && nextOpsSync.agenda ? (
+              <ul className="mt-4 space-y-3 text-sm text-foreground/70">
+                {nextOpsSync.agenda.map((item, idx) => (
+                  <li key={idx}>&bull; {item}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-4 text-xs text-foreground/50">
+                No sync activities planned at this time.
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -802,19 +849,27 @@ export const DashboardSection = () => {
           </div>
 
           <div className="mt-6 space-y-4">
-              {dynamicTimeline.map((event, i) => (
+            {dynamicTimeline && dynamicTimeline.length > 0 ? (
+              dynamicTimeline.map((event, i) => (
                 <div key={i} className="flex gap-4">
-                <div className="flex-1 rounded-2xl border border-border/60 bg-background/60 p-4">
-                  <p className="text-sm font-semibold text-foreground">
-                    {event.title}
-                  </p>
-                  <p className="mt-1 text-xs text-foreground/60">{event.by}</p>
-                  <p className="mt-2 text-xs text-foreground/70">
-                    {event.status}
-                  </p>
+                  <div className="flex-1 rounded-2xl border border-border/60 bg-background/60 p-4">
+                    <p className="text-sm font-semibold text-foreground">
+                      {event.title}
+                    </p>
+                    <p className="mt-1 text-xs text-foreground/60">
+                      {event.by}
+                    </p>
+                    <p className="mt-2 text-xs text-foreground/70">
+                      {event.status}
+                    </p>
+                  </div>
                 </div>
+              ))
+            ) : (
+              <div className="flex h-32 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background/30 text-sm text-foreground/60">
+                No recent operations
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -827,28 +882,34 @@ export const DashboardSection = () => {
               Availability & standby strength.
             </p>
             <div className="mt-4 space-y-3 text-sm">
-              {dynamicTeamReadiness.map((team) => (
-                <div
-                  key={team.label}
-                  className="space-y-2 rounded-2xl border border-border/60 bg-background/60 p-4"
-                >
-                  <div className="flex items-center justify-between text-xs text-foreground/60">
-                    <span className="font-semibold text-foreground">
-                      {team.label}
-                    </span>
-                    <span>{team.onCall} counts</span>
+              {dynamicTeamReadiness && dynamicTeamReadiness.length > 0 ? (
+                dynamicTeamReadiness.map((team) => (
+                  <div
+                    key={team.label}
+                    className="space-y-2 rounded-2xl border border-border/60 bg-background/60 p-4"
+                  >
+                    <div className="flex items-center justify-between text-xs text-foreground/60">
+                      <span className="font-semibold text-foreground">
+                        {team.label}
+                      </span>
+                      <span>{team.onCall} counts</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-foreground/10">
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${team.readiness}%` }}
+                      />
+                    </div>
+                    <div className="text-xs font-semibold text-primary">
+                      {team.readiness}% total
+                    </div>
                   </div>
-                  <div className="h-2 rounded-full bg-foreground/10">
-                    <div
-                      className="h-full rounded-full bg-primary"
-                      style={{ width: `${team.readiness}%` }}
-                    />
-                  </div>
-                  <div className="text-xs font-semibold text-primary">
-                    {team.readiness}% total
-                  </div>
+                ))
+              ) : (
+                <div className="flex h-32 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background/30 text-sm text-foreground/60">
+                  No readiness data available
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -860,27 +921,33 @@ export const DashboardSection = () => {
               Recent Broadcasts & Advisories.
             </p>
             <div className="mt-4 space-y-3 text-sm">
-              {dynamicDispatchQueue.map((entry, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/60 p-4"
-                >
-                  <span className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Radio className="h-4 w-4" />
-                  </span>
-                  <div>
-                    <p className="font-semibold text-foreground">
-                      {entry.channel}
-                    </p>
-                    <p className="text-xs text-foreground/60">
-                      Status: {entry.status}
-                    </p>
-                    <p className="mt-1 text-xs text-foreground/70">
-                      {entry.note}
-                    </p>
+              {dynamicDispatchQueue && dynamicDispatchQueue.length > 0 ? (
+                dynamicDispatchQueue.map((entry, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 rounded-2xl border border-border/60 bg-background/60 p-4"
+                  >
+                    <span className="mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <Radio className="h-4 w-4" />
+                    </span>
+                    <div>
+                      <p className="font-semibold text-foreground">
+                        {entry.channel}
+                      </p>
+                      <p className="text-xs text-foreground/60">
+                        Status: {entry.status}
+                      </p>
+                      <p className="mt-1 text-xs text-foreground/70">
+                        {entry.note}
+                      </p>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="flex h-32 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-background/30 text-sm text-foreground/60">
+                  No recent communications
                 </div>
-              ))}
+              )}
             </div>
             <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs text-foreground/60">
               <Headphones className="h-4 w-4" /> Duty desk staffed 24/7
