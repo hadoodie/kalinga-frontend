@@ -81,7 +81,7 @@ class UserSeeder extends Seeder
     private function seedUsers(array $users): void
     {
         foreach ($users as $user) {
-            User::updateOrCreate(
+            $userModel = User::updateOrCreate(
                 ['email' => $user['email']],
                 [
                     'name' => $user['name'],
@@ -93,6 +93,15 @@ class UserSeeder extends Seeder
                     'verification_status' => $user['verification_status'],
                 ]
             );
+
+            // Ensure Logistics users are assigned to a hospital so they don't get 403 errors on their Forecast API scopes.
+            if ($userModel->role === 'logistics' && $userModel->hospitals()->count() === 0) {
+                // Attach to the first hospital if it exists, otherwise leave until hospitals exist
+                $hospital = \App\Models\Hospital::first();
+                if ($hospital) {
+                    $userModel->hospitals()->attach($hospital->id);
+                }
+            }
         }
     }
 

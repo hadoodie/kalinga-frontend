@@ -308,6 +308,8 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
         Route::get('/admin/users', [AuthController::class, 'getAllUsers']);
         Route::put('/admin/users/{id}/activate', [AuthController::class, 'activateUser']);
         Route::put('/admin/users/{id}/deactivate', [AuthController::class, 'deactivateUser']);
+        Route::put('/admin/users/{id}/hospital', [AuthController::class, 'updateUserHospital']);
+        Route::put('/admin/users/{id}', [AuthController::class, 'updateUser']);
         Route::get('/admin/verifications', [VerificationController::class, 'index']);
         Route::post('/admin/verifications/{id}/approve', [VerificationController::class, 'approve']);
         Route::post('/admin/verifications/{id}/reject', [VerificationController::class, 'reject']);
@@ -720,4 +722,5 @@ Route::middleware(['throttle:120,1'])->get('/incidents/poll', function (\Illumin
         'polled_at'  => now()->toIso8601String(),
     ]);
 });
+
 
