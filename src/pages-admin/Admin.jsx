@@ -51,16 +51,6 @@ const TrainingSection = lazy(() =>
     default: m.TrainingSection,
   })),
 );
-const ConnectivityMonitoring = lazy(() =>
-  import("@/components/admin/sections/ConnectivityMonitoring").then((m) => ({
-    default: m.ConnectivityMonitoring,
-  })),
-);
-const MonitoringSecurity = lazy(() =>
-  import("@/components/admin/sections/MonitoringSecurity").then((m) => ({
-    default: m.MonitoringSecurity,
-  })),
-);
 const BroadcastControl = lazy(() =>
   import("@/components/admin/sections/BroadcastControl").then((m) => ({
     default: m.BroadcastControl,
@@ -214,24 +204,6 @@ const adminSections = [
     apiStatus: "demo",
   },
   {
-    id: "connectivity",
-    title: "Connectivity Monitoring",
-    description:
-      "Network uptime, throughput, and connected population metrics.",
-    icon: Server,
-    component: ConnectivityMonitoring,
-    apiStatus: "demo",
-  },
-  {
-    id: "security",
-    title: "Monitoring & Security",
-    description:
-      "Physical and cyber telemetry from the command center perimeter.",
-    icon: Shield,
-    component: MonitoringSecurity,
-    apiStatus: "demo",
-  },
-  {
     id: "broadcast",
     title: "Broadcast Control",
     description: "City-wide advisories and cross-channel messaging workflows.",
@@ -354,3 +326,5 @@ export const AdminPortal = () => {
     </AdminLayout>
   );
 };
+
+
