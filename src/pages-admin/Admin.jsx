@@ -71,11 +71,6 @@ const PatientOverview = lazy(() =>
     default: m.PatientOverview,
   })),
 );
-const HospitalSafetyIndexSection = lazy(() =>
-  import("@/components/admin/sections/HospitalSafetyIndex").then((m) => ({
-    default: m.HospitalSafetyIndexSection,
-  })),
-);
 const LogisticsForecastSection = lazy(() =>
   import("@/components/admin/sections/LogisticsForecastSection").then((m) => ({
     default: m.LogisticsForecastSection,
@@ -167,15 +162,6 @@ const adminSections = [
     icon: Package,
     component: ResourceManagement,
     apiStatus: "live",
-  },
-  {
-    id: "hospital-safety",
-    title: "Hospital Safety Index",
-    description:
-      "WHO / DOH-aligned compliance, resilience, and resource telemetry per hospital.",
-    icon: Activity,
-    component: HospitalSafetyIndexSection,
-    apiStatus: "partial",
   },
   {
     id: "logistics",
@@ -326,5 +312,3 @@ export const AdminPortal = () => {
     </AdminLayout>
   );
 };
-
-
