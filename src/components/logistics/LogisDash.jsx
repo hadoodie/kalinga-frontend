@@ -281,6 +281,7 @@ const FacilityPieChart = ({ data }) => {
 };
 
 const OverallStatusCard = ({ inventory, facilities }) => {
+  const [showAllFacilities, setShowAllFacilities] = useState(false);
   const totalRemaining =
     inventory?.reduce((sum, i) => sum + (i.remaining || 0), 0) || 0;
   const criticalCount =
@@ -288,6 +289,9 @@ const OverallStatusCard = ({ inventory, facilities }) => {
   const facilityCount = facilities?.length || 0;
   const itemCategories = [...new Set(inventory?.map((i) => i.category) || [])]
     .length;
+  const visibleFacilities = showAllFacilities
+    ? facilities || []
+    : (facilities || []).slice(0, 6);
 
   return (
     <Link to="/logistics/resource-management" className="block h-full">
@@ -344,9 +348,10 @@ const OverallStatusCard = ({ inventory, facilities }) => {
           </div>
 
           {/* Bottom: Custom Legend Container */}
-          <div className="w-full bg-slate-50/70 rounded-xl p-3 md:p-4 border border-slate-100 flex flex-col space-y-3 mt-auto">
-            {facilities && facilities.length > 0
-              ? facilities.map((fac, idx) => (
+          <div className="w-full bg-slate-50/70 rounded-xl p-3 md:p-4 border border-slate-100 flex flex-col mt-auto">
+            <div className={showAllFacilities ? "max-h-64 overflow-y-auto pr-1 space-y-3" : "space-y-3"}>
+              {visibleFacilities.length > 0
+                ? visibleFacilities.map((fac, idx) => (
                   <div key={idx} className="flex items-start gap-3 w-full">
                     <div
                       className="w-3.5 h-3.5 rounded shrink-0 mt-[2px] shadow-sm ring-1 ring-black/5"
@@ -364,7 +369,24 @@ const OverallStatusCard = ({ inventory, facilities }) => {
                     </div>
                   </div>
                 ))
-              : null}
+                : null}
+            </div>
+
+            {facilityCount > 6 ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowAllFacilities((prev) => !prev);
+                }}
+                className="mt-3 self-start text-xs sm:text-sm font-semibold text-slate-700 hover:text-slate-900 underline underline-offset-2"
+              >
+                {showAllFacilities
+                  ? "Show fewer facilities"
+                  : `Show all facilities (${facilityCount})`}
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
@@ -385,23 +407,23 @@ const AssetStatusCard = ({ assets }) => {
           {" "}
           Asset Registry Status
         </h3>
-        <div className="flex-1 flex flex-col justify-center space-y-1">
-          <div className="text-5xl font-extrabold flex items-baseline">
+        <div className="flex-1 flex flex-col justify-center space-y-2 min-w-0">
+          <div className="text-4xl sm:text-5xl font-extrabold flex flex-wrap items-baseline gap-x-2 min-w-0">
             {totalAssets}
-            <span className="text-lg font-medium ml-2 text-gray-600">
+            <span className="text-sm sm:text-lg font-medium text-gray-600 break-words">
               Total Registered Assets
             </span>
           </div>
 
-          <p className="text-15px font-semibold mt-1 text-green-700 flex items-center">
+          <p className="text-sm sm:text-[15px] font-semibold mt-1 text-green-700 flex items-center flex-wrap gap-1 min-w-0">
             <CheckCircle className="h-4 w-4 mr-1 text-green-700" /> {idle}{" "}
             Available Assets
           </p>
-          <p className="text-15px font-semibold text-slate-700 flex items-center">
+          <p className="text-sm sm:text-[15px] font-semibold text-slate-700 flex items-center flex-wrap gap-1 min-w-0">
             <ChartColumnStacked className="h-4 w-4 mr-1 text-slate-500" />{" "}
             {inUse} Active Assets
           </p>
-          <p className="text-15px font-semibold text-slate-700 flex items-center">
+          <p className="text-sm sm:text-[15px] font-semibold text-slate-700 flex items-center flex-wrap gap-1 min-w-0">
             <Wrench className="h-4 w-4 mr-1 text-slate-500" /> {repair} Vehicles
             Under Repair
           </p>
@@ -425,22 +447,22 @@ const DeliveryPerformanceCard = ({ requests, shipments }) => {
           Delivery Performance
         </h3>
         <div className="flex-1 flex flex-col justify-center space-y-4">
-          <div className="text-5xl font-extrabold flex flex-row items-baseline">
+          <div className="text-4xl sm:text-5xl font-extrabold flex flex-wrap items-baseline gap-x-1 min-w-0">
             {avgDispatchTime}{" "}
-            <span className="text-2xl font-extrabold mr-1">
+            <span className="text-xl sm:text-2xl font-extrabold mr-1">
               {avgDispatchUnit}
             </span>
-            <span className="text-sm font-light ml-2 text-gray-600">
+            <span className="text-xs sm:text-sm font-light ml-1 sm:ml-2 text-gray-600 break-words">
               Avg Dispatch Time
             </span>
           </div>
 
-          <p className="text-15px font-semibold text-red-600 flex items-center">
+          <p className="text-sm sm:text-[15px] font-semibold text-red-600 flex items-center flex-wrap gap-1 min-w-0">
             <AlertTriangle className="h-4 w-4 mr-1 text-red-600" /> {delayed}{" "}
             Delayed Shipments
           </p>
 
-          <div className="text-15px font-medium flex items-center text-gray-600">
+          <div className="text-sm sm:text-[15px] font-medium flex items-center flex-wrap gap-1 min-w-0 text-gray-600">
             <CheckCircle className="mr-1 h-4 w-4" /> 80% On-Time Success
           </div>
         </div>
@@ -466,22 +488,22 @@ const PendingRequestsCard = ({ requests }) => {
         </h3>
 
         <div className="flex-1 flex flex-col justify-center space-y-1">
-          <div className="text-5xl font-extrabold flex items-baseline">
+          <div className="text-4xl sm:text-5xl font-extrabold flex flex-wrap items-baseline gap-x-2 min-w-0">
             {totalRequests}{" "}
-            <span className="text-lg font-medium ml-2 text-gray-600">
+            <span className="text-sm sm:text-lg font-medium text-gray-600 break-words">
               Total Pending Requests
             </span>
           </div>
 
-          <p className="text-15px font-semibold mt-1 text-red-600 flex items-center">
+          <p className="text-sm sm:text-[15px] font-semibold mt-1 text-red-600 flex items-center flex-wrap gap-1 min-w-0">
             <AlertTriangle className="h-4 w-4 mr-1 text-red-600" />{" "}
             {criticalRequests} Critical
           </p>
-          <p className="text-15px font-semibold text-yellow-600 flex items-center">
+          <p className="text-sm sm:text-[15px] font-semibold text-yellow-600 flex items-center flex-wrap gap-1 min-w-0">
             <Clock className="h-4 w-4 mr-1 text-yellow-600" /> {highRequests}{" "}
             High Priority
           </p>
-          <p className="text-15px font-semibold text-gray-600 flex items-center">
+          <p className="text-sm sm:text-[15px] font-semibold text-gray-600 flex items-center flex-wrap gap-1 min-w-0">
             <Truck className="h-4 w-4 mr-1 text-gray-600" /> {shippedRequests}{" "}
             Shipments Dispatched
           </p>
@@ -702,22 +724,22 @@ const TabNavigation = ({ activeTab, setActiveTab, assignedHospitalName }) => {
 
   return (
     <div className="mb-8 bg-white rounded-2xl shadow-lg p-4">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-extrabold text-gray-800">
+      <div className="flex flex-col gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-800 leading-tight break-normal">
             {tabs.find((t) => t.id === activeTab)?.label || "Logistics System"}
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 break-normal">
             {tabs.find((t) => t.id === activeTab)?.description}
           </p>
         </div>
 
-        <div className="flex overflow-x-auto gap-2 bg-gray-100 p-1 rounded-xl w-full scrollbar-none">
+        <div className="flex flex-wrap overflow-x-auto gap-2 bg-gray-100 p-1 rounded-xl w-full scrollbar-none">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 md:px-6 md:py-3 whitespace-nowrap rounded-lg text-sm md:text-base font-bold transition-all flex items-center gap-2 ${
+              className={`px-3 py-2 md:px-6 md:py-3 whitespace-nowrap rounded-lg text-sm md:text-base font-bold transition-all flex items-center gap-2 min-w-0 ${
                 activeTab === tab.id
                   ? `${tab.color} text-white shadow-lg`
                   : "text-gray-700 hover:bg-gray-200"
@@ -738,7 +760,7 @@ const TabNavigation = ({ activeTab, setActiveTab, assignedHospitalName }) => {
             Logistics Operations Active
           </span>
         </div>
-        <div className="px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-300">
+        <div className="px-3 py-1 rounded-full text-sm font-bold bg-green-100 text-green-800 border border-green-300 max-w-full min-w-0 break-words">
           {assignedHospitalName || "Hospital View"}
         </div>
       </div>
@@ -942,22 +964,22 @@ const LogisDash = () => {
         )}
         {/* ROW 1: Top Cards */}
         <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6 mb-6">
-          <div className="md:col-span-2 lg:col-span-2 xl:col-span-2 h-full">
+          <div className="md:col-span-2 lg:col-span-2 xl:col-span-2 h-full min-w-0">
             <OverallStatusCard inventory={inventory} facilities={facilities} />
           </div>
 
-          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 h-full">
+          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 h-full min-w-0">
             <AssetStatusCard assets={assets} />
           </div>
 
-          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 h-full">
+          <div className="md:col-span-1 lg:col-span-1 xl:col-span-1 h-full min-w-0">
             <DeliveryPerformanceCard
               requests={requests}
               shipments={shipments}
             />
           </div>
 
-          <div className="md:col-span-2 lg:col-span-1 xl:col-span-1 h-full">
+          <div className="md:col-span-2 lg:col-span-1 xl:col-span-1 h-full min-w-0">
             <PendingRequestsCard requests={requests} />
           </div>
         </section>
