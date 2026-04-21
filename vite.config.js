@@ -23,7 +23,12 @@ export default defineConfig({
         icons: [
           {
             src: "/kalinga-logo.svg",
-            sizes: "any",
+            sizes: "192x192",
+            type: "image/svg+xml",
+          },
+          {
+            src: "/kalinga-logo.svg",
+            sizes: "512x512",
             type: "image/svg+xml",
             purpose: "any maskable",
           },
