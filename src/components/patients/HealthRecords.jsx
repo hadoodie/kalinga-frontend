@@ -22,54 +22,6 @@ const DOWNLOAD_ICON_SVG = (
   </svg>
 );
 
-// Mock data for triage history 
-const triageHistory = [
-  {
-    id: "RM023271",
-    date: "2024-11-20",
-    temp: 38.1,
-    hr: 66,
-    spo2: 85,
-    complaint: "Difficulty breathing",
-    mental: "A (Alert)",
-    level: "medium",
-    doctor: "Pulmonologist"
-  },
-  {
-    id: "RM023271",
-    date: "2024-11-15",
-    temp: 37.8,
-    hr: 64,
-    spo2: 99,
-    complaint: "Dizziness",
-    mental: "A (Alert)",
-    level: "medium",
-    doctor: "Neurologist"
-  },
-  {
-    id: "RM023271",
-    date: "2024-11-10",
-    temp: 39.1,
-    hr: 103,
-    spo2: 86,
-    complaint: "Chest pain",
-    mental: "V (Verbal)",
-    level: "medium",
-    doctor: "Cardiologist"
-  },
-  {
-    id: "RM023271",
-    date: "2024-11-05",
-    temp: 37.5,
-    hr: 74,
-    spo2: 90,
-    complaint: "Chest pain",
-    mental: "P (Pain)",
-    level: "medium",
-    doctor: "Cardiologist"
-  }
-];
-
 const TABS = {
   TRIAGE: "Triage History",
   LAB: "Lab Results"
@@ -106,6 +58,9 @@ export default function HealthRecords() {
   const [triageDateFrom, setTriageDateFrom] = useState("2024-01-01");
   const [triageDateTo, setTriageDateTo] = useState("2025-07-10");
   const [triageSortBy, setTriageSortBy] = useState("Descending");
+  const [triageResults, setTriageResults] = useState([]);
+  const [isTriageLoading, setIsTriageLoading] = useState(true);
+  const [triageError, setTriageError] = useState(null);
   
   // Pagination for triage
   const [triagePage, setTriagePage] = useState(1);
@@ -114,6 +69,54 @@ export default function HealthRecords() {
   // Pagination for lab results
   const [labPage, setLabPage] = useState(1);
   const LAB_PAGE_SIZE = 10;
+
+  useEffect(() => {
+    if (activeTab !== TABS.TRIAGE) return;
+    const fetchTriage = async () => {
+      setIsTriageLoading(true);
+      setTriageError(null);
+      try {
+        const response = await api.get("/my-patient-care-reports");
+        const mappedData = response.data.data.map((report) => {
+          const firstVital =
+            report.vitals_entries && report.vitals_entries.length > 0
+              ? report.vitals_entries[0]
+              : {};
+          const gcs =
+            report.gcs_entries && report.gcs_entries.length > 0
+              ? report.gcs_entries[0]
+              : {};
+
+          let mentalStatus = report.physiological_status?.mentalStatus || "-";
+          if (mentalStatus === "-" && gcs.eyes) {
+            mentalStatus = `GCS: ${parseInt(gcs.eyes) + parseInt(gcs.verbal || 0) + parseInt(gcs.motor || 0)}`;
+          }
+
+          const rDate =
+            report.dispatch_date || report.submitted_at || report.created_at;
+
+          return {
+            id: report.case_no || `PCR-${report.id}`,
+            date: rDate ? new Date(rDate).toISOString().split('T')[0] : "1970-01-01",
+            temp: firstVital.temp || "-",
+            hr: firstVital.pulse || "-",
+            spo2: firstVital.spo2 || "-",
+            complaint: report.noi_moi?.chiefComplaint || "-",
+            mental: mentalStatus,
+            level: report.patient_details?.priorityLevel || "medium",
+            doctor: report.user?.name || "Responder",
+          };
+        });
+        setTriageResults(mappedData);
+      } catch (err) {
+        setTriageError("Failed to fetch triage history.");
+        console.error("fetchTriage Error:", err);
+      } finally {
+        setIsTriageLoading(false);
+      }
+    };
+    fetchTriage();
+  }, [activeTab]);
 
   useEffect(() => {
     if (activeTab !== TABS.LAB) return;
@@ -131,6 +134,7 @@ export default function HealthRecords() {
         setLabResults(response.data);
       } catch (err) {
         // Fallback for demo purposes if API fails
+        console.error("Failed to fetch lab results:", err);
         setError("Failed to fetch lab results. Please try again later.");
         // Remove this mock setLabResults in production if strictly using API
         setLabResults([
@@ -153,7 +157,7 @@ export default function HealthRecords() {
   };
 
   // Filter and sort triage data by date
-  const filteredTriage = triageHistory
+  const filteredTriage = triageResults
     .filter(item => {
       const d = new Date(item.date);
       return d >= new Date(triageDateFrom) && d <= new Date(triageDateTo);
@@ -257,10 +261,17 @@ export default function HealthRecords() {
               </div>
             </div>
 
-            {/* --- MOBILE VIEW: Cards --- */}
-            <div className="md:hidden space-y-4">
-                {paginatedTriage.map((item, idx) => (
-                    <div key={idx} className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition bg-white">
+            <div>
+              {isTriageLoading ? (
+                <div className="py-12 text-center text-gray-500 font-medium animate-pulse">Loading triage history...</div>
+              ) : triageError ? (
+                <div className="py-8 text-center text-red-500 font-medium bg-red-50 rounded-lg">{triageError}</div>
+              ) : filteredTriage.length > 0 ? (
+                <>
+                  {/* --- MOBILE VIEW: Cards --- */}
+                  <div className="md:hidden space-y-4">
+                      {paginatedTriage.map((item, idx) => (
+                          <div key={idx} className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition bg-white">
                         <div className="flex justify-between items-start border-b border-gray-100 pb-2 mb-2">
                             <div>
                                 <span className="block text-xs text-gray-500">Date</span>
@@ -359,6 +370,11 @@ export default function HealthRecords() {
                 )}
               </div>
             )}
+                </>
+              ) : (
+                <div className="py-12 text-center text-gray-500 font-medium">No results found for the selected date range.</div>
+              )}
+            </div>
           </div>
         )}
 
