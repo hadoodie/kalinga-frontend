@@ -21,6 +21,7 @@ import {
   FaCertificate,
   FaDownload,
   FaBookOpen,
+  FaSpinner,
 } from "react-icons/fa";
 
 // Full Category Filters
