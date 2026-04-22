@@ -47,9 +47,9 @@ class UserSeeder extends Seeder
             ],
         ]);
 
-        // Responder users (20)
+        // Responder users (30)
         $responderUsers = [];
-        for ($i = 1; $i <= 20; $i++) {
+        for ($i = 1; $i <= 30; $i++) {
             $responderUsers[] = [
                 'name' => 'Responder ' . $this->numberWord($i),
                 'email' => "responder{$i}@kalinga.com",

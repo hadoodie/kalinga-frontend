@@ -82,13 +82,13 @@ Route::post('/broadcasting/auth', function (Request $request) {
 })->middleware('auth:sanctum');
 
 // Public routes with rate limiting
-Route::middleware(['throttle:10,1'])->group(function () {
+Route::middleware([])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 });
 // Public reverse geocode proxy (limits to avoid CORS on Nominatim)
-Route::middleware(['throttle:30,1'])->get('/geocode/reverse', function (Request $request) {
+Route::middleware([])->get('/geocode/reverse', function (Request $request) {
     $validated = $request->validate([
         'lat' => ['required', 'numeric'],
         'lon' => ['required', 'numeric'],
@@ -122,7 +122,7 @@ Route::middleware(['throttle:30,1'])->get('/geocode/reverse', function (Request 
 });
 
 // Public debug endpoint to check API -> Reverb connectivity without shell access
-Route::middleware(['throttle:10,1'])->get('/debug/reverb', function () {
+Route::middleware([])->get('/debug/reverb', function () {
     $rawHost = env('REVERB_HOST');
     $port = env('REVERB_PORT', 443);
     $scheme = env('REVERB_SCHEME', 'https');
@@ -169,7 +169,7 @@ Route::middleware(['throttle:10,1'])->get('/debug/reverb', function () {
 });
 
 // Authenticated debug helper to evaluate broadcast channel authorization rules
-Route::middleware(['auth:sanctum', 'throttle:30,1'])->post('/debug/broadcast-auth', function (Request $request) {
+Route::middleware(['auth:sanctum'])->post('/debug/broadcast-auth', function (Request $request) {
     $user = $request->user();
     $channel = (string) $request->input('channel_name', '');
     $socketId = (string) $request->input('socket_id', '');
@@ -275,7 +275,7 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])->post('/debug/broadcast-aut
     ]);
 });
 // Public read-only routes for testing
-Route::middleware(['throttle:60,1'])->group(function () {
+Route::middleware([])->group(function () {
     Route::get('/hospitals', [HospitalController::class, 'index']);
     Route::get('/resources', [ResourceController::class, 'index']);
 });
@@ -286,7 +286,7 @@ Route::get('/secure-document', [\App\Http\Controllers\VerificationController::cl
     ->name('secure.document');
 
 // Protected routes (require authentication + rate limiting)
-Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
+Route::middleware(['auth:sanctum'])->group(function () {
     // Common authenticated routes
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -320,7 +320,7 @@ Route::middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::middleware(['role:admin,logistics'])->group(function () {
 
         // ── AI Forecasting Routes ────────────────────────────
-        Route::prefix('forecasts')->middleware('throttle:60,1')->group(function () {
+        Route::prefix('forecasts')->group(function () {
             Route::get('/demand',             [ForecastController::class, 'demand']);
             Route::get('/risk',               [ForecastController::class, 'risk']);
             Route::get('/summary',            [ForecastController::class, 'summary']);
@@ -548,7 +548,7 @@ Route::get('/test/resources', function () {
 // ======
 
 // Public sensor endpoints (RPi pushes data here; dashboard reads it)
-Route::middleware(['throttle:120,1'])->prefix('sensor')->group(function () {
+Route::middleware([])->prefix('sensor')->group(function () {
     Route::get('/vitals/latest',  [SensorDataController::class, 'latest']);
     Route::get('/vitals/history', [SensorDataController::class, 'history']);
     Route::get('/vitals/summary', [SensorDataController::class, 'summary']);
@@ -557,7 +557,7 @@ Route::middleware(['throttle:120,1'])->prefix('sensor')->group(function () {
 });
 
 // Simulator endpoints (protected — admin/responder only)
-Route::middleware(['auth:sanctum', 'throttle:30,1'])->prefix('simulator')->group(function () {
+Route::middleware(['auth:sanctum'])->prefix('simulator')->group(function () {
     Route::get('/scenarios',  [HealthSimulatorController::class, 'scenarios']);
     Route::post('/start',     [HealthSimulatorController::class, 'start']);
     Route::post('/stream',    [HealthSimulatorController::class, 'stream']);
@@ -567,7 +567,7 @@ Route::middleware(['auth:sanctum', 'throttle:30,1'])->prefix('simulator')->group
 // ======
 // Hospital Patient Distribution (bridged to DB capacity)
 // ======
-Route::middleware(['throttle:60,1'])->get('/hospitals/patient-distribution', function () {
+Route::middleware([])->get('/hospitals/patient-distribution', function () {
     $hospitals = \App\Models\Hospital::whereNotNull('capacity')
         ->where('is_active', true)
         ->select('id', 'name', 'capacity', 'bed_capacity', 'icu_capacity')
@@ -608,7 +608,7 @@ Route::middleware(['throttle:60,1'])->get('/hospitals/patient-distribution', fun
 // ======
 // DOH Hospital Reports — Priority categorization by occupancy
 // ======
-Route::middleware(['throttle:60,1'])->get('/reports/doh-hospital', function () {
+Route::middleware([])->get('/reports/doh-hospital', function () {
     $hospitals = \App\Models\Hospital::where('is_active', true)
         ->select('id', 'name', 'capacity', 'bed_capacity', 'icu_capacity', 'emergency_services')
         ->get();
@@ -664,7 +664,7 @@ Route::middleware(['throttle:60,1'])->get('/reports/doh-hospital', function () {
 // ======
 // DOH Triage Status — linked to QR code auth logs / vitals
 // ======
-Route::middleware(['throttle:60,1'])->get('/reports/doh-triage', function () {
+Route::middleware([])->get('/reports/doh-triage', function () {
     $hasVitals = \App\Models\Vital::exists();
 
     if ($hasVitals) {
@@ -705,7 +705,7 @@ Route::middleware(['throttle:60,1'])->get('/reports/doh-triage', function () {
 // ======
 // Incident Logs Polling Endpoint (lightweight)
 // ======
-Route::middleware(['throttle:120,1'])->get('/incidents/poll', function (\Illuminate\Http\Request $request) {
+Route::middleware([])->get('/incidents/poll', function (\Illuminate\Http\Request $request) {
     $since = $request->query('since');
     $query = \App\Models\Incident::query()
         ->with(['assignments.responder:id,name,role', 'latestStatusUpdate.user:id,name,role'])
