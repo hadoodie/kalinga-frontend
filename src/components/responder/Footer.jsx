@@ -74,7 +74,7 @@ const Footer = () => {
             <h3 className="footer-title">Contact Us</h3>
             <p>(+63) 919 601 3527 (8 to 3 PM)</p>
             <p>(+63) 968 357 0578 (3 to 10 PM)</p>
-            <a href="mailto:contactus@kalinga.ph">contactus@kalinga.ph</a>
+            <a href="mailto:kalinga.tup@gmail.com">kalinga.tup@gmail.com</a>
           </div>
         </div>
 
