@@ -14,11 +14,11 @@ export default function Lesson7() {
 
   // Module 2 Lessons / Steps
   const lessons = [
-    { id: 0, title: "Community Mobilization Strategies", path: "/modules/1/module-2" },
-    { id: 1, title: "Engaging Stakeholders", path: "/modules/1/lesson-4" },
-    { id: 2, title: "Conducting Barangay Sessions", path: "/modules/1/lesson-5" },
-    { id: 3, title: "Monitoring and Evaluation Tools", path: "/modules/1/lesson-6" },
-    { id: 4, title: "Success Stories and Case Studies", path: "/modules/1/lesson-7" },
+    { id: 0, title: "Community Mobilization Strategies", path: "/responder/modules/1/module-2" },
+    { id: 1, title: "Engaging Stakeholders", path: "/responder/modules/1/lesson-4" },
+    { id: 2, title: "Conducting Barangay Sessions", path: "/responder/modules/1/lesson-5" },
+    { id: 3, title: "Monitoring and Evaluation Tools", path: "/responder/modules/1/lesson-6" },
+    { id: 4, title: "Success Stories and Case Studies", path: "/responder/modules/1/lesson-7" },
   ];
 
 
@@ -82,7 +82,7 @@ export default function Lesson7() {
           <div className="lesson-breadcrumbs">
             <Link to="/">Home</Link> <span>/</span>
             <Link to="/modules"> Modules</Link> <span>/</span>
-            <Link to="/modules/1"> Barangay First 1000 Days Facilitator's Guide eTraining</Link> <span>/</span>
+            <Link to="/responder/modules/1"> Barangay First 1000 Days Facilitator's Guide eTraining</Link> <span>/</span>
             <span> {currentLesson?.title}</span>
           </div>
 
