@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { AlertTriangle, ChevronDown, ChevronUp, ShieldCheck, FileSignature, XCircle } from "lucide-react";
 import Layout from "../layouts/Layout";
@@ -263,12 +263,17 @@ export default function PatientCareReport() {
     }
   }, [edgeStatus, toast]);
 
+  const isVitalsFieldLocked = useCallback(
+    (path) => lockedFieldPath === path,
+    [lockedFieldPath]
+  );
+
   useVitalsSync({
     getValues,
     setValue,
     caseNo: formValues.dispatch?.caseNo,
     patientUuid: null,
-    isFieldLocked: (path) => lockedFieldPath === path,
+    isFieldLocked: isVitalsFieldLocked,
     onStatusChange: setEdgeStatus,
     onPayload: setLatestPayload,
   });
