@@ -179,7 +179,7 @@ const adminSections = [
       "AI-driven demand forecasting, stockout risk analysis, and executive narrative.",
     icon: TrendingUp,
     component: LogisticsForecastSection,
-    apiStatus: "partial",
+    apiStatus: "live",
   },
   {
     id: "training",
@@ -187,7 +187,7 @@ const adminSections = [
     description: "Partner-led capability building and workshop coordination.",
     icon: GraduationCap,
     component: TrainingSection,
-    apiStatus: "demo",
+    apiStatus: "live",
   },
   {
     id: "broadcast",
@@ -196,7 +196,7 @@ const adminSections = [
     icon: Megaphone,
     component: BroadcastControl,
     optional: true,
-    apiStatus: "partial",
+    apiStatus: "live",
   },
 ];
 
