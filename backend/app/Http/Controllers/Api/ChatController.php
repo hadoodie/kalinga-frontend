@@ -571,12 +571,17 @@ class ChatController extends Controller
         if (!$activeIncident) {
             $patientMessage->incident_id = $incident->id;
             $patientMessage->save();
+            
+            if (!empty($receiverPayload['id']) && isset($receiverPayload['role']) && $receiverPayload['role'] === 'responder') {
+                $incident->assignToResponder($receiverPayload['id']);
+                $incident->refresh();
+            }
         }
 
         IncidentStatusUpdate::create([
             'incident_id' => $incident->id,
             'user_id' => $sender->id,
-            'status' => Incident::STATUS_REPORTED,
+            'status' => $incident->status,
             'notes' => 'Emergency SOS created via responder chat.',
         ]);
 
