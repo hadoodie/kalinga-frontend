@@ -281,6 +281,15 @@ class IncidentApiController extends Controller
             ], 404);
         }
 
+        $responderUser = User::with('responder')->find($bestResponder['responder_id']);
+
+        if (!$responderUser || !$responderUser->isResponderAvailable()) {
+            return response()->json([
+                'message' => 'Responder is not online or available.',
+                'ai_analysis' => $bestResponder['ai_reasoning'] ?? null,
+            ], 409);
+        }
+
         // Assign the recommended responder
         $assignment = DB::transaction(function () use ($incident, $bestResponder, $request) {
             $assignment = $incident->assignToResponder($bestResponder['responder_id']);
@@ -322,6 +331,14 @@ class IncidentApiController extends Controller
         ]);
 
         $responderId = (int) ($request->input('responder_id') ?? $request->user()->id);
+
+        $responderUser = User::with('responder')->find($responderId);
+
+        if (!$responderUser || !$responderUser->isResponderAvailable()) {
+            return response()->json([
+                'message' => 'Responder is not online or available.',
+            ], 409);
+        }
 
         $activeAssignmentCount = $incident->assignments()
             ->whereNotIn('status', [
@@ -445,6 +462,14 @@ class IncidentApiController extends Controller
         $responderLat = $validated['responder_lat'];
         $responderLng = $validated['responder_lng'];
         $responderId = $validated['responder_id'];
+
+        $responderUser = User::with('responder')->find($responderId);
+
+        if (!$responderUser || !$responderUser->isResponderAvailable()) {
+            return response()->json([
+                'message' => 'Responder is not online or available.',
+            ], 409);
+        }
 
         $openStatuses = [
             Incident::STATUS_REPORTED,

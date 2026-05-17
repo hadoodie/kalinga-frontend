@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\LogisticsStatusController;
 use App\Http\Controllers\Api\ResponderController;
 use App\Http\Controllers\Api\AssetController;
 use App\Http\Controllers\Api\LogisticsController;
+use App\Http\Controllers\Api\PresenceController;
 
 use App\Http\Controllers\Api\ForecastController;
 
@@ -291,6 +292,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
+    Route::post('/presence/heartbeat', [PresenceController::class, 'heartbeat']);
+    Route::post('/presence/offline', [PresenceController::class, 'offline']);
     Route::post('/verify-id', [AuthController::class, 'verifyId']);
     Route::post('/submit-verification', [AuthController::class, 'submitVerification']);
     Route::get('/notifications', [NotificationController::class, 'index']);

@@ -1,6 +1,8 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react";
 import EchoClient, { reconnectEcho, getEchoInstance } from "../services/echo";
 import { useAuth } from "./AuthContext";
+import api from "../services/api";
 
 const RealtimeContext = createContext({
   presenceStatus: "idle",
@@ -34,6 +36,7 @@ export const RealtimeProvider = ({ children }) => {
 
   const presenceActiveRef = useRef(false);
   const connectingPromiseRef = useRef(null);
+  const heartbeatRef = useRef(null);
 
   const resetState = useCallback((status = "idle") => {
     presenceActiveRef.current = false;
@@ -43,9 +46,45 @@ export const RealtimeProvider = ({ children }) => {
     setPresenceStatus(status);
   }, []);
 
+  const sendPresenceHeartbeat = useCallback(async () => {
+    if (!token) return;
+    try {
+      await api.post("/presence/heartbeat");
+    } catch (error) {
+      console.warn("Presence heartbeat failed", error);
+    }
+  }, [token]);
+
+  const sendPresenceOffline = useCallback(async () => {
+    if (!token) return;
+    try {
+      await api.post("/presence/offline");
+    } catch (error) {
+      console.warn("Presence offline update failed", error);
+    }
+  }, [token]);
+
+  const stopHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+      heartbeatRef.current = null;
+    }
+  }, []);
+
+  const startHeartbeat = useCallback(() => {
+    if (heartbeatRef.current) {
+      return;
+    }
+
+    sendPresenceHeartbeat();
+    heartbeatRef.current = setInterval(sendPresenceHeartbeat, 30000);
+  }, [sendPresenceHeartbeat]);
+
   const leaveChannel = useCallback(() => {
     const echoInstance = getEchoInstance?.() || EchoClient;
     if (!echoInstance) {
+      stopHeartbeat();
+      sendPresenceOffline();
       return;
     }
 
@@ -56,7 +95,9 @@ export const RealtimeProvider = ({ children }) => {
     }
 
     presenceActiveRef.current = false;
-  }, []);
+    stopHeartbeat();
+    sendPresenceOffline();
+  }, [sendPresenceOffline, stopHeartbeat]);
 
   const ensureConnected = useCallback(() => {
     if (!token) {
@@ -181,6 +222,20 @@ export const RealtimeProvider = ({ children }) => {
     resetState("idle");
   }, [leaveChannel, resetState]);
 
+  useEffect(() => {
+    if (presenceStatus === "connected") {
+      startHeartbeat();
+      return undefined;
+    }
+
+    stopHeartbeat();
+    if (presenceStatus !== "idle" && presenceStatus !== "connecting") {
+      sendPresenceOffline();
+    }
+
+    return undefined;
+  }, [presenceStatus, sendPresenceOffline, startHeartbeat, stopHeartbeat]);
+
   const contextValue = {
     presenceStatus,
     presenceError,
@@ -195,4 +250,3 @@ export const RealtimeProvider = ({ children }) => {
   );
 };
 
-export default RealtimeContext;
