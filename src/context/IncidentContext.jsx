@@ -47,6 +47,44 @@ const sortIncidents = (list) => {
   });
 };
 
+const isActiveAssignment = (assignment) => {
+  if (!assignment) {
+    return false;
+  }
+
+  return !["completed", "cancelled"].includes(String(assignment.status || ""));
+};
+
+const getResponderAssignment = (incident, responderId) => {
+  if (!incident || !responderId) {
+    return null;
+  }
+
+  const assignments = Array.isArray(incident.assignments)
+    ? incident.assignments
+    : [];
+
+  return (
+    assignments.find((assignment) => {
+      const assignedResponderId = assignment?.responder?.id ?? assignment?.responder_id;
+      return assignedResponderId === responderId && isActiveAssignment(assignment);
+    }) || null
+  );
+};
+
+const getAssignmentAlertKey = (incident, responderId) => {
+  const assignment = getResponderAssignment(incident, responderId);
+  if (!assignment || !incident?.id) {
+    return null;
+  }
+
+  return [
+    incident.id,
+    assignment.id ?? responderId,
+    assignment.assigned_at ?? assignment.updated_at ?? incident.updated_at ?? "unknown",
+  ].join(":");
+};
+
 export const IncidentProvider = ({ children }) => {
   const { ensureConnected } = useRealtime();
   const { isAuthenticated, loading: authLoading, user } = useAuth();
@@ -66,6 +104,81 @@ export const IncidentProvider = ({ children }) => {
   const lastFetchedRef = useRef(null);
   const autoAssignInProgressRef = useRef(false);
   const knownIncidentIdsRef = useRef(new Set());
+  const assignmentAlertedRef = useRef(new Set());
+
+  const playAssignmentAlert = useCallback(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) {
+        return;
+      }
+
+      const context = new AudioContextClass();
+      const now = context.currentTime;
+      const gainNode = context.createGain();
+      gainNode.connect(context.destination);
+
+      const scheduleTone = (frequency, startOffset, duration) => {
+        const oscillator = context.createOscillator();
+        const toneGain = context.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, now + startOffset);
+
+        toneGain.gain.setValueAtTime(0.0001, now + startOffset);
+        toneGain.gain.exponentialRampToValueAtTime(0.18, now + startOffset + 0.02);
+        toneGain.gain.exponentialRampToValueAtTime(
+          0.0001,
+          now + startOffset + duration,
+        );
+
+        oscillator.connect(toneGain);
+        toneGain.connect(gainNode);
+
+        oscillator.start(now + startOffset);
+        oscillator.stop(now + startOffset + duration + 0.02);
+      };
+
+      scheduleTone(880, 0, 0.14);
+      scheduleTone(1174.66, 0.18, 0.16);
+
+      window.setTimeout(() => {
+        context.close().catch(() => {});
+      }, 800);
+    } catch (error) {
+      console.warn("Unable to play assignment alert sound", error);
+    }
+  }, []);
+
+  const playAssignmentAlertOnce = useCallback(
+    (incident) => {
+      const responderId = user?.id;
+      if (!responderId) {
+        return;
+      }
+
+      const alertKey = getAssignmentAlertKey(incident, responderId);
+      if (!alertKey || assignmentAlertedRef.current.has(alertKey)) {
+        return;
+      }
+
+      assignmentAlertedRef.current.add(alertKey);
+
+      if (assignmentAlertedRef.current.size > 500) {
+        const firstKey = assignmentAlertedRef.current.values().next().value;
+        if (firstKey) {
+          assignmentAlertedRef.current.delete(firstKey);
+        }
+      }
+
+      playAssignmentAlert();
+    },
+    [playAssignmentAlert, user?.id],
+  );
 
   const mergeIncident = useCallback((incoming) => {
     if (!incoming) {
@@ -253,6 +366,7 @@ export const IncidentProvider = ({ children }) => {
         const assignedIncident = response?.data?.incident;
         if (assignedIncident) {
           mergeIncident(assignedIncident);
+          playAssignmentAlertOnce(assignedIncident);
 
           // Navigate to response mode
           const responseModePath = ROUTES.RESPONDER.RESPONSE_MODE.replace(
@@ -272,7 +386,14 @@ export const IncidentProvider = ({ children }) => {
         autoAssignInProgressRef.current = false;
       }
     },
-    [autoAssignEnabled, userLocation, user?.id, mergeIncident, navigate],
+    [
+      autoAssignEnabled,
+      userLocation,
+      user?.id,
+      mergeIncident,
+      navigate,
+      playAssignmentAlertOnce,
+    ],
   );
 
   useEffect(() => {
@@ -305,6 +426,18 @@ export const IncidentProvider = ({ children }) => {
             if (!payload?.incident) return;
 
             const incomingIncident = payload.incident;
+            const existingIncident = incidentsRef.current.find(
+              (incident) => incident.id === incomingIncident.id,
+            );
+
+            const wasAssignedToCurrentResponder = Boolean(
+              getResponderAssignment(existingIncident, user?.id),
+            );
+
+            const isAssignedToCurrentResponder = Boolean(
+              getResponderAssignment(incomingIncident, user?.id),
+            );
+
             const isNewIncident = !knownIncidentIdsRef.current.has(
               incomingIncident.id,
             );
@@ -313,6 +446,10 @@ export const IncidentProvider = ({ children }) => {
             knownIncidentIdsRef.current.add(incomingIncident.id);
 
             mergeIncident(incomingIncident);
+
+            if (!wasAssignedToCurrentResponder && isAssignedToCurrentResponder) {
+              playAssignmentAlertOnce(incomingIncident);
+            }
 
             // Auto-assign if this is a NEW incident in "reported" status
             if (
@@ -392,6 +529,8 @@ export const IncidentProvider = ({ children }) => {
     loadIncidents,
     autoAssignEnabled,
     attemptAutoAssign,
+    playAssignmentAlertOnce,
+    user?.id,
     user?.role,
   ]);
 

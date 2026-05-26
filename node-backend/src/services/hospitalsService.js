@@ -1,31 +1,45 @@
 import pool from '../config/db.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { isSchemaMismatchError, logFallback } from '../utils/dbFallback.js';
 
 const VALID_ORDER_COLUMNS = ['name', 'code', 'level', 'bed_capacity', 'current_occupancy', 'id'];
 
 const getPatientDistribution = async () => {
-  const { rows } = await pool.query(
-    `SELECT status FROM patients WHERE status IS NOT NULL`
-  );
+  try {
+    const { rows } = await pool.query(
+      `SELECT status FROM patients WHERE status IS NOT NULL`
+    );
 
-  const distribution = (rows || []).reduce(
-    (acc, p) => {
-      const s = p.status?.toLowerCase();
-      if (s === 'admitted') acc.admitted++;
-      else if (s === 'discharged') acc.discharged++;
-      else if (s === 'referred') acc.referred++;
-      else if (s === 'critical') acc.critical++;
-      return acc;
-    },
-    { admitted: 0, discharged: 0, referred: 0, critical: 0 }
-  );
+    const distribution = (rows || []).reduce(
+      (acc, p) => {
+        const s = p.status?.toLowerCase();
+        if (s === 'admitted') acc.admitted++;
+        else if (s === 'discharged') acc.discharged++;
+        else if (s === 'referred') acc.referred++;
+        else if (s === 'critical') acc.critical++;
+        return acc;
+      },
+      { admitted: 0, discharged: 0, referred: 0, critical: 0 }
+    );
 
-  return [
-    { name: 'Admitted Patients', value: distribution.admitted },
-    { name: 'Discharged Patients', value: distribution.discharged },
-    { name: 'Referred Patients', value: distribution.referred },
-    { name: 'Critical Cases', value: distribution.critical },
-  ];
+    return [
+      { name: 'Admitted Patients', value: distribution.admitted },
+      { name: 'Discharged Patients', value: distribution.discharged },
+      { name: 'Referred Patients', value: distribution.referred },
+      { name: 'Critical Cases', value: distribution.critical },
+    ];
+  } catch (err) {
+    if (isSchemaMismatchError(err)) {
+      logFallback('hospitals.getPatientDistribution', err);
+      return [
+        { name: 'Admitted Patients', value: 0 },
+        { name: 'Discharged Patients', value: 0 },
+        { name: 'Referred Patients', value: 0 },
+        { name: 'Critical Cases', value: 0 },
+      ];
+    }
+    throw err;
+  }
 };
 
 const getHospitalPatients = async (hospitalId, query = {}) => {

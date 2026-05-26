@@ -12,7 +12,11 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
-      includeAssets: ["kalinga-logo.svg"],
+      includeAssets: [
+        "kalinga-logo.svg",
+        "kalinga-mobile-icon-192.png",
+        "kalinga-mobile-icon-512.png",
+      ],
       manifest: {
         name: "Kalinga Web App",
         short_name: "Kalinga",
@@ -22,13 +26,21 @@ export default defineConfig({
         display: "standalone",
         icons: [
           {
-            src: "/kalinga-logo.svg",
-            sizes: "any",
-            type: "image/svg+xml",
+            src: "/kalinga-mobile-icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "/kalinga-mobile-icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
             purpose: "any maskable",
           },
         ],
       },
+      workbox: {
+        cleanupOutdatedCaches: true,
+      }
     }),
   ],
   resolve: {

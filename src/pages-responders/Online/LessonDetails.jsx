@@ -62,12 +62,12 @@ export default function LessonDetails() {
   useEffect(() => {
     if (!activitySlug) {
       const firstSlug = activities[0].slug;
-      navigate(`/modules/${id}/activity/${firstSlug}`, { replace: true });
+      navigate(`/responder/modules/${id}/activity/${firstSlug}`, { replace: true });
     } else {
       const found = activities.some((a) => a.slug === activitySlug);
       if (!found) {
         const firstSlug = activities[0].slug;
-        navigate(`/modules/${id}/activity/${firstSlug}`, { replace: true });
+        navigate(`/responder/modules/${id}/activity/${firstSlug}`, { replace: true });
       }
     }
   }, [id, activitySlug, activities]);
@@ -169,14 +169,14 @@ export default function LessonDetails() {
           <div style={{ marginTop: 12 }}>
             <button
               className="btn btn-primary"
-              onClick={() => navigate(`/modules/${id}/assessment/quiz`)}
+              onClick={() => navigate(`/responder/modules/${id}/assessment/quiz`)}
             >
               Take Module Quiz
             </button>
             <button
               className="btn btn-outline"
               style={{ marginLeft: 8 }}
-              onClick={() => navigate(`/modules/${id}`)}
+              onClick={() => navigate(`/responder/modules/${id}`)}
             >
               Back to Module
             </button>
@@ -215,21 +215,21 @@ export default function LessonDetails() {
         localStorage.setItem(unlockKey, JSON.stringify(updatedModules));
         unlockNextModule();
 
-        setTimeout(() => navigate(`/modules/${id}/assessment/quiz`), 600);
+        setTimeout(() => navigate(`/responder/modules/${id}/assessment/quiz`), 600);
         return;
       }
     }
 
     if (activeIndex < activities.length - 1) {
       setTimeout(() => {
-        navigate(`/modules/${id}/activity/${activities[activeIndex + 1].slug}`);
+        navigate(`/responder/modules/${id}/activity/${activities[activeIndex + 1].slug}`);
       }, 600);
     }
   };
 
   const handlePrev = () => {
     if (activeIndex > 0) {
-      navigate(`/modules/${id}/activity/${activities[activeIndex - 1].slug}`);
+      navigate(`/responder/modules/${id}/activity/${activities[activeIndex - 1].slug}`);
     }
   };
 
@@ -237,16 +237,16 @@ export default function LessonDetails() {
     if (isWaiting || !isAssessmentPassed) return;
 
     if (activeIndex < activities.length - 1) {
-      navigate(`/modules/${id}/activity/${activities[activeIndex + 1].slug}`);
+      navigate(`/responder/modules/${id}/activity/${activities[activeIndex + 1].slug}`);
     } else {
-      navigate(`/modules/${id}/assessment/quiz`);
+      navigate(`/responder/modules/${id}/assessment/quiz`);
     }
   };
 
   const handleJump = (e) => {
     const slug = e.target.value;
     if (!slug) return;
-    navigate(`/modules/${id}/activity/${slug}`);
+    navigate(`/responder/modules/${id}/activity/${slug}`);
   };
 
   const isCompleted = completedLessons.includes(current.slug);
@@ -262,7 +262,7 @@ export default function LessonDetails() {
           <div className="lesson-breadcrumbs">
             <Link to="/modules">Home</Link>
             <span>/</span>
-            <Link to={`/modules/${id}`}>Modules</Link>
+            <Link to={`/responder/modules/${id}`}>Modules</Link>
             <span>/</span>
             <span className="muted">{course.title}</span>
             <span>/</span>
@@ -400,7 +400,7 @@ export default function LessonDetails() {
                   completedLessons.includes(a.slug) ? "done" : ""
                 }`}
               >
-                <Link to={`/modules/${id}/activity/${a.slug}`}>
+                <Link to={`/responder/modules/${id}/activity/${a.slug}`}>
                   {i + 1}. {a.title}{" "}
                   {completedLessons.includes(a.slug) && (
                     <span className="check">✓</span>

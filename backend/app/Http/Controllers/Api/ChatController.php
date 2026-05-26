@@ -568,16 +568,33 @@ class ChatController extends Controller
 
         $incident = $activeIncident ?? Incident::create($incidentData);
 
+        $responderUser = null;
+        $responderAvailable = false;
+
+        if (!empty($receiverPayload['id']) && ($receiverPayload['role'] ?? null) === 'responder') {
+            $responderUser = User::with('responder')->find($receiverPayload['id']);
+            $responderAvailable = (bool) ($responderUser?->isResponderAvailable());
+        }
+
         if (!$activeIncident) {
             $patientMessage->incident_id = $incident->id;
             $patientMessage->save();
+
+            if ($responderAvailable && $responderUser) {
+                $incident->assignToResponder($responderUser->id);
+                $incident->refresh();
+            }
         }
+
+        $incidentNote = $responderAvailable
+            ? 'Emergency SOS created via responder chat.'
+            : 'Emergency SOS created but responder was unavailable for assignment.';
 
         IncidentStatusUpdate::create([
             'incident_id' => $incident->id,
             'user_id' => $sender->id,
-            'status' => Incident::STATUS_REPORTED,
-            'notes' => 'Emergency SOS created via responder chat.',
+            'status' => $incident->status,
+            'notes' => $incidentNote,
         ]);
 
         try {
@@ -589,6 +606,10 @@ class ChatController extends Controller
         $conversationId = $conversationPayload['conversationId'] ?? null;
 
         if (!$conversationId) {
+            return null;
+        }
+
+        if (!$responderAvailable) {
             return null;
         }
 

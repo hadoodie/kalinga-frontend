@@ -94,7 +94,7 @@ export default function ActivityPage() {
 
       alert("✅ Activity submitted successfully!");
 
-      setTimeout(() => navigate(`/modules/${id}`), 800);
+      setTimeout(() => navigate(`/responder/modules/${id}`), 800);
     };
 
     reader.readAsDataURL(file);
@@ -122,7 +122,7 @@ export default function ActivityPage() {
             <div className="activity-breadcrumbs">
               <Link to="/responder/modules" className="breadcrumb-link">Modules</Link>
               <span className="breadcrumb-separator">›</span>
-              <Link to={`/modules/${id}`} className="breadcrumb-link">
+              <Link to={`/responder/modules/${id}`} className="breadcrumb-link">
                 Barangay First 1000 Days Facilitator's Guide eTraining
               </Link>
               <span className="breadcrumb-separator">›</span>
@@ -217,7 +217,7 @@ export default function ActivityPage() {
                 </div>
               )}
 
-              <button onClick={() => navigate(`/modules/${id}`)}>
+              <button onClick={() => navigate(`/responder/modules/${id}`)}>
                 Continue → 
               </button>
               <button onClick={handleResubmit}>Submit Different File</button>

@@ -39,20 +39,20 @@ export default function SectionPage({ sectionType }) {
   // compute next URL if last in section
   const nextUrlIfLast =
     sectionType === "general"
-      ? `/modules/${id}/helpful/${
+      ? `/responder/modules/${id}/helpful/${
           (course.sections.helpful &&
             course.sections.helpful[0] &&
             course.sections.helpful[0].slug) ||
           ""
         }`
       : sectionType === "helpful"
-      ? `/modules/${id}/training/${
+      ? `/responder/modules/${id}/training/${
           (course.sections.training &&
             course.sections.training[0] &&
             course.sections.training[0].slug) ||
           ""
         }`
-      : `/modules/${id}`;
+      : `/responder/modules/${id}`;
 
   const progress = getProgress(id);
 
@@ -61,7 +61,7 @@ export default function SectionPage({ sectionType }) {
       <div className="course-wrapper">
         <h1 className="course-title">{course.title}</h1>
         <p className="course-breadcrumb">
-          <Link to={`/modules/${id}`}>Back to course</Link>
+          <Link to={`/responder/modules/${id}`}>Back to course</Link>
         </p>
 
         <div className="course-card">
@@ -81,13 +81,13 @@ export default function SectionPage({ sectionType }) {
             marginTop: 16,
           }}
         >
-          <Link to={`/modules/${id}`} className="btn btn-outline">
+          <Link to={`/responder/modules/${id}`} className="btn btn-outline">
             Back
           </Link>
 
           {next ? (
             <Link
-              to={`/modules/${id}/${sectionType}/${next.slug}`}
+              to={`/responder/modules/${id}/${sectionType}/${next.slug}`}
               className="btn btn-primary"
             >
               Next

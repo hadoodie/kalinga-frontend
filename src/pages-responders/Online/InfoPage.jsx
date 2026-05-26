@@ -62,7 +62,7 @@ export default function InfoPage() {
     if (currentIndex < currentTopics.length - 1) {
       // Next topic in the same section
       const nextTopic = currentTopics[currentIndex + 1];
-      navigate(`/modules/${id}/info/${nextTopic}`); // ✅ Fixed path
+      navigate(`/responder/modules/${id}/info/${nextTopic}`); // ✅ Fixed path
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       // Finished a section
@@ -71,7 +71,7 @@ export default function InfoPage() {
         alert(
           "✅ You’ve completed the General Information section! Helpful Materials are now unlocked."
         );
-        navigate(`/modules/${id}/info/reference-materials`); // ✅ Fixed path
+        navigate(`/responder/modules/${id}/info/reference-materials`); // ✅ Fixed path
       } else {
         alert("🎉 You’ve completed all topics in this section!");
       }
@@ -243,7 +243,7 @@ export default function InfoPage() {
       <div className="info-page">
         <div className="breadcrumbs">
           <Link to="/modules">Home</Link> /{" "}
-          <Link to={`/modules/${id}`}>Module</Link> /{" "}
+          <Link to={`/responder/modules/${id}`}>Module</Link> /{" "}
           <span>{formattedTitle}</span>
         </div>
 

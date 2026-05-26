@@ -281,6 +281,15 @@ class IncidentApiController extends Controller
             ], 404);
         }
 
+        $responderUser = User::with('responder')->find($bestResponder['responder_id']);
+
+        if (!$responderUser || !$responderUser->isResponderAvailable()) {
+            return response()->json([
+                'message' => 'Responder is not online or available.',
+                'ai_analysis' => $bestResponder['ai_reasoning'] ?? null,
+            ], 409);
+        }
+
         // Assign the recommended responder
         $assignment = DB::transaction(function () use ($incident, $bestResponder, $request) {
             $assignment = $incident->assignToResponder($bestResponder['responder_id']);
@@ -322,6 +331,14 @@ class IncidentApiController extends Controller
         ]);
 
         $responderId = (int) ($request->input('responder_id') ?? $request->user()->id);
+
+        $responderUser = User::with('responder')->find($responderId);
+
+        if (!$responderUser || !$responderUser->isResponderAvailable()) {
+            return response()->json([
+                'message' => 'Responder is not online or available.',
+            ], 409);
+        }
 
         $activeAssignmentCount = $incident->assignments()
             ->whereNotIn('status', [
@@ -446,6 +463,14 @@ class IncidentApiController extends Controller
         $responderLng = $validated['responder_lng'];
         $responderId = $validated['responder_id'];
 
+        $responderUser = User::with('responder')->find($responderId);
+
+        if (!$responderUser || !$responderUser->isResponderAvailable()) {
+            return response()->json([
+                'message' => 'Responder is not online or available.',
+            ], 409);
+        }
+
         $openStatuses = [
             Incident::STATUS_REPORTED,
             Incident::STATUS_ACKNOWLEDGED,
@@ -453,65 +478,125 @@ class IncidentApiController extends Controller
             Incident::STATUS_ON_SCENE,
         ];
 
-        $incidents = Incident::whereIn('status', $openStatuses)
-            ->whereNotNull('latlng')
-            ->with(['assignments'])
-            ->get()
-            ->filter(function (Incident $incident) use ($responderId) {
-                $activeAssignments = $incident->assignments->whereNotIn('status', [
-                    IncidentResponderAssignment::STATUS_COMPLETED,
-                    IncidentResponderAssignment::STATUS_CANCELLED,
-                ]);
+        $incidentDistanceMap = [];
 
-                if ($activeAssignments->contains('responder_id', $responderId)) {
-                    return true;
-                }
-
-                if ($incident->responders_required === 0) {
-                    return true;
-                }
-
-                return $activeAssignments->count() < $incident->responders_required;
-            });
-
-        if ($incidents->isEmpty()) {
-            return response()->json(['message' => 'No available incidents'], 404);
-        }
-
-        $nearestIncident = null;
-        $minDistance = null;
-
-        foreach ($incidents as $incident) {
+        foreach (Incident::whereIn('status', $openStatuses)->whereNotNull('latlng')->get() as $incident) {
             [$incidentLat, $incidentLng] = $this->extractCoordinates($incident->latlng);
             if ($incidentLat === null || $incidentLng === null) {
                 continue;
             }
 
-            $distance = $this->calculateDistance($responderLat, $responderLng, $incidentLat, $incidentLng);
-
-            if ($minDistance === null || $distance < $minDistance) {
-                $minDistance = $distance;
-                $nearestIncident = $incident;
-            }
+            $incidentDistanceMap[$incident->id] = $this->calculateDistance(
+                $responderLat,
+                $responderLng,
+                $incidentLat,
+                $incidentLng
+            );
         }
 
-        if (!$nearestIncident) {
+        if (empty($incidentDistanceMap)) {
+            return response()->json(['message' => 'No available incidents'], 404);
+        }
+
+        asort($incidentDistanceMap);
+
+        $candidateIncidentIds = array_keys($incidentDistanceMap);
+
+        $result = DB::transaction(function () use ($candidateIncidentIds, $incidentDistanceMap, $responderId, $openStatuses) {
+            $activeResponderAssignment = IncidentResponderAssignment::query()
+                ->where('responder_id', $responderId)
+                ->whereNotIn('status', [
+                    IncidentResponderAssignment::STATUS_COMPLETED,
+                    IncidentResponderAssignment::STATUS_CANCELLED,
+                ])
+                ->whereHas('incident', function ($query) use ($openStatuses) {
+                    $query->whereIn('status', $openStatuses);
+                })
+                ->with('incident')
+                ->lockForUpdate()
+                ->first();
+
+            if ($activeResponderAssignment?->incident) {
+                return [
+                    'incident' => $activeResponderAssignment->incident,
+                    'assignment' => $activeResponderAssignment,
+                    'distance' => $incidentDistanceMap[$activeResponderAssignment->incident->id] ?? null,
+                    'assignment_status' => 'existing_active',
+                ];
+            }
+
+            foreach ($candidateIncidentIds as $incidentId) {
+                $incident = Incident::query()->whereKey($incidentId)->lockForUpdate()->first();
+
+                if (!$incident || !in_array($incident->status, $openStatuses, true)) {
+                    continue;
+                }
+
+                $activeAssignmentsQuery = IncidentResponderAssignment::query()
+                    ->where('incident_id', $incident->id)
+                    ->whereNotIn('status', [
+                        IncidentResponderAssignment::STATUS_COMPLETED,
+                        IncidentResponderAssignment::STATUS_CANCELLED,
+                    ])
+                    ->lockForUpdate();
+
+                $existingAssignment = (clone $activeAssignmentsQuery)
+                    ->where('responder_id', $responderId)
+                    ->first();
+
+                if ($existingAssignment) {
+                    return [
+                        'incident' => $incident,
+                        'assignment' => $existingAssignment,
+                        'distance' => $incidentDistanceMap[$incident->id] ?? null,
+                        'assignment_status' => 'existing_incident',
+                    ];
+                }
+
+                $requiredResponders = (int) ($incident->responders_required ?? 1);
+
+                if ($requiredResponders > 0 && $activeAssignmentsQuery->count() >= $requiredResponders) {
+                    continue;
+                }
+
+                $shouldCreateAcknowledgedUpdate = $incident->status === Incident::STATUS_REPORTED;
+
+                $assignment = $incident->assignToResponder($responderId);
+
+                if ($shouldCreateAcknowledgedUpdate && $assignment->wasRecentlyCreated) {
+                    $incident->statusUpdates()->create([
+                        'user_id' => null,
+                        'status' => Incident::STATUS_ACKNOWLEDGED,
+                        'notes' => 'Dispatcher auto assignment',
+                    ]);
+                }
+
+                return [
+                    'incident' => $incident,
+                    'assignment' => $assignment,
+                    'distance' => $incidentDistanceMap[$incident->id] ?? null,
+                    'assignment_status' => $assignment->wasRecentlyCreated ? 'created' : 'existing_incident',
+                ];
+            }
+
+            return null;
+        });
+
+        if (!$result) {
             return response()->json(['message' => 'No suitable incident found'], 404);
         }
 
-        $assignment = DB::transaction(function () use ($nearestIncident, $responderId) {
-            $assignment = $nearestIncident->assignToResponder($responderId);
+        /** @var \App\Models\Incident $nearestIncident */
+        $nearestIncident = $result['incident'];
 
-            if ($nearestIncident->status === Incident::STATUS_REPORTED) {
-                $nearestIncident->statusUpdates()->create([
-                    'user_id' => null,
-                    'status' => Incident::STATUS_ACKNOWLEDGED,
-                    'notes' => 'Dispatcher auto assignment',
-                ]);
-            }
+        if (!$nearestIncident instanceof Incident) {
+            return response()->json(['message' => 'No suitable incident found'], 404);
+        }
 
-            return $assignment;
-        });
+        /** @var \App\Models\IncidentResponderAssignment $assignment */
+        $assignment = $result['assignment'];
+        $distance = $result['distance'];
+        $assignmentStatus = $result['assignment_status'] ?? 'created';
 
         $nearestIncident->load([
             'assignments.responder:id,name,email,role,phone',
@@ -519,14 +604,17 @@ class IncidentApiController extends Controller
             'latestStatusUpdate.user:id,name,role',
         ]);
 
-        broadcast(new IncidentUpdated($nearestIncident))->toOthers();
+        if ($assignmentStatus === 'created') {
+            broadcast(new IncidentUpdated($nearestIncident))->toOthers();
+        }
 
         [$lat, $lng] = $this->extractCoordinates($nearestIncident->latlng);
 
         return response()->json([
             'incident' => (new IncidentResource($nearestIncident))->resolve(),
-            'distance' => $minDistance,
+            'distance' => $distance,
             'assignment' => new IncidentAssignmentResource($assignment),
+            'assignment_status' => $assignmentStatus,
             'coordinates' => ['lat' => $lat, 'lng' => $lng],
         ]);
     }

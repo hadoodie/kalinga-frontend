@@ -288,14 +288,6 @@ const HospitalDashboard = () => {
 
               {sidebarOpen && (
                 <div className="space-y-3">
-                  <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors">
-                    <BarChart3 className="w-5 h-5" />
-                    <span>Analytics & Reports</span>
-                  </button>
-                  <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors">
-                    <Settings className="w-5 h-5" />
-                    <span>System Settings</span>
-                  </button>
                   <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors mt-6">
                     <LogOut className="w-5 h-5" />
                     <span>Logout</span>
@@ -412,64 +404,6 @@ const HospitalDashboard = () => {
               </div>
 
               <div className="p-6">{renderActiveTab()}</div>
-            </div>
-
-            {/* Bottom Stats */}
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-100 border border-green-300 rounded-2xl p-6 shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 uppercase font-semibold">
-                      Today's Activity
-                    </p>
-                    <p className="text-3xl font-bold text-green-800 mt-2">12</p>
-                    <p className="text-sm text-green-700 mt-1">
-                      Requests & Updates
-                    </p>
-                  </div>
-                  <div className="w-14 h-14 bg-green-200 rounded-xl flex items-center justify-center">
-                    <Package className="w-7 h-7 text-green-700" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-300 rounded-2xl p-6 shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 uppercase font-semibold">
-                      Response Time
-                    </p>
-                    <p className="text-3xl font-bold text-blue-800 mt-2">
-                      2.4h
-                    </p>
-                    <p className="text-sm text-blue-700 mt-1">
-                      Average delivery time
-                    </p>
-                  </div>
-                  <div className="w-14 h-14 bg-blue-200 rounded-xl flex items-center justify-center">
-                    <Truck className="w-7 h-7 text-blue-700" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-300 rounded-2xl p-6 shadow-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-600 uppercase font-semibold">
-                      Stock Accuracy
-                    </p>
-                    <p className="text-3xl font-bold text-purple-800 mt-2">
-                      98.7%
-                    </p>
-                    <p className="text-sm text-purple-700 mt-1">
-                      Inventory match rate
-                    </p>
-                  </div>
-                  <div className="w-14 h-14 bg-purple-200 rounded-xl flex items-center justify-center">
-                    <ClipboardCheck className="w-7 h-7 text-purple-700" />
-                  </div>
-                </div>
-              </div>
             </div>
           </main>
         </div>

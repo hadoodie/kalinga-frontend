@@ -13,10 +13,19 @@ export function useVitalsSync({
   onPayload,
 }) {
   useEffect(() => {
+    if (!caseNo && !patientUuid) {
+      onStatusChange?.("waiting");
+      return;
+    }
+
     const token = localStorage.getItem("token") || undefined;
     const socket = io(NODE_BASE, {
       transports: ["websocket"],
       auth: token ? { token } : undefined,
+      reconnection: true,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000,
     });
 
     socket.on("connect", () => {
