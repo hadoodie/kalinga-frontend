@@ -1,0 +1,92 @@
+[
+  {
+    "esi_level": 5,
+    "temperature": 37.1,
+    "spo2": 99,
+    "bpm": 61,
+    "created_at": "2026-03-23T08:12:49.127Z",
+    "patient_name": "Test User1",
+    "patient_id": "9"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 36.8,
+    "spo2": 99,
+    "bpm": 82,
+    "created_at": "2026-03-23T08:11:49.140Z",
+    "patient_name": "Test User2",
+    "patient_id": "10"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 36.4,
+    "spo2": 99,
+    "bpm": 68,
+    "created_at": "2026-03-23T08:10:49.140Z",
+    "patient_name": "Test User3",
+    "patient_id": "11"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 37,
+    "spo2": 99,
+    "bpm": 69,
+    "created_at": "2026-03-23T08:09:49.140Z",
+    "patient_name": "Test User4",
+    "patient_id": "13"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 37.2,
+    "spo2": 99,
+    "bpm": 68,
+    "created_at": "2026-03-23T08:08:49.140Z",
+    "patient_name": "Test User5",
+    "patient_id": "14"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 36.9,
+    "spo2": 99,
+    "bpm": 84,
+    "created_at": "2026-03-23T08:07:49.140Z",
+    "patient_name": "Test User6",
+    "patient_id": "15"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 36.4,
+    "spo2": 99,
+    "bpm": 69,
+    "created_at": "2026-03-23T08:06:49.140Z",
+    "patient_name": "Test User7",
+    "patient_id": "16"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 37,
+    "spo2": 97,
+    "bpm": 85,
+    "created_at": "2026-03-23T08:05:49.140Z",
+    "patient_name": "Test User8",
+    "patient_id": "17"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 36.5,
+    "spo2": 98,
+    "bpm": 83,
+    "created_at": "2026-03-23T08:04:49.140Z",
+    "patient_name": "Test User9",
+    "patient_id": "18"
+  },
+  {
+    "esi_level": 5,
+    "temperature": 36.6,
+    "spo2": 99,
+    "bpm": 66,
+    "created_at": "2026-03-23T08:03:49.140Z",
+    "patient_name": "Test User10",
+    "patient_id": "19"
+  }
+]

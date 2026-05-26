@@ -1,5 +1,6 @@
 import pool from '../config/db.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { isSchemaMismatchError, logFallback } from '../utils/dbFallback.js';
 
 const VALID_ORDER_COLUMNS = ['created_at', 'severity', 'title', 'id'];
 
@@ -30,24 +31,32 @@ const getAll = async (query = {}) => {
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-  const countRes = await pool.query(
-    `SELECT COUNT(*) FROM hospital_reports ${where}`,
-    params
-  );
-  const total = parseInt(countRes.rows[0].count, 10);
+  try {
+    const countRes = await pool.query(
+      `SELECT COUNT(*) FROM hospital_reports ${where}`,
+      params
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
 
-  const dataParams = [...params, limit, from];
-  const { rows } = await pool.query(
-    `SELECT id, title, hospital_name, message, action, severity, occupancy,
-            type, status, reporter_id, created_at, updated_at
-     FROM hospital_reports
-     ${where}
-     ORDER BY ${col} ${dir}
-     LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
-    dataParams
-  );
+    const dataParams = [...params, limit, from];
+    const { rows } = await pool.query(
+      `SELECT id, title, hospital_name, message, action, severity, occupancy,
+              type, status, reporter_id, created_at, updated_at
+       FROM hospital_reports
+       ${where}
+       ORDER BY ${col} ${dir}
+       LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
+      dataParams
+    );
 
-  return { data: rows, pagination: buildPaginationMeta(total, page, limit) };
+    return { data: rows, pagination: buildPaginationMeta(total, page, limit) };
+  } catch (err) {
+    if (isSchemaMismatchError(err)) {
+      logFallback('reports.getAll', err);
+      return { data: [], pagination: buildPaginationMeta(0, page, limit) };
+    }
+    throw err;
+  }
 };
 
 const getById = async (id) => {

@@ -2,28 +2,74 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 15px 0;   /* space sa taas at baba */
-  padding: 0 20px;
+  margin: 15px 0 25px 0;
+  padding: 0;
 }
 
 .date-text {
-  font-size: 22px;
-  font-weight: bold;
-  color: #004d25;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .date-text .weekday {
-  font-weight: bold;
-  color: #ffcc00;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.dropdowns {
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
 
 .dropdowns select {
-  padding: 6px 12px;
-  margin-left: 10px;
+  padding: 8px 32px 8px 16px;
   border-radius: 8px;
-  border: 1px solid #004d25;
-  background: #004d25;
-  color: white;
-  font-weight: bold;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease-in-out;
+}
+
+.dropdowns select:hover {
+  border-color: #d1d5db;
+  background-color: #f9fafb;
+}
+
+.dropdowns select:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+}
+
+@media (max-width: 900px) {
+  .date-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .date-text {
+    font-size: 1.2rem;
+  }
+
+  .dropdowns {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
 }

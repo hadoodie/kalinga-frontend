@@ -16,12 +16,12 @@ const TriageCard = () => {
       setTriageData(
         stats.map((h) => ({
           hospital: h.hospital_name,
-          low:      h.low || 0,
-          medium:   h.medium || 0,
-          high:     h.high || 0,
+          low: h.low || 0,
+          medium: h.medium || 0,
+          high: h.high || 0,
           veryHigh: h.very_high || 0,
           critical: h.critical || 0,
-        }))
+        })),
       );
       setFetchError(null);
     } catch (err) {
@@ -43,51 +43,91 @@ const TriageCard = () => {
       <h3 className="card-title">DOH Hospitals Triage System</h3>
 
       {loading && <p style={{ padding: "1rem" }}>Loading triage data…</p>}
-      {fetchError && <p style={{ color: "red", padding: "1rem" }}>{fetchError}</p>}
+      {fetchError && (
+        <p style={{ color: "red", padding: "1rem" }}>{fetchError}</p>
+      )}
 
       {!loading && !fetchError && (
-        <div className="triage-table-wrapper">
-          <table className="triage-table">
-            <thead>
-              <tr>
-                <th>DOH Accredited Hospital</th>
-                <th className="low">Low</th>
-                <th className="medium">Medium</th>
-                <th className="high">High</th>
-                <th className="very-high">Very High</th>
-                <th className="critical">Critical</th>
-              </tr>
-            </thead>
-            <tbody>
-              {triageData.length === 0 ? (
+        <div className="triage-content">
+          <div className="triage-table-wrapper">
+            <table className="triage-table">
+              <thead>
                 <tr>
-                  <td colSpan={6} style={{ textAlign: "center" }}>
-                    No triage data available
-                  </td>
+                  <th>DOH Accredited Hospital</th>
+                  <th className="low">Low</th>
+                  <th className="medium">Medium</th>
+                  <th className="high">High</th>
+                  <th className="very-high">Very High</th>
+                  <th className="critical">Critical</th>
                 </tr>
-              ) : (
-                triageData.map((row, i) => (
-                  <tr key={i}>
-                    <td>{row.hospital}</td>
-                    <td className="low">{row.low}</td>
-                    <td className="medium">{row.medium}</td>
-                    <td className="high">{row.high}</td>
-                    <td className="very-high">{row.veryHigh}</td>
-                    <td className="critical">{row.critical}</td>
+              </thead>
+              <tbody>
+                {triageData.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: "center" }}>
+                      No triage data available
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  triageData.map((row, i) => (
+                    <tr key={i}>
+                      <td>{row.hospital}</td>
+                      <td className="low">{row.low}</td>
+                      <td className="medium">{row.medium}</td>
+                      <td className="high">{row.high}</td>
+                      <td className="very-high">{row.veryHigh}</td>
+                      <td className="critical">{row.critical}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div
+            className="triage-mobile-list"
+            aria-label="Triage summary by hospital"
+          >
+            {triageData.length === 0 ? (
+              <p className="triage-mobile-empty">No triage data available</p>
+            ) : (
+              triageData.map((row, i) => (
+                <article key={i} className="triage-mobile-item">
+                  <h4>{row.hospital}</h4>
+                  <div className="triage-mobile-metrics">
+                    <span className="metric low">Low: {row.low}</span>
+                    <span className="metric medium">Medium: {row.medium}</span>
+                    <span className="metric high">High: {row.high}</span>
+                    <span className="metric very-high">
+                      Very High: {row.veryHigh}
+                    </span>
+                    <span className="metric critical">
+                      Critical: {row.critical}
+                    </span>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
         </div>
       )}
 
       <div className="triage-legend">
-        <span><span className="legend-dot low"></span> Low</span>
-        <span><span className="legend-dot medium"></span> Medium</span>
-        <span><span className="legend-dot high"></span> High</span>
-        <span><span className="legend-dot very-high"></span> Very High</span>
-        <span><span className="legend-dot critical"></span> Critical</span>
+        <span>
+          <span className="legend-dot low"></span> Low
+        </span>
+        <span>
+          <span className="legend-dot medium"></span> Medium
+        </span>
+        <span>
+          <span className="legend-dot high"></span> High
+        </span>
+        <span>
+          <span className="legend-dot very-high"></span> Very High
+        </span>
+        <span>
+          <span className="legend-dot critical"></span> Critical
+        </span>
       </div>
     </div>
   );

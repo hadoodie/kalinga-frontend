@@ -55,10 +55,10 @@ export const NavbarA = () => {
     try {
       await logout();
       setIsProfileOpen(false);
-      navigate("/");
+      window.location.assign("/#hero");
     } catch (error) {
       console.error("Logout failed:", error);
-      navigate("/");
+      window.location.assign("/#hero");
     }
   };
 
@@ -69,7 +69,7 @@ export const NavbarA = () => {
           "fixed w-full z-50 transition-all duration-300 border-b border-gray-200",
           isScrolled
             ? "py-3 bg-background backdrop-blur-md shadow-xs"
-            : "py-5 bg-background"
+            : "py-5 bg-background",
         )}
       >
         <div className="container flex items-center justify-between">

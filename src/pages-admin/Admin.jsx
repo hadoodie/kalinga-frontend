@@ -51,16 +51,6 @@ const TrainingSection = lazy(() =>
     default: m.TrainingSection,
   })),
 );
-const ConnectivityMonitoring = lazy(() =>
-  import("@/components/admin/sections/ConnectivityMonitoring").then((m) => ({
-    default: m.ConnectivityMonitoring,
-  })),
-);
-const MonitoringSecurity = lazy(() =>
-  import("@/components/admin/sections/MonitoringSecurity").then((m) => ({
-    default: m.MonitoringSecurity,
-  })),
-);
 const BroadcastControl = lazy(() =>
   import("@/components/admin/sections/BroadcastControl").then((m) => ({
     default: m.BroadcastControl,
@@ -79,11 +69,6 @@ const ResponderOverview = lazy(() =>
 const PatientOverview = lazy(() =>
   import("@/components/admin/sections/PatientOverview").then((m) => ({
     default: m.PatientOverview,
-  })),
-);
-const HospitalSafetyIndexSection = lazy(() =>
-  import("@/components/admin/sections/HospitalSafetyIndex").then((m) => ({
-    default: m.HospitalSafetyIndexSection,
   })),
 );
 const LogisticsForecastSection = lazy(() =>
@@ -179,15 +164,6 @@ const adminSections = [
     apiStatus: "live",
   },
   {
-    id: "hospital-safety",
-    title: "Hospital Safety Index",
-    description:
-      "WHO / DOH-aligned compliance, resilience, and resource telemetry per hospital.",
-    icon: Activity,
-    component: HospitalSafetyIndexSection,
-    apiStatus: "partial",
-  },
-  {
     id: "logistics",
     title: "Logistics Overview",
     description:
@@ -203,7 +179,7 @@ const adminSections = [
       "AI-driven demand forecasting, stockout risk analysis, and executive narrative.",
     icon: TrendingUp,
     component: LogisticsForecastSection,
-    apiStatus: "partial",
+    apiStatus: "live",
   },
   {
     id: "training",
@@ -211,25 +187,7 @@ const adminSections = [
     description: "Partner-led capability building and workshop coordination.",
     icon: GraduationCap,
     component: TrainingSection,
-    apiStatus: "demo",
-  },
-  {
-    id: "connectivity",
-    title: "Connectivity Monitoring",
-    description:
-      "Network uptime, throughput, and connected population metrics.",
-    icon: Server,
-    component: ConnectivityMonitoring,
-    apiStatus: "demo",
-  },
-  {
-    id: "security",
-    title: "Monitoring & Security",
-    description:
-      "Physical and cyber telemetry from the command center perimeter.",
-    icon: Shield,
-    component: MonitoringSecurity,
-    apiStatus: "demo",
+    apiStatus: "live",
   },
   {
     id: "broadcast",
@@ -238,7 +196,7 @@ const adminSections = [
     icon: Megaphone,
     component: BroadcastControl,
     optional: true,
-    apiStatus: "partial",
+    apiStatus: "live",
   },
 ];
 
@@ -265,11 +223,11 @@ export const AdminPortal = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/");
+      window.location.assign("/#hero");
     } catch (error) {
       console.error("Logout failed:", error);
       // Force navigation even if logout API fails
-      navigate("/");
+      window.location.assign("/#hero");
     }
   };
 

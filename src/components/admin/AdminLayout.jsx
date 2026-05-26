@@ -393,7 +393,7 @@ export const AdminLayout = ({
         break;
       case "support":
         window.open(
-          "mailto:command-support@kalinga.gov?subject=Command%20Center%20Support%20Request",
+          "mailto:kalinga.tup@gmail.com?subject=Command%20Center%20Support%20Request",
           "_blank",
         );
         break;

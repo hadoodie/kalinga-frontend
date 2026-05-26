@@ -18,6 +18,9 @@ import {
 import L from "leaflet";
 import {
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
   Maximize,
   Minimize,
   Navigation2,
@@ -146,10 +149,10 @@ const toLatLngTuple = (coordinate) => {
 const normalizeBlockade = (blockade) => {
   if (!blockade) return null;
   const lat = normalizeCoordinate(
-    blockade.start_lat ?? blockade.latitude ?? blockade.lat
+    blockade.start_lat ?? blockade.latitude ?? blockade.lat,
   );
   const lng = normalizeCoordinate(
-    blockade.start_lng ?? blockade.longitude ?? blockade.lng
+    blockade.start_lng ?? blockade.longitude ?? blockade.lng,
   );
 
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -242,7 +245,7 @@ const evaluateRoutesAgainstBlockades = (routes, normalizedBlockades) =>
 
     const analysis = analyzeRouteAgainstBlockades(
       sampleRouteCoordinates(coords),
-      normalizedBlockades
+      normalizedBlockades,
     );
 
     return {
@@ -261,7 +264,7 @@ const selectBestRouteVariant = (routes, normalizedBlockades) => {
 
   const evaluations = evaluateRoutesAgainstBlockades(
     routes,
-    normalizedBlockades
+    normalizedBlockades,
   );
   const original = evaluations[0];
   const blockadesPresent = normalizedBlockades.length > 0;
@@ -277,7 +280,7 @@ const selectBestRouteVariant = (routes, normalizedBlockades) => {
   }
 
   const blockadeFreeRoutes = evaluations.filter(
-    (evaluation) => evaluation.conflicts.length === 0
+    (evaluation) => evaluation.conflicts.length === 0,
   );
 
   if (blockadeFreeRoutes.length) {
@@ -404,7 +407,7 @@ const generateDetourWaypoints = (start, end, blockade) => {
     const backward = offsetPointByBearing(
       blockade,
       offset,
-      normalizeBearing(baseBearing + 180)
+      normalizeBearing(baseBearing + 180),
     );
     candidatePoints.push({
       lat: forward.lat,
@@ -437,7 +440,7 @@ const generateDetourWaypoints = (start, end, blockade) => {
 const snapWaypointToRoad = async (osrmServer, waypoint) => {
   try {
     const response = await fetch(
-      `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`
+      `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`,
     );
     if (!response.ok) {
       return null;
@@ -539,7 +542,7 @@ const tryResolveRouteWithDynamicDetours = async ({
     const routes = await requestOsrmRoute(
       osrmServer,
       [start, snapped, end],
-      paramString
+      paramString,
     );
 
     if (!routes || !routes.length) {
@@ -548,7 +551,7 @@ const tryResolveRouteWithDynamicDetours = async ({
 
     const evaluationEntry = evaluateRoutesAgainstBlockades(
       [routes[0]],
-      normalizedBlockades
+      normalizedBlockades,
     )[0];
 
     if (!evaluationEntry) {
@@ -669,8 +672,8 @@ const deriveRouteAlert = (selection) => {
     const intro = rerouted
       ? "Limited detours available."
       : alternativesAvailable
-      ? "No clear detour available."
-      : "Blockade ahead.";
+        ? "No clear detour available."
+        : "Blockade ahead.";
 
     return {
       type: severity,
@@ -712,29 +715,77 @@ const normalizeHospitals = (payload) => {
     .filter(Boolean);
 };
 
-const fallbackHospitals = [
-  {
-    id: "fallback_fatima",
-    name: "Fatima University Medical Center",
-    address: "Valenzuela City",
-    latitude: 14.65891,
-    longitude: 120.98032,
-  },
-  {
-    id: "fallback_jnr",
-    name: "Dr. Jose N. Rodriguez Memorial Hospital",
-    address: "Caloocan City",
-    latitude: 14.64234,
-    longitude: 120.96789,
-  },
-  {
-    id: "fallback_evrmc",
-    name: "East Avenue Medical Center",
-    address: "Quezon City",
-    latitude: 14.6395,
-    longitude: 121.0471,
-  },
-];
+const getManeuverText = (step) => {
+  const type = step?.maneuver?.type;
+  const modifier = step?.maneuver?.modifier;
+  const roadName = step?.name || step?.ref || "the road";
+
+  switch (type) {
+    case "depart":
+      return `Head ${modifier || "straight"} on ${roadName}`;
+    case "turn":
+      return `Turn ${modifier || "ahead"} onto ${roadName}`;
+    case "merge":
+      return `Merge ${modifier || "ahead"} onto ${roadName}`;
+    case "roundabout":
+    case "rotary":
+      return `Take exit ${step?.maneuver?.exit || 1} at the roundabout`;
+    case "arrive":
+      return "You have arrived at the destination";
+    default:
+      return `Continue on ${roadName}`;
+  }
+};
+
+const getManeuverGlyph = (step) => {
+  const type = step?.maneuver?.type;
+  const modifier = step?.maneuver?.modifier || "";
+
+  if (type === "arrive") return "🏁";
+  if (type === "roundabout" || type === "rotary") return "🔄";
+  if (type === "merge") return "🔀";
+  if (type === "depart") return "🚀";
+  if (type === "turn" && modifier.includes("left")) return "⬅️";
+  if (type === "turn" && modifier.includes("right")) return "➡️";
+  return "⬆️";
+};
+
+const processRouteInstructions = (steps = []) =>
+  steps.map((step, index) => ({
+    id: index,
+    instruction: getManeuverText(step),
+    icon: getManeuverGlyph(step),
+    distance: Math.round(step?.distance || 0),
+    duration: Math.round(step?.duration || 0),
+    location: step?.maneuver?.location
+      ? {
+          lat: step.maneuver.location[1],
+          lng: step.maneuver.location[0],
+        }
+      : null,
+  }));
+
+const formatMeters = (meters) => {
+  if (!Number.isFinite(meters) || meters < 0) return "--";
+  if (meters < 1000) return `${meters} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+};
+
+const formatDuration = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "--";
+  if (seconds < 60) return "< 1 min";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours}h ${mins}m`;
+};
+
+const formatETA = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return "--";
+  const arrival = new Date(Date.now() + seconds * 1000);
+  return arrival.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+};
 
 const Recenter = ({ center, zoom }) => {
   const map = useMap();
@@ -762,7 +813,9 @@ const MapFlyTo = ({ target }) => {
 
 const HospitalNavigatorMap = () => {
   const [userLocation, setUserLocation] = useState(null);
-  const [hospitals, setHospitals] = useState(fallbackHospitals);
+  const [hospitals, setHospitals] = useState([]);
+  const [hospitalsLoading, setHospitalsLoading] = useState(true);
+  const [hospitalsError, setHospitalsError] = useState(null);
   const [selectedHospitalId, setSelectedHospitalId] = useState(null);
   const [routeCoords, setRouteCoords] = useState([]);
   const [loadingRoute, setLoadingRoute] = useState(false);
@@ -775,6 +828,13 @@ const HospitalNavigatorMap = () => {
   const [showHospitals, setShowHospitals] = useState(true);
   const [navigationEnabled, setNavigationEnabled] = useState(false);
   const [desktopActionsOpen, setDesktopActionsOpen] = useState(false);
+  const [mobilePanelExpanded, setMobilePanelExpanded] = useState(false);
+  const [routeInstructions, setRouteInstructions] = useState([]);
+  const [currentInstructionIndex, setCurrentInstructionIndex] = useState(0);
+  const [distanceToNextManeuver, setDistanceToNextManeuver] = useState(null);
+  const [totalDistanceRemaining, setTotalDistanceRemaining] = useState(null);
+  const [totalDurationRemaining, setTotalDurationRemaining] = useState(null);
+  const [isRerouting, setIsRerouting] = useState(false);
   const mapRef = useRef(null);
 
   const userIcon = useMemo(() => iconFactory("blue"), []);
@@ -788,12 +848,12 @@ const HospitalNavigatorMap = () => {
 
   const normalizedBlockades = useMemo(
     () => blockades.map(normalizeBlockade).filter(Boolean),
-    [blockades]
+    [blockades],
   );
 
   const selectedHospital = useMemo(
     () => hospitals.find((h) => h.id === selectedHospitalId) ?? null,
-    [hospitals, selectedHospitalId]
+    [hospitals, selectedHospitalId],
   );
 
   const sortedHospitals = useMemo(() => {
@@ -801,15 +861,17 @@ const HospitalNavigatorMap = () => {
       .map((h) => {
         const distance = userLocation
           ? haversineKm(userLocation, { lat: h.latitude, lng: h.longitude })
-          : h.distance_km ?? Infinity;
+          : (h.distance_km ?? Infinity);
         return { ...h, distance_km: distance };
       })
       .sort(
-        (a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity)
+        (a, b) => (a.distance_km ?? Infinity) - (b.distance_km ?? Infinity),
       );
   }, [hospitals, userLocation]);
 
   const fetchHospitals = useCallback(async () => {
+    setHospitalsLoading(true);
+    setHospitalsError(null);
     try {
       const response = await hospitalService.getAll();
       const normalized = normalizeHospitals(response);
@@ -818,11 +880,15 @@ const HospitalNavigatorMap = () => {
         setSelectedHospitalId((prev) => prev ?? normalized[0].id);
         return;
       }
+      setHospitals([]);
+      setHospitalsError("No hospitals available yet.");
     } catch (err) {
-      console.warn("Failed to load hospitals, using fallback", err);
+      console.warn("Failed to load hospitals from database", err);
+      setHospitals([]);
+      setHospitalsError("Failed to load hospitals from database.");
+    } finally {
+      setHospitalsLoading(false);
     }
-    setHospitals(fallbackHospitals);
-    setSelectedHospitalId((prev) => prev ?? fallbackHospitals[0].id);
   }, []);
 
   const fetchRoute = useCallback(async () => {
@@ -838,6 +904,8 @@ const HospitalNavigatorMap = () => {
       overview: "full",
       geometries: "geojson",
       alternatives: "true",
+      steps: "true",
+      annotations: "true",
       continue_straight: "true",
     });
 
@@ -847,7 +915,7 @@ const HospitalNavigatorMap = () => {
           KALINGA_CONFIG.OSRM_SERVER || "https://router.project-osrm.org"
         }/route/v1/driving/${start.lng},${start.lat};${end.lng},${
           end.lat
-        }?${params.toString()}`
+        }?${params.toString()}`,
       );
 
       if (!res.ok) {
@@ -857,7 +925,7 @@ const HospitalNavigatorMap = () => {
       const data = await res.json();
       let selection = selectBestRouteVariant(
         data?.routes ?? [],
-        normalizedBlockades
+        normalizedBlockades,
       );
 
       if (selection?.selected?.conflicts?.length) {
@@ -891,16 +959,32 @@ const HospitalNavigatorMap = () => {
         setRouteCoords(fallback);
       }
 
+      const selectedRoute = selection?.selected?.route ?? data?.routes?.[0];
+      const nextInstructions = processRouteInstructions(
+        selectedRoute?.legs?.[0]?.steps || [],
+      );
+      setRouteInstructions(nextInstructions);
+      setCurrentInstructionIndex(0);
+      setDistanceToNextManeuver(nextInstructions[0]?.distance ?? null);
+      setTotalDistanceRemaining(selectedRoute?.distance ?? null);
+      setTotalDurationRemaining(selectedRoute?.duration ?? null);
+
       setRouteSelection(selection);
       setRouteAlert(deriveRouteAlert(selection));
     } catch (err) {
       console.error("Failed to fetch route", err);
       setError("Unable to fetch driving route. Please try again.");
       setRouteCoords([]);
+      setRouteInstructions([]);
+      setCurrentInstructionIndex(0);
+      setDistanceToNextManeuver(null);
+      setTotalDistanceRemaining(null);
+      setTotalDurationRemaining(null);
       setRouteSelection(null);
       setRouteAlert(null);
     } finally {
       setLoadingRoute(false);
+      setIsRerouting(false);
     }
   }, [normalizedBlockades, selectedHospital, userLocation]);
 
@@ -917,15 +1001,15 @@ const HospitalNavigatorMap = () => {
         },
         () => {
           setError(
-            (prev) => prev ?? "Location unavailable. Using default center."
+            (prev) => prev ?? "Location unavailable. Using default center.",
           );
         },
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
       );
       return () => navigator.geolocation.clearWatch(watchId);
     }
     setError(
-      (prev) => prev ?? "Geolocation not supported. Using default center."
+      (prev) => prev ?? "Geolocation not supported. Using default center.",
     );
   }, []);
 
@@ -934,6 +1018,93 @@ const HospitalNavigatorMap = () => {
       fetchRoute();
     }
   }, [selectedHospital, userLocation, fetchRoute]);
+
+  useEffect(() => {
+    if (!userLocation || !routeInstructions.length) return;
+
+    let nearestIndex = -1;
+    let nearestDistance = Infinity;
+
+    routeInstructions.forEach((instruction, index) => {
+      if (!instruction.location) return;
+      const distance = haversineMeters(
+        userLocation.lat,
+        userLocation.lng,
+        instruction.location.lat,
+        instruction.location.lng,
+      );
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = index;
+      }
+    });
+
+    if (nearestIndex >= 0) {
+      setCurrentInstructionIndex((prev) => Math.max(prev, nearestIndex));
+    }
+  }, [routeInstructions, userLocation]);
+
+  useEffect(() => {
+    const currentInstruction =
+      routeInstructions[currentInstructionIndex] ?? null;
+    setDistanceToNextManeuver(currentInstruction?.distance ?? null);
+
+    if (!routeInstructions.length || !Number.isFinite(totalDistanceRemaining))
+      return;
+
+    const traveled = routeInstructions
+      .slice(0, currentInstructionIndex)
+      .reduce((sum, instruction) => sum + (instruction.distance || 0), 0);
+
+    const remainingDistance = Math.max(0, totalDistanceRemaining - traveled);
+    setTotalDistanceRemaining(remainingDistance);
+
+    if (Number.isFinite(totalDurationRemaining) && totalDistanceRemaining > 0) {
+      const remainingRatio = remainingDistance / totalDistanceRemaining;
+      setTotalDurationRemaining((prev) => {
+        if (!Number.isFinite(prev)) return prev;
+        return Math.max(0, prev * remainingRatio);
+      });
+    }
+  }, [currentInstructionIndex, routeInstructions]);
+
+  const checkOffRoute = useCallback(() => {
+    if (!routeCoords.length || !userLocation) return false;
+
+    let minDistance = Infinity;
+    const stride = Math.max(1, Math.floor(routeCoords.length / 60));
+    for (let i = 0; i < routeCoords.length; i += stride) {
+      const [lat, lng] = routeCoords[i];
+      const distance = haversineMeters(
+        userLocation.lat,
+        userLocation.lng,
+        lat,
+        lng,
+      );
+      if (distance < minDistance) minDistance = distance;
+    }
+
+    return minDistance > 50;
+  }, [routeCoords, userLocation]);
+
+  useEffect(() => {
+    if (!navigationEnabled || loadingRoute || isRerouting) return;
+    if (!userLocation || !selectedHospital || !routeCoords.length) return;
+
+    if (checkOffRoute()) {
+      setIsRerouting(true);
+      fetchRoute();
+    }
+  }, [
+    checkOffRoute,
+    fetchRoute,
+    isRerouting,
+    loadingRoute,
+    navigationEnabled,
+    routeCoords.length,
+    selectedHospital,
+    userLocation,
+  ]);
 
   useLayoutEffect(() => {
     const map = mapRef.current;
@@ -964,20 +1135,30 @@ const HospitalNavigatorMap = () => {
   }, [userLocation]);
 
   const bestHospital = sortedHospitals[0] ?? null;
+  const currentInstruction = routeInstructions[currentInstructionIndex] ?? null;
+  const upcomingInstructions = routeInstructions.slice(
+    currentInstructionIndex + 1,
+    currentInstructionIndex + 4,
+  );
 
   return (
     <div className="flex h-full flex-col gap-3">
-      <div className="rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-white p-4 shadow-sm">
+      <div className="hidden rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-50 via-white to-white p-4 shadow-sm md:block">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-wide text-emerald-600">
               Best option
             </p>
             <h2 className="text-xl font-semibold text-slate-900">
-              {bestHospital?.name ?? "Hospitals near you"}
+              {hospitalsLoading
+                ? "Loading hospitals..."
+                : (bestHospital?.name ?? "Hospitals near you")}
             </h2>
             <p className="text-sm text-slate-600">
-              {bestHospital?.address ?? "Select a hospital to begin navigation"}
+              {hospitalsLoading
+                ? "Fetching hospitals from database"
+                : (bestHospital?.address ??
+                  "Select a hospital to begin navigation")}
             </p>
             {bestHospital && (
               <p className="text-sm text-slate-500">
@@ -989,8 +1170,9 @@ const HospitalNavigatorMap = () => {
             <button
               className="rounded-full border border-slate-200 px-3 py-1 text-sm text-slate-700 hover:bg-slate-50"
               onClick={fetchHospitals}
+              disabled={hospitalsLoading}
             >
-              Refresh hospitals
+              {hospitalsLoading ? "Loading..." : "Refresh hospitals"}
             </button>
             <button
               className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
@@ -1003,43 +1185,176 @@ const HospitalNavigatorMap = () => {
             </button>
           </div>
         </div>
+        {hospitalsError && (
+          <p className="mt-2 text-sm text-amber-600">{hospitalsError}</p>
+        )}
         {error && <p className="mt-2 text-sm text-amber-600">{error}</p>}
       </div>
 
+      <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:hidden">
+        <p className="text-[10px] uppercase tracking-wide text-emerald-600">
+          Best option
+        </p>
+        <p className="truncate text-base font-semibold text-slate-900">
+          {hospitalsLoading
+            ? "Loading hospitals..."
+            : (bestHospital?.name ?? "Hospitals near you")}
+        </p>
+        {bestHospital && (
+          <p className="mt-0.5 text-xs text-slate-500">
+            {(bestHospital.distance_km ?? 0).toFixed(2)} km away
+          </p>
+        )}
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+            onClick={fetchHospitals}
+            disabled={hospitalsLoading}
+          >
+            {hospitalsLoading ? "Loading..." : "Refresh"}
+          </button>
+          <button
+            className="rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm"
+            onClick={() =>
+              bestHospital && setSelectedHospitalId(bestHospital.id)
+            }
+            disabled={!bestHospital}
+          >
+            Navigate to best
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="space-y-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1">
+        <div className="hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1 lg:flex lg:h-[520px] lg:flex-col lg:overflow-hidden">
           <p className="text-sm font-semibold text-slate-800">
             Hospitals nearby
           </p>
-          <div className="max-h-[320px] space-y-2 overflow-auto pr-1">
-            {sortedHospitals.map((hospital) => (
-              <button
-                key={hospital.id}
-                onClick={() => setSelectedHospitalId(hospital.id)}
-                className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
-                  hospital.id === selectedHospitalId
-                    ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{hospital.name}</span>
-                  <span className="text-xs text-slate-500">
-                    {(hospital.distance_km ?? 0).toFixed(2)} km
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  {hospital.address || ""}
-                </p>
-              </button>
-            ))}
-            {!sortedHospitals.length && (
+          <div className="mt-2 max-h-[300px] space-y-2 overflow-auto pr-1 lg:flex-1 lg:min-h-[220px] lg:max-h-none">
+            {hospitalsLoading && (
+              <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Loading hospitals from database...
+              </div>
+            )}
+            {!hospitalsLoading &&
+              sortedHospitals.map((hospital) => (
+                <button
+                  key={hospital.id}
+                  onClick={() => setSelectedHospitalId(hospital.id)}
+                  className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
+                    hospital.id === selectedHospitalId
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold">{hospital.name}</span>
+                    <span className="text-xs text-slate-500">
+                      {(hospital.distance_km ?? 0).toFixed(2)} km
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {hospital.address || ""}
+                  </p>
+                </button>
+              ))}
+            {!hospitalsLoading && !sortedHospitals.length && (
               <p className="text-xs text-slate-500">No hospitals available.</p>
             )}
           </div>
+
+          <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 lg:mt-2 lg:max-h-[260px] lg:shrink-0 lg:overflow-hidden lg:flex lg:flex-col">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Turn-by-turn
+            </p>
+            <div className="mt-2 lg:min-h-0 lg:flex-1 lg:overflow-auto lg:pr-1">
+              {loadingRoute ? (
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Calculating route instructions...
+                </div>
+              ) : currentInstruction ? (
+                <div className="space-y-2">
+                  <div className="rounded-xl bg-white px-3 py-2 text-center shadow-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                      Current step
+                    </p>
+                    <p className="mt-1 text-lg leading-none">
+                      {currentInstruction.icon}
+                    </p>
+                    <p className="mt-1 text-sm font-black uppercase tracking-wide text-slate-900">
+                      {currentInstruction.instruction}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {formatMeters(currentInstruction.distance)} to next turn
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="rounded-lg bg-white p-2">
+                      <p className="text-[10px] uppercase text-slate-500">
+                        Next turn
+                      </p>
+                      <p className="text-xs font-semibold text-slate-800">
+                        {formatMeters(distanceToNextManeuver)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-white p-2">
+                      <p className="text-[10px] uppercase text-slate-500">
+                        Remaining
+                      </p>
+                      <p className="text-xs font-semibold text-slate-800">
+                        {formatMeters(totalDistanceRemaining)}
+                      </p>
+                    </div>
+                    <div className="rounded-lg bg-white p-2">
+                      <p className="text-[10px] uppercase text-slate-500">
+                        ETA
+                      </p>
+                      <p className="text-xs font-semibold text-slate-800">
+                        {formatETA(totalDurationRemaining)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white p-2">
+                    <p className="text-[10px] uppercase text-slate-500">
+                      Travel time left
+                    </p>
+                    <p className="text-base font-black leading-none text-slate-800">
+                      {formatDuration(totalDurationRemaining)}
+                    </p>
+                    {isRerouting && (
+                      <p className="mt-1 text-[11px] font-medium text-amber-600">
+                        Re-routing to keep navigation smooth...
+                      </p>
+                    )}
+                  </div>
+                  <div className="rounded-lg bg-white p-2">
+                    {upcomingInstructions.map((instruction) => (
+                      <div
+                        key={instruction.id}
+                        className="border-b border-slate-100 py-1 last:border-b-0"
+                      >
+                        <p className="text-sm font-medium text-slate-800">
+                          {instruction.icon} {instruction.instruction}
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          {formatMeters(instruction.distance)} ahead
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  Start or recalculate a route to view turn-by-turn guidance.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="relative rounded-2xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
+        <div className="relative col-span-1 rounded-2xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
           <div className="relative h-[520px] w-full overflow-hidden rounded-2xl">
             <MapContainer
               center={currentCenter}
@@ -1134,8 +1449,8 @@ const HospitalNavigatorMap = () => {
                       routeAlert?.type === "danger"
                         ? "#dc2626"
                         : routeAlert?.type === "warning"
-                        ? "#f97316"
-                        : "#059669",
+                          ? "#f97316"
+                          : "#059669",
                     weight: 5,
                     opacity: 0.85,
                   }}
@@ -1144,23 +1459,23 @@ const HospitalNavigatorMap = () => {
 
               <Recenter
                 center={
-                  selectedHospital
-                    ? [selectedHospital.latitude, selectedHospital.longitude]
-                    : userLocation
+                  userLocation
                     ? [userLocation.lat, userLocation.lng]
-                    : DEFAULT_CENTER
+                    : selectedHospital
+                      ? [selectedHospital.latitude, selectedHospital.longitude]
+                      : DEFAULT_CENTER
                 }
                 zoom={13}
               />
             </MapContainer>
 
             <div
-              className={`absolute right-4 top-6 z-[1100] flex flex-col items-end gap-3 lg:hidden ${
+              className={`absolute right-4 top-4 z-[1100] flex flex-col items-end gap-3 lg:hidden ${
                 navigationEnabled ? "hidden" : ""
               }`}
             >
               <div
-                className={`flex flex-col items-start space-y-2 transition-all duration-300 ${
+                className={`absolute right-0 top-16 flex flex-col items-start space-y-2 transition-all duration-300 ${
                   actionsOpen
                     ? "opacity-100 translate-y-0 pointer-events-auto"
                     : "opacity-0 translate-y-4 pointer-events-none"
@@ -1238,17 +1553,6 @@ const HospitalNavigatorMap = () => {
                   title="Quick actions"
                 >
                   <Settings className="h-6 w-6" />
-                </button>
-                <button
-                  onClick={() => setIsFullscreen((f) => !f)}
-                  className="flex h-14 w-14 items-center justify-center rounded-full border-2 border-gray-200 bg-white shadow-xl transition-transform active:scale-95"
-                  title={isFullscreen ? "Exit fullscreen" : "Fullscreen map"}
-                >
-                  {isFullscreen ? (
-                    <Minimize className="h-6 w-6 text-slate-700" />
-                  ) : (
-                    <Maximize className="h-6 w-6 text-slate-700" />
-                  )}
                 </button>
               </div>
             </div>
@@ -1369,6 +1673,169 @@ const HospitalNavigatorMap = () => {
               </div>
             )}
 
+            {/* Mobile bottom sheet (responder-style) keeps map visible while exposing controls/details */}
+            {!navigationEnabled && (
+              <div className="absolute inset-x-0 bottom-0 z-[1110] rounded-t-2xl border-t border-slate-200 bg-white/95 backdrop-blur-sm lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setMobilePanelExpanded((prev) => !prev)}
+                  className="flex w-full items-center justify-center gap-1 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                >
+                  {mobilePanelExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronUp className="h-4 w-4" />
+                  )}
+                  {mobilePanelExpanded
+                    ? "Collapse details"
+                    : "Show hospitals & directions"}
+                </button>
+
+                {!mobilePanelExpanded && (
+                  <div className="px-4 pb-3">
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                        Current best
+                      </p>
+                      <p className="text-sm font-semibold text-slate-900">
+                        {bestHospital?.name ?? "Waiting for hospitals"}
+                      </p>
+                      {currentInstruction && (
+                        <p className="text-xs text-slate-600">
+                          {currentInstruction.icon}{" "}
+                          {currentInstruction.instruction}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {mobilePanelExpanded && (
+                  <div className="max-h-[62vh] space-y-3 overflow-y-auto px-4 pb-4">
+                    {userLocation && selectedHospital && (
+                      <button
+                        onClick={() => setNavigationEnabled(true)}
+                        className="w-full rounded-full bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg"
+                      >
+                        Start Navigation
+                      </button>
+                    )}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Hospitals nearby
+                      </p>
+                      <div className="mt-2 max-h-[220px] space-y-2 overflow-auto pr-1">
+                        {sortedHospitals.map((hospital) => (
+                          <button
+                            key={`mobile_${hospital.id}`}
+                            onClick={() => {
+                              setSelectedHospitalId(hospital.id);
+                              setMobilePanelExpanded(false);
+                            }}
+                            className={`w-full rounded-xl border px-3 py-2 text-left text-sm transition ${
+                              hospital.id === selectedHospitalId
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                : "border-slate-200 bg-white text-slate-700"
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">
+                                {hospital.name}
+                              </span>
+                              <span className="text-xs text-slate-500">
+                                {(hospital.distance_km ?? 0).toFixed(2)} km
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500">
+                              {hospital.address || ""}
+                            </p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Turn-by-turn
+                      </p>
+                      {currentInstruction ? (
+                        <div className="mt-2 space-y-2">
+                          <div className="rounded-xl bg-white px-3 py-2 text-center shadow-sm">
+                            <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-700">
+                              Current step
+                            </p>
+                            <p className="mt-1 text-lg leading-none">
+                              {currentInstruction.icon}
+                            </p>
+                            <p className="mt-1 text-sm font-black uppercase tracking-wide text-slate-900">
+                              {currentInstruction.instruction}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {formatMeters(currentInstruction.distance)} to
+                              next turn
+                            </p>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center">
+                            <div className="rounded-lg bg-white p-2">
+                              <p className="text-[10px] uppercase text-slate-500">
+                                Next
+                              </p>
+                              <p className="text-xs font-semibold text-slate-800">
+                                {formatMeters(distanceToNextManeuver)}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-white p-2">
+                              <p className="text-[10px] uppercase text-slate-500">
+                                Remaining
+                              </p>
+                              <p className="text-xs font-semibold text-slate-800">
+                                {formatMeters(totalDistanceRemaining)}
+                              </p>
+                            </div>
+                            <div className="rounded-lg bg-white p-2">
+                              <p className="text-[10px] uppercase text-slate-500">
+                                ETA
+                              </p>
+                              <p className="text-xs font-semibold text-slate-800">
+                                {formatETA(totalDurationRemaining)}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="rounded-lg bg-white p-2">
+                            <p className="text-[10px] uppercase text-slate-500">
+                              Travel time left
+                            </p>
+                            <p className="text-base font-black leading-none text-slate-800">
+                              {formatDuration(totalDurationRemaining)}
+                            </p>
+                          </div>
+                          <div className="rounded-lg bg-white p-2">
+                            {upcomingInstructions.map((instruction) => (
+                              <div
+                                key={`mobile_upcoming_${instruction.id}`}
+                                className="border-b border-slate-100 py-1 last:border-b-0"
+                              >
+                                <p className="text-sm font-medium text-slate-800">
+                                  {instruction.icon} {instruction.instruction}
+                                </p>
+                                <p className="text-[11px] text-slate-500">
+                                  {formatMeters(instruction.distance)} ahead
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-xs text-slate-500">
+                          Select a hospital to view turn-by-turn details.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {routeCoords.length > 0 &&
               navigationEnabled &&
               userLocation &&
@@ -1387,7 +1854,7 @@ const HospitalNavigatorMap = () => {
                   onRouteUpdate={(route) => {
                     if (route?.geometry?.coordinates) {
                       const coords = route.geometry.coordinates.map(
-                        ([lng, lat]) => [lat, lng]
+                        ([lng, lat]) => [lat, lng],
                       );
                       setRouteCoords(coords);
                     }
@@ -1399,7 +1866,9 @@ const HospitalNavigatorMap = () => {
             {!navigationEnabled && userLocation && selectedHospital && (
               <button
                 onClick={() => setNavigationEnabled(true)}
-                className="absolute bottom-20 right-4 z-[1000] flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95"
+                className={`absolute left-1/2 z-[1120] flex -translate-x-1/2 items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl active:scale-95 ${
+                  mobilePanelExpanded ? "hidden lg:flex" : "flex"
+                } bottom-6 lg:bottom-6`}
               >
                 <Navigation2 className="h-5 w-5" />
                 Start Navigation
@@ -1429,8 +1898,8 @@ const HospitalNavigatorMap = () => {
                 {blockadesLoading
                   ? "Checking road issues…"
                   : blockadesError
-                  ? "Road issues offline"
-                  : `${normalizedBlockades.length} road alerts`}
+                    ? "Road issues offline"
+                    : `${normalizedBlockades.length} road alerts`}
               </span>
               <button
                 className="rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"

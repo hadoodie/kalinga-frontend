@@ -22,7 +22,6 @@ import {
   FaVolumeUp,
 } from "react-icons/fa";
 import nodeApi from "../services/nodeApi";
-import { useAuth } from "../context/AuthContext";
 
 function DutyStatusModal({ onClose }) {
   const [dutyStatus, setDutyStatus] = useState("on-duty");
@@ -715,17 +714,15 @@ function ChangePasswordModal({ onClose }) {
 }
 
 function LoggedInDevicesModal({ onClose }) {
-  const { user } = useAuth();
   const [devices, setDevices] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user?.id) return;
     const fetchDevices = async () => {
       try {
-        const { data } = await nodeApi.get(`/users/${user.id}/devices`);
+        const { data } = await nodeApi.get("/profile/devices");
         setDevices(
-          (data?.data || []).sort((a, b) => new Date(b.last_active) - new Date(a.last_active)).map((d) => ({
+          (data?.data || []).map((d) => ({
             id: d.id,
             device_name: d.device_name,
             device_type: d.device_type || "desktop",
@@ -743,7 +740,7 @@ function LoggedInDevicesModal({ onClose }) {
     };
 
     fetchDevices();
-  }, [user?.id]);
+  }, []);
 
   const getDeviceIcon = (type) => {
     switch (type) {
@@ -807,13 +804,9 @@ function LoggedInDevicesModal({ onClose }) {
                         <h4 className="font-semibold text-gray-900">
                           {device.device_name}
                         </h4>
-                        {device.is_current ? (
-                          <span className="bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded">
+                        {device.is_current && (
+                          <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-0.5 rounded">
                             Current Device
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">
-                            {new Date(device.last_active).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         )}
                       </div>

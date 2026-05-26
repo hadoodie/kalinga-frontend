@@ -12,6 +12,8 @@ use App\Models\Appointment;
 use App\Models\Notification;
 use App\Models\AllocationRequest; 
 use Illuminate\Support\Str;
+use App\Models\PatientCareReport;
+use Illuminate\Support\Facades\Cache;
 
 class User extends Authenticatable
 {
@@ -91,6 +93,43 @@ class User extends Authenticatable
         return $this->hasOne(Responder::class, 'user_id');
     }
 
+    public static function presenceCacheKey(int $userId): string
+    {
+        return "presence:online:{$userId}";
+    }
+
+    public function isPresenceOnline(): bool
+    {
+        if (!$this->id) {
+            return false;
+        }
+
+        return Cache::has(self::presenceCacheKey($this->id));
+    }
+
+    public function isResponderAvailable(): bool
+    {
+        if ($this->role !== 'responder' || !$this->is_active) {
+            return false;
+        }
+
+        if (!$this->isPresenceOnline()) {
+            return false;
+        }
+
+        if ($this->availability !== null && strtolower($this->availability) !== 'available') {
+            return false;
+        }
+
+        $responderStatus = $this->responder?->status;
+
+        if (!$responderStatus) {
+            return false;
+        }
+
+        return in_array($responderStatus, ['Available', 'On Duty'], true);
+    }
+
     /**
      * Get all of the appointments for the User.
      */
@@ -123,6 +162,16 @@ class User extends Authenticatable
     public function incidentStatusUpdates(): HasMany
     {
         return $this->hasMany(IncidentStatusUpdate::class);
+    }
+
+    public function authoredPatientCareReports(): HasMany
+    {
+        return $this->hasMany(PatientCareReport::class, 'user_id');
+    }
+
+    public function patientCareReportsAsPatient(): HasMany
+    {
+        return $this->hasMany(PatientCareReport::class, 'patient_user_id');
     }
 
     /**

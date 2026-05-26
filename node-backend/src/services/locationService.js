@@ -1,4 +1,5 @@
 import pool from '../config/db.js';
+import { isSchemaMismatchError, logFallback } from '../utils/dbFallback.js';
 
 const getCurrentLocation = async (userId) => {
   const { rows } = await pool.query(
@@ -33,11 +34,19 @@ const getAreas = async (query = {}) => {
     where = `WHERE name ILIKE $${params.length}`;
   }
 
-  const { rows } = await pool.query(
-    `SELECT id, name, code, province, coordinates FROM regions ${where} ORDER BY name`,
-    params
-  );
-  return rows;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, code, province, coordinates FROM regions ${where} ORDER BY name`,
+      params
+    );
+    return rows;
+  } catch (err) {
+    if (isSchemaMismatchError(err)) {
+      logFallback('location.getAreas', err);
+      return [];
+    }
+    throw err;
+  }
 };
 
 export default { getCurrentLocation, upsertLocation, getAreas };

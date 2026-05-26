@@ -1,27 +1,36 @@
 import pool from '../config/db.js';
 import { parsePagination, buildPaginationMeta } from '../utils/pagination.js';
+import { isSchemaMismatchError, logFallback } from '../utils/dbFallback.js';
 
 const getTriageByHospital = async (query = {}) => {
   const { from, limit, page } = parsePagination(query);
 
-  const countRes = await pool.query('SELECT COUNT(*) FROM triage_cases');
-  const total = parseInt(countRes.rows[0].count, 10);
+  try {
+    const countRes = await pool.query('SELECT COUNT(*) FROM triage_cases');
+    const total = parseInt(countRes.rows[0].count, 10);
 
-  const { rows } = await pool.query(
-    `SELECT tc.id, tc.hospital_id, tc.patient_id, tc.triage_level, tc.status,
-            tc.presenting_complaint, tc.vitals, tc.notes, tc.assigned_to,
-            tc.created_at, tc.updated_at,
-            h.name AS hospital_name,
-            p.full_name AS patient_name, p.age AS patient_age, p.gender AS patient_gender
-     FROM triage_cases tc
-     LEFT JOIN hospitals h ON h.id = tc.hospital_id
-     LEFT JOIN patients p ON p.id = tc.patient_id
-     ORDER BY tc.created_at DESC
-     LIMIT $1 OFFSET $2`,
-    [limit, from]
-  );
+    const { rows } = await pool.query(
+      `SELECT tc.id, tc.hospital_id, tc.patient_id, tc.triage_level, tc.status,
+              tc.presenting_complaint, tc.vitals, tc.notes, tc.assigned_to,
+              tc.created_at, tc.updated_at,
+              h.name AS hospital_name,
+              p.full_name AS patient_name, p.age AS patient_age, p.gender AS patient_gender
+       FROM triage_cases tc
+       LEFT JOIN hospitals h ON h.id = tc.hospital_id
+       LEFT JOIN patients p ON p.id = tc.patient_id
+       ORDER BY tc.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, from]
+    );
 
-  return { data: rows, pagination: buildPaginationMeta(total, page, limit) };
+    return { data: rows, pagination: buildPaginationMeta(total, page, limit) };
+  } catch (err) {
+    if (isSchemaMismatchError(err)) {
+      logFallback('triage.getTriageByHospital', err);
+      return { data: [], pagination: buildPaginationMeta(0, page, limit) };
+    }
+    throw err;
+  }
 };
 
 const getTriagePatients = async (query = {}) => {
@@ -45,26 +54,34 @@ const getTriagePatients = async (query = {}) => {
 
   const where = `WHERE ${conditions.join(' AND ')}`;
 
-  const countRes = await pool.query(
-    `SELECT COUNT(*) FROM patients ${where}`,
-    params
-  );
-  const total = parseInt(countRes.rows[0].count, 10);
+  try {
+    const countRes = await pool.query(
+      `SELECT COUNT(*) FROM patients ${where}`,
+      params
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
 
-  const dataParams = [...params, limit, from];
-  const { rows } = await pool.query(
-    `SELECT p.id, p.full_name, p.age, p.gender, p.status, p.triage_level,
-            p.hospital_id, p.admitted_at, p.contact_number,
-            h.name AS hospital_name
-     FROM patients p
-     LEFT JOIN hospitals h ON h.id = p.hospital_id
-     ${where}
-     ORDER BY p.admitted_at DESC
-     LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
-    dataParams
-  );
+    const dataParams = [...params, limit, from];
+    const { rows } = await pool.query(
+      `SELECT p.id, p.full_name, p.age, p.gender, p.status, p.triage_level,
+              p.hospital_id, p.admitted_at, p.contact_number,
+              h.name AS hospital_name
+       FROM patients p
+       LEFT JOIN hospitals h ON h.id = p.hospital_id
+       ${where}
+       ORDER BY p.admitted_at DESC
+       LIMIT $${dataParams.length - 1} OFFSET $${dataParams.length}`,
+      dataParams
+    );
 
-  return { data: rows, pagination: buildPaginationMeta(total, page, limit) };
+    return { data: rows, pagination: buildPaginationMeta(total, page, limit) };
+  } catch (err) {
+    if (isSchemaMismatchError(err)) {
+      logFallback('triage.getTriagePatients', err);
+      return { data: [], pagination: buildPaginationMeta(0, page, limit) };
+    }
+    throw err;
+  }
 };
 
 const createTriageCase = async (payload) => {
@@ -111,33 +128,41 @@ const updateTriageCase = async (id, payload) => {
 };
 
 const getTriageStats = async () => {
-  const { rows } = await pool.query(
-    `SELECT h.id AS hospital_id, h.name AS hospital_name,
-            tc.triage_level, COUNT(*)::int AS count
-     FROM triage_cases tc
-     JOIN hospitals h ON h.id = tc.hospital_id
-     WHERE tc.status = 'active'
-     GROUP BY h.id, h.name, tc.triage_level
-     ORDER BY h.name, tc.triage_level`
-  );
+  try {
+    const { rows } = await pool.query(
+      `SELECT h.id AS hospital_id, h.name AS hospital_name,
+              tc.triage_level, COUNT(*)::int AS count
+       FROM triage_cases tc
+       JOIN hospitals h ON h.id = tc.hospital_id
+       WHERE tc.status = 'active'
+       GROUP BY h.id, h.name, tc.triage_level
+       ORDER BY h.name, tc.triage_level`
+    );
 
-  // Pivot rows into per-hospital objects
-  const map = new Map();
-  for (const r of rows) {
-    if (!map.has(r.hospital_id)) {
-      map.set(r.hospital_id, {
-        hospital_id: r.hospital_id,
-        hospital_name: r.hospital_name,
-        low: 0, medium: 0, high: 0, very_high: 0, critical: 0, total: 0,
-      });
+    // Pivot rows into per-hospital objects
+    const map = new Map();
+    for (const r of rows) {
+      if (!map.has(r.hospital_id)) {
+        map.set(r.hospital_id, {
+          hospital_id: r.hospital_id,
+          hospital_name: r.hospital_name,
+          low: 0, medium: 0, high: 0, very_high: 0, critical: 0, total: 0,
+        });
+      }
+      const entry = map.get(r.hospital_id);
+      const lvl = r.triage_level?.toLowerCase();
+      if (entry[lvl] !== undefined) entry[lvl] = r.count;
+      entry.total += r.count;
     }
-    const entry = map.get(r.hospital_id);
-    const lvl = r.triage_level?.toLowerCase();
-    if (entry[lvl] !== undefined) entry[lvl] = r.count;
-    entry.total += r.count;
-  }
 
-  return [...map.values()];
+    return [...map.values()];
+  } catch (err) {
+    if (isSchemaMismatchError(err)) {
+      logFallback('triage.getTriageStats', err);
+      return [];
+    }
+    throw err;
+  }
 };
 
 const getTriageByHospitalId = async (id) => {

@@ -1,9 +1,9 @@
 // Global constants for the mapping and pathfinding system
 export const KALINGA_CONFIG = {
-  // Default fallback location (TUP Manila)
+  // Default fallback location (Rodriguez, Rizal Command Center)
   DEFAULT_LOCATION: {
-    lat: 14.5875,
-    lng: 120.9844,
+    lat: 14.730623573302255,
+    lng: 121.13648677451842,
     zoom: 16,
   },
 

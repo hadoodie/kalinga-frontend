@@ -77,18 +77,29 @@ class SmartRoutingService
     /**
      * Get available responders (not currently assigned to active incidents).
      */
-    protected function getAvailableResponders(): Collection
+ protected function getAvailableResponders(): Collection
     {
-        return User::where('role', 'responder')
+        $responders = User::where('role', 'responder')
             ->where('is_active', true)
-            ->where('availability', 'available')
-            ->with(['responderAssignments' => function ($query) {
+            ->whereHas('responder', function ($query) {
+                $query->whereIn('status', ['Available', 'On Duty']);
+            })
+            ->where(function ($query) {
+                $query->whereNull('availability')
+                    ->orWhere('availability', 'available');
+            })
+            // This ensures we ONLY get users who DO NOT have an active assignment
+            ->whereDoesntHave('responderAssignments', function ($query) {
                 $query->whereNotIn('status', [
                     IncidentResponderAssignment::STATUS_COMPLETED,
                     IncidentResponderAssignment::STATUS_CANCELLED,
                 ]);
-            }])
+            })
             ->get();
+
+        return $responders
+            ->filter(fn (User $responder) => $responder->isPresenceOnline())
+            ->values();
     }
 
     /**

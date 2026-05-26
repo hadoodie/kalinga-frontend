@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
   CheckCircle,
+  Edit,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -233,6 +234,238 @@ const CreateUserModal = ({ isOpen, onClose, onUserCreated }) => {
   );
 };
 
+// Edit User Modal Component
+const EditUserModal = ({
+  user,
+  isOpen,
+  onClose,
+  onUserUpdated,
+  hospitals = [],
+}) => {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    role: "patient",
+    phone: "",
+    bloodType: "",
+    patientId: "",
+    hospital_id: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name || "",
+        email: user.email || "",
+        role: user.role || "patient",
+        phone: user.phone || user.contact_number || "",
+        bloodType: user.bloodType || "",
+        patientId: user.patientId || "",
+        hospital_id: user.hospitals?.[0]?.id || "",
+      });
+    }
+  }, [user]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await adminService.updateUser(user.id, formData);
+      if (formData.role === "logistics") {
+        await adminService.updateUserHospital(
+          user.id,
+          formData.hospital_id || null,
+        );
+      }
+      onUserUpdated();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to update user");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-6 shadow-xl">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-semibold text-foreground">Edit User</h2>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-primary/10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-rose-500/10 text-rose-600 text-sm flex items-center gap-2">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 max-h-[60vh] overflow-y-auto px-1"
+        >
+          <div>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Full Name
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) =>
+                setFormData({ ...formData, name: e.target.value })
+              }
+              className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
+              placeholder="Enter full name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              required
+              value={formData.email}
+              onChange={(e) =>
+                setFormData({ ...formData, email: e.target.value })
+              }
+              className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
+              placeholder="Enter email address"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Phone
+            </label>
+            <input
+              type="text"
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
+              className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
+              placeholder="Enter phone number"
+            />
+          </div>
+
+          {formData.role === "patient" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-foreground/70 mb-1">
+                  Blood Type
+                </label>
+                <input
+                  type="text"
+                  value={formData.bloodType || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, bloodType: e.target.value })
+                  }
+                  className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
+                  placeholder="e.g. O+, A-"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground/70 mb-1">
+                  Patient ID
+                </label>
+                <input
+                  type="text"
+                  value={formData.patientId || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, patientId: e.target.value })
+                  }
+                  className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
+                  placeholder="Patient specific generic identifier"
+                />
+              </div>
+            </>
+          )}
+
+          {formData.role === "logistics" && (
+            <div>
+              <label className="block text-sm font-medium text-foreground/70 mb-1">
+                Assigned Hospital
+              </label>
+              <select
+                value={formData.hospital_id || ""}
+                onChange={(e) =>
+                  setFormData({ ...formData, hospital_id: e.target.value })
+                }
+                className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
+              >
+                <option value="">No Hospital Assigned</option>
+                {hospitals.map((hospital) => (
+                  <option key={hospital.id} value={hospital.id}>
+                    {hospital.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-foreground/70 mb-1">
+              Role
+            </label>
+            <select
+              value={formData.role}
+              onChange={(e) =>
+                setFormData({ ...formData, role: e.target.value })
+              }
+              className="w-full h-11 rounded-xl border border-border/60 bg-background/60 px-4 text-sm outline-none focus:border-primary/40"
+            >
+              <option value="patient">Patient</option>
+              <option value="responder">Responder</option>
+              <option value="logistics">Logistics</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-card py-2 border-t border-border/40">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl border border-border/60 text-sm font-medium hover:bg-foreground/5 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:shadow-md transition disabled:opacity-70"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export const UserRoleManagement = () => {
   const [users, setUsers] = useState([]);
   const [stats, setStats] = useState(null);
@@ -243,7 +476,19 @@ export const UserRoleManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [userToEdit, setUserToEdit] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
+  const [hospitals, setHospitals] = useState([]);
+
+  const fetchHospitals = useCallback(async () => {
+    try {
+      const response = await adminService.getHospitals();
+      setHospitals(response || []);
+    } catch (err) {
+      console.error("Error fetching hospitals:", err);
+    }
+  }, []);
 
   // Fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -280,7 +525,8 @@ export const UserRoleManagement = () => {
   useEffect(() => {
     fetchUsers();
     fetchStats();
-  }, [fetchUsers, fetchStats]);
+    fetchHospitals();
+  }, [fetchUsers, fetchStats, fetchHospitals]);
 
   // Handle activate/deactivate
   const handleToggleStatus = async (user) => {
@@ -300,11 +546,26 @@ export const UserRoleManagement = () => {
     }
   };
 
+  const handleHospitalAssignment = async (user, hospitalId) => {
+    setActionLoading(user.id);
+    try {
+      await adminService.updateUserHospital(user.id, hospitalId || null);
+      fetchUsers();
+    } catch (err) {
+      console.error("Error assigning hospital:", err);
+      alert(
+        err.response?.data?.message || "Failed to update hospital assignment",
+      );
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // Filter users by search query (client-side for responsiveness)
   const filteredUsers = users.filter(
     (user) =>
       user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
@@ -326,7 +587,10 @@ export const UserRoleManagement = () => {
               />
               Refresh
             </button>
-            <button className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary">
+            <button
+              className="inline-flex items-center gap-2 rounded-full border border-border/60 px-4 py-2 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary"
+              onClick={() => alert("Role Matrix configuration is coming soon.")}
+            >
               <Shield className="h-4 w-4" />
               Role matrix
             </button>
@@ -343,7 +607,7 @@ export const UserRoleManagement = () => {
 
       {/* Stats Grid */}
       {stats && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
           <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <UserCog className="h-6 w-6 text-primary" />
@@ -355,6 +619,7 @@ export const UserRoleManagement = () => {
               <p className="text-sm text-foreground/60">Total Users</p>
             </div>
           </div>
+
           <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10">
               <UserCheck className="h-6 w-6 text-emerald-500" />
@@ -366,6 +631,7 @@ export const UserRoleManagement = () => {
               <p className="text-sm text-foreground/60">Active</p>
             </div>
           </div>
+
           <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-sky-500/10">
               <Shield className="h-6 w-6 text-sky-500" />
@@ -377,6 +643,31 @@ export const UserRoleManagement = () => {
               <p className="text-sm text-foreground/60">Responders</p>
             </div>
           </div>
+
+          <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/10">
+              <UserPlus className="h-6 w-6 text-purple-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.byRole?.patient || 0}
+              </p>
+              <p className="text-sm text-foreground/60">Patients</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/10">
+              <UserCog className="h-6 w-6 text-orange-500" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">
+                {stats.byRole?.logistics || 0}
+              </p>
+              <p className="text-sm text-foreground/60">Logistics</p>
+            </div>
+          </div>
+
           <div className="flex items-center gap-4 rounded-2xl border border-border/60 bg-card/80 p-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
               <AlertCircle className="h-6 w-6 text-amber-500" />
@@ -385,7 +676,7 @@ export const UserRoleManagement = () => {
               <p className="text-2xl font-bold text-foreground">
                 {stats.pendingVerification}
               </p>
-              <p className="text-sm text-foreground/60">Pending Verification</p>
+              <p className="text-sm text-foreground/60">Pending Verify</p>
             </div>
           </div>
         </div>
@@ -419,7 +710,10 @@ export const UserRoleManagement = () => {
               <option value="logistics">Logistics</option>
             </select>
           </div>
-          <button className="hidden h-11 rounded-full border border-border/60 px-4 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary md:inline-flex md:items-center md:gap-2">
+          <button
+            className="hidden h-11 rounded-full border border-border/60 px-4 text-sm font-medium text-foreground/70 transition hover:border-primary/40 hover:text-primary md:inline-flex md:items-center md:gap-2"
+            onClick={() => alert("Bulk actions are not supported yet.")}
+          >
             <UserCog className="h-4 w-4" />
             Bulk actions
           </button>
@@ -522,7 +816,17 @@ export const UserRoleManagement = () => {
                         <td className="px-6 py-4 text-foreground/60">
                           {formatRelativeTime(user.created_at)}
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => {
+                              setUserToEdit(user);
+                              setIsEditModalOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition border-sky-500/30 text-sky-600 hover:bg-sky-500/10"
+                          >
+                            <Edit className="h-3.5 w-3.5" />
+                            Edit
+                          </button>
                           <button
                             onClick={() => handleToggleStatus(user)}
                             disabled={actionLoading === user.id}
@@ -587,6 +891,18 @@ export const UserRoleManagement = () => {
           fetchUsers();
           fetchStats();
         }}
+      />
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        user={userToEdit}
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onUserUpdated={() => {
+          fetchUsers();
+          fetchStats();
+        }}
+        hospitals={hospitals}
       />
     </div>
   );

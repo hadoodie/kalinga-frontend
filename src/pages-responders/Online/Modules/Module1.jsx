@@ -10,10 +10,10 @@ export default function Module() {
 
   // Module 1 Lessons / Steps
   const lessons = [
-    { id: 0, title: "Understanding the First 1000 Days", path: "/modules/1/module-1" },
-    { id: 1, title: "Importance of Early Nutrition", path: "/modules/1/lesson-1" },
-    { id: 2, title: "Maternal and Child Health Integration", path: "/modules/1/lesson-2" },
-    { id: 3, title: "Key Nutrition Interventions", path: "/modules/1/lesson-3" },
+    { id: 0, title: "Understanding the First 1000 Days", path: "/responder/modules/1/module-1" },
+    { id: 1, title: "Importance of Early Nutrition", path: "/responder/modules/1/lesson-1" },
+    { id: 2, title: "Maternal and Child Health Integration", path: "/responder/modules/1/lesson-2" },
+    { id: 3, title: "Key Nutrition Interventions", path: "/responder/modules/1/lesson-3" },
   ];
 
   const totalSteps = lessons.length;
@@ -60,7 +60,7 @@ export default function Module() {
           <div className="lesson-breadcrumbs">
             <Link to="/responder/online-training">Home</Link> <span>/</span>
             <Link to="/responder/modules"> Modules</Link> <span>/</span>
-            <Link to="/modules/1"> Barangay First 1000 Days Facilitator's Guide eTraining</Link> <span>/</span>
+            <Link to="/responder/modules/1"> Barangay First 1000 Days Facilitator's Guide eTraining</Link> <span>/</span>
             <span> {currentLesson.title}</span>
           </div>
 

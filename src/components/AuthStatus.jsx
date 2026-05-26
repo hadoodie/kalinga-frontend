@@ -7,7 +7,7 @@ export default function AuthStatus() {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/");
+    window.location.assign("/#hero");
   };
 
   if (loading) {

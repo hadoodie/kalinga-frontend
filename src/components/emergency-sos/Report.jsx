@@ -54,6 +54,7 @@ export const EmergencyReport = () => {
         location: locationInfo,
         locationError,
         triggeredAt,
+        initiated_at_ms: Date.now(),
       });
 
       setStatus({

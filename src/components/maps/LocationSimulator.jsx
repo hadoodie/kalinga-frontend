@@ -14,6 +14,8 @@ export default function LocationSimulator({
   onStopSimulation,
   currentLocation,
   isActive = false,
+  dragMarkerEnabled = false,
+  onToggleDragMarker,
   buttonLabel = "Simulate Location",
   className = "",
   // position: 'top-right' | 'bottom-center'
@@ -29,13 +31,17 @@ export default function LocationSimulator({
   const intervalRef = useRef(null);
 
   useEffect(() => {
+    if (isActive) {
+      return;
+    }
+
     if (typeof currentLocation?.lat === "number") {
       setLat(currentLocation.lat);
     }
     if (typeof currentLocation?.lng === "number") {
       setLng(currentLocation.lng);
     }
-  }, [currentLocation?.lat, currentLocation?.lng]);
+  }, [currentLocation?.lat, currentLocation?.lng, isActive]);
 
   const emitLocation = (coords, options = {}) => {
     if (!coords || !onLocationChange) return;
@@ -50,7 +56,7 @@ export default function LocationSimulator({
     }
     emitLocation(
       { lat: parsedLat, lng: parsedLng },
-      { centerMap: options.centerMap ?? false, reason: "manual" }
+      { centerMap: options.centerMap ?? false, reason: "manual" },
     );
   };
 
@@ -82,9 +88,12 @@ export default function LocationSimulator({
       return () => {};
     }
 
-    intervalRef.current = setInterval(() => {
-      nudge(direction);
-    }, Math.max(intervalMs, 400));
+    intervalRef.current = setInterval(
+      () => {
+        nudge(direction);
+      },
+      Math.max(intervalMs, 400),
+    );
 
     return () => {
       if (intervalRef.current) {
@@ -110,7 +119,7 @@ export default function LocationSimulator({
       { label: "↓", value: "south" },
       { label: "←", value: "west" },
     ],
-    []
+    [],
   );
 
   // compute wrapper style for placement
@@ -265,6 +274,20 @@ export default function LocationSimulator({
             </label>
             {autoMove && (
               <span className="text-amber-600">Simulating drift…</span>
+            )}
+          </div>
+
+          <div className="mb-4 flex items-center justify-between text-xs">
+            <label className="flex items-center gap-2 font-medium text-gray-500">
+              <input
+                type="checkbox"
+                checked={dragMarkerEnabled}
+                onChange={(e) => onToggleDragMarker?.(e.target.checked)}
+              />
+              Drag marker on map
+            </label>
+            {dragMarkerEnabled && (
+              <span className="text-blue-600">Drag enabled</span>
             )}
           </div>
 

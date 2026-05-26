@@ -178,7 +178,7 @@ const evaluateRoutesAgainstBlockades = (routes, normalizedBlockades) =>
 
     const analysis = analyzeRouteAgainstBlockades(
       sampleRouteCoordinates(coords),
-      normalizedBlockades
+      normalizedBlockades,
     );
 
     return {
@@ -197,7 +197,7 @@ const selectBestRouteVariant = (routes, normalizedBlockades) => {
 
   const evaluations = evaluateRoutesAgainstBlockades(
     routes,
-    normalizedBlockades
+    normalizedBlockades,
   );
   const original = evaluations[0];
   const alternativesAvailable = evaluations.length > 1;
@@ -214,7 +214,7 @@ const selectBestRouteVariant = (routes, normalizedBlockades) => {
   }
 
   const blockadeFreeRoutes = evaluations.filter(
-    (evaluation) => evaluation.conflicts.length === 0
+    (evaluation) => evaluation.conflicts.length === 0,
   );
 
   if (blockadeFreeRoutes.length > 0) {
@@ -366,7 +366,7 @@ const deriveRouteAlert = (selection) => {
         const backward = offsetPointByBearing(
           blockade,
           offset,
-          normalizeBearing(baseBearing + 180)
+          normalizeBearing(baseBearing + 180),
         );
         candidatePoints.push({
           lat: forward.lat,
@@ -399,7 +399,7 @@ const deriveRouteAlert = (selection) => {
     const snapWaypointToRoad = async (osrmServer, waypoint) => {
       try {
         const response = await fetch(
-          `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`
+          `${osrmServer}/nearest/v1/driving/${waypoint.lng},${waypoint.lat}?number=1`,
         );
         if (!response.ok) {
           return null;
@@ -463,7 +463,7 @@ const deriveRouteAlert = (selection) => {
 
       const primaryConflict = currentSelection.selected.conflicts[0];
       const normalizedConflict = normalizeBlockadePosition(
-        primaryConflict?.blockade
+        primaryConflict?.blockade,
       );
 
       if (!normalizedConflict) {
@@ -473,7 +473,7 @@ const deriveRouteAlert = (selection) => {
       const candidates = generateDetourWaypoints(
         start,
         end,
-        normalizedConflict
+        normalizedConflict,
       );
 
       if (!candidates.length) {
@@ -506,7 +506,7 @@ const deriveRouteAlert = (selection) => {
         const routes = await requestOsrmRoute(
           osrmServer,
           [start, snapped, end],
-          paramString
+          paramString,
         );
 
         if (!routes || !routes.length) {
@@ -515,7 +515,7 @@ const deriveRouteAlert = (selection) => {
 
         const evaluationEntry = evaluateRoutesAgainstBlockades(
           [routes[0]],
-          normalizedBlockades
+          normalizedBlockades,
         )[0];
 
         if (!evaluationEntry) {
@@ -621,8 +621,8 @@ const deriveRouteAlert = (selection) => {
     const intro = rerouted
       ? "Limited detours available."
       : alternativesAvailable
-      ? "No clear detour available."
-      : "Blockade ahead.";
+        ? "No clear detour available."
+        : "Blockade ahead.";
 
     return {
       type: severity,
@@ -675,7 +675,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
     severity: "medium",
   });
   const [currentLocationDisplay, setCurrentLocationDisplay] = useState(
-    "Getting location..."
+    "Getting location...",
   );
   const [, setLocationError] = useState(null);
   const [locationWatchId, setLocationWatchId] = useState(null);
@@ -692,7 +692,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           lat: location.lat,
           lng: location.lng,
           timestamp: Date.now(),
-        })
+        }),
       );
     } catch (error) {
       console.warn("Failed to save location to localStorage:", error);
@@ -743,7 +743,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
 
       setUserMarker(marker);
     },
-    [map, userMarker]
+    [map, userMarker],
   );
 
   // Mobile bottom interface states
@@ -803,7 +803,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           maxZoom: 18,
           minZoom: 6,
           subdomains: "abcd",
-        }
+        },
       ).addTo(leafletMap);
 
       // Add road labels overlay
@@ -814,7 +814,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           maxZoom: 18,
           minZoom: 6,
           subdomains: "abcd",
-        }
+        },
       ).addTo(leafletMap);
 
       setMap(leafletMap);
@@ -876,7 +876,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
         } catch (error) {
           console.warn(
             "Error requesting device orientation permission:",
-            error
+            error,
           );
           return false;
         }
@@ -919,7 +919,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       if (orientationWatchId) {
         window.removeEventListener(
           "deviceorientation",
-          handleDeviceOrientation
+          handleDeviceOrientation,
         );
         setOrientationWatchId(null);
       }
@@ -953,7 +953,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
             if (!userLocation) {
               leafletMap.setView(
                 [latitude, longitude],
-                KALINGA_CONFIG.USER_LOCATION_ZOOM
+                KALINGA_CONFIG.USER_LOCATION_ZOOM,
               );
             }
           }
@@ -961,7 +961,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
         (error) => {
           if (error.code === 1) {
             console.warn(
-              "Location permission denied - emergency features limited"
+              "Location permission denied - emergency features limited",
             );
           }
 
@@ -988,29 +988,29 @@ export default function ResponseMap({ embedded = false, className = "" }) {
             setUserLocation(lastKnown);
             setCurrentLocationDisplay(
               `Last known location\n${lastKnown.lat.toFixed(
-                6
-              )}, ${lastKnown.lng.toFixed(6)}`
+                6,
+              )}, ${lastKnown.lng.toFixed(6)}`,
             );
             updateUserMarkerIcon(lastKnown.lat, lastKnown.lng, "lastKnown");
             if (leafletMap) {
               leafletMap.setView(
                 [lastKnown.lat, lastKnown.lng],
-                KALINGA_CONFIG.USER_LOCATION_ZOOM
+                KALINGA_CONFIG.USER_LOCATION_ZOOM,
               );
             }
           } else {
             const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
             setUserLocation(fallback);
             setCurrentLocationDisplay(
-              `Default location (TUP Manila)\n${fallback.lat.toFixed(
-                6
-              )}, ${fallback.lng.toFixed(6)}`
+              `Default location (Rodriguez, Rizal Command Center)\n${fallback.lat.toFixed(
+                6,
+              )}, ${fallback.lng.toFixed(6)}`,
             );
             updateUserMarkerIcon(fallback.lat, fallback.lng, "default");
             if (leafletMap) {
               leafletMap.setView(
                 [fallback.lat, fallback.lng],
-                KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+                KALINGA_CONFIG.DEFAULT_LOCATION.zoom,
               );
             }
             if (error.code === 1) {
@@ -1022,7 +1022,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           enableHighAccuracy: true,
           maximumAge: 10000,
           timeout: 15000,
-        }
+        },
       );
 
       setLocationWatchId(watchId);
@@ -1032,27 +1032,27 @@ export default function ResponseMap({ embedded = false, className = "" }) {
         setUserLocation(lastKnown);
         setCurrentLocationDisplay(
           `Last known location (Geolocation not supported)\n${lastKnown.lat.toFixed(
-            6
-          )}, ${lastKnown.lng.toFixed(6)}`
+            6,
+          )}, ${lastKnown.lng.toFixed(6)}`,
         );
         updateUserMarkerIcon(lastKnown.lat, lastKnown.lng, "lastKnown");
         if (leafletMap) {
           leafletMap.setView(
             [lastKnown.lat, lastKnown.lng],
-            KALINGA_CONFIG.USER_LOCATION_ZOOM
+            KALINGA_CONFIG.USER_LOCATION_ZOOM,
           );
         }
       } else {
         const fallback = KALINGA_CONFIG.DEFAULT_LOCATION;
         setUserLocation(fallback);
         setCurrentLocationDisplay(
-          "TUP Manila (Default - Geolocation not supported)"
+          "Rodriguez, Rizal Command Center (Default - Geolocation not supported)",
         );
         updateUserMarkerIcon(fallback.lat, fallback.lng, "default");
         if (leafletMap) {
           leafletMap.setView(
             [fallback.lat, fallback.lng],
-            KALINGA_CONFIG.DEFAULT_LOCATION.zoom
+            KALINGA_CONFIG.DEFAULT_LOCATION.zoom,
           );
         }
       }
@@ -1066,7 +1066,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
     try {
       const response = await fetch(
         `${KALINGA_CONFIG.API_BASE_URL}/api/geocode/reverse?lat=${lat}&lon=${lng}&zoom=18`,
-        { headers: { Accept: "application/json" } }
+        { headers: { Accept: "application/json" } },
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -1092,7 +1092,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
         setCurrentLocationDisplay(
           `${
             shortAddress || data.display_name.split(",").slice(0, 2).join(",")
-          }\n${coordsText}`
+          }\n${coordsText}`,
         );
       }
     } catch (error) {
@@ -1132,7 +1132,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       locationOverrideRef.current = { lat, lng, active: true };
       setUserLocation({ lat, lng });
       setCurrentLocationDisplay(
-        `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`
+        `Simulated location\n${lat.toFixed(6)}, ${lng.toFixed(6)}`,
       );
       updateLocationDisplay(lat, lng);
       saveLocationToStorage({ lat, lng });
@@ -1141,7 +1141,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       if (map) {
         const targetZoom = Math.max(
           map.getZoom() || KALINGA_CONFIG.USER_LOCATION_ZOOM,
-          KALINGA_CONFIG.USER_LOCATION_ZOOM
+          KALINGA_CONFIG.USER_LOCATION_ZOOM,
         );
         map.flyTo([lat, lng], targetZoom, {
           animate: true,
@@ -1165,7 +1165,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
             Accept: "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        }
+        },
       );
       const payload = await response.json();
       const incidentList = Array.isArray(payload?.data)
@@ -1174,7 +1174,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       const normalized = Array.isArray(incidentList) ? incidentList : [];
       const activeIncidents = normalized.filter(
         (incident) =>
-          incident && !["resolved", "cancelled"].includes(incident.status)
+          incident && !["resolved", "cancelled"].includes(incident.status),
       );
       setIncidents(activeIncidents);
       displayIncidentsOnMap(activeIncidents, leafletMap, L);
@@ -1404,8 +1404,8 @@ export default function ResponseMap({ embedded = false, className = "" }) {
                         ${blockade.reported_at_human || "Unknown time"}
                     </p>
                     <button onclick="removeBlockadeHandler(${blockade.id}, '${
-        blockade.title
-      }')" 
+                      blockade.title
+                    }')" 
                             style="background: #dc3545; color: white; border: none; padding: 4px 8px; border-radius: 3px; cursor: pointer; font-size: 11px; width: 100%;">
                         🗑️ Remove Blockade
                     </button>
@@ -1458,14 +1458,14 @@ export default function ResponseMap({ embedded = false, className = "" }) {
         routeAlertTimerRef.current = null;
       }, ROUTE_ALERT_TIMEOUT_MS);
     },
-    [setRouteAlert]
+    [setRouteAlert],
   );
 
   const drawRoute = async (
     destLat,
     destLng,
     isAssigned = false,
-    enableNavigation = false
+    enableNavigation = false,
   ) => {
     if (!userLocation || !map || isDrawingRoute) return;
 
@@ -1511,7 +1511,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
 
         let selection = selectBestRouteVariant(
           data.routes,
-          normalizedBlockades
+          normalizedBlockades,
         );
 
         if (
@@ -1564,7 +1564,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           chosenRoute.legs[0].steps
         ) {
           const instructions = processRouteInstructions(
-            chosenRoute.legs[0].steps
+            chosenRoute.legs[0].steps,
           );
           setRouteInstructions(instructions);
           setCurrentInstructionIndex(0);
@@ -1631,7 +1631,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           break;
         case "roundabout":
           instruction = `Take the ${getOrdinal(
-            maneuver.exit || 1
+            maneuver.exit || 1,
           )} exit at the roundabout onto ${step.name || "the road"}`;
           icon = "🔄";
           break;
@@ -1725,7 +1725,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
       (error) => {
         console.error("Navigation tracking error:", error);
       },
-      options
+      options,
     );
 
     setHighAccuracyWatchId(watchId);
@@ -1744,7 +1744,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
         currentLocation.lat,
         currentLocation.lng,
         coord[0],
-        coord[1]
+        coord[1],
       );
       if (distance < minDistance) {
         minDistance = distance;
@@ -1760,7 +1760,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           currentLocation.lat,
           currentLocation.lng,
           currentInstruction.coordinates[0][0],
-          currentInstruction.coordinates[0][1]
+          currentInstruction.coordinates[0][1],
         ) * 1000; // Convert to meters
 
       setDistanceToNextTurn(Math.round(distanceToTurn));
@@ -1846,7 +1846,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
             responder_lng: userLocation.lng,
             responder_id: user.id,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -1857,15 +1857,15 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           `Assigned to ${data.incident.type} at ${
             data.incident.location
           }\nDistance: ${data.distance.toFixed(
-            2
-          )} km\n\nStart turn-by-turn navigation?`
+            2,
+          )} km\n\nStart turn-by-turn navigation?`,
         );
 
         drawRoute(
           parseFloat(data.incident.lat),
           parseFloat(data.incident.lng),
           true,
-          startNavigation
+          startNavigation,
         );
 
         // Refresh incidents list
@@ -1916,7 +1916,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
     // Try to snap to nearest road using OSRM
     try {
       const response = await fetch(
-        `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`
+        `${KALINGA_CONFIG.OSRM_SERVER}/nearest/v1/driving/${lng},${lat}?number=1`,
       );
       const data = await response.json();
 
@@ -1994,7 +1994,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
             severity: blockadeForm.severity,
             reported_by: user.id,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -2026,7 +2026,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
   const removeBlockade = async (blockadeId, blockadeTitle) => {
     if (
       !confirm(
-        `Are you sure you want to remove the blockade "${blockadeTitle}"? This action cannot be undone.`
+        `Are you sure you want to remove the blockade "${blockadeTitle}"? This action cannot be undone.`,
       )
     ) {
       return;
@@ -2045,7 +2045,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           body: JSON.stringify({
             removed_by: user.id,
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -2055,7 +2055,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
           data.message +
             (data.blockade
               ? ` by ${data.blockade.removed_by} at ${data.blockade.removed_at_human}`
-              : "")
+              : ""),
         );
 
         // Refresh blockades
@@ -2278,7 +2278,7 @@ export default function ResponseMap({ embedded = false, className = "" }) {
                     onClick={() => {
                       centerMapOnLocation(
                         blockade.start_lat,
-                        blockade.start_lng
+                        blockade.start_lng,
                       );
                       setShowBlockadesList(false);
                     }}

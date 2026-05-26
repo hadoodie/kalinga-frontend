@@ -7,7 +7,8 @@ import nodeApi from "../../services/nodeApi";
 // ✅ Fix marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
   iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
@@ -29,7 +30,7 @@ const MapCard = () => {
       .get("/hospitals", { params: { limit: 20 } })
       .then(({ data }) => {
         const list = (data?.data || []).filter(
-          (h) => h.latitude && h.longitude
+          (h) => h.latitude && h.longitude,
         );
         setHospitals(list);
       })
@@ -40,7 +41,7 @@ const MapCard = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation([pos.coords.latitude, pos.coords.longitude]),
-        () => setUserLocation([14.5995, 120.9842])
+        () => setUserLocation([14.5995, 120.9842]),
       );
     } else {
       setUserLocation([14.5995, 120.9842]);
@@ -49,7 +50,7 @@ const MapCard = () => {
 
   return (
     <div
-      className="card reports-card"
+      className="card responder-widget map-widget-card"
       style={{
         paddingBottom: 0,
         overflow: "hidden",
@@ -57,7 +58,10 @@ const MapCard = () => {
         flexDirection: "column",
       }}
     >
-      <h3 className="card-title" style={{ marginBottom: "0.75rem" }}>
+      <h3
+        className="card-title"
+        style={{ marginBottom: "0.75rem", textAlign: "center" }}
+      >
         Nearest Hospitals Around You
       </h3>
 
@@ -95,7 +99,10 @@ const MapCard = () => {
 
             {/* 🏥 Hospitals from DB */}
             {hospitals.map((h) => (
-              <Marker key={h.id} position={[parseFloat(h.latitude), parseFloat(h.longitude)]}>
+              <Marker
+                key={h.id}
+                position={[parseFloat(h.latitude), parseFloat(h.longitude)]}
+              >
                 <Popup>
                   <strong>{h.name}</strong>
                   <br />
@@ -113,7 +120,9 @@ const MapCard = () => {
             <SetViewOnLocation coords={userLocation} />
           </MapContainer>
         ) : (
-          <p style={{ textAlign: "center", padding: "2rem" }}>Getting your location...</p>
+          <p style={{ textAlign: "center", padding: "2rem" }}>
+            Getting your location...
+          </p>
         )}
       </div>
     </div>

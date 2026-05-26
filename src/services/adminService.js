@@ -53,9 +53,37 @@ const adminService = {
   },
 
   /**
-   * Register a new user (admin can create any role)
-   * @param {Object} userData - { name, email, password, role, phone }
+   * Update a logistics user's hospital
+   * @param {number} userId
+   * @param {number|null} hospitalId
    */
+  updateUserHospital: async (userId, hospitalId) => {
+    try {
+      const response = await api.put(`/admin/users/${userId}/hospital`, {
+        hospital_id: hospitalId,
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating user hospital:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update user details
+   * @param {number} userId
+   * @param {Object} userData
+   */
+  updateUser: async (userId, userData) => {
+    try {
+      const response = await api.put(`/admin/users/${userId}`, userData);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      throw error;
+    }
+  },
+
   createUser: async (userData) => {
     try {
       const response = await api.post("/register", {
@@ -90,7 +118,7 @@ const adminService = {
         active: users.filter((u) => u.is_active).length,
         inactive: users.filter((u) => !u.is_active).length,
         pendingVerification: users.filter(
-          (u) => u.verification_status === "pending"
+          (u) => u.verification_status === "pending",
         ).length,
       };
 
@@ -144,7 +172,7 @@ const adminService = {
           cancelled: incidents.filter((i) => i.status === "cancelled").length,
         },
         active: incidents.filter(
-          (i) => !["resolved", "cancelled"].includes(i.status)
+          (i) => !["resolved", "cancelled"].includes(i.status),
         ).length,
         todayCount: incidents.filter((i) => {
           const created = new Date(i.created_at);
@@ -244,7 +272,7 @@ const adminService = {
         if (!adminService._expiringEndpointFailed) {
           console.warn(
             "Expiring resources endpoint unavailable (will suppress further warnings):",
-            error?.message || error
+            error?.message || error,
           );
           adminService._expiringEndpointFailed = true;
         }
@@ -269,7 +297,7 @@ const adminService = {
         adminService.getExpiringResources(30).catch((error) => {
           console.warn(
             "Expiring resources unavailable, continuing without them",
-            error
+            error,
           );
           return [];
         }),
@@ -392,7 +420,7 @@ const adminService = {
       return {
         pendingRequests: incoming.filter((r) => r.status === "Pending").length,
         inTransit: tracking.filter((t) =>
-          ["Shipped", "On-the-Way"].includes(t.status)
+          ["Shipped", "On-the-Way"].includes(t.status),
         ).length,
         delivered: history.filter((h) => h.status === "Delivered").length,
         totalRequests: incoming.length + outgoing.length,
@@ -468,10 +496,10 @@ const adminService = {
 
       const activeResponders = responders.filter((r) => r.is_active);
       const availableResponders = activeResponders.filter(
-        (r) => !assignmentCounts[r.id]
+        (r) => !assignmentCounts[r.id],
       );
       const busyResponders = activeResponders.filter(
-        (r) => assignmentCounts[r.id]
+        (r) => assignmentCounts[r.id],
       );
 
       return {
@@ -646,7 +674,7 @@ const adminService = {
     try {
       const response = await api.get(
         `/incidents/${incidentId}/smart-responder-recommendations`,
-        { params }
+        { params },
       );
       return response.data;
     } catch (error) {
@@ -664,7 +692,7 @@ const adminService = {
     try {
       const response = await api.post(
         `/incidents/${incidentId}/smart-auto-assign`,
-        data
+        data,
       );
       return response.data;
     } catch (error) {
